@@ -10,6 +10,8 @@ For information and examples on styling please see the [wiki](https://github.com
 
 ## Installation
 
+Run using `ironbar`.
+
 ### Cargo
 
 ```sh
@@ -20,13 +22,11 @@ cargo install ironbar
 
 ### Arch Linux
 
-[aur package](https://aur.archlinux.org/packages/ironbar-git)
-
 ```sh
 yay -S ironbar-git
 ```
 
-Then just run with `ironbar`.
+[aur package](https://aur.archlinux.org/packages/ironbar-git)
 
 ## Configuration
 
