@@ -129,7 +129,7 @@ pub fn get_icon(theme: &IconTheme, app_id: &str, size: i32) -> Option<Pixbuf> {
 
     match icon_location {
         Some(IconLocation::Theme(icon_name)) => {
-            let icon = theme.load_icon(&icon_name, size, IconLookupFlags::empty());
+            let icon = theme.load_icon(&icon_name, size, IconLookupFlags::FORCE_SIZE);
 
             match icon {
                 Ok(icon) => icon,
