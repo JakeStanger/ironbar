@@ -1,0 +1,27 @@
+[package]
+name = "ironbar"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+gtk = "0.15.5"
+gtk-layer-shell = "0.4.1"
+glib = "0.15.12"
+stray = "0.1.1"
+tokio = { version = "1.20.1", features = ["macros", "rt-multi-thread", "time"] }
+futures-util = "0.3.21"
+chrono = "0.4.19"
+serde = { version = "1.0.141", features = ["derive"] }
+serde_json = "1.0.82"
+serde_yaml = "0.9.4"
+toml = "0.5.9"
+cornfig = "0.2.0"
+mpd_client = "0.7.5"
+regex = "1.6.0"
+ksway = "0.1.0"
+sysinfo = "0.25.1"
+dirs = "4.0.0"
+walkdir = "2.3.2"
+notify = "4.0.17"
