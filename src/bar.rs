@@ -5,7 +5,7 @@ use gtk::gdk::Monitor;
 use gtk::prelude::*;
 use gtk::{Application, ApplicationWindow, Orientation};
 
-pub fn create_bar(app: &Application, monitor: &Monitor, config: Config) {
+pub fn create_bar(app: &Application, monitor: &Monitor, monitor_name: &str, config: Config) {
     let win = ApplicationWindow::builder().application(app).build();
 
     setup_layer_shell(&win, monitor, &config.position);
@@ -31,7 +31,7 @@ pub fn create_bar(app: &Application, monitor: &Monitor, config: Config) {
     content.set_center_widget(Some(&center));
     content.pack_end(&right, false, false, 0);
 
-    load_modules(&left, &center, &right, app, config);
+    load_modules(&left, &center, &right, app, config, monitor_name);
     win.add(&content);
 
     win.connect_destroy_event(|_, _| {
@@ -48,12 +48,14 @@ fn load_modules(
     right: &gtk::Box,
     app: &Application,
     config: Config,
+    output_name: &str
 ) {
     if let Some(modules) = config.left {
         let info = ModuleInfo {
             app,
             location: ModuleLocation::Left,
-            bar_position: &config.position
+            bar_position: &config.position,
+            output_name
         };
 
         add_modules(left, modules, info);
@@ -63,7 +65,8 @@ fn load_modules(
         let info = ModuleInfo {
             app,
             location: ModuleLocation::Center,
-            bar_position: &config.position
+            bar_position: &config.position,
+            output_name
         };
 
         add_modules(center, modules, info);
@@ -73,7 +76,8 @@ fn load_modules(
         let info = ModuleInfo {
             app,
             location: ModuleLocation::Right,
-            bar_position: &config.position
+            bar_position: &config.position,
+            output_name
         };
 
         add_modules(right, modules, info);

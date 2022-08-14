@@ -11,7 +11,14 @@ use tokio::task::spawn_blocking;
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct WorkspacesModule {
-    pub(crate) name_map: Option<HashMap<String, String>>,
+    name_map: Option<HashMap<String, String>>,
+
+    #[serde(default = "default_false")]
+    all_monitors: bool,
+}
+
+const fn default_false() -> bool {
+    false
 }
 
 #[derive(Deserialize, Debug)]
@@ -19,7 +26,7 @@ struct Workspace {
     name: String,
     focused: bool,
     // num: i32,
-    // output: String,
+    output: String,
 }
 
 impl Workspace {
@@ -53,14 +60,23 @@ struct WorkspaceEvent {
 }
 
 impl Module<gtk::Box> for WorkspacesModule {
-    fn into_widget(self, _info: &ModuleInfo) -> gtk::Box {
+    fn into_widget(self, info: &ModuleInfo) -> gtk::Box {
         let mut sway = Client::connect().unwrap();
 
         let container = gtk::Box::new(Orientation::Horizontal, 0);
 
         let workspaces = {
             let raw = sway.ipc(IpcCommand::GetWorkspaces).unwrap();
-            serde_json::from_slice::<Vec<Workspace>>(&raw).unwrap()
+            let workspaces = serde_json::from_slice::<Vec<Workspace>>(&raw).unwrap();
+
+            if !self.all_monitors {
+                workspaces
+                    .into_iter()
+                    .filter(|workspace| workspace.output == info.output_name)
+                    .collect()
+            } else {
+                workspaces
+            }
         };
 
         let name_map = self.name_map.unwrap_or_default();
@@ -88,29 +104,35 @@ impl Module<gtk::Box> for WorkspacesModule {
 
         {
             let menubar = container.clone();
+            let output_name = info.output_name.to_string();
             rx.attach(None, move |event| {
                 match event.change.as_str() {
                     "focus" => {
                         let old = event.old.unwrap();
-                        let old_button = button_map.get(&old.name).unwrap();
-                        old_button.style_context().remove_class("focused");
+                        if let Some(old_button) = button_map.get(&old.name) {
+                            old_button.style_context().remove_class("focused");
+                        }
 
                         let new = event.current.unwrap();
-                        let new_button = button_map.get(&new.name).unwrap();
-                        new_button.style_context().add_class("focused");
+                        if let Some(new_button) = button_map.get(&new.name) {
+                            new_button.style_context().add_class("focused");
+                        }
                     }
                     "init" => {
                         let workspace = event.current.unwrap();
-                        let item = workspace.as_button(&name_map, &ui_tx);
+                        if self.all_monitors || workspace.output == output_name {
+                            let item = workspace.as_button(&name_map, &ui_tx);
 
-                        item.show();
-                        menubar.add(&item);
-                        button_map.insert(workspace.name, item);
+                            item.show();
+                            menubar.add(&item);
+                            button_map.insert(workspace.name, item);
+                        }
                     }
                     "empty" => {
                         let current = event.current.unwrap();
-                        let item = button_map.get(&current.name).unwrap();
-                        menubar.remove(item);
+                        if let Some(item) = button_map.get(&current.name) {
+                            menubar.remove(item);
+                        }
                     }
                     _ => {}
                 }

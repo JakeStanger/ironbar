@@ -30,7 +30,8 @@ pub enum ModuleLocation {
 pub struct ModuleInfo<'a> {
     pub app: &'a Application,
     pub location: ModuleLocation,
-    pub bar_position: &'a BarPosition
+    pub bar_position: &'a BarPosition,
+    pub output_name: &'a str
 }
 
 pub trait Module<W>
