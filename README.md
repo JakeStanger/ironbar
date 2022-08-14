@@ -21,8 +21,7 @@ Then just run with `ironbar`.
 
 ## Configuration
 
-By default, running will get you a blank bar. To start, you will need a configuration file in `.config/ironbar`.
-Ironbar supports a range of file formats so pick your favourite:
+By default, running will get you a blank bar. To start, you will need a configuration file in `.config/ironbar`. This could be called `config.<fmt>`, using one of the available extensions:
 
 - JSON
 - TOML
@@ -70,6 +69,14 @@ The monitor's config object takes any combination of `left`, `center`, and `righ
   ]
 }
 ```
+
+| Name       | Type              | Default | Description                                                                 |
+|------------|-------------------|---------|-----------------------------------------------------------------------------|
+| `position` | `top` or `bottom` | `[]`    | The bar's position on screen.                                               |
+| `left`     | `Module[]`        | `[]`    | Array of left modules.                                                      |
+| `center`   | `Module[]`        | `[]`    | Array of center modules.                                                    |
+| `right`    | `Module[]`        | `[]`    | Array of right modules.                                                     |
+| `monitors` | `RootConfig[]`    | `null`  | Array of root config objects for each monitor. Overrides left/center/right. |
 
 ## Styling
 

@@ -207,7 +207,7 @@ impl Module<gtk::Box> for LauncherModule {
 
         let mut sway = Client::connect().unwrap();
 
-        let popup = Popup::new("popup-launcher", info.app, Orientation::Vertical);
+        let popup = Popup::new("popup-launcher", info.app, Orientation::Vertical, info.bar_position);
         let container = gtk::Box::new(Orientation::Horizontal, 0);
 
         let (ui_tx, mut ui_rx) = mpsc::channel(32);

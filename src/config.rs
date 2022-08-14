@@ -21,13 +21,33 @@ pub enum ModuleConfig {
     Script(ScriptModule),
 }
 
+#[derive(Debug, Deserialize, Clone, PartialEq)]
+#[serde(rename_all = "kebab-case")]
+pub enum BarPosition {
+    Top,
+    Bottom
+}
+
+impl Default for BarPosition {
+    fn default() -> Self {
+        BarPosition::Bottom
+    }
+}
+
 #[derive(Debug, Deserialize, Clone, Default)]
 pub struct Config {
+    #[serde(default = "default_bar_position")]
+    pub position: BarPosition,
+
     pub left: Option<Vec<ModuleConfig>>,
     pub center: Option<Vec<ModuleConfig>>,
     pub right: Option<Vec<ModuleConfig>>,
 
     pub monitors: Option<Vec<Config>>,
+}
+
+const fn default_bar_position() -> BarPosition {
+    BarPosition::Bottom
 }
 
 impl Config {

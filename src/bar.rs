@@ -1,4 +1,4 @@
-use crate::config::ModuleConfig;
+use crate::config::{BarPosition, ModuleConfig};
 use crate::modules::{Module, ModuleInfo, ModuleLocation};
 use crate::Config;
 use gtk::gdk::Monitor;
@@ -8,7 +8,7 @@ use gtk::{Application, ApplicationWindow, Orientation};
 pub fn create_bar(app: &Application, monitor: &Monitor, config: Config) {
     let win = ApplicationWindow::builder().application(app).build();
 
-    setup_layer_shell(&win, monitor);
+    setup_layer_shell(&win, monitor, &config.position);
 
     let content = gtk::Box::builder()
         .orientation(Orientation::Horizontal)
@@ -53,6 +53,7 @@ fn load_modules(
         let info = ModuleInfo {
             app,
             location: ModuleLocation::Left,
+            bar_position: &config.position
         };
 
         add_modules(left, modules, info);
@@ -62,6 +63,7 @@ fn load_modules(
         let info = ModuleInfo {
             app,
             location: ModuleLocation::Center,
+            bar_position: &config.position
         };
 
         add_modules(center, modules, info);
@@ -71,6 +73,7 @@ fn load_modules(
         let info = ModuleInfo {
             app,
             location: ModuleLocation::Right,
+            bar_position: &config.position
         };
 
         add_modules(right, modules, info);
@@ -119,7 +122,7 @@ fn add_modules(content: &gtk::Box, modules: Vec<ModuleConfig>, info: ModuleInfo)
     }
 }
 
-fn setup_layer_shell(win: &ApplicationWindow, monitor: &Monitor) {
+fn setup_layer_shell(win: &ApplicationWindow, monitor: &Monitor, position: &BarPosition) {
     gtk_layer_shell::init_for_window(win);
     gtk_layer_shell::set_monitor(win, monitor);
     gtk_layer_shell::set_layer(win, gtk_layer_shell::Layer::Top);
@@ -130,8 +133,8 @@ fn setup_layer_shell(win: &ApplicationWindow, monitor: &Monitor) {
     gtk_layer_shell::set_margin(win, gtk_layer_shell::Edge::Left, 0);
     gtk_layer_shell::set_margin(win, gtk_layer_shell::Edge::Right, 0);
 
-    gtk_layer_shell::set_anchor(win, gtk_layer_shell::Edge::Top, false);
-    gtk_layer_shell::set_anchor(win, gtk_layer_shell::Edge::Bottom, true);
+    gtk_layer_shell::set_anchor(win, gtk_layer_shell::Edge::Top, position == &BarPosition::Top);
+    gtk_layer_shell::set_anchor(win, gtk_layer_shell::Edge::Bottom, position == &BarPosition::Bottom);
     gtk_layer_shell::set_anchor(win, gtk_layer_shell::Edge::Left, true);
     gtk_layer_shell::set_anchor(win, gtk_layer_shell::Edge::Right, true);
 }

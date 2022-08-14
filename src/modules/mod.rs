@@ -18,6 +18,7 @@ use glib::IsA;
 use gtk::{Application, Widget};
 use serde::de::DeserializeOwned;
 use serde_json::Value;
+use crate::config::BarPosition;
 
 #[derive(Clone)]
 pub enum ModuleLocation {
@@ -29,6 +30,7 @@ pub enum ModuleLocation {
 pub struct ModuleInfo<'a> {
     pub app: &'a Application,
     pub location: ModuleLocation,
+    pub bar_position: &'a BarPosition
 }
 
 pub trait Module<W>

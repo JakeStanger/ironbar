@@ -1,3 +1,4 @@
+use crate::config::BarPosition;
 use gtk::prelude::*;
 use gtk::{Application, ApplicationWindow, Orientation};
 
@@ -14,19 +15,48 @@ pub enum PopupAlignment {
 }
 
 impl Popup {
-    pub fn new(name: &str, app: &Application, orientation: Orientation) -> Self {
+    pub fn new(
+        name: &str,
+        app: &Application,
+        orientation: Orientation,
+        bar_position: &BarPosition,
+    ) -> Self {
         let win = ApplicationWindow::builder().application(app).build();
 
         gtk_layer_shell::init_for_window(&win);
         gtk_layer_shell::set_layer(&win, gtk_layer_shell::Layer::Overlay);
 
-        gtk_layer_shell::set_margin(&win, gtk_layer_shell::Edge::Top, 0);
-        gtk_layer_shell::set_margin(&win, gtk_layer_shell::Edge::Bottom, 5);
+        gtk_layer_shell::set_margin(
+            &win,
+            gtk_layer_shell::Edge::Top,
+            if bar_position == &BarPosition::Top {
+                5
+            } else {
+                0
+            },
+        );
+        gtk_layer_shell::set_margin(
+            &win,
+            gtk_layer_shell::Edge::Bottom,
+            if bar_position == &BarPosition::Bottom {
+                5
+            } else {
+                0
+            },
+        );
         gtk_layer_shell::set_margin(&win, gtk_layer_shell::Edge::Left, 0);
         gtk_layer_shell::set_margin(&win, gtk_layer_shell::Edge::Right, 0);
 
-        gtk_layer_shell::set_anchor(&win, gtk_layer_shell::Edge::Top, false);
-        gtk_layer_shell::set_anchor(&win, gtk_layer_shell::Edge::Bottom, true);
+        gtk_layer_shell::set_anchor(
+            &win,
+            gtk_layer_shell::Edge::Top,
+            bar_position == &BarPosition::Top,
+        );
+        gtk_layer_shell::set_anchor(
+            &win,
+            gtk_layer_shell::Edge::Bottom,
+            bar_position == &BarPosition::Bottom,
+        );
         gtk_layer_shell::set_anchor(&win, gtk_layer_shell::Edge::Left, true);
         gtk_layer_shell::set_anchor(&win, gtk_layer_shell::Edge::Right, false);
 

@@ -93,7 +93,7 @@ impl Module<Button> for MpdModule {
 
         let (ui_tx, mut ui_rx) = mpsc::channel(32);
 
-        let popup = Popup::new("popup-mpd", info.app, Orientation::Horizontal);
+        let popup = Popup::new("popup-mpd", info.app, Orientation::Horizontal, info.bar_position);
         let mpd_popup = MpdPopup::new(popup, ui_tx);
 
         let (tx, rx) = glib::MainContext::channel(glib::PRIORITY_DEFAULT);
