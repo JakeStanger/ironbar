@@ -14,7 +14,7 @@ pub fn create_bar(app: &Application, monitor: &Monitor, monitor_name: &str, conf
         .orientation(Orientation::Horizontal)
         .spacing(0)
         .hexpand(false)
-        .height_request(42)
+        .height_request(config.height)
         .name("bar")
         .build();
 

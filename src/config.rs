@@ -40,6 +40,8 @@ impl Default for BarPosition {
 pub struct Config {
     #[serde(default = "default_bar_position")]
     pub position: BarPosition,
+    #[serde(default = "default_bar_height")]
+    pub height: i32,
 
     pub left: Option<Vec<ModuleConfig>>,
     pub center: Option<Vec<ModuleConfig>>,
@@ -50,6 +52,10 @@ pub struct Config {
 
 const fn default_bar_position() -> BarPosition {
     BarPosition::Bottom
+}
+
+const fn default_bar_height() -> i32 {
+    42
 }
 
 impl Config {

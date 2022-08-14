@@ -73,6 +73,7 @@ The monitor's config object takes any combination of `left`, `center`, and `righ
 | Name       | Type              | Default | Description                                                                 |
 |------------|-------------------|---------|-----------------------------------------------------------------------------|
 | `position` | `top` or `bottom` | `[]`    | The bar's position on screen.                                               |
+| `height`   | `integer`         | `42`    | The bar's height in pixels.                                                 |
 | `left`     | `Module[]`        | `[]`    | Array of left modules.                                                      |
 | `center`   | `Module[]`        | `[]`    | Array of center modules.                                                    |
 | `right`    | `Module[]`        | `[]`    | Array of right modules.                                                     |
