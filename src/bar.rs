@@ -48,14 +48,14 @@ fn load_modules(
     right: &gtk::Box,
     app: &Application,
     config: Config,
-    output_name: &str
+    output_name: &str,
 ) {
     if let Some(modules) = config.left {
         let info = ModuleInfo {
             app,
             location: ModuleLocation::Left,
             bar_position: &config.position,
-            output_name
+            output_name,
         };
 
         add_modules(left, modules, info);
@@ -66,7 +66,7 @@ fn load_modules(
             app,
             location: ModuleLocation::Center,
             bar_position: &config.position,
-            output_name
+            output_name,
         };
 
         add_modules(center, modules, info);
@@ -77,7 +77,7 @@ fn load_modules(
             app,
             location: ModuleLocation::Right,
             bar_position: &config.position,
-            output_name
+            output_name,
         };
 
         add_modules(right, modules, info);
@@ -122,6 +122,11 @@ fn add_modules(content: &gtk::Box, modules: Vec<ModuleConfig>, info: ModuleInfo)
                 widget.set_widget_name("script");
                 content.add(&widget);
             }
+            ModuleConfig::Focused(module) => {
+                let widget = module.into_widget(&info);
+                widget.set_widget_name("focused");
+                content.add(&widget);
+            }
         }
     }
 }
@@ -137,8 +142,16 @@ fn setup_layer_shell(win: &ApplicationWindow, monitor: &Monitor, position: &BarP
     gtk_layer_shell::set_margin(win, gtk_layer_shell::Edge::Left, 0);
     gtk_layer_shell::set_margin(win, gtk_layer_shell::Edge::Right, 0);
 
-    gtk_layer_shell::set_anchor(win, gtk_layer_shell::Edge::Top, position == &BarPosition::Top);
-    gtk_layer_shell::set_anchor(win, gtk_layer_shell::Edge::Bottom, position == &BarPosition::Bottom);
+    gtk_layer_shell::set_anchor(
+        win,
+        gtk_layer_shell::Edge::Top,
+        position == &BarPosition::Top,
+    );
+    gtk_layer_shell::set_anchor(
+        win,
+        gtk_layer_shell::Edge::Bottom,
+        position == &BarPosition::Bottom,
+    );
     gtk_layer_shell::set_anchor(win, gtk_layer_shell::Edge::Left, true);
     gtk_layer_shell::set_anchor(win, gtk_layer_shell::Edge::Right, true);
 }

@@ -1,4 +1,5 @@
 use crate::modules::{Module, ModuleInfo};
+use crate::sway::{Workspace, WorkspaceEvent};
 use gtk::prelude::*;
 use gtk::{Button, Orientation};
 use ksway::client::Client;
@@ -13,20 +14,8 @@ use tokio::task::spawn_blocking;
 pub struct WorkspacesModule {
     name_map: Option<HashMap<String, String>>,
 
-    #[serde(default = "default_false")]
+    #[serde(default = "crate::config::default_false")]
     all_monitors: bool,
-}
-
-const fn default_false() -> bool {
-    false
-}
-
-#[derive(Deserialize, Debug)]
-struct Workspace {
-    name: String,
-    focused: bool,
-    // num: i32,
-    output: String,
 }
 
 impl Workspace {
@@ -50,13 +39,6 @@ impl Workspace {
 
         button
     }
-}
-
-#[derive(Deserialize, Debug)]
-struct WorkspaceEvent {
-    change: String,
-    old: Option<Workspace>,
-    current: Option<Workspace>,
 }
 
 impl Module<gtk::Box> for WorkspacesModule {

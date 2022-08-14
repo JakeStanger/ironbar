@@ -30,7 +30,12 @@ impl Module<Button> for ClockModule {
     fn into_widget(self, info: &ModuleInfo) -> Button {
         let button = Button::new();
 
-        let popup = Popup::new("popup-clock", info.app, Orientation::Vertical, info.bar_position);
+        let popup = Popup::new(
+            "popup-clock",
+            info.app,
+            Orientation::Vertical,
+            info.bar_position,
+        );
         popup.add_clock_widgets();
 
         button.show_all();

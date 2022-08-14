@@ -5,6 +5,7 @@
 /// Clicking the widget opens a popup containing the current time
 /// with second-level precision and a calendar.
 pub mod clock;
+pub mod focused;
 pub mod launcher;
 pub mod mpd;
 pub mod script;
@@ -12,13 +13,13 @@ pub mod sysinfo;
 pub mod tray;
 pub mod workspaces;
 
+use crate::config::BarPosition;
 /// Shamelessly stolen from here:
 /// <https://github.com/zeroeightysix/rustbar/blob/master/src/modules/module.rs>
 use glib::IsA;
 use gtk::{Application, Widget};
 use serde::de::DeserializeOwned;
 use serde_json::Value;
-use crate::config::BarPosition;
 
 #[derive(Clone)]
 pub enum ModuleLocation {
@@ -31,7 +32,7 @@ pub struct ModuleInfo<'a> {
     pub app: &'a Application,
     pub location: ModuleLocation,
     pub bar_position: &'a BarPosition,
-    pub output_name: &'a str
+    pub output_name: &'a str,
 }
 
 pub trait Module<W>

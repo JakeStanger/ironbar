@@ -1,4 +1,5 @@
 use crate::modules::clock::ClockModule;
+use crate::modules::focused::FocusedModule;
 use crate::modules::launcher::LauncherModule;
 use crate::modules::mpd::MpdModule;
 use crate::modules::script::ScriptModule;
@@ -19,13 +20,14 @@ pub enum ModuleConfig {
     SysInfo(SysInfoModule),
     Launcher(LauncherModule),
     Script(ScriptModule),
+    Focused(FocusedModule),
 }
 
-#[derive(Debug, Deserialize, Clone, PartialEq)]
+#[derive(Debug, Deserialize, Clone, PartialEq, Eq)]
 #[serde(rename_all = "kebab-case")]
 pub enum BarPosition {
     Top,
-    Bottom
+    Bottom,
 }
 
 impl Default for BarPosition {
@@ -82,4 +84,11 @@ impl Config {
             }
         })
     }
+}
+
+pub const fn default_false() -> bool {
+    false
+}
+pub const fn default_true() -> bool {
+    true
 }

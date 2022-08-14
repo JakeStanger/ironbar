@@ -1,24 +1,21 @@
 mod bar;
 mod collection;
 mod config;
+mod icon;
 mod modules;
 mod popup;
 mod style;
+mod sway;
 
 use crate::bar::create_bar;
 use crate::config::Config;
 use crate::style::load_css;
+use crate::sway::SwayOutput;
 use dirs::config_dir;
 use gtk::prelude::*;
 use gtk::{gdk, Application};
 use ksway::client::Client;
 use ksway::IpcCommand;
-use serde::Deserialize;
-
-#[derive(Deserialize)]
-struct SwayOutput {
-    name: String,
-}
 
 #[tokio::main]
 async fn main() {
@@ -27,8 +24,11 @@ async fn main() {
         .build();
 
     let mut sway_client = Client::connect().expect("Failed to connect to Sway IPC");
-    let outputs = sway_client.ipc(IpcCommand::GetOutputs).expect("Failed to get Sway outputs");
-    let outputs = serde_json::from_slice::<Vec<SwayOutput>>(&outputs).expect("Failed to deserialize outputs message from Sway IPC");
+    let outputs = sway_client
+        .ipc(IpcCommand::GetOutputs)
+        .expect("Failed to get Sway outputs");
+    let outputs = serde_json::from_slice::<Vec<SwayOutput>>(&outputs)
+        .expect("Failed to deserialize outputs message from Sway IPC");
 
     app.connect_activate(move |app| {
         let config = Config::load().unwrap_or_default();
@@ -42,7 +42,10 @@ async fn main() {
         let num_monitors = display.n_monitors();
         for i in 0..num_monitors {
             let monitor = display.monitor(i).unwrap();
-            let monitor_name = &outputs.get(i as usize).expect("GTK monitor output differs from Sway's").name;
+            let monitor_name = &outputs
+                .get(i as usize)
+                .expect("GTK monitor output differs from Sway's")
+                .name;
 
             let config = config.monitors.as_ref().map_or(&config, |monitor_config| {
                 monitor_config.get(i as usize).unwrap_or(&config)

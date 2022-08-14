@@ -93,7 +93,12 @@ impl Module<Button> for MpdModule {
 
         let (ui_tx, mut ui_rx) = mpsc::channel(32);
 
-        let popup = Popup::new("popup-mpd", info.app, Orientation::Horizontal, info.bar_position);
+        let popup = Popup::new(
+            "popup-mpd",
+            info.app,
+            Orientation::Horizontal,
+            info.bar_position,
+        );
         let mpd_popup = MpdPopup::new(popup, ui_tx);
 
         let (tx, rx) = glib::MainContext::channel(glib::PRIORITY_DEFAULT);
@@ -148,11 +153,12 @@ impl Module<Button> for MpdModule {
                         match status.state {
                             PlayState::Playing => client.command(commands::SetPause(true)).await,
                             PlayState::Paused => client.command(commands::SetPause(false)).await,
-                            PlayState::Stopped => Ok(())
+                            PlayState::Stopped => Ok(()),
                         }
                     }
-                    PopupEvent::Next => client.command(commands::Next).await
-                }.unwrap();
+                    PopupEvent::Next => client.command(commands::Next).await,
+                }
+                .unwrap();
             }
         });
 

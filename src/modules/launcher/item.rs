@@ -1,9 +1,9 @@
 use crate::collection::Collection;
-use crate::modules::launcher::icon::{find_desktop_file, get_icon};
-use crate::modules::launcher::node::SwayNode;
+use crate::icon::{find_desktop_file, get_icon};
 use crate::modules::launcher::popup::Popup;
 use crate::modules::launcher::FocusEvent;
 use crate::popup::PopupAlignment;
+use crate::sway::SwayNode;
 use gtk::prelude::*;
 use gtk::{Button, IconTheme, Image};
 use std::process::{Command, Stdio};

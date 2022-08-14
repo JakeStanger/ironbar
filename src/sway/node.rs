@@ -1,25 +1,5 @@
+use crate::sway::SwayNode;
 use ksway::{Client, IpcCommand};
-use serde::Deserialize;
-
-#[derive(Debug, Deserialize)]
-pub struct SwayNode {
-    #[serde(rename = "type")]
-    pub node_type: String,
-    pub id: i32,
-    pub name: Option<String>,
-    pub app_id: Option<String>,
-    pub focused: bool,
-    pub urgent: bool,
-    pub nodes: Vec<SwayNode>,
-    pub floating_nodes: Vec<SwayNode>,
-    pub shell: Option<String>,
-    pub window_properties: Option<WindowProperties>,
-}
-
-#[derive(Debug, Deserialize)]
-pub struct WindowProperties {
-    pub class: String,
-}
 
 impl SwayNode {
     pub fn get_id(&self) -> &str {

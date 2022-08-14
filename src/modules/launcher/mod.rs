@@ -1,13 +1,12 @@
-mod icon;
 mod item;
-mod node;
 mod popup;
 
 use crate::collection::Collection;
 use crate::modules::launcher::item::{ButtonConfig, LauncherItem, LauncherWindow};
-use crate::modules::launcher::node::{get_open_windows, SwayNode};
 use crate::modules::launcher::popup::Popup;
 use crate::modules::{Module, ModuleInfo};
+use crate::sway::node::get_open_windows;
+use crate::sway::{SwayNode, WindowEvent};
 use gtk::prelude::*;
 use gtk::{IconTheme, Orientation};
 use ksway::{Client, IpcEvent};
@@ -20,26 +19,12 @@ use tokio::task::spawn_blocking;
 #[derive(Debug, Deserialize, Clone)]
 pub struct LauncherModule {
     favorites: Option<Vec<String>>,
-    #[serde(default = "default_false")]
+    #[serde(default = "crate::config::default_false")]
     show_names: bool,
-    #[serde(default = "default_true")]
+    #[serde(default = "crate::config::default_true")]
     show_icons: bool,
 
     icon_theme: Option<String>,
-}
-
-const fn default_false() -> bool {
-    false
-}
-
-const fn default_true() -> bool {
-    true
-}
-
-#[derive(Debug, Deserialize)]
-struct WindowEvent {
-    change: String,
-    container: SwayNode,
 }
 
 #[derive(Debug)]
@@ -181,7 +166,6 @@ impl Launcher {
             } else {
                 windows.get_mut(&window.id).unwrap().name = Some(name);
             }
-
         }
     }
 
@@ -207,7 +191,12 @@ impl Module<gtk::Box> for LauncherModule {
 
         let mut sway = Client::connect().unwrap();
 
-        let popup = Popup::new("popup-launcher", info.app, Orientation::Vertical, info.bar_position);
+        let popup = Popup::new(
+            "popup-launcher",
+            info.app,
+            Orientation::Vertical,
+            info.bar_position,
+        );
         let container = gtk::Box::new(Orientation::Horizontal, 0);
 
         let (ui_tx, mut ui_rx) = mpsc::channel(32);
