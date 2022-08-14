@@ -8,13 +8,22 @@ For information and examples on styling please see the [wiki](https://github.com
 
 ![Screenshot of fully configured bar with MPD widget open](https://user-images.githubusercontent.com/5057870/184539623-92d56a44-a659-49a9-91f9-5cdc453e5dfb.png)
 
-
 ## Installation
 
-Install with cargo:
+### Cargo
 
 ```sh
 cargo install ironbar
+```
+
+[crate](https://crates.io/crates/ironbar)
+
+### Arch Linux
+
+[aur package](https://aur.archlinux.org/packages/ironbar-git)
+
+```sh
+yay -S ironbar-git
 ```
 
 Then just run with `ironbar`.
