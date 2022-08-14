@@ -85,48 +85,24 @@ fn load_modules(
 }
 
 fn add_modules(content: &gtk::Box, modules: Vec<ModuleConfig>, info: ModuleInfo) {
+    macro_rules! add_module {
+        ($module:expr, $name:literal) => {{
+            let widget = $module.into_widget(&info);
+            widget.set_widget_name($name);
+            content.add(&widget);
+        }};
+    }
+
     for config in modules {
         match config {
-            ModuleConfig::Clock(module) => {
-                let widget = module.into_widget(&info);
-                widget.set_widget_name("clock");
-                content.add(&widget);
-            }
-            ModuleConfig::Mpd(module) => {
-                let widget = module.into_widget(&info);
-                widget.set_widget_name("mpd");
-                content.add(&widget);
-            }
-            ModuleConfig::Tray(module) => {
-                let widget = module.into_widget(&info);
-                widget.set_widget_name("tray");
-                content.add(&widget);
-            }
-            ModuleConfig::Workspaces(module) => {
-                let widget = module.into_widget(&info);
-                widget.set_widget_name("workspaces");
-                content.add(&widget);
-            }
-            ModuleConfig::SysInfo(module) => {
-                let widget = module.into_widget(&info);
-                widget.set_widget_name("sysinfo");
-                content.add(&widget);
-            }
-            ModuleConfig::Launcher(module) => {
-                let widget = module.into_widget(&info);
-                widget.set_widget_name("launcher");
-                content.add(&widget);
-            }
-            ModuleConfig::Script(module) => {
-                let widget = module.into_widget(&info);
-                widget.set_widget_name("script");
-                content.add(&widget);
-            }
-            ModuleConfig::Focused(module) => {
-                let widget = module.into_widget(&info);
-                widget.set_widget_name("focused");
-                content.add(&widget);
-            }
+            ModuleConfig::Clock(module) => add_module!(module, "clock"),
+            ModuleConfig::Mpd(module) => add_module!(module, "mpd"),
+            ModuleConfig::Tray(module) => add_module!(module, "tray"),
+            ModuleConfig::Workspaces(module) => add_module!(module, "workspaces"),
+            ModuleConfig::SysInfo(module) => add_module!(module, "sysinfo"),
+            ModuleConfig::Launcher(module) => add_module!(module, "launcher"),
+            ModuleConfig::Script(module) => add_module!(module, "script"),
+            ModuleConfig::Focused(module) => add_module!(module, "focused"),
         }
     }
 }
