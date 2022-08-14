@@ -175,7 +175,13 @@ impl Launcher {
         let item = self.items.get_mut(&id);
 
         if let (Some(item), Some(name)) = (item, window.name) {
-            item.set_title(&name, &self.button_config);
+            let mut windows = item.windows.lock().unwrap();
+            if windows.len() == 1 {
+                item.set_title(&name, &self.button_config);
+            } else {
+                windows.get_mut(&window.id).unwrap().name = Some(name);
+            }
+
         }
     }
 
