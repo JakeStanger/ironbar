@@ -20,7 +20,7 @@ const fn default_interval() -> u64 {
 
 impl Module<Label> for ScriptModule {
     fn into_widget(self, _info: &ModuleInfo) -> Label {
-        let label = Label::new(None);
+        let label = Label::builder().use_markup(true).build();
 
         let (tx, rx) = glib::MainContext::channel(glib::PRIORITY_DEFAULT);
         spawn(async move {
