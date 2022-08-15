@@ -48,22 +48,25 @@ async fn main() {
                 .expect("GTK monitor output differs from Sway's")
                 .name;
 
-            if let Some(ref config) = config.monitors {
-                let config = config.get(monitor_name);
-                match &config {
-                    Some(MonitorConfig::Single(config)) => {
-                        create_bar(app, &monitor, monitor_name, config.clone());
-                    }
-                    Some(MonitorConfig::Multiple(configs)) => {
-                        for config in configs {
+            config.monitors.as_ref().map_or_else(
+                || {
+                    create_bar(app, &monitor, monitor_name, config.clone());
+                },
+                |config| {
+                    let config = config.get(monitor_name);
+                    match &config {
+                        Some(MonitorConfig::Single(config)) => {
                             create_bar(app, &monitor, monitor_name, config.clone());
                         }
+                        Some(MonitorConfig::Multiple(configs)) => {
+                            for config in configs {
+                                create_bar(app, &monitor, monitor_name, config.clone());
+                            }
+                        }
+                        _ => {}
                     }
-                    _ => {}
-                }
-            } else {
-                create_bar(app, &monitor, monitor_name, config.clone());
-            }
+                },
+            )
         }
 
         let style_path = config_dir()

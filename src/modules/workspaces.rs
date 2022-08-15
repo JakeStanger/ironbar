@@ -51,13 +51,13 @@ impl Module<gtk::Box> for WorkspacesModule {
             let raw = sway.ipc(IpcCommand::GetWorkspaces).unwrap();
             let workspaces = serde_json::from_slice::<Vec<Workspace>>(&raw).unwrap();
 
-            if !self.all_monitors {
+            if self.all_monitors {
+                workspaces
+            } else {
                 workspaces
                     .into_iter()
                     .filter(|workspace| workspace.output == info.output_name)
                     .collect()
-            } else {
-                workspaces
             }
         };
 

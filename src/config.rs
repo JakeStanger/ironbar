@@ -41,7 +41,7 @@ pub enum BarPosition {
 
 impl Default for BarPosition {
     fn default() -> Self {
-        BarPosition::Bottom
+        Self::Bottom
     }
 }
 
@@ -71,7 +71,13 @@ impl Config {
     pub fn load() -> Option<Self> {
         if let Ok(config_path) = env::var("IRONBAR_CONFIG") {
             let path = PathBuf::from(config_path);
-            Config::load_file(&path, path.extension().unwrap_or_default().to_str().unwrap_or_default())
+            Self::load_file(
+                &path,
+                path.extension()
+                    .unwrap_or_default()
+                    .to_str()
+                    .unwrap_or_default(),
+            )
         } else {
             let config_dir = config_dir().expect("Failed to locate user config dir");
 
@@ -82,7 +88,7 @@ impl Config {
                     .join("ironbar")
                     .join(format!("config.{extension}"));
 
-                Config::load_file(&full_path, extension)
+                Self::load_file(&full_path, extension)
             })
         }
     }

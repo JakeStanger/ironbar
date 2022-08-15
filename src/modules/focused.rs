@@ -73,10 +73,7 @@ impl Module<gtk::Box> for FocusedModule {
 
         {
             rx.attach(None, move |node| {
-                let value = node
-                    .name
-                    .as_deref()
-                    .unwrap_or_else(|| node.get_id());
+                let value = node.name.as_deref().unwrap_or_else(|| node.get_id());
 
                 let pixbuf = icon::get_icon(&icon_theme, node.get_id(), self.icon_size);
 
