@@ -30,69 +30,17 @@ yay -S ironbar-git
 
 ## Configuration
 
-By default, running will get you a blank bar. To start, you will need a configuration file in `.config/ironbar`. This could be called `config.<fmt>`, using one of the available extensions:
+Ironbar gives a lot of flexibility when configuring, including multiple file formats 
+and options for scaling complexity: you can use a single config across all monitors, 
+or configure different/multiple bars per monitor. 
 
-- JSON
-- TOML
-- YAML
-- [Corn](https://github.com/jakestanger/corn) (Experimental. JSON/Nix like config lang. Supports variables.)
-
-For a full list of modules and their configuration options, please see the [wiki](https://github.com/JakeStanger/ironbar/wiki).
-
-There are two different approaches to configuring the bar:
-
-### Same configuration across all monitors
-
-> If you have a single monitor, or want the same bar to appear across each of your monitors, choose this option.
-
-The top-level object takes any combination of `left`, `center`, and `right`. These each take a list of modules and determine where they are positioned. 
-
-```json
-{
-  "left": [],
-  "center": [],
-  "right": []
-}
-```
-
-### Different configuration across monitors
-
-> If you have multiple monitors and want them to differ in configuration, choose this option.
- 
-The top-level object takes a single key called `monitors`. This takes an array where each entry is an object with a configuration for each monitor.
-The monitor's config object takes any combination of `left`, `center`, and `right`. These each take a list of modules and determine where they are positioned. 
-
-```json
-{
-  "monitors": [
-    {
-      "left": [],
-      "center": [],
-      "right": []
-    },
-    {
-      "left": [],
-      "center": [],
-      "right": []
-    }
-  ]
-}
-```
-
-| Name       | Type              | Default | Description                                                                 |
-|------------|-------------------|---------|-----------------------------------------------------------------------------|
-| `position` | `top` or `bottom` | `[]`    | The bar's position on screen.                                               |
-| `height`   | `integer`         | `42`    | The bar's height in pixels.                                                 |
-| `left`     | `Module[]`        | `[]`    | Array of left modules.                                                      |
-| `center`   | `Module[]`        | `[]`    | Array of center modules.                                                    |
-| `right`    | `Module[]`        | `[]`    | Array of right modules.                                                     |
-| `monitors` | `RootConfig[]`    | `null`  | Array of root config objects for each monitor. Overrides left/center/right. |
+A full configuration guide can be found [here](https://github.com/JakeStanger/ironbar/wiki/configuration-guide).
 
 ## Styling
 
 To get started, create a stylesheet at `.config/ironbar/style.css`. Changes will be hot-reloaded every time you save the file.
 
-An example stylesheet and information about each module's styling information can be found on the [wiki](https://github.com/JakeStanger/ironbar/wiki).
+A full styling guide can be found [here](https://github.com/JakeStanger/ironbar/wiki/styling-guide).
 
 ## Project Status
 
