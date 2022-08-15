@@ -194,6 +194,7 @@ impl Module<gtk::Box> for LauncherModule {
         let popup = Popup::new(
             "popup-launcher",
             info.app,
+            info.monitor,
             Orientation::Vertical,
             info.bar_position,
         );

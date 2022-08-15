@@ -2,7 +2,6 @@ use crate::collection::Collection;
 use crate::icon::{find_desktop_file, get_icon};
 use crate::modules::launcher::popup::Popup;
 use crate::modules::launcher::FocusEvent;
-use crate::popup::PopupAlignment;
 use crate::sway::SwayNode;
 use gtk::prelude::*;
 use gtk::{Button, IconTheme, Image};
@@ -175,19 +174,8 @@ impl LauncherItem {
         button.connect_enter_notify_event(move |button, _| {
             let windows = windows.lock().unwrap();
             if windows.len() > 1 {
-                let button_w = button.allocation().width();
-
-                let (button_x, _) = button
-                    .translate_coordinates(&button.toplevel().unwrap(), 0, 0)
-                    .unwrap();
-
-                let button_center = f64::from(button_x) + f64::from(button_w) / 2.0;
-
                 popup.set_windows(windows.as_slice(), &tx_hover);
-                popup.show();
-
-                // TODO: Pass through module location
-                popup.set_pos(button_center, PopupAlignment::Center);
+                popup.show(button);
             }
 
             Inhibit(false)

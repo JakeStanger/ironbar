@@ -31,7 +31,7 @@ pub fn create_bar(app: &Application, monitor: &Monitor, monitor_name: &str, conf
     content.set_center_widget(Some(&center));
     content.pack_end(&right, false, false, 0);
 
-    load_modules(&left, &center, &right, app, config, monitor_name);
+    load_modules(&left, &center, &right, app, config, monitor, monitor_name);
     win.add(&content);
 
     win.connect_destroy_event(|_, _| {
@@ -48,6 +48,7 @@ fn load_modules(
     right: &gtk::Box,
     app: &Application,
     config: Config,
+    monitor: &Monitor,
     output_name: &str,
 ) {
     if let Some(modules) = config.left {
@@ -55,10 +56,11 @@ fn load_modules(
             app,
             location: ModuleLocation::Left,
             bar_position: &config.position,
+            monitor,
             output_name,
         };
 
-        add_modules(left, modules, info);
+        add_modules(left, modules, &info);
     }
 
     if let Some(modules) = config.center {
@@ -66,10 +68,11 @@ fn load_modules(
             app,
             location: ModuleLocation::Center,
             bar_position: &config.position,
+            monitor,
             output_name,
         };
 
-        add_modules(center, modules, info);
+        add_modules(center, modules, &info);
     }
 
     if let Some(modules) = config.right {
@@ -77,14 +80,15 @@ fn load_modules(
             app,
             location: ModuleLocation::Right,
             bar_position: &config.position,
+            monitor,
             output_name,
         };
 
-        add_modules(right, modules, info);
+        add_modules(right, modules, &info);
     }
 }
 
-fn add_modules(content: &gtk::Box, modules: Vec<ModuleConfig>, info: ModuleInfo) {
+fn add_modules(content: &gtk::Box, modules: Vec<ModuleConfig>, info: &ModuleInfo) {
     macro_rules! add_module {
         ($module:expr, $name:literal) => {{
             let widget = $module.into_widget(&info);

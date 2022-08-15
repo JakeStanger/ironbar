@@ -2,7 +2,6 @@ mod popup;
 
 use self::popup::Popup;
 use crate::modules::{Module, ModuleInfo};
-use crate::popup::PopupAlignment;
 use chrono::Local;
 use glib::Continue;
 use gtk::prelude::*;
@@ -33,6 +32,7 @@ impl Module<Button> for ClockModule {
         let popup = Popup::new(
             "popup-clock",
             info.app,
+            info.monitor,
             Orientation::Vertical,
             info.bar_position,
         );
@@ -41,14 +41,7 @@ impl Module<Button> for ClockModule {
         button.show_all();
 
         button.connect_clicked(move |button| {
-            let button_w = button.allocation().width();
-
-            let (button_x, _) = button
-                .translate_coordinates(&button.toplevel().unwrap(), 0, 0)
-                .unwrap();
-
-            popup.show();
-            popup.set_pos(f64::from(button_x + button_w), PopupAlignment::Right);
+            popup.show(button);
         });
 
         let (tx, rx) = glib::MainContext::channel(glib::PRIORITY_DEFAULT);

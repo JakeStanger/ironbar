@@ -5,7 +5,6 @@ use self::popup::Popup;
 use crate::modules::mpd::client::{get_connection, get_duration, get_elapsed};
 use crate::modules::mpd::popup::{MpdPopup, PopupEvent};
 use crate::modules::{Module, ModuleInfo};
-use crate::popup::PopupAlignment;
 use dirs::home_dir;
 use glib::Continue;
 use gtk::prelude::*;
@@ -80,7 +79,7 @@ fn get_tokens(re: &Regex, format_string: &str) -> Vec<String> {
 }
 
 enum Event {
-    Open(f64),
+    Open,
     Update(Box<Option<(Song, Status, String)>>),
 }
 
@@ -96,6 +95,7 @@ impl Module<Button> for MpdModule {
         let popup = Popup::new(
             "popup-mpd",
             info.app,
+            info.monitor,
             Orientation::Horizontal,
             info.bar_position,
         );
@@ -106,16 +106,8 @@ impl Module<Button> for MpdModule {
 
         let music_dir = self.music_dir.clone();
 
-        button.connect_clicked(move |button| {
-            let button_w = button.allocation().width();
-
-            let (button_x, _) = button
-                .translate_coordinates(&button.toplevel().unwrap(), 0, 0)
-                .unwrap();
-
-            click_tx
-                .send(Event::Open(f64::from(button_x + button_w)))
-                .unwrap();
+        button.connect_clicked(move |_| {
+            click_tx.send(Event::Open).unwrap();
         });
 
         let host = self.host.clone();
@@ -167,9 +159,8 @@ impl Module<Button> for MpdModule {
 
             rx.attach(None, move |event| {
                 match event {
-                    Event::Open(pos) => {
-                        mpd_popup.popup.show();
-                        mpd_popup.popup.set_pos(pos, PopupAlignment::Right);
+                    Event::Open => {
+                        mpd_popup.popup.show(&button);
                     }
                     Event::Update(mut msg) => {
                         if let Some((song, status, string)) = msg.take() {
@@ -220,7 +211,7 @@ impl MpdModule {
                     PlayState::Playing => self.icon_play.as_ref(),
                     PlayState::Paused => self.icon_pause.as_ref(),
                 };
-                icon.map(|i| i.as_str())
+                icon.map(String::as_str)
             }
             "title" => song.title(),
             "album" => try_get_first_tag(song.tags.get(&Tag::Album)),
