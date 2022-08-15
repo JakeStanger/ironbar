@@ -8,7 +8,9 @@ use crate::modules::tray::TrayModule;
 use crate::modules::workspaces::WorkspacesModule;
 use dirs::config_dir;
 use serde::Deserialize;
-use std::fs;
+use std::collections::HashMap;
+use std::path::{Path, PathBuf};
+use std::{env, fs};
 
 #[derive(Debug, Deserialize, Clone)]
 #[serde(tag = "type", rename_all = "kebab-case")]
@@ -21,6 +23,13 @@ pub enum ModuleConfig {
     Launcher(LauncherModule),
     Script(ScriptModule),
     Focused(FocusedModule),
+}
+
+#[derive(Debug, Deserialize, Clone)]
+#[serde(untagged)]
+pub enum MonitorConfig {
+    Single(Config),
+    Multiple(Vec<Config>),
 }
 
 #[derive(Debug, Deserialize, Clone, PartialEq, Eq)]
@@ -47,7 +56,7 @@ pub struct Config {
     pub center: Option<Vec<ModuleConfig>>,
     pub right: Option<Vec<ModuleConfig>>,
 
-    pub monitors: Option<Vec<Config>>,
+    pub monitors: Option<HashMap<String, MonitorConfig>>,
 }
 
 const fn default_bar_position() -> BarPosition {
@@ -60,35 +69,43 @@ const fn default_bar_height() -> i32 {
 
 impl Config {
     pub fn load() -> Option<Self> {
-        let config_dir = config_dir().expect("Failed to locate user config dir");
+        if let Ok(config_path) = env::var("IRONBAR_CONFIG") {
+            let path = PathBuf::from(config_path);
+            Config::load_file(&path, path.extension().unwrap_or_default().to_str().unwrap_or_default())
+        } else {
+            let config_dir = config_dir().expect("Failed to locate user config dir");
 
-        let extensions = vec!["json", "toml", "yaml", "yml", "corn"];
+            let extensions = vec!["json", "toml", "yaml", "yml", "corn"];
 
-        extensions.into_iter().find_map(|extension| {
-            let full_path = config_dir
-                .join("ironbar")
-                .join(format!("config.{extension}"));
+            extensions.into_iter().find_map(|extension| {
+                let full_path = config_dir
+                    .join("ironbar")
+                    .join(format!("config.{extension}"));
 
-            if full_path.exists() {
-                let file = fs::read(full_path).expect("Failed to read config file");
-                Some(match extension {
-                    "json" => serde_json::from_slice(&file).expect("Invalid JSON config"),
-                    "toml" => toml::from_slice(&file).expect("Invalid TOML config"),
-                    "yaml" | "yml" => serde_yaml::from_slice(&file).expect("Invalid YAML config"),
-                    "corn" => {
-                        // corn doesn't support deserialization yet
-                        // so serialize the interpreted result then deserialize that
-                        let file =
-                            String::from_utf8(file).expect("Config file contains invalid UTF-8");
-                        let config = cornfig::parse(&file).expect("Invalid corn config").value;
-                        serde_json::from_str(&serde_json::to_string(&config).unwrap()).unwrap()
-                    }
-                    _ => unreachable!(),
-                })
-            } else {
-                None
-            }
-        })
+                Config::load_file(&full_path, extension)
+            })
+        }
+    }
+
+    fn load_file(path: &Path, extension: &str) -> Option<Self> {
+        if path.exists() {
+            let file = fs::read(path).expect("Failed to read config file");
+            Some(match extension {
+                "json" => serde_json::from_slice(&file).expect("Invalid JSON config"),
+                "toml" => toml::from_slice(&file).expect("Invalid TOML config"),
+                "yaml" | "yml" => serde_yaml::from_slice(&file).expect("Invalid YAML config"),
+                "corn" => {
+                    // corn doesn't support deserialization yet
+                    // so serialize the interpreted result then deserialize that
+                    let file = String::from_utf8(file).expect("Config file contains invalid UTF-8");
+                    let config = cornfig::parse(&file).expect("Invalid corn config").value;
+                    serde_json::from_str(&serde_json::to_string(&config).unwrap()).unwrap()
+                }
+                _ => unreachable!(),
+            })
+        } else {
+            None
+        }
     }
 }
 

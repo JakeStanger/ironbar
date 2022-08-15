@@ -8,7 +8,7 @@ mod style;
 mod sway;
 
 use crate::bar::create_bar;
-use crate::config::Config;
+use crate::config::{Config, MonitorConfig};
 use crate::style::load_css;
 use crate::sway::SwayOutput;
 use dirs::config_dir;
@@ -40,6 +40,7 @@ async fn main() {
 
         let display = gdk::Display::default().expect("Failed to get default GDK display");
         let num_monitors = display.n_monitors();
+
         for i in 0..num_monitors {
             let monitor = display.monitor(i).unwrap();
             let monitor_name = &outputs
@@ -47,11 +48,22 @@ async fn main() {
                 .expect("GTK monitor output differs from Sway's")
                 .name;
 
-            let config = config.monitors.as_ref().map_or(&config, |monitor_config| {
-                monitor_config.get(i as usize).unwrap_or(&config)
-            });
-
-            create_bar(app, &monitor, monitor_name, config.clone());
+            if let Some(ref config) = config.monitors {
+                let config = config.get(monitor_name);
+                match &config {
+                    Some(MonitorConfig::Single(config)) => {
+                        create_bar(app, &monitor, monitor_name, config.clone());
+                    }
+                    Some(MonitorConfig::Multiple(configs)) => {
+                        for config in configs {
+                            create_bar(app, &monitor, monitor_name, config.clone());
+                        }
+                    }
+                    _ => {}
+                }
+            } else {
+                create_bar(app, &monitor, monitor_name, config.clone());
+            }
         }
 
         let style_path = config_dir()
