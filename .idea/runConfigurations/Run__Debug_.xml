@@ -11,6 +11,7 @@
     <option name="backtrace" value="SHORT" />
     <envs>
       <env name="GTK_DEBUG" value="interactive" />
+      <env name="IRONBAR_CONFIG" value="examples/config.json" />
     </envs>
     <option name="isRedirectInput" value="false" />
     <option name="redirectInputPath" value="" />

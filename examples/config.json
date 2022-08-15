@@ -1,0 +1,18 @@
+{
+  "monitors": {
+    "DP-1": [
+      {
+        "left": [{"type":  "clock"}]
+      },
+      {
+        "position": "top",
+        "left": []
+      }
+    ],
+    "DP-2": {
+      "position": "bottom",
+      "height": 30,
+      "left": []
+    }
+  }
+}
