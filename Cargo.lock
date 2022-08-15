@@ -1033,7 +1033,7 @@ dependencies = [
 
 [[package]]
 name = "ironbar"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "chrono",
  "cornfig",
