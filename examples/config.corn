@@ -1,0 +1,43 @@
+let {
+    $workspaces = {
+        type = "workspaces"
+        all_monitors = false
+        name_map = {
+            1 = "ﭮ"
+            2 = ""
+            3 = ""
+            Games = ""
+            Code = ""
+        }
+    }
+
+    $launcher = {
+        type = "launcher"
+        favorites = ["firefox" "discord" "Steam"]
+        show_names = false
+        show_icons = true
+        icon_theme = "Paper"
+    }
+
+    $mpd_local = { type = "mpd" music_dir = "/home/jake/Music" }
+    $mpd_server = { type = "mpd" host = "chloe:6600" }
+
+    $sys_info = {
+        type = "sys-info"
+        format = ["{cpu-percent}% " "{memory-percent}% "]
+    }
+
+    $tray = { type = "tray" }
+    $clock = { type = "clock" }
+
+    $phone_battery = {
+        type = "script"
+        path = "/home/jake/bin/phone-battery"
+    }
+
+    $left = [ $workspaces $launcher ]
+    $right = [ $mpd_local $mpd_server $phone_battery $sys_info $clock ]
+}
+in {
+    left = $left right = $right
+}
