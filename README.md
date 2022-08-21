@@ -26,6 +26,16 @@ cargo install ironbar
 yay -S ironbar-git
 ```
 
+### Source
+
+```sh
+git clone https://github.com/jakestanger/ironbar.git
+cd ironbar
+cargo build --release
+# change path to wherever you want to install
+install target/release/ironbar ~/.local/bin/ironbar
+```
+
 [aur package](https://aur.archlinux.org/packages/ironbar-git)
 
 ## Configuration
@@ -44,37 +54,22 @@ A full styling guide can be found [here](https://github.com/JakeStanger/ironbar/
 
 ## Project Status
 
-This project is in very early stages:
+This project is in alpha, but should be usable. 
+Everything that is implemented works and should be documented. 
+Proper error handling is in place so things should either fail gracefully with detail, or not fail at all.
 
-- Error handling is barely implemented - expect crashes
-- There will be bugs!
-- Lots of modules need more configuration options
-- There's room for lots of modules
-- The code is messy and quite prototypal in places
-- Config options aren't set in stone - expect breaking changes
-- Documentation is probably missing in lots of places
+There is currently room for lots more modules, and lots more configuration options for the existing modules.
+The current configuration schema is not set in stone and breaking changes could come along at any point;
+until the project matures I am more interested in ease of use than backwards compatibility.
 
-That said, it will be *actively developed* as I am using it on my daily driver.
+A few bugs do exist, and I am sure there are plenty more to be found. 
+
+The project will be *actively developed* as I am using it on my daily driver.
 Bugs will be fixed, features will be added, code will be refactored.
 
 ## Contribution Guidelines
 
-I welcome contributions of any kind with open arms. That said, please do stick to some basics:
-
-- For code contributions:
-  - Fix any `cargo clippy` warnings, using at least the default configuration.
-  - Make sure your code is formatted using `cargo fmt`.
-  - Keep any documentation up to date.
-  - I won't enforce it, but preferably stick to [conventional commit](https://www.conventionalcommits.org/en/v1.0.0/) messages.
-
-
-- For PRs:
-  - Please open an issue or discussion beforehand. 
-    I'll accept most contributions, but it's best to make sure you're not working on something that won't get accepted :)
-
-
-- For issues:
-  - Please provide as much information as you can - share your config, any logs, steps to reproduce...
+Please check [here](https://github.com/JakeStanger/ironbar/blob/master/CONTRIBUTING.md).
 
 ## Acknowledgements
 

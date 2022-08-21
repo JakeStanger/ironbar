@@ -6,7 +6,10 @@ use crate::modules::script::ScriptModule;
 use crate::modules::sysinfo::SysInfoModule;
 use crate::modules::tray::TrayModule;
 use crate::modules::workspaces::WorkspacesModule;
+use color_eyre::eyre::{Context, ContextCompat};
+use color_eyre::{eyre, Help, Report};
 use dirs::config_dir;
+use eyre::Result;
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
@@ -68,49 +71,66 @@ const fn default_bar_height() -> i32 {
 }
 
 impl Config {
-    pub fn load() -> Option<Self> {
-        if let Ok(config_path) = env::var("IRONBAR_CONFIG") {
+    pub fn load() -> Result<Self> {
+        let config_path = if let Ok(config_path) = env::var("IRONBAR_CONFIG") {
             let path = PathBuf::from(config_path);
-            Self::load_file(
-                &path,
-                path.extension()
-                    .unwrap_or_default()
-                    .to_str()
-                    .unwrap_or_default(),
-            )
+            if path.exists() {
+                Ok(path)
+            } else {
+                Err(Report::msg("Specified config file does not exist")
+                    .note("Config file was specified using `IRONBAR_CONFIG` environment variable"))
+            }
         } else {
-            let config_dir = config_dir().expect("Failed to locate user config dir");
+            Self::try_find_config()
+        }?;
 
-            let extensions = vec!["json", "toml", "yaml", "yml", "corn"];
+        Self::load_file(&config_path)
+    }
 
-            extensions.into_iter().find_map(|extension| {
-                let full_path = config_dir
-                    .join("ironbar")
-                    .join(format!("config.{extension}"));
+    fn try_find_config() -> Result<PathBuf> {
+        let config_dir = config_dir().wrap_err("Failed to locate user config dir")?;
 
-                Self::load_file(&full_path, extension)
-            })
+        let extensions = vec!["json", "toml", "yaml", "yml", "corn"];
+
+        let file = extensions.into_iter().find_map(|extension| {
+            let full_path = config_dir
+                .join("ironbar")
+                .join(format!("config.{extension}"));
+
+            if Path::exists(&full_path) {
+                Some(full_path)
+            } else {
+                None
+            }
+        });
+
+        match file {
+            Some(file) => Ok(file),
+            None => Err(Report::msg("Could not find config file")),
         }
     }
 
-    fn load_file(path: &Path, extension: &str) -> Option<Self> {
-        if path.exists() {
-            let file = fs::read(path).expect("Failed to read config file");
-            Some(match extension {
-                "json" => serde_json::from_slice(&file).expect("Invalid JSON config"),
-                "toml" => toml::from_slice(&file).expect("Invalid TOML config"),
-                "yaml" | "yml" => serde_yaml::from_slice(&file).expect("Invalid YAML config"),
-                "corn" => {
-                    // corn doesn't support deserialization yet
-                    // so serialize the interpreted result then deserialize that
-                    let file = String::from_utf8(file).expect("Config file contains invalid UTF-8");
-                    let config = cornfig::parse(&file).expect("Invalid corn config").value;
-                    serde_json::from_str(&serde_json::to_string(&config).unwrap()).unwrap()
-                }
-                _ => unreachable!(),
-            })
-        } else {
-            None
+    fn load_file(path: &Path) -> Result<Self> {
+        let file = fs::read(path).wrap_err("Failed to read config file")?;
+        let extension = path
+            .extension()
+            .unwrap_or_default()
+            .to_str()
+            .unwrap_or_default();
+
+        match extension {
+            "json" => serde_json::from_slice(&file).wrap_err("Invalid JSON config"),
+            "toml" => toml::from_slice(&file).wrap_err("Invalid TOML config"),
+            "yaml" | "yml" => serde_yaml::from_slice(&file).wrap_err("Invalid YAML config"),
+            "corn" => {
+                // corn doesn't support deserialization yet
+                // so serialize the interpreted result then deserialize that
+                let file =
+                    String::from_utf8(file).wrap_err("Config file contains invalid UTF-8")?;
+                let config = cornfig::parse(&file).wrap_err("Invalid corn config")?.value;
+                Ok(serde_json::from_str(&serde_json::to_string(&config)?)?)
+            }
+            _ => unreachable!(),
         }
     }
 }

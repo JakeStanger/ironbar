@@ -2,57 +2,76 @@ use mpd_client::commands::responses::Status;
 use mpd_client::raw::MpdProtocolError;
 use mpd_client::{Client, Connection};
 use std::path::PathBuf;
+use std::time::Duration;
 use tokio::net::{TcpStream, UnixStream};
+use tokio::spawn;
+use tokio::time::sleep;
 
-fn is_unix_socket(host: &String) -> bool {
+pub async fn wait_for_connection(
+    hosts: Vec<String>,
+    interval: Duration,
+    max_retries: Option<usize>,
+) -> Option<Client> {
+    let mut retries = 0;
+
+    spawn(async move {
+        let max_retries = max_retries.unwrap_or(usize::MAX);
+        loop {
+            if retries == max_retries {
+                break None;
+            }
+
+            if let Some(conn) = try_get_mpd_conn(&hosts).await {
+                break Some(conn.0);
+            }
+
+            retries += 1;
+            sleep(interval).await;
+        }
+    })
+    .await
+    .expect("Error occurred while handling tasks")
+}
+
+/// Cycles through each MPD host and
+/// returns the first one which connects,
+/// or none if there are none
+async fn try_get_mpd_conn(hosts: &[String]) -> Option<Connection> {
+    for host in hosts {
+        let connection = if is_unix_socket(host) {
+            connect_unix(host).await
+        } else {
+            connect_tcp(host).await
+        };
+
+        if let Ok(connection) = connection {
+            return Some(connection);
+        }
+    }
+
+    None
+}
+
+fn is_unix_socket(host: &str) -> bool {
     PathBuf::from(host).is_file()
 }
 
-pub async fn get_connection(host: &String) -> Result<Connection, MpdProtocolError> {
-    if is_unix_socket(host) {
-        connect_unix(host).await
-    } else {
-        connect_tcp(host).await
-    }
-}
-
-async fn connect_unix(host: &String) -> Result<Connection, MpdProtocolError> {
-    let connection = UnixStream::connect(host)
-        .await
-        .unwrap_or_else(|_| panic!("Error connecting to unix socket: {}", host));
-
+async fn connect_unix(host: &str) -> Result<Connection, MpdProtocolError> {
+    let connection = UnixStream::connect(host).await?;
     Client::connect(connection).await
 }
 
-async fn connect_tcp(host: &String) -> Result<Connection, MpdProtocolError> {
-    let connection = TcpStream::connect(host)
-        .await
-        .unwrap_or_else(|_| panic!("Error connecting to unix socket: {}", host));
-
+async fn connect_tcp(host: &str) -> Result<Connection, MpdProtocolError> {
+    let connection = TcpStream::connect(host).await?;
     Client::connect(connection).await
 }
-
-// /// Gets MPD server status.
-// /// Panics on error.
-// pub async fn get_status(client: &Client) -> Status {
-//     client
-//         .command(commands::Status)
-//         .await
-//         .expect("Failed to get MPD server status")
-// }
 
 /// Gets the duration of the current song
-pub fn get_duration(status: &Status) -> u64 {
-    status
-        .duration
-        .expect("Failed to get duration from MPD status")
-        .as_secs()
+pub fn get_duration(status: &Status) -> Option<u64> {
+    status.duration.map(|duration| duration.as_secs())
 }
 
 /// Gets the elapsed time of the current song
-pub fn get_elapsed(status: &Status) -> u64 {
-    status
-        .elapsed
-        .expect("Failed to get elapsed time from MPD status")
-        .as_secs()
+pub fn get_elapsed(status: &Status) -> Option<u64> {
+    status.elapsed.map(|duration| duration.as_secs())
 }

@@ -1,14 +1,15 @@
 use crate::modules::{Module, ModuleInfo};
-use crate::sway::{Workspace, WorkspaceEvent};
+use crate::sway::{SwayClient, Workspace, WorkspaceEvent};
+use color_eyre::{Report, Result};
 use gtk::prelude::*;
 use gtk::{Button, Orientation};
-use ksway::client::Client;
 use ksway::{IpcCommand, IpcEvent};
 use serde::Deserialize;
 use std::collections::HashMap;
 use tokio::spawn;
 use tokio::sync::mpsc;
 use tokio::task::spawn_blocking;
+use tracing::error;
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct WorkspacesModule {
@@ -34,7 +35,10 @@ impl Workspace {
         {
             let tx = tx.clone();
             let name = self.name.clone();
-            button.connect_clicked(move |_item| tx.try_send(name.clone()).unwrap());
+            button.connect_clicked(move |_item| {
+                tx.try_send(name.clone())
+                    .expect("Failed to send workspace click event");
+            });
         }
 
         button
@@ -42,14 +46,14 @@ impl Workspace {
 }
 
 impl Module<gtk::Box> for WorkspacesModule {
-    fn into_widget(self, info: &ModuleInfo) -> gtk::Box {
-        let mut sway = Client::connect().unwrap();
+    fn into_widget(self, info: &ModuleInfo) -> Result<gtk::Box> {
+        let mut sway = SwayClient::connect()?;
 
         let container = gtk::Box::new(Orientation::Horizontal, 0);
 
         let workspaces = {
-            let raw = sway.ipc(IpcCommand::GetWorkspaces).unwrap();
-            let workspaces = serde_json::from_slice::<Vec<Workspace>>(&raw).unwrap();
+            let raw = sway.ipc(IpcCommand::GetWorkspaces)?;
+            let workspaces = serde_json::from_slice::<Vec<Workspace>>(&raw)?;
 
             if self.all_monitors {
                 workspaces
@@ -73,15 +77,20 @@ impl Module<gtk::Box> for WorkspacesModule {
             button_map.insert(workspace.name, item);
         }
 
-        let srx = sway.subscribe(vec![IpcEvent::Workspace]).unwrap();
+        let srx = sway.subscribe(vec![IpcEvent::Workspace])?;
         let (tx, rx) = glib::MainContext::channel(glib::PRIORITY_DEFAULT);
 
         spawn_blocking(move || loop {
             while let Ok((_, payload)) = srx.try_recv() {
-                let payload: WorkspaceEvent = serde_json::from_slice(&payload).unwrap();
-                tx.send(payload).unwrap();
+                match serde_json::from_slice::<WorkspaceEvent>(&payload) {
+                    Ok(payload) => tx.send(payload).expect("Failed to send workspace event"),
+                    Err(err) => error!("{:?}", err),
+                }
             }
-            sway.poll().unwrap();
+
+            if let Err(err) = sway.poll() {
+                error!("{:?}", err);
+            }
         });
 
         {
@@ -90,30 +99,32 @@ impl Module<gtk::Box> for WorkspacesModule {
             rx.attach(None, move |event| {
                 match event.change.as_str() {
                     "focus" => {
-                        let old = event.old.unwrap();
-                        if let Some(old_button) = button_map.get(&old.name) {
-                            old_button.style_context().remove_class("focused");
+                        let old = event.old.and_then(|old| button_map.get(&old.name));
+                        if let Some(old) = old {
+                            old.style_context().remove_class("focused");
                         }
 
-                        let new = event.current.unwrap();
-                        if let Some(new_button) = button_map.get(&new.name) {
-                            new_button.style_context().add_class("focused");
+                        let new = event.current.and_then(|new| button_map.get(&new.name));
+                        if let Some(new) = new {
+                            new.style_context().add_class("focused");
                         }
                     }
                     "init" => {
-                        let workspace = event.current.unwrap();
-                        if self.all_monitors || workspace.output == output_name {
-                            let item = workspace.as_button(&name_map, &ui_tx);
+                        if let Some(workspace) = event.current {
+                            if self.all_monitors || workspace.output == output_name {
+                                let item = workspace.as_button(&name_map, &ui_tx);
 
-                            item.show();
-                            menubar.add(&item);
-                            button_map.insert(workspace.name, item);
+                                item.show();
+                                menubar.add(&item);
+                                button_map.insert(workspace.name, item);
+                            }
                         }
                     }
                     "empty" => {
-                        let current = event.current.unwrap();
-                        if let Some(item) = button_map.get(&current.name) {
-                            menubar.remove(item);
+                        if let Some(workspace) = event.current {
+                            if let Some(item) = button_map.get(&workspace.name) {
+                                menubar.remove(item);
+                            }
                         }
                     }
                     _ => {}
@@ -124,12 +135,14 @@ impl Module<gtk::Box> for WorkspacesModule {
         }
 
         spawn(async move {
-            let mut sway = Client::connect().unwrap();
+            let mut sway = SwayClient::connect()?;
             while let Some(name) = ui_rx.recv().await {
-                sway.run(format!("workspace {}", name)).unwrap();
+                sway.run(format!("workspace {}", name))?;
             }
+
+            Ok::<(), Report>(())
         });
 
-        container
+        Ok(container)
     }
 }

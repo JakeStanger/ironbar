@@ -1,15 +1,17 @@
-use crate::sway::SwayNode;
-use ksway::{Client, IpcCommand};
+use crate::sway::{SwayClient, SwayNode};
+use color_eyre::Result;
+use ksway::IpcCommand;
 
 impl SwayNode {
     pub fn get_id(&self) -> &str {
         self.app_id.as_ref().map_or_else(
             || {
-                &self
-                    .window_properties
+                self.window_properties
                     .as_ref()
-                    .expect("cannot find node name")
+                    .expect("Cannot find node window properties")
                     .class
+                    .as_ref()
+                    .expect("Cannot find node name")
             },
             |app_id| app_id,
         )
@@ -34,12 +36,14 @@ fn check_node(node: SwayNode, window_nodes: &mut Vec<SwayNode>) {
     }
 }
 
-pub fn get_open_windows(sway: &mut Client) -> Vec<SwayNode> {
-    let raw = sway.ipc(IpcCommand::GetTree).unwrap();
-    let root_node = serde_json::from_slice::<SwayNode>(&raw).unwrap();
+impl SwayClient {
+    pub fn get_open_windows(&mut self) -> Result<Vec<SwayNode>> {
+        let root_node = self.ipc(IpcCommand::GetTree)?;
+        let root_node = serde_json::from_slice(&root_node)?;
 
-    let mut window_nodes = vec![];
-    check_node(root_node, &mut window_nodes);
+        let mut window_nodes = vec![];
+        check_node(root_node, &mut window_nodes);
 
-    window_nodes
+        Ok(window_nodes)
+    }
 }

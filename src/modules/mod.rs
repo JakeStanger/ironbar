@@ -14,13 +14,12 @@ pub mod tray;
 pub mod workspaces;
 
 use crate::config::BarPosition;
+use color_eyre::Result;
 /// Shamelessly stolen from here:
 /// <https://github.com/zeroeightysix/rustbar/blob/master/src/modules/module.rs>
 use glib::IsA;
 use gtk::gdk::Monitor;
 use gtk::{Application, Widget};
-use serde::de::DeserializeOwned;
-use serde_json::Value;
 
 #[derive(Clone)]
 pub enum ModuleLocation {
@@ -43,12 +42,5 @@ where
 {
     /// Consumes the module config
     /// and produces a GTK widget of type `W`
-    fn into_widget(self, info: &ModuleInfo) -> W;
-
-    fn from_value(v: &Value) -> Box<Self>
-    where
-        Self: DeserializeOwned,
-    {
-        serde_json::from_value(v.clone()).unwrap()
-    }
+    fn into_widget(self, info: &ModuleInfo) -> Result<W>;
 }

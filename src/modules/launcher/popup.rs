@@ -25,7 +25,8 @@ impl Popup {
             let window = self.window.clone();
             let tx = tx.clone();
             button.connect_clicked(move |_| {
-                tx.try_send(FocusEvent::ConId(con_id)).unwrap();
+                tx.try_send(FocusEvent::ConId(con_id))
+                    .expect("Failed to send focus event");
                 window.hide();
             });
 

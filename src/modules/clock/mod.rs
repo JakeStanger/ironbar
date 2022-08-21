@@ -3,6 +3,7 @@ mod popup;
 use self::popup::Popup;
 use crate::modules::{Module, ModuleInfo};
 use chrono::Local;
+use color_eyre::Result;
 use glib::Continue;
 use gtk::prelude::*;
 use gtk::{Button, Orientation};
@@ -26,7 +27,7 @@ fn default_format() -> String {
 }
 
 impl Module<Button> for ClockModule {
-    fn into_widget(self, info: &ModuleInfo) -> Button {
+    fn into_widget(self, info: &ModuleInfo) -> Result<Button> {
         let button = Button::new();
 
         let popup = Popup::new(
@@ -51,7 +52,8 @@ impl Module<Button> for ClockModule {
                 let date = Local::now();
                 let date_string = format!("{}", date.format(format));
 
-                tx.send(date_string).unwrap();
+                tx.send(date_string).expect("Failed to send date string");
+
                 sleep(tokio::time::Duration::from_millis(500)).await;
             }
         });
@@ -64,6 +66,6 @@ impl Module<Button> for ClockModule {
             });
         }
 
-        button
+        Ok(button)
     }
 }

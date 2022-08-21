@@ -107,9 +107,10 @@ impl Popup {
         let screen_width = self.monitor.workarea().width();
         let popup_width = self.window.allocated_width();
 
+        let top_level = button.toplevel().expect("Failed to get top-level widget");
         let (widget_x, _) = button
-            .translate_coordinates(&button.toplevel().unwrap(), 0, 0)
-            .unwrap();
+            .translate_coordinates(&top_level, 0, 0)
+            .unwrap_or((0, 0));
 
         let widget_center = f64::from(widget_x) + f64::from(widget_width) / 2.0;
 

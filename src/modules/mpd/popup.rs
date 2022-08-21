@@ -90,17 +90,23 @@ impl MpdPopup {
 
         let tx_prev = tx.clone();
         btn_prev.connect_clicked(move |_| {
-            tx_prev.try_send(PopupEvent::Previous).unwrap();
+            tx_prev
+                .try_send(PopupEvent::Previous)
+                .expect("Failed to send prev track message");
         });
 
         let tx_toggle = tx.clone();
         btn_play_pause.connect_clicked(move |_| {
-            tx_toggle.try_send(PopupEvent::Toggle).unwrap();
+            tx_toggle
+                .try_send(PopupEvent::Toggle)
+                .expect("Failed to send play/pause track message");
         });
 
         let tx_next = tx;
         btn_next.connect_clicked(move |_| {
-            tx_next.try_send(PopupEvent::Next).unwrap();
+            tx_next
+                .try_send(PopupEvent::Next)
+                .expect("Failed to send next track message");
         });
 
         Self {
@@ -121,7 +127,12 @@ impl MpdPopup {
 
         // only update art when album changes
         if prev_album != curr_album {
-            let cover_path = path.join(song.file_path().parent().unwrap().join("cover.jpg"));
+            let cover_path = path.join(
+                song.file_path()
+                    .parent()
+                    .expect("Song path should not be root")
+                    .join("cover.jpg"),
+            );
 
             if let Ok(pixbuf) = Pixbuf::from_file_at_scale(cover_path, 128, 128, true) {
                 self.cover.set_from_pixbuf(Some(&pixbuf));

@@ -1,4 +1,5 @@
 use crate::modules::{Module, ModuleInfo};
+use color_eyre::Result;
 use futures_util::StreamExt;
 use gtk::prelude::*;
 use gtk::{IconLookupFlags, IconTheme, Image, Menu, MenuBar, MenuItem, SeparatorMenuItem};
@@ -26,10 +27,11 @@ fn get_icon(item: &StatusNotifierItem) -> Option<Image> {
     item.icon_theme_path.as_ref().and_then(|path| {
         let theme = IconTheme::new();
         theme.append_search_path(&path);
-        let icon_name = item.icon_name.as_ref().unwrap();
-        let icon_info = theme.lookup_icon(icon_name, 16, IconLookupFlags::empty());
 
-        icon_info.map(|icon_info| Image::from_pixbuf(icon_info.load_icon().ok().as_ref()))
+        item.icon_name.as_ref().and_then(|icon_name| {
+            let icon_info = theme.lookup_icon(icon_name, 16, IconLookupFlags::empty());
+            icon_info.map(|icon_info| Image::from_pixbuf(icon_info.load_icon().ok().as_ref()))
+        })
     })
 }
 
@@ -38,8 +40,8 @@ fn get_icon(item: &StatusNotifierItem) -> Option<Image> {
 fn get_menu_items(
     menu: &[MenuItemInfo],
     tx: &mpsc::Sender<NotifierItemCommand>,
-    id: String,
-    path: String,
+    id: &str,
+    path: &str,
 ) -> Vec<MenuItem> {
     menu.iter()
         .map(|item_info| {
@@ -53,7 +55,7 @@ fn get_menu_items(
 
                     if !item_info.submenu.is_empty() {
                         let menu = Menu::new();
-                        get_menu_items(&item_info.submenu, &tx.clone(), id.clone(), path.clone())
+                        get_menu_items(&item_info.submenu, &tx.clone(), id, path)
                             .iter()
                             .for_each(|item| menu.add(item));
 
@@ -63,8 +65,8 @@ fn get_menu_items(
                     let item = builder.build();
 
                     let info = item_info.clone();
-                    let id = id.clone();
-                    let path = path.clone();
+                    let id = id.to_string();
+                    let path = path.to_string();
 
                     {
                         let tx = tx.clone();
@@ -74,7 +76,7 @@ fn get_menu_items(
                                 menu_path: path.clone(),
                                 notifier_address: id.clone(),
                             })
-                            .unwrap();
+                            .expect("Failed to send menu item clicked event");
                         });
                     }
 
@@ -88,7 +90,7 @@ fn get_menu_items(
 }
 
 impl Module<MenuBar> for TrayModule {
-    fn into_widget(self, _info: &ModuleInfo) -> MenuBar {
+    fn into_widget(self, _info: &ModuleInfo) -> Result<MenuBar> {
         let container = MenuBar::new();
 
         let (tx, rx) = glib::MainContext::channel(glib::PRIORITY_DEFAULT);
@@ -107,10 +109,11 @@ impl Module<MenuBar> for TrayModule {
                         menu,
                     } => {
                         tx.send(TrayUpdate::Update(id, Box::new(item), menu))
-                            .unwrap();
+                            .expect("Failed to send tray update event");
                     }
                     NotifierItemMessage::Remove { address: id } => {
-                        tx.send(TrayUpdate::Remove(id)).unwrap();
+                        tx.send(TrayUpdate::Remove(id))
+                            .expect("Failed to send tray remove event");
                     }
                 }
             }
@@ -138,13 +141,11 @@ impl Module<MenuBar> for TrayModule {
                             menu_item
                         });
 
-                        if let Some(menu_opts) = menu {
-                            let menu_path = item.menu.as_ref().unwrap().to_string();
-
+                        if let (Some(menu_opts), Some(menu_path)) = (menu, item.menu) {
                             let submenus = menu_opts.submenus;
                             if !submenus.is_empty() {
                                 let menu = Menu::new();
-                                get_menu_items(&submenus, &ui_tx.clone(), id.clone(), menu_path)
+                                get_menu_items(&submenus, &ui_tx.clone(), &id, &menu_path)
                                     .iter()
                                     .for_each(|item| menu.add(item));
                                 menu_item.set_submenu(Some(&menu));
@@ -154,8 +155,9 @@ impl Module<MenuBar> for TrayModule {
                         widgets.insert(id, menu_item);
                     }
                     TrayUpdate::Remove(id) => {
-                        let widget = widgets.get(&id).unwrap();
-                        container.remove(widget);
+                        if let Some(widget) = widgets.get(&id) {
+                            container.remove(widget);
+                        }
                     }
                 };
 
@@ -163,6 +165,6 @@ impl Module<MenuBar> for TrayModule {
             });
         };
 
-        container
+        Ok(container)
     }
 }

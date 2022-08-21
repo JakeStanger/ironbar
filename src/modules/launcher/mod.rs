@@ -2,19 +2,20 @@ mod item;
 mod popup;
 
 use crate::collection::Collection;
-use crate::modules::launcher::item::{ButtonConfig, LauncherItem, LauncherWindow};
+use crate::modules::launcher::item::{ButtonConfig, LauncherItem, LauncherWindow, OpenState};
 use crate::modules::launcher::popup::Popup;
 use crate::modules::{Module, ModuleInfo};
-use crate::sway::node::get_open_windows;
-use crate::sway::{SwayNode, WindowEvent};
+use crate::sway::{SwayClient, SwayNode, WindowEvent};
+use color_eyre::{Report, Result};
 use gtk::prelude::*;
 use gtk::{IconTheme, Orientation};
-use ksway::{Client, IpcEvent};
+use ksway::IpcEvent;
 use serde::Deserialize;
 use std::rc::Rc;
 use tokio::spawn;
 use tokio::sync::mpsc;
 use tokio::task::spawn_blocking;
+use tracing::error;
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct LauncherModule {
@@ -72,15 +73,17 @@ impl Launcher {
         let id = window.get_id().to_string();
 
         if let Some(item) = self.items.get_mut(&id) {
-            let mut state = item.state.write().unwrap();
-            state.open = true;
-            state.focused = window.focused || state.focused;
-            state.urgent = window.urgent || state.urgent;
+            let mut state = item
+                .state
+                .write()
+                .expect("Failed to get write lock on state");
+            let new_open_state = OpenState::from_node(&window);
+            state.open_state = OpenState::highest_of(&state.open_state, &new_open_state);
             state.is_xwayland = window.is_xwayland();
 
             item.update_button_classes(&state);
 
-            let mut windows = item.windows.lock().unwrap();
+            let mut windows = item.windows.lock().expect("Failed to get lock on windows");
 
             windows.insert(
                 window.id,
@@ -107,13 +110,13 @@ impl Launcher {
 
         let remove = if let Some(item) = item {
             let windows = Rc::clone(&item.windows);
-            let mut windows = windows.lock().unwrap();
+            let mut windows = windows.lock().expect("Failed to get lock on windows");
 
             windows.remove(&window.id);
 
             if windows.is_empty() {
-                let mut state = item.state.write().unwrap();
-                state.open = false;
+                let mut state = item.state.write().expect("Failed to get lock on windows");
+                state.open_state = OpenState::Closed;
                 item.update_button_classes(&state);
 
                 if item.favorite {
@@ -137,20 +140,30 @@ impl Launcher {
     fn set_window_focused(&mut self, window: &SwayNode) {
         let id = window.get_id().to_string();
 
-        let currently_focused = self
-            .items
-            .iter_mut()
-            .find(|item| item.state.read().unwrap().focused);
+        let currently_focused = self.items.iter_mut().find(|item| {
+            item.state
+                .read()
+                .expect("Failed to get read lock on state")
+                .open_state
+                == OpenState::Focused
+        });
+
         if let Some(currently_focused) = currently_focused {
-            let mut state = currently_focused.state.write().unwrap();
-            state.focused = false;
+            let mut state = currently_focused
+                .state
+                .write()
+                .expect("Failed to get write lock on state");
+            state.open_state = OpenState::Open;
             currently_focused.update_button_classes(&state);
         }
 
         let item = self.items.get_mut(&id);
         if let Some(item) = item {
-            let mut state = item.state.write().unwrap();
-            state.focused = true;
+            let mut state = item
+                .state
+                .write()
+                .expect("Failed to get write lock on state");
+            state.open_state = OpenState::Focused;
             item.update_button_classes(&state);
         }
     }
@@ -160,11 +173,15 @@ impl Launcher {
         let item = self.items.get_mut(&id);
 
         if let (Some(item), Some(name)) = (item, window.name) {
-            let mut windows = item.windows.lock().unwrap();
+            let mut windows = item.windows.lock().expect("Failed to get lock on windows");
             if windows.len() == 1 {
                 item.set_title(&name, &self.button_config);
+            } else if let Some(window) = windows.get_mut(&window.id) {
+                window.name = Some(name);
             } else {
-                windows.get_mut(&window.id).unwrap().name = Some(name);
+                // This should never happen
+                // But makes more sense to wipe title than keep old one in case of error
+                item.set_title("", &self.button_config);
             }
         }
     }
@@ -174,22 +191,26 @@ impl Launcher {
         let item = self.items.get_mut(&id);
 
         if let Some(item) = item {
-            let mut state = item.state.write().unwrap();
-            state.urgent = window.urgent;
+            let mut state = item
+                .state
+                .write()
+                .expect("Failed to get write lock on state");
+            state.open_state =
+                OpenState::highest_of(&state.open_state, &OpenState::from_node(window));
             item.update_button_classes(&state);
         }
     }
 }
 
 impl Module<gtk::Box> for LauncherModule {
-    fn into_widget(self, info: &ModuleInfo) -> gtk::Box {
+    fn into_widget(self, info: &ModuleInfo) -> Result<gtk::Box> {
         let icon_theme = IconTheme::new();
 
         if let Some(theme) = self.icon_theme {
             icon_theme.set_custom_theme(Some(&theme));
         }
 
-        let mut sway = Client::connect().unwrap();
+        let mut sway = SwayClient::connect()?;
 
         let popup = Popup::new(
             "popup-launcher",
@@ -216,22 +237,29 @@ impl Module<gtk::Box> for LauncherModule {
             button_config,
         );
 
-        let open_windows = get_open_windows(&mut sway);
+        let open_windows = sway.get_open_windows()?;
 
         for window in open_windows {
             launcher.add_window(window);
         }
 
-        let srx = sway.subscribe(vec![IpcEvent::Window]).unwrap();
+        let srx = sway.subscribe(vec![IpcEvent::Window])?;
         let (tx, rx) = glib::MainContext::channel(glib::PRIORITY_DEFAULT);
 
         spawn_blocking(move || loop {
             while let Ok((_, payload)) = srx.try_recv() {
-                let payload: WindowEvent = serde_json::from_slice(&payload).unwrap();
-
-                tx.send(payload).unwrap();
+                match serde_json::from_slice::<WindowEvent>(&payload) {
+                    Ok(payload) => {
+                        tx.send(payload)
+                            .expect("Failed to send window event payload");
+                    }
+                    Err(err) => error!("{:?}", err),
+                }
             }
-            sway.poll().unwrap();
+
+            if let Err(err) = sway.poll() {
+                error!("{:?}", err);
+            }
         });
 
         {
@@ -250,7 +278,7 @@ impl Module<gtk::Box> for LauncherModule {
         }
 
         spawn(async move {
-            let mut sway = Client::connect().unwrap();
+            let mut sway = SwayClient::connect()?;
             while let Some(event) = ui_rx.recv().await {
                 let selector = match event {
                     FocusEvent::AppId(app_id) => format!("[app_id={}]", app_id),
@@ -258,10 +286,12 @@ impl Module<gtk::Box> for LauncherModule {
                     FocusEvent::ConId(id) => format!("[con_id={}]", id),
                 };
 
-                sway.run(format!("{} focus", selector)).unwrap();
+                sway.run(format!("{} focus", selector))?;
             }
+
+            Ok::<(), Report>(())
         });
 
-        container
+        Ok(container)
     }
 }

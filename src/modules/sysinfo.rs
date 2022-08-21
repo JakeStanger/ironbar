@@ -1,4 +1,5 @@
 use crate::modules::{Module, ModuleInfo};
+use color_eyre::Result;
 use gtk::prelude::*;
 use gtk::{Label, Orientation};
 use regex::{Captures, Regex};
@@ -14,8 +15,8 @@ pub struct SysInfoModule {
 }
 
 impl Module<gtk::Box> for SysInfoModule {
-    fn into_widget(self, _info: &ModuleInfo) -> gtk::Box {
-        let re = Regex::new(r"\{([\w-]+)}").unwrap();
+    fn into_widget(self, _info: &ModuleInfo) -> Result<gtk::Box> {
+        let re = Regex::new(r"\{([\w-]+)}")?;
 
         let container = gtk::Box::new(Orientation::Horizontal, 10);
 
@@ -46,7 +47,8 @@ impl Module<gtk::Box> for SysInfoModule {
                 format_info.insert("memory-percent", format!("{:0>2.0}", memory_percent));
                 format_info.insert("cpu-percent", format!("{:0>2.0}", cpu_percent));
 
-                tx.send(format_info).unwrap();
+                tx.send(format_info)
+                    .expect("Failed to send system info map");
 
                 sleep(tokio::time::Duration::from_secs(1)).await;
             }
@@ -69,6 +71,6 @@ impl Module<gtk::Box> for SysInfoModule {
             });
         }
 
-        container
+        Ok(container)
     }
 }

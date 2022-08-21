@@ -3,6 +3,8 @@ use crate::icon::{find_desktop_file, get_icon};
 use crate::modules::launcher::popup::Popup;
 use crate::modules::launcher::FocusEvent;
 use crate::sway::SwayNode;
+use crate::Report;
+use color_eyre::Help;
 use gtk::prelude::*;
 use gtk::{Button, IconTheme, Image};
 use std::process::{Command, Stdio};
@@ -10,6 +12,7 @@ use std::rc::Rc;
 use std::sync::{Arc, Mutex, RwLock};
 use tokio::spawn;
 use tokio::sync::mpsc;
+use tracing::error;
 
 #[derive(Debug, Clone)]
 pub struct LauncherItem {
@@ -26,12 +29,42 @@ pub struct LauncherWindow {
     pub name: Option<String>,
 }
 
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub enum OpenState {
+    Closed,
+    Open,
+    Focused,
+    Urgent,
+}
+
+impl OpenState {
+    pub const fn from_node(node: &SwayNode) -> Self {
+        if node.focused {
+            Self::Urgent
+        } else if node.urgent {
+            Self::Focused
+        } else {
+            Self::Open
+        }
+    }
+
+    pub fn highest_of(a: &Self, b: &Self) -> Self {
+        if a == &Self::Urgent || b == &Self::Urgent {
+            Self::Urgent
+        } else if a == &Self::Focused || b == &Self::Focused {
+            Self::Focused
+        } else if a == &Self::Open || b == &Self::Open {
+            Self::Open
+        } else {
+            Self::Closed
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct State {
     pub is_xwayland: bool,
-    pub open: bool,
-    pub focused: bool,
-    pub urgent: bool,
+    pub open_state: OpenState,
 }
 
 #[derive(Debug, Clone)]
@@ -49,9 +82,7 @@ impl LauncherItem {
         button.style_context().add_class("item");
 
         let state = State {
-            open: false,
-            focused: false,
-            urgent: false,
+            open_state: OpenState::Closed,
             is_xwayland: false,
         };
 
@@ -80,9 +111,7 @@ impl LauncherItem {
         ));
 
         let state = State {
-            open: true,
-            focused: node.focused,
-            urgent: node.urgent,
+            open_state: OpenState::from_node(node),
             is_xwayland: node.is_xwayland(),
         };
 
@@ -101,10 +130,14 @@ impl LauncherItem {
     fn configure_button(&self, config: &ButtonConfig) {
         let button = &self.button;
 
-        let windows = self.windows.lock().unwrap();
+        let windows = self.windows.lock().expect("Failed to get lock on windows");
 
         let name = if windows.len() == 1 {
-            windows.first().unwrap().name.as_ref()
+            windows
+                .first()
+                .expect("Failed to get first window")
+                .name
+                .as_ref()
         } else {
             Some(&self.app_id)
         };
@@ -129,21 +162,31 @@ impl LauncherItem {
         let (focus_tx, mut focus_rx) = mpsc::channel(32);
 
         button.connect_clicked(move |_| {
-            let state = state.read().unwrap();
-            if state.open {
-                focus_tx.try_send(()).unwrap();
+            let state = state.read().expect("Failed to get read lock on state");
+            if state.open_state == OpenState::Open {
+                focus_tx.try_send(()).expect("Failed to send focus event");
             } else {
                 // attempt to find desktop file and launch
                 match find_desktop_file(&app_id) {
                     Some(file) => {
-                        Command::new("gtk-launch")
-                            .arg(file.file_name().unwrap())
+                        if let Err(err) = Command::new("gtk-launch")
+                            .arg(
+                                file.file_name()
+                                    .expect("File segment missing from path to desktop file"),
+                            )
                             .stdout(Stdio::null())
                             .stderr(Stdio::null())
                             .spawn()
-                            .unwrap();
+                        {
+                            error!(
+                                "{:?}",
+                                Report::new(err)
+                                    .wrap_err("Failed to run gtk-launch command.")
+                                    .suggestion("Perhaps the desktop file is invalid?")
+                            );
+                        }
                     }
-                    None => (),
+                    None => error!("Could not find desktop file for {}", app_id),
                 }
             }
         });
@@ -153,15 +196,15 @@ impl LauncherItem {
 
         spawn(async move {
             while focus_rx.recv().await == Some(()) {
-                let state = state.read().unwrap();
+                let state = state.read().expect("Failed to get read lock on state");
                 if state.is_xwayland {
                     tx_click
                         .try_send(FocusEvent::Class(app_id.clone()))
-                        .unwrap();
+                        .expect("Failed to send focus event");
                 } else {
                     tx_click
                         .try_send(FocusEvent::AppId(app_id.clone()))
-                        .unwrap();
+                        .expect("Failed to send focus event");
                 }
             }
         });
@@ -172,7 +215,7 @@ impl LauncherItem {
         let tx_hover = config.tx.clone();
 
         button.connect_enter_notify_event(move |button, _| {
-            let windows = windows.lock().unwrap();
+            let windows = windows.lock().expect("Failed to get lock on windows");
             if windows.len() > 1 {
                 popup.set_windows(windows.as_slice(), &tx_hover);
                 popup.show(button);
@@ -196,7 +239,7 @@ impl LauncherItem {
         let style = button.style_context();
 
         style.add_class("launcher-item");
-        self.update_button_classes(&self.state.read().unwrap());
+        self.update_button_classes(&self.state.read().expect("Failed to get read lock on state"));
 
         button.show_all();
     }
@@ -223,19 +266,19 @@ impl LauncherItem {
             style.remove_class("favorite");
         }
 
-        if state.open {
+        if state.open_state == OpenState::Open {
             style.add_class("open");
         } else {
             style.remove_class("open");
         }
 
-        if state.focused {
+        if state.open_state == OpenState::Focused {
             style.add_class("focused");
         } else {
             style.remove_class("focused");
         }
 
-        if state.urgent {
+        if state.open_state == OpenState::Urgent {
             style.add_class("urgent");
         } else {
             style.remove_class("urgent");

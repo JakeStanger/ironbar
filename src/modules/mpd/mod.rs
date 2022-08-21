@@ -2,10 +2,11 @@ mod client;
 mod popup;
 
 use self::popup::Popup;
-use crate::modules::mpd::client::{get_connection, get_duration, get_elapsed};
+use crate::modules::mpd::client::{get_duration, get_elapsed, wait_for_connection};
 use crate::modules::mpd::popup::{MpdPopup, PopupEvent};
 use crate::modules::{Module, ModuleInfo};
-use dirs::home_dir;
+use color_eyre::Result;
+use dirs::{audio_dir, home_dir};
 use glib::Continue;
 use gtk::prelude::*;
 use gtk::{Button, Orientation};
@@ -14,9 +15,11 @@ use mpd_client::{commands, Tag};
 use regex::Regex;
 use serde::Deserialize;
 use std::path::PathBuf;
+use std::time::Duration;
 use tokio::spawn;
 use tokio::sync::mpsc;
 use tokio::time::sleep;
+use tracing::error;
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct MpdModule {
@@ -41,16 +44,18 @@ fn default_format() -> String {
     String::from("{icon}  {title} / {artist}")
 }
 
+#[allow(clippy::unnecessary_wraps)]
 fn default_icon_play() -> Option<String> {
     Some(String::from(""))
 }
 
+#[allow(clippy::unnecessary_wraps)]
 fn default_icon_pause() -> Option<String> {
     Some(String::from(""))
 }
 
 fn default_music_dir() -> PathBuf {
-    home_dir().unwrap().join("Music")
+    audio_dir().unwrap_or_else(|| home_dir().map(|dir| dir.join("Music")).unwrap_or_default())
 }
 
 /// Attempts to read the first value for a tag
@@ -84,8 +89,8 @@ enum Event {
 }
 
 impl Module<Button> for MpdModule {
-    fn into_widget(self, info: &ModuleInfo) -> Button {
-        let re = Regex::new(r"\{([\w-]+)}").unwrap();
+    fn into_widget(self, info: &ModuleInfo) -> Result<Button> {
+        let re = Regex::new(r"\{([\w-]+)}")?;
         let tokens = get_tokens(&re, self.format.as_str());
 
         let button = Button::new();
@@ -107,13 +112,17 @@ impl Module<Button> for MpdModule {
         let music_dir = self.music_dir.clone();
 
         button.connect_clicked(move |_| {
-            click_tx.send(Event::Open).unwrap();
+            click_tx
+                .send(Event::Open)
+                .expect("Failed to send popup open event");
         });
 
         let host = self.host.clone();
         let host2 = self.host.clone();
         spawn(async move {
-            let (client, _) = get_connection(&host).await.unwrap(); // TODO: Handle connecting properly
+            let client = wait_for_connection(vec![host], Duration::from_secs(1), None)
+                .await
+                .expect("Unexpected error when trying to connect to MPD server");
 
             loop {
                 let current_song = client.command(commands::CurrentSong).await;
@@ -125,32 +134,38 @@ impl Module<Button> for MpdModule {
                         .await;
 
                     tx.send(Event::Update(Box::new(Some((song.song, status, string)))))
-                        .unwrap();
+                        .expect("Failed to send update event");
                 } else {
-                    tx.send(Event::Update(Box::new(None))).unwrap();
+                    tx.send(Event::Update(Box::new(None)))
+                        .expect("Failed to send update event");
                 }
 
-                sleep(tokio::time::Duration::from_secs(1)).await;
+                sleep(Duration::from_secs(1)).await;
             }
         });
 
         spawn(async move {
-            let (client, _) = get_connection(&host2).await.unwrap(); // TODO: Handle connecting properly
+            let client = wait_for_connection(vec![host2], Duration::from_secs(1), None)
+                .await
+                .expect("Unexpected error when trying to connect to MPD server");
 
             while let Some(event) = ui_rx.recv().await {
-                match event {
+                let res = match event {
                     PopupEvent::Previous => client.command(commands::Previous).await,
-                    PopupEvent::Toggle => {
-                        let status = client.command(commands::Status).await.unwrap();
-                        match status.state {
+                    PopupEvent::Toggle => match client.command(commands::Status).await {
+                        Ok(status) => match status.state {
                             PlayState::Playing => client.command(commands::SetPause(true)).await,
                             PlayState::Paused => client.command(commands::SetPause(false)).await,
                             PlayState::Stopped => Ok(()),
-                        }
-                    }
+                        },
+                        Err(err) => Err(err),
+                    },
                     PopupEvent::Next => client.command(commands::Next).await,
+                };
+
+                if let Err(err) = res {
+                    error!("Failed to send command to MPD server: {:?}", err);
                 }
-                .unwrap();
             }
         });
 
@@ -178,7 +193,7 @@ impl Module<Button> for MpdModule {
             });
         };
 
-        button
+        Ok(button)
     }
 }
 
@@ -220,9 +235,10 @@ impl MpdModule {
             "disc" => try_get_first_tag(song.tags.get(&Tag::Disc)),
             "genre" => try_get_first_tag(song.tags.get(&Tag::Genre)),
             "track" => try_get_first_tag(song.tags.get(&Tag::Track)),
-            "duration" => return format_time(get_duration(status)),
-            "elapsed" => return format_time(get_elapsed(status)),
-            _ => return token.to_string(),
+            "duration" => return get_duration(status).map(format_time).unwrap_or_default(),
+
+            "elapsed" => return get_elapsed(status).map(format_time).unwrap_or_default(),
+            _ => Some(token),
         };
         s.unwrap_or_default().to_string()
     }

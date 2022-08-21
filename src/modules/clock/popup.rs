@@ -24,7 +24,8 @@ impl Popup {
                 let date = Local::now();
                 let date_string = format!("{}", date.format(format));
 
-                tx.send(date_string).unwrap();
+                tx.send(date_string).expect("Failed to send date string");
+
                 sleep(tokio::time::Duration::from_millis(500)).await;
             }
         });

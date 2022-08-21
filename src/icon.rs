@@ -58,9 +58,7 @@ fn parse_desktop_file(path: PathBuf) -> io::Result<HashMap<String, String>> {
     let mut map = HashMap::new();
 
     for line in lines.flatten() {
-        let is_pair = line.contains('=');
-        if is_pair {
-            let (key, value) = line.split_once('=').unwrap();
+        if let Some((key, value)) = line.split_once('=') {
             map.insert(key.to_string(), value.to_string());
         }
     }
@@ -100,13 +98,18 @@ fn get_icon_location(theme: &IconTheme, app_id: &str, size: i32) -> Option<IconL
     let is_steam_game = app_id.starts_with("steam_app_");
     if is_steam_game {
         let steam_id: String = app_id.chars().skip("steam_app_".len()).collect();
-        let home_dir = dirs::data_dir().unwrap();
-        let path = home_dir.join(format!(
-            "icons/hicolor/32x32/apps/steam_icon_{}.png",
-            steam_id
-        ));
 
-        return Some(IconLocation::File(path));
+        return match dirs::data_dir() {
+            Some(dir) => {
+                let path = dir.join(format!(
+                    "icons/hicolor/32x32/apps/steam_icon_{}.png",
+                    steam_id
+                ));
+
+                return Some(IconLocation::File(path));
+            }
+            None => None,
+        };
     }
 
     let icon_name = get_desktop_icon_name(app_id);

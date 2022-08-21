@@ -9,7 +9,9 @@
     <option name="withSudo" value="false" />
     <option name="buildTarget" value="REMOTE" />
     <option name="backtrace" value="SHORT" />
-    <envs />
+    <envs>
+      <env name="PATH" value="/usr/local/bin:/usr/bin:$USER_HOME$/.local/share/npm/bin" />
+    </envs>
     <option name="isRedirectInput" value="false" />
     <option name="redirectInputPath" value="" />
     <method v="2">

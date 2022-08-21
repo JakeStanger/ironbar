@@ -1,11 +1,17 @@
 use crate::config::{BarPosition, ModuleConfig};
 use crate::modules::{Module, ModuleInfo, ModuleLocation};
 use crate::Config;
+use color_eyre::Result;
 use gtk::gdk::Monitor;
 use gtk::prelude::*;
 use gtk::{Application, ApplicationWindow, Orientation};
 
-pub fn create_bar(app: &Application, monitor: &Monitor, monitor_name: &str, config: Config) {
+pub fn create_bar(
+    app: &Application,
+    monitor: &Monitor,
+    monitor_name: &str,
+    config: Config,
+) -> Result<()> {
     let win = ApplicationWindow::builder().application(app).build();
 
     setup_layer_shell(&win, monitor, &config.position);
@@ -31,7 +37,7 @@ pub fn create_bar(app: &Application, monitor: &Monitor, monitor_name: &str, conf
     content.set_center_widget(Some(&center));
     content.pack_end(&right, false, false, 0);
 
-    load_modules(&left, &center, &right, app, config, monitor, monitor_name);
+    load_modules(&left, &center, &right, app, config, monitor, monitor_name)?;
     win.add(&content);
 
     win.connect_destroy_event(|_, _| {
@@ -40,6 +46,8 @@ pub fn create_bar(app: &Application, monitor: &Monitor, monitor_name: &str, conf
     });
 
     win.show_all();
+
+    Ok(())
 }
 
 fn load_modules(
@@ -50,7 +58,7 @@ fn load_modules(
     config: Config,
     monitor: &Monitor,
     output_name: &str,
-) {
+) -> Result<()> {
     if let Some(modules) = config.left {
         let info = ModuleInfo {
             app,
@@ -60,7 +68,7 @@ fn load_modules(
             output_name,
         };
 
-        add_modules(left, modules, &info);
+        add_modules(left, modules, &info)?;
     }
 
     if let Some(modules) = config.center {
@@ -72,7 +80,7 @@ fn load_modules(
             output_name,
         };
 
-        add_modules(center, modules, &info);
+        add_modules(center, modules, &info)?;
     }
 
     if let Some(modules) = config.right {
@@ -84,14 +92,16 @@ fn load_modules(
             output_name,
         };
 
-        add_modules(right, modules, &info);
+        add_modules(right, modules, &info)?;
     }
+
+    Ok(())
 }
 
-fn add_modules(content: &gtk::Box, modules: Vec<ModuleConfig>, info: &ModuleInfo) {
+fn add_modules(content: &gtk::Box, modules: Vec<ModuleConfig>, info: &ModuleInfo) -> Result<()> {
     macro_rules! add_module {
         ($module:expr, $name:literal) => {{
-            let widget = $module.into_widget(&info);
+            let widget = $module.into_widget(&info)?;
             widget.set_widget_name($name);
             content.add(&widget);
         }};
@@ -109,6 +119,8 @@ fn add_modules(content: &gtk::Box, modules: Vec<ModuleConfig>, info: &ModuleInfo
             ModuleConfig::Focused(module) => add_module!(module, "focused"),
         }
     }
+
+    Ok(())
 }
 
 fn setup_layer_shell(win: &ApplicationWindow, monitor: &Monitor, position: &BarPosition) {
