@@ -89,7 +89,9 @@ async fn main() -> Result<()> {
         }
     });
 
-    app.run();
+    // Ignore CLI args
+    // Some are provided by swaybar_config but not currently supported
+    app.run_with_args(&Vec::<&str>::new());
 
     Ok(())
 }
