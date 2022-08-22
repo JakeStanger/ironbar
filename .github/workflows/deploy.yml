@@ -17,6 +17,9 @@ jobs:
           toolchain: stable
           override: true
 
+      - name: Install build deps
+        run: sudo apt install libgtk-3-dev libgtk-layer-shell-dev
+
       - name: Update CHANGELOG
         id: changelog
         uses: Requarks/changelog-action@v1
