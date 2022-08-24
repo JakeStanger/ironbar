@@ -120,6 +120,21 @@ impl Module<gtk::Box> for WorkspacesModule {
                             }
                         }
                     }
+                    "move" => {
+                        if let Some(workspace) = event.current {
+                            if !self.all_monitors {
+                                if workspace.output == output_name {
+                                    let item = workspace.as_button(&name_map, &ui_tx);
+
+                                    item.show();
+                                    menubar.add(&item);
+                                    button_map.insert(workspace.name, item);
+                                } else if let Some(item) = button_map.get(&workspace.name) {
+                                    menubar.remove(item);
+                                }
+                            }
+                        }
+                    }
                     "empty" => {
                         if let Some(workspace) = event.current {
                             if let Some(item) = button_map.get(&workspace.name) {
