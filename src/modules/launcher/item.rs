@@ -163,7 +163,7 @@ impl LauncherItem {
 
         button.connect_clicked(move |_| {
             let state = state.read().expect("Failed to get read lock on state");
-            if state.open_state == OpenState::Open {
+            if state.open_state != OpenState::Closed {
                 focus_tx.try_send(()).expect("Failed to send focus event");
             } else {
                 // attempt to find desktop file and launch
