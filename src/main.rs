@@ -11,14 +11,13 @@ mod sway;
 use crate::bar::create_bar;
 use crate::config::{Config, MonitorConfig};
 use crate::style::load_css;
-use crate::sway::{get_client_error, SwayOutput};
+use crate::sway::{get_client, SwayOutput};
 use color_eyre::eyre::Result;
 use color_eyre::Report;
 use dirs::config_dir;
 use gtk::gdk::Display;
 use gtk::prelude::*;
 use gtk::Application;
-use ksway::client::Client;
 use ksway::IpcCommand;
 use std::env;
 use std::process::exit;
@@ -97,14 +96,16 @@ async fn main() -> Result<()> {
 }
 
 fn create_bars(app: &Application, display: &Display, config: &Config) -> Result<()> {
-    let mut sway_client = match Client::connect() {
-        Ok(client) => Ok(client),
-        Err(err) => Err(get_client_error(err)),
-    }?;
+    let outputs = {
+        let sway = get_client();
+        let mut sway = sway.lock().expect("Failed to get lock on Sway IPC client");
 
-    let outputs = match sway_client.ipc(IpcCommand::GetOutputs) {
-        Ok(outputs) => Ok(outputs),
-        Err(err) => Err(get_client_error(err)),
+        let outputs = sway.ipc(IpcCommand::GetOutputs);
+
+        match outputs {
+            Ok(outputs) => Ok(outputs),
+            Err(err) => Err(err),
+        }
     }?;
 
     let outputs = serde_json::from_slice::<Vec<SwayOutput>>(&outputs)?;

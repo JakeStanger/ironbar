@@ -1,15 +1,15 @@
 use crate::modules::{Module, ModuleInfo};
-use crate::sway::{SwayClient, Workspace, WorkspaceEvent};
+use crate::sway::{get_client, Workspace};
 use color_eyre::{Report, Result};
 use gtk::prelude::*;
 use gtk::{Button, Orientation};
-use ksway::{IpcCommand, IpcEvent};
+use ksway::IpcCommand;
 use serde::Deserialize;
 use std::collections::HashMap;
 use tokio::spawn;
 use tokio::sync::mpsc;
 use tokio::task::spawn_blocking;
-use tracing::error;
+use tracing::{debug, trace};
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct WorkspacesModule {
@@ -47,11 +47,12 @@ impl Workspace {
 
 impl Module<gtk::Box> for WorkspacesModule {
     fn into_widget(self, info: &ModuleInfo) -> Result<gtk::Box> {
-        let mut sway = SwayClient::connect()?;
-
         let container = gtk::Box::new(Orientation::Horizontal, 0);
 
         let workspaces = {
+            trace!("Getting current workspaces");
+            let sway = get_client();
+            let mut sway = sway.lock().expect("Failed to get lock on Sway IPC client");
             let raw = sway.ipc(IpcCommand::GetWorkspaces)?;
             let workspaces = serde_json::from_slice::<Vec<Workspace>>(&raw)?;
 
@@ -77,19 +78,19 @@ impl Module<gtk::Box> for WorkspacesModule {
             button_map.insert(workspace.name, item);
         }
 
-        let srx = sway.subscribe(vec![IpcEvent::Workspace])?;
         let (tx, rx) = glib::MainContext::channel(glib::PRIORITY_DEFAULT);
 
-        spawn_blocking(move || loop {
-            while let Ok((_, payload)) = srx.try_recv() {
-                match serde_json::from_slice::<WorkspaceEvent>(&payload) {
-                    Ok(payload) => tx.send(payload).expect("Failed to send workspace event"),
-                    Err(err) => error!("{:?}", err),
-                }
-            }
+        spawn_blocking(move || {
+            trace!("Starting workspace event listener task");
+            let srx = {
+                let sway = get_client();
+                let mut sway = sway.lock().expect("Failed to get lock on Sway IPC client");
 
-            if let Err(err) = sway.poll() {
-                error!("{:?}", err);
+                sway.subscribe_workspace()
+            };
+
+            while let Ok(payload) = srx.recv() {
+                tx.send(payload).expect("Failed to send workspace event");
             }
         });
 
@@ -150,8 +151,12 @@ impl Module<gtk::Box> for WorkspacesModule {
         }
 
         spawn(async move {
-            let mut sway = SwayClient::connect()?;
+            trace!("Setting up UI event handler");
+            let sway = get_client();
             while let Some(name) = ui_rx.recv().await {
+                let mut sway = sway
+                    .lock()
+                    .expect("Failed to get write lock on Sway IPC client");
                 sway.run(format!("workspace {}", name))?;
             }
 

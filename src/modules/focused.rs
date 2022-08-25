@@ -1,14 +1,12 @@
 use crate::icon;
 use crate::modules::{Module, ModuleInfo};
-use crate::sway::{SwayClient, WindowEvent};
+use crate::sway::get_client;
 use color_eyre::Result;
 use glib::Continue;
 use gtk::prelude::*;
 use gtk::{IconTheme, Image, Label, Orientation};
-use ksway::IpcEvent;
 use serde::Deserialize;
 use tokio::task::spawn_blocking;
-use tracing::error;
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct FocusedModule {
@@ -42,41 +40,38 @@ impl Module<gtk::Box> for FocusedModule {
         container.add(&icon);
         container.add(&label);
 
-        let mut sway = SwayClient::connect()?;
-
-        let srx = sway.subscribe(vec![IpcEvent::Window])?;
         let (tx, rx) = glib::MainContext::channel(glib::PRIORITY_DEFAULT);
 
-        let focused = sway
-            .get_open_windows()?
-            .into_iter()
-            .find(|node| node.focused);
+        let focused = {
+            let sway = get_client();
+            let mut sway = sway.lock().expect("Failed to get lock on Sway IPC client");
+            sway.get_open_windows()?
+                .into_iter()
+                .find(|node| node.focused)
+        };
 
         if let Some(focused) = focused {
             tx.send(focused)?;
         }
 
-        spawn_blocking(move || loop {
-            while let Ok((_, payload)) = srx.try_recv() {
-                match serde_json::from_slice::<WindowEvent>(&payload) {
-                    Ok(payload) => {
-                        let update = match payload.change.as_str() {
-                            "focus" => true,
-                            "title" => payload.container.focused,
-                            _ => false,
-                        };
+        spawn_blocking(move || {
+            let srx = {
+                let sway = get_client();
+                let mut sway = sway.lock().expect("Failed to get lock on Sway IPC client");
+                sway.subscribe_window()
+            };
 
-                        if update {
-                            tx.send(payload.container)
-                                .expect("Failed to sendf focus update");
-                        }
-                    }
-                    Err(err) => error!("{:?}", err),
+            while let Ok(payload) = srx.recv() {
+                let update = match payload.change.as_str() {
+                    "focus" => true,
+                    "title" => payload.container.focused,
+                    _ => false,
+                };
+
+                if update {
+                    tx.send(payload.container)
+                        .expect("Failed to sendf focus update");
                 }
-            }
-
-            if let Err(err) = sway.poll() {
-                error!("{:?}", err);
             }
         });
 

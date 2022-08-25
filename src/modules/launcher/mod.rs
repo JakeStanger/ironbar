@@ -5,17 +5,15 @@ use crate::collection::Collection;
 use crate::modules::launcher::item::{ButtonConfig, LauncherItem, LauncherWindow, OpenState};
 use crate::modules::launcher::popup::Popup;
 use crate::modules::{Module, ModuleInfo};
-use crate::sway::{SwayClient, SwayNode, WindowEvent};
+use crate::sway::{get_client, SwayNode};
 use color_eyre::{Report, Result};
 use gtk::prelude::*;
 use gtk::{IconTheme, Orientation};
-use ksway::IpcEvent;
 use serde::Deserialize;
 use std::rc::Rc;
 use tokio::spawn;
 use tokio::sync::mpsc;
 use tokio::task::spawn_blocking;
-use tracing::error;
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct LauncherModule {
@@ -210,8 +208,6 @@ impl Module<gtk::Box> for LauncherModule {
             icon_theme.set_custom_theme(Some(&theme));
         }
 
-        let mut sway = SwayClient::connect()?;
-
         let popup = Popup::new(
             "popup-launcher",
             info.app,
@@ -237,28 +233,28 @@ impl Module<gtk::Box> for LauncherModule {
             button_config,
         );
 
-        let open_windows = sway.get_open_windows()?;
+        let open_windows = {
+            let sway = get_client();
+            let mut sway = sway.lock().expect("Failed to get lock on Sway IPC client");
+            sway.get_open_windows()
+        }?;
 
         for window in open_windows {
             launcher.add_window(window);
         }
 
-        let srx = sway.subscribe(vec![IpcEvent::Window])?;
         let (tx, rx) = glib::MainContext::channel(glib::PRIORITY_DEFAULT);
 
-        spawn_blocking(move || loop {
-            while let Ok((_, payload)) = srx.try_recv() {
-                match serde_json::from_slice::<WindowEvent>(&payload) {
-                    Ok(payload) => {
-                        tx.send(payload)
-                            .expect("Failed to send window event payload");
-                    }
-                    Err(err) => error!("{:?}", err),
-                }
-            }
+        spawn_blocking(move || {
+            let srx = {
+                let sway = get_client();
+                let mut sway = sway.lock().expect("Failed to get lock on Sway IPC client");
+                sway.subscribe_window()
+            };
 
-            if let Err(err) = sway.poll() {
-                error!("{:?}", err);
+            while let Ok(payload) = srx.recv() {
+                tx.send(payload)
+                    .expect("Failed to send window event payload");
             }
         });
 
@@ -278,14 +274,15 @@ impl Module<gtk::Box> for LauncherModule {
         }
 
         spawn(async move {
-            let mut sway = SwayClient::connect()?;
+            let sway = get_client();
+
             while let Some(event) = ui_rx.recv().await {
                 let selector = match event {
                     FocusEvent::AppId(app_id) => format!("[app_id={}]", app_id),
                     FocusEvent::Class(class) => format!("[class={}]", class),
                     FocusEvent::ConId(id) => format!("[con_id={}]", id),
                 };
-
+                let mut sway = sway.lock().expect("Failed to get lock on Sway IPC client");
                 sway.run(format!("{} focus", selector))?;
             }
 

@@ -2,7 +2,7 @@ mod client;
 mod popup;
 
 use self::popup::Popup;
-use crate::modules::mpd::client::{get_duration, get_elapsed, wait_for_connection};
+use crate::modules::mpd::client::{get_connection, get_duration, get_elapsed};
 use crate::modules::mpd::popup::{MpdPopup, PopupEvent};
 use crate::modules::{Module, ModuleInfo};
 use color_eyre::Result;
@@ -120,7 +120,7 @@ impl Module<Button> for MpdModule {
         let host = self.host.clone();
         let host2 = self.host.clone();
         spawn(async move {
-            let client = wait_for_connection(vec![host], Duration::from_secs(1), None)
+            let client = get_connection(&host)
                 .await
                 .expect("Unexpected error when trying to connect to MPD server");
 
@@ -145,7 +145,7 @@ impl Module<Button> for MpdModule {
         });
 
         spawn(async move {
-            let client = wait_for_connection(vec![host2], Duration::from_secs(1), None)
+            let client = get_connection(&host2)
                 .await
                 .expect("Unexpected error when trying to connect to MPD server");
 
