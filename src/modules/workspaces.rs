@@ -59,6 +59,7 @@ impl Module<gtk::Box> for WorkspacesModule {
             if self.all_monitors {
                 workspaces
             } else {
+                trace!("Filtering workspaces to current monitor only");
                 workspaces
                     .into_iter()
                     .filter(|workspace| workspace.output == info.output_name)
@@ -72,6 +73,7 @@ impl Module<gtk::Box> for WorkspacesModule {
 
         let (ui_tx, mut ui_rx) = mpsc::channel(32);
 
+        trace!("Creating workspace buttons");
         for workspace in workspaces {
             let item = workspace.as_button(&name_map, &ui_tx);
             container.add(&item);
@@ -95,9 +97,11 @@ impl Module<gtk::Box> for WorkspacesModule {
         });
 
         {
+            trace!("Setting up sway event handler");
             let menubar = container.clone();
             let output_name = info.output_name.to_string();
             rx.attach(None, move |event| {
+                debug!("Received workspace event {:?}", event);
                 match event.change.as_str() {
                     "focus" => {
                         let old = event.old.and_then(|old| button_map.get(&old.name));
@@ -109,6 +113,8 @@ impl Module<gtk::Box> for WorkspacesModule {
                         if let Some(new) = new {
                             new.style_context().add_class("focused");
                         }
+
+                        trace!("{:?} {:?}", old, new);
                     }
                     "init" => {
                         if let Some(workspace) = event.current {

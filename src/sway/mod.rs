@@ -133,6 +133,7 @@ impl SwayClient {
     }
 
     pub fn ipc(&mut self, command: IpcCommand) -> Result<Vec<u8>> {
+        debug!("Sending command: {:?}", command);
         match self.client.ipc(command) {
             Ok(res) => Ok(res),
             Err(err) => Err(get_client_error(err)),

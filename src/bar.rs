@@ -5,6 +5,7 @@ use color_eyre::Result;
 use gtk::gdk::Monitor;
 use gtk::prelude::*;
 use gtk::{Application, ApplicationWindow, Orientation};
+use tracing::{debug, info};
 
 pub fn create_bar(
     app: &Application,
@@ -41,10 +42,12 @@ pub fn create_bar(
     win.add(&content);
 
     win.connect_destroy_event(|_, _| {
+        info!("Shutting down");
         gtk::main_quit();
         Inhibit(false)
     });
 
+    debug!("Showing bar");
     win.show_all();
 
     Ok(())
@@ -104,6 +107,7 @@ fn add_modules(content: &gtk::Box, modules: Vec<ModuleConfig>, info: &ModuleInfo
             let widget = $module.into_widget(&info)?;
             widget.set_widget_name($name);
             content.add(&widget);
+            debug!("Added module of type {}", $name);
         }};
     }
 

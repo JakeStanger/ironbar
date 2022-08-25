@@ -110,11 +110,15 @@ fn create_bars(app: &Application, display: &Display, config: &Config) -> Result<
 
     let outputs = serde_json::from_slice::<Vec<SwayOutput>>(&outputs)?;
 
+    debug!("Received {} outputs from Sway IPC", outputs.len());
+
     let num_monitors = display.n_monitors();
 
     for i in 0..num_monitors {
         let monitor = display.monitor(i).ok_or_else(|| Report::msg("GTK and Sway are reporting a different number of outputs - this is a severe bug and should never happen"))?;
         let monitor_name = &outputs.get(i as usize).ok_or_else(|| Report::msg("GTK and Sway are reporting a different set of outputs - this is a severe bug and should never happen"))?.name;
+
+        info!("Creating bar on '{}'", monitor_name);
 
         config.monitors.as_ref().map_or_else(
             || create_bar(app, &monitor, monitor_name, config.clone()),
