@@ -11,6 +11,9 @@ pub struct Popup {
 }
 
 impl Popup {
+    /// Creates a new popup window.
+    /// This includes setting up gtk-layer-shell
+    /// and an empty `gtk::Box` container.
     pub fn new(
         name: &str,
         app: &Application,

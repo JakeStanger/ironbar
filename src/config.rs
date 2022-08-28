@@ -71,6 +71,8 @@ const fn default_bar_height() -> i32 {
 }
 
 impl Config {
+    /// Attempts to load the config file from file,
+    /// parse it and return a new instance of `Self`.
     pub fn load() -> Result<Self> {
         let config_path = if let Ok(config_path) = env::var("IRONBAR_CONFIG") {
             let path = PathBuf::from(config_path);
@@ -87,6 +89,10 @@ impl Config {
         Self::load_file(&config_path)
     }
 
+    /// Attempts to discover the location of the config file
+    /// by checking each valid format's extension.
+    ///
+    /// Returns the path of the first valid match, if any.
     fn try_find_config() -> Result<PathBuf> {
         let config_dir = config_dir().wrap_err("Failed to locate user config dir")?;
 
@@ -110,6 +116,8 @@ impl Config {
         }
     }
 
+    /// Loads the config file at the specified path
+    /// and parses it into `Self` based on its extension.
     fn load_file(path: &Path) -> Result<Self> {
         let file = fs::read(path).wrap_err("Failed to read config file")?;
         let extension = path

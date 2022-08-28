@@ -23,15 +23,20 @@ use tracing::error;
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct MpdModule {
+    /// TCP or Unix socket address.
     #[serde(default = "default_socket")]
     host: String,
+    /// Format of current song info to display on the bar.
     #[serde(default = "default_format")]
     format: String,
+    /// Icon to display when playing.
     #[serde(default = "default_icon_play")]
     icon_play: Option<String>,
+    /// Icon to display when paused.
     #[serde(default = "default_icon_pause")]
     icon_pause: Option<String>,
 
+    /// Path to root of music directory.
     #[serde(default = "default_music_dir")]
     music_dir: PathBuf,
 }

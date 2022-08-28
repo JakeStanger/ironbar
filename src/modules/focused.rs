@@ -10,13 +10,17 @@ use tokio::task::spawn_blocking;
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct FocusedModule {
+    /// Whether to show icon on the bar.
     #[serde(default = "crate::config::default_true")]
     show_icon: bool,
+    /// Whether to show app name on the bar.
     #[serde(default = "crate::config::default_true")]
     show_title: bool,
 
+    /// Icon size in pixels.
     #[serde(default = "default_icon_size")]
     icon_size: i32,
+    /// GTK icon theme to use.
     icon_theme: Option<String>,
 }
 

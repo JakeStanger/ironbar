@@ -55,11 +55,13 @@ pub struct SwayOutput {
     pub name: String,
 }
 
+type Broadcaster<T> = Arc<Mutex<UnboundedBroadcast<T>>>;
+
 pub struct SwayClient {
     client: ksway::Client,
 
-    workspace_bc: Arc<Mutex<UnboundedBroadcast<WorkspaceEvent>>>,
-    window_bc: Arc<Mutex<UnboundedBroadcast<WindowEvent>>>,
+    workspace_bc: Broadcaster<WorkspaceEvent>,
+    window_bc: Broadcaster<WindowEvent>,
 }
 
 impl SwayClient {
@@ -189,15 +191,20 @@ pub fn get_client() -> Arc<Mutex<SwayClient>> {
     Arc::clone(&CLIENT)
 }
 
+/// Crossbeam channel wrapper
+/// which sends messages to all receivers.
 pub struct UnboundedBroadcast<T> {
     channels: Vec<crossbeam_channel::Sender<T>>,
 }
 
 impl<T: 'static + Clone + Send + Sync> UnboundedBroadcast<T> {
+    /// Creates a new broadcaster.
     pub const fn new() -> Self {
         Self { channels: vec![] }
     }
 
+    /// Creates a new sender/receiver pair.
+    /// The sender is stored locally and the receiver is returned.
     pub fn subscribe(&mut self) -> Receiver<T> {
         let (tx, rx) = crossbeam_channel::unbounded();
 
@@ -206,6 +213,7 @@ impl<T: 'static + Clone + Send + Sync> UnboundedBroadcast<T> {
         rx
     }
 
+    /// Attempts to send a messsge to all receivers.
     pub fn send(&self, message: T) -> Result<(), crossbeam_channel::SendError<T>> {
         for c in &self.channels {
             c.send(message.clone())?;

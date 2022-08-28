@@ -95,6 +95,7 @@ async fn main() -> Result<()> {
     Ok(())
 }
 
+/// Creates each of the bars across each of the (configured) outputs.
 fn create_bars(app: &Application, display: &Display, config: &Config) -> Result<()> {
     let outputs = {
         let sway = get_client();
@@ -120,6 +121,7 @@ fn create_bars(app: &Application, display: &Display, config: &Config) -> Result<
 
         info!("Creating bar on '{}'", monitor_name);
 
+        // TODO: Could we use an Arc<Config> here to avoid cloning?
         config.monitors.as_ref().map_or_else(
             || create_bar(app, &monitor, monitor_name, config.clone()),
             |config| {

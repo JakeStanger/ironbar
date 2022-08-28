@@ -26,6 +26,10 @@ impl<'a> MakeWriter<'a> for MakeFileWriter {
     }
 }
 
+/// Installs tracing into the current application.
+///
+/// The returned `WorkerGuard` must remain in scope
+/// for the lifetime of the application for logging to file to work.
 pub fn install_tracing() -> Result<WorkerGuard> {
     let fmt_layer = fmt::layer().with_target(true);
     let filter_layer = EnvFilter::try_from_default_env().or_else(|_| EnvFilter::try_new("info"))?;

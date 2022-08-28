@@ -11,6 +11,7 @@ pub struct Collection<TKey, TData> {
 }
 
 impl<TKey: PartialEq, TData> Collection<TKey, TData> {
+    /// Creates a new empty collection.
     pub const fn new() -> Self {
         Self {
             keys: vec![],
@@ -18,6 +19,7 @@ impl<TKey: PartialEq, TData> Collection<TKey, TData> {
         }
     }
 
+    /// Inserts a new key/value pair at the end of the collection.
     pub fn insert(&mut self, key: TKey, value: TData) {
         self.keys.push(key);
         self.values.push(value);
@@ -25,6 +27,8 @@ impl<TKey: PartialEq, TData> Collection<TKey, TData> {
         assert_eq!(self.keys.len(), self.values.len());
     }
 
+    /// Gets a reference of the value for the specified key
+    /// if it exists in the collection.
     pub fn get(&self, key: &TKey) -> Option<&TData> {
         let index = self.keys.iter().position(|k| k == key);
         match index {
@@ -33,6 +37,8 @@ impl<TKey: PartialEq, TData> Collection<TKey, TData> {
         }
     }
 
+    /// Gets a mutable reference for the value with the specified key
+    /// if it exists in the collection.
     pub fn get_mut(&mut self, key: &TKey) -> Option<&mut TData> {
         let index = self.keys.iter().position(|k| k == key);
         match index {
@@ -41,6 +47,9 @@ impl<TKey: PartialEq, TData> Collection<TKey, TData> {
         }
     }
 
+    /// Removes the key/value from the collection
+    /// if it exists
+    /// and returns the removed value.
     pub fn remove(&mut self, key: &TKey) -> Option<TData> {
         assert_eq!(self.keys.len(), self.values.len());
 
@@ -53,26 +62,32 @@ impl<TKey: PartialEq, TData> Collection<TKey, TData> {
         }
     }
 
+    /// Gets the length of the collection.
     pub fn len(&self) -> usize {
         self.keys.len()
     }
 
+    /// Gets a reference to the first value in the collection.
     pub fn first(&self) -> Option<&TData> {
         self.values.first()
     }
 
+    /// Gets the values as a slice.
     pub fn as_slice(&self) -> &[TData] {
         self.values.as_slice()
     }
 
+    /// Checks whether the collection is empty.
     pub fn is_empty(&self) -> bool {
         self.keys.is_empty()
     }
 
+    /// Gets an iterator for the collection.
     pub fn iter(&self) -> Iter<'_, TData> {
         self.values.iter()
     }
 
+    /// Gets a mutable iterator for the collection
     pub fn iter_mut(&mut self) -> IterMut<'_, TData> {
         self.values.iter_mut()
     }

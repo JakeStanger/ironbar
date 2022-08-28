@@ -17,12 +17,17 @@ use tokio::task::spawn_blocking;
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct LauncherModule {
+    /// List of app IDs (or classes) to always show regardles of open state,
+    /// in the order specified.
     favorites: Option<Vec<String>>,
+    /// Whether to show application names on the bar.
     #[serde(default = "crate::config::default_false")]
     show_names: bool,
+    /// Whether to show application icons on the bar.
     #[serde(default = "crate::config::default_true")]
     show_icons: bool,
 
+    /// Name of the GTK icon theme to use.
     icon_theme: Option<String>,
 }
 

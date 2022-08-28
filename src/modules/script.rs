@@ -10,7 +10,9 @@ use tracing::{error, instrument};
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct ScriptModule {
+    /// Path to script to execute.
     path: String,
+    /// Time in milliseconds between executions.
     #[serde(default = "default_interval")]
     interval: u64,
 }

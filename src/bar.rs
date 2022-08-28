@@ -7,6 +7,8 @@ use gtk::prelude::*;
 use gtk::{Application, ApplicationWindow, Orientation};
 use tracing::{debug, info};
 
+/// Creates a new window for a bar,
+/// sets it up and adds its widgets.
 pub fn create_bar(
     app: &Application,
     monitor: &Monitor,
@@ -53,6 +55,7 @@ pub fn create_bar(
     Ok(())
 }
 
+/// Loads the configured modules onto a bar.
 fn load_modules(
     left: &gtk::Box,
     center: &gtk::Box,
@@ -101,6 +104,8 @@ fn load_modules(
     Ok(())
 }
 
+/// Adds modules into a provided GTK box,
+/// which should be one of its left, center or right containers.
 fn add_modules(content: &gtk::Box, modules: Vec<ModuleConfig>, info: &ModuleInfo) -> Result<()> {
     macro_rules! add_module {
         ($module:expr, $name:literal) => {{
@@ -127,6 +132,7 @@ fn add_modules(content: &gtk::Box, modules: Vec<ModuleConfig>, info: &ModuleInfo
     Ok(())
 }
 
+/// Sets up GTK layer shell for a provided aplication window.
 fn setup_layer_shell(win: &ApplicationWindow, monitor: &Monitor, position: &BarPosition) {
     gtk_layer_shell::init_for_window(win);
     gtk_layer_shell::set_monitor(win, monitor);

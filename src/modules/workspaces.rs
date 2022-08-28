@@ -13,8 +13,10 @@ use tracing::{debug, trace};
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct WorkspacesModule {
+    /// Map of actual workspace names to custom names.
     name_map: Option<HashMap<String, String>>,
 
+    /// Whether to display icons for all monitors.
     #[serde(default = "crate::config::default_false")]
     all_monitors: bool,
 }

@@ -9,6 +9,11 @@ use std::time::Duration;
 use tokio::spawn;
 use tracing::{error, info};
 
+/// Attempts to load CSS file at the given path
+/// and attach if to the current GTK application.
+///
+/// Installs a file watcher and reloads CSS when
+/// write changes are detected on the file.
 pub fn load_css(style_path: PathBuf) {
     let provider = CssProvider::new();
 

@@ -86,6 +86,10 @@ enum IconLocation {
     File(PathBuf),
 }
 
+/// Attempts to get the location of an icon.
+///
+/// Handles icons that are part of a GTK theme, icons specified as path
+/// and icons for steam games.
 fn get_icon_location(theme: &IconTheme, app_id: &str, size: i32) -> Option<IconLocation> {
     let has_icon = theme
         .lookup_icon(app_id, size, IconLookupFlags::empty())

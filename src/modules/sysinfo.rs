@@ -11,6 +11,7 @@ use tokio::time::sleep;
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct SysInfoModule {
+    /// List of formatting strings.
     format: Vec<String>,
 }
 
