@@ -1,8 +1,10 @@
 mod item;
+mod open_state;
 mod popup;
 
 use crate::collection::Collection;
-use crate::modules::launcher::item::{ButtonConfig, LauncherItem, LauncherWindow, OpenState};
+use crate::modules::launcher::item::{ButtonConfig, LauncherItem, LauncherWindow};
+use crate::modules::launcher::open_state::OpenState;
 use crate::modules::launcher::popup::Popup;
 use crate::modules::{Module, ModuleInfo};
 use crate::sway::{get_client, SwayNode};
@@ -14,6 +16,7 @@ use std::rc::Rc;
 use tokio::spawn;
 use tokio::sync::mpsc;
 use tokio::task::spawn_blocking;
+use tracing::debug;
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct LauncherModule {
@@ -72,31 +75,37 @@ impl Launcher {
     /// Adds a new window to the launcher.
     /// This gets added to an existing group
     /// if an instance of the program is already open.
-    fn add_window(&mut self, window: SwayNode) {
-        let id = window.get_id().to_string();
+    fn add_window(&mut self, node: SwayNode) {
+        let id = node.get_id().to_string();
+
+        debug!("Adding window with ID {}", id);
 
         if let Some(item) = self.items.get_mut(&id) {
             let mut state = item
                 .state
                 .write()
                 .expect("Failed to get write lock on state");
-            let new_open_state = OpenState::from_node(&window);
-            state.open_state = OpenState::highest_of(&state.open_state, &new_open_state);
-            state.is_xwayland = window.is_xwayland();
+            let new_open_state = OpenState::from_node(&node);
+            state.open_state = OpenState::merge_states(vec![&state.open_state, &new_open_state]);
+            state.is_xwayland = node.is_xwayland();
 
             item.update_button_classes(&state);
 
-            let mut windows = item.windows.lock().expect("Failed to get lock on windows");
+            let mut windows = item
+                .windows
+                .write()
+                .expect("Failed to get write lock on windows");
 
             windows.insert(
-                window.id,
+                node.id,
                 LauncherWindow {
-                    con_id: window.id,
-                    name: window.name,
+                    con_id: node.id,
+                    name: node.name,
+                    open_state: new_open_state,
                 },
             );
         } else {
-            let item = LauncherItem::from_node(&window, &self.button_config);
+            let item = LauncherItem::from_node(&node, &self.button_config);
 
             self.container.add(&item.button);
             self.items.insert(id, item);
@@ -109,11 +118,15 @@ impl Launcher {
     fn remove_window(&mut self, window: &SwayNode) {
         let id = window.get_id().to_string();
 
+        debug!("Removing window with ID {}", id);
+
         let item = self.items.get_mut(&id);
 
         let remove = if let Some(item) = item {
             let windows = Rc::clone(&item.windows);
-            let mut windows = windows.lock().expect("Failed to get lock on windows");
+            let mut windows = windows
+                .write()
+                .expect("Failed to get write lock on windows");
 
             windows.remove(&window.id);
 
@@ -140,24 +153,33 @@ impl Launcher {
         }
     }
 
-    fn set_window_focused(&mut self, window: &SwayNode) {
-        let id = window.get_id().to_string();
+    /// Unfocuses the currently focused window
+    /// and focuses the newly focused one.
+    fn set_window_focused(&mut self, node: &SwayNode) {
+        let id = node.get_id().to_string();
 
-        let currently_focused = self.items.iter_mut().find(|item| {
+        debug!("Setting window with ID {} focused", id);
+
+        let prev_focused = self.items.iter_mut().find(|item| {
             item.state
                 .read()
                 .expect("Failed to get read lock on state")
                 .open_state
-                == OpenState::Focused
+                .is_focused()
         });
 
-        if let Some(currently_focused) = currently_focused {
-            let mut state = currently_focused
+        if let Some(prev_focused) = prev_focused {
+            let mut state = prev_focused
                 .state
                 .write()
                 .expect("Failed to get write lock on state");
-            state.open_state = OpenState::Open;
-            currently_focused.update_button_classes(&state);
+
+            // if a window from the same item took focus,
+            // we don't need to unfocus the item.
+            if prev_focused.app_id != id {
+                prev_focused.set_open_state(OpenState::open(), &mut state);
+                prev_focused.update_button_classes(&state);
+            }
         }
 
         let item = self.items.get_mut(&id);
@@ -166,17 +188,23 @@ impl Launcher {
                 .state
                 .write()
                 .expect("Failed to get write lock on state");
-            state.open_state = OpenState::Focused;
+            item.set_window_open_state(node.id, OpenState::focused(), &mut state);
             item.update_button_classes(&state);
         }
     }
 
+    /// Updates the window title for the given node.
     fn set_window_title(&mut self, window: SwayNode) {
         let id = window.get_id().to_string();
         let item = self.items.get_mut(&id);
 
+        debug!("Updating title for window with ID {}", id);
+
         if let (Some(item), Some(name)) = (item, window.name) {
-            let mut windows = item.windows.lock().expect("Failed to get lock on windows");
+            let mut windows = item
+                .windows
+                .write()
+                .expect("Failed to get write lock on windows");
             if windows.len() == 1 {
                 item.set_title(&name, &self.button_config);
             } else if let Some(window) = windows.get_mut(&window.id) {
@@ -189,17 +217,23 @@ impl Launcher {
         }
     }
 
-    fn set_window_urgent(&mut self, window: &SwayNode) {
-        let id = window.get_id().to_string();
+    /// Updates the window urgency based on the given node.
+    fn set_window_urgent(&mut self, node: &SwayNode) {
+        let id = node.get_id().to_string();
         let item = self.items.get_mut(&id);
+
+        debug!(
+            "Setting urgency to {} for window with ID {}",
+            node.urgent, id
+        );
 
         if let Some(item) = item {
             let mut state = item
                 .state
                 .write()
                 .expect("Failed to get write lock on state");
-            state.open_state =
-                OpenState::highest_of(&state.open_state, &OpenState::from_node(window));
+
+            item.set_window_open_state(node.id, OpenState::urgent(node.urgent), &mut state);
             item.update_button_classes(&state);
         }
     }

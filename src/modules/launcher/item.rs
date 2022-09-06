@@ -1,5 +1,6 @@
 use crate::collection::Collection;
 use crate::icon::{find_desktop_file, get_icon};
+use crate::modules::launcher::open_state::OpenState;
 use crate::modules::launcher::popup::Popup;
 use crate::modules::launcher::FocusEvent;
 use crate::sway::SwayNode;
@@ -9,7 +10,7 @@ use gtk::prelude::*;
 use gtk::{Button, IconTheme, Image};
 use std::process::{Command, Stdio};
 use std::rc::Rc;
-use std::sync::{Arc, Mutex, RwLock};
+use std::sync::{Arc, RwLock};
 use tokio::spawn;
 use tokio::sync::mpsc;
 use tracing::error;
@@ -18,7 +19,7 @@ use tracing::error;
 pub struct LauncherItem {
     pub app_id: String,
     pub favorite: bool,
-    pub windows: Rc<Mutex<Collection<i32, LauncherWindow>>>,
+    pub windows: Rc<RwLock<Collection<i32, LauncherWindow>>>,
     pub state: Arc<RwLock<State>>,
     pub button: Button,
 }
@@ -27,38 +28,7 @@ pub struct LauncherItem {
 pub struct LauncherWindow {
     pub con_id: i32,
     pub name: Option<String>,
-}
-
-#[derive(Debug, Clone, Eq, PartialEq)]
-pub enum OpenState {
-    Closed,
-    Open,
-    Focused,
-    Urgent,
-}
-
-impl OpenState {
-    pub const fn from_node(node: &SwayNode) -> Self {
-        if node.focused {
-            Self::Urgent
-        } else if node.urgent {
-            Self::Focused
-        } else {
-            Self::Open
-        }
-    }
-
-    pub fn highest_of(a: &Self, b: &Self) -> Self {
-        if a == &Self::Urgent || b == &Self::Urgent {
-            Self::Urgent
-        } else if a == &Self::Focused || b == &Self::Focused {
-            Self::Focused
-        } else if a == &Self::Open || b == &Self::Open {
-            Self::Open
-        } else {
-            Self::Closed
-        }
-    }
+    pub open_state: OpenState,
 }
 
 #[derive(Debug, Clone)]
@@ -89,7 +59,7 @@ impl LauncherItem {
         let item = Self {
             app_id,
             favorite,
-            windows: Rc::new(Mutex::new(Collection::new())),
+            windows: Rc::new(RwLock::new(Collection::new())),
             state: Arc::new(RwLock::new(state)),
             button,
         };
@@ -107,6 +77,7 @@ impl LauncherItem {
             LauncherWindow {
                 con_id: node.id,
                 name: node.name.clone(),
+                open_state: OpenState::from_node(node),
             },
         ));
 
@@ -118,7 +89,7 @@ impl LauncherItem {
         let item = Self {
             app_id: node.get_id().to_string(),
             favorite: false,
-            windows: Rc::new(Mutex::new(windows)),
+            windows: Rc::new(RwLock::new(windows)),
             state: Arc::new(RwLock::new(state)),
             button,
         };
@@ -130,7 +101,10 @@ impl LauncherItem {
     fn configure_button(&self, config: &ButtonConfig) {
         let button = &self.button;
 
-        let windows = self.windows.lock().expect("Failed to get lock on windows");
+        let windows = self
+            .windows
+            .read()
+            .expect("Failed to get read lock on windows");
 
         let name = if windows.len() == 1 {
             windows
@@ -163,7 +137,7 @@ impl LauncherItem {
 
         button.connect_clicked(move |_| {
             let state = state.read().expect("Failed to get read lock on state");
-            if state.open_state == OpenState::Open {
+            if state.open_state.is_open() {
                 focus_tx.try_send(()).expect("Failed to send focus event");
             } else {
                 // attempt to find desktop file and launch
@@ -215,7 +189,7 @@ impl LauncherItem {
         let tx_hover = config.tx.clone();
 
         button.connect_enter_notify_event(move |button, _| {
-            let windows = windows.lock().expect("Failed to get lock on windows");
+            let windows = windows.read().expect("Failed to get read lock on windows");
             if windows.len() > 1 {
                 popup.set_windows(windows.as_slice(), &tx_hover);
                 popup.show(button);
@@ -266,22 +240,53 @@ impl LauncherItem {
             style.remove_class("favorite");
         }
 
-        if state.open_state == OpenState::Open {
+        if state.open_state.is_open() {
             style.add_class("open");
         } else {
             style.remove_class("open");
         }
 
-        if state.open_state == OpenState::Focused {
+        if state.open_state.is_focused() {
             style.add_class("focused");
         } else {
             style.remove_class("focused");
         }
 
-        if state.open_state == OpenState::Urgent {
+        if state.open_state.is_urgent() {
             style.add_class("urgent");
         } else {
             style.remove_class("urgent");
         }
+    }
+
+    /// Sets the open state for a specific window on the item
+    /// and updates the item state based on all its windows.
+    pub fn set_window_open_state(&self, window_id: i32, new_state: OpenState, state: &mut State) {
+        let mut windows = self
+            .windows
+            .write()
+            .expect("Failed to get write lock on windows");
+
+        let window = windows.iter_mut().find(|w| w.con_id == window_id);
+        if let Some(window) = window {
+            window.open_state = new_state;
+
+            state.open_state =
+                OpenState::merge_states(windows.iter().map(|w| &w.open_state).collect());
+        }
+    }
+
+    /// Sets the open state on the item and all its windows.
+    /// This overrides the existing open states.
+    pub fn set_open_state(&self, new_state: OpenState, state: &mut State) {
+        state.open_state = new_state;
+        let mut windows = self
+            .windows
+            .write()
+            .expect("Failed to get write lock on windows");
+
+        windows
+            .iter_mut()
+            .for_each(|window| window.open_state = new_state);
     }
 }
