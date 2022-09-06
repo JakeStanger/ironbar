@@ -1,5 +1,5 @@
 <component name="ProjectRunConfigurationManager">
-  <configuration default="false" name="Run (Debug)" type="CargoCommandRunConfiguration" factoryName="Cargo Command">
+  <configuration default="false" name="Run (GTK Debug)" type="CargoCommandRunConfiguration" factoryName="Cargo Command">
     <option name="command" value="run --package ironbar --bin ironbar" />
     <option name="workingDirectory" value="file://$PROJECT_DIR$" />
     <option name="channel" value="DEFAULT" />

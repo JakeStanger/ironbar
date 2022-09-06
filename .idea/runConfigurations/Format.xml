@@ -1,6 +1,6 @@
 <component name="ProjectRunConfigurationManager">
-  <configuration default="false" name="Run (Live Config)" type="CargoCommandRunConfiguration" factoryName="Cargo Command">
-    <option name="command" value="run" />
+  <configuration default="false" name="Format" type="CargoCommandRunConfiguration" factoryName="Cargo Command">
+    <option name="command" value="fmt" />
     <option name="workingDirectory" value="file://$PROJECT_DIR$" />
     <option name="channel" value="DEFAULT" />
     <option name="requiredFeatures" value="true" />
@@ -9,14 +9,9 @@
     <option name="withSudo" value="false" />
     <option name="buildTarget" value="REMOTE" />
     <option name="backtrace" value="SHORT" />
-    <envs>
-      <env name="PATH" value="/usr/local/bin:/usr/bin:$USER_HOME$/.local/share/npm/bin" />
-      <env name="RUST_LOG" value="trace" />
-    </envs>
+    <envs />
     <option name="isRedirectInput" value="false" />
     <option name="redirectInputPath" value="" />
-    <method v="2">
-      <option name="CARGO.BUILD_TASK_PROVIDER" enabled="true" />
-    </method>
+    <method v="2" />
   </configuration>
 </component>
