@@ -1,3 +1,4 @@
+use crate::broadcaster::Broadcaster;
 use color_eyre::{Report, Result};
 use crossbeam_channel::Receiver;
 use ksway::{Error, IpcCommand, IpcEvent};
@@ -55,13 +56,13 @@ pub struct SwayOutput {
     pub name: String,
 }
 
-type Broadcaster<T> = Arc<Mutex<UnboundedBroadcast<T>>>;
+type EventBroadcaster<T> = Arc<Mutex<Broadcaster<T>>>;
 
 pub struct SwayClient {
     client: ksway::Client,
 
-    workspace_bc: Broadcaster<WorkspaceEvent>,
-    window_bc: Broadcaster<WindowEvent>,
+    workspace_bc: EventBroadcaster<WorkspaceEvent>,
+    window_bc: EventBroadcaster<WindowEvent>,
 }
 
 impl SwayClient {
@@ -72,8 +73,8 @@ impl SwayClient {
         }?;
         info!("Sway IPC client connected");
 
-        let workspace_bc = Arc::new(Mutex::new(UnboundedBroadcast::new()));
-        let window_bc = Arc::new(Mutex::new(UnboundedBroadcast::new()));
+        let workspace_bc = Arc::new(Mutex::new(Broadcaster::new()));
+        let window_bc = Arc::new(Mutex::new(Broadcaster::new()));
 
         let workspace_bc2 = workspace_bc.clone();
         let window_bc2 = window_bc.clone();
@@ -189,36 +190,4 @@ lazy_static! {
 
 pub fn get_client() -> Arc<Mutex<SwayClient>> {
     Arc::clone(&CLIENT)
-}
-
-/// Crossbeam channel wrapper
-/// which sends messages to all receivers.
-pub struct UnboundedBroadcast<T> {
-    channels: Vec<crossbeam_channel::Sender<T>>,
-}
-
-impl<T: 'static + Clone + Send + Sync> UnboundedBroadcast<T> {
-    /// Creates a new broadcaster.
-    pub const fn new() -> Self {
-        Self { channels: vec![] }
-    }
-
-    /// Creates a new sender/receiver pair.
-    /// The sender is stored locally and the receiver is returned.
-    pub fn subscribe(&mut self) -> Receiver<T> {
-        let (tx, rx) = crossbeam_channel::unbounded();
-
-        self.channels.push(tx);
-
-        rx
-    }
-
-    /// Attempts to send a messsge to all receivers.
-    pub fn send(&self, message: T) -> Result<(), crossbeam_channel::SendError<T>> {
-        for c in &self.channels {
-            c.send(message.clone())?;
-        }
-
-        Ok(())
-    }
 }

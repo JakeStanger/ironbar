@@ -121,6 +121,7 @@ impl MpdPopup {
         }
     }
 
+    // TODO: Use a channel instead of this method
     pub fn update(&self, song: &Song, status: &Status, path: &Path) {
         let prev_album = self.album.label.text();
         let curr_album = song.album().unwrap_or_default();

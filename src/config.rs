@@ -1,11 +1,11 @@
 use crate::modules::clock::ClockModule;
-use crate::modules::focused::FocusedModule;
-use crate::modules::launcher::LauncherModule;
-use crate::modules::mpd::MpdModule;
-use crate::modules::script::ScriptModule;
-use crate::modules::sysinfo::SysInfoModule;
-use crate::modules::tray::TrayModule;
-use crate::modules::workspaces::WorkspacesModule;
+// use crate::modules::focused::FocusedModule;
+// use crate::modules::launcher::LauncherModule;
+// use crate::modules::mpd::MpdModule;
+// use crate::modules::script::ScriptModule;
+// use crate::modules::sysinfo::SysInfoModule;
+// use crate::modules::tray::TrayModule;
+// use crate::modules::workspaces::WorkspacesModule;
 use color_eyre::eyre::{Context, ContextCompat};
 use color_eyre::{eyre, Help, Report};
 use dirs::config_dir;
@@ -19,13 +19,13 @@ use std::{env, fs};
 #[serde(tag = "type", rename_all = "kebab-case")]
 pub enum ModuleConfig {
     Clock(ClockModule),
-    Mpd(MpdModule),
-    Tray(TrayModule),
-    Workspaces(WorkspacesModule),
-    SysInfo(SysInfoModule),
-    Launcher(LauncherModule),
-    Script(ScriptModule),
-    Focused(FocusedModule),
+    //  Mpd(MpdModule),
+    //  Tray(TrayModule),
+    //  Workspaces(WorkspacesModule),
+    //  SysInfo(SysInfoModule),
+    //  Launcher(LauncherModule),
+    //  Script(ScriptModule),
+    //  Focused(FocusedModule),
 }
 
 #[derive(Debug, Deserialize, Clone)]

@@ -1,14 +1,14 @@
 mod popup;
 
-use self::popup::Popup;
-use crate::modules::{Module, ModuleInfo};
-use chrono::Local;
+use crate::modules::{Module, ModuleInfo, ModuleUpdateEvent, ModuleWidget, WidgetContext};
+use chrono::{DateTime, Local};
 use color_eyre::Result;
 use glib::Continue;
 use gtk::prelude::*;
-use gtk::{Button, Orientation};
+use gtk::{Align, Button, Calendar, Label, Orientation};
 use serde::Deserialize;
 use tokio::spawn;
+use tokio::sync::mpsc;
 use tokio::time::sleep;
 
 #[derive(Debug, Deserialize, Clone)]
@@ -27,45 +27,81 @@ fn default_format() -> String {
 }
 
 impl Module<Button> for ClockModule {
-    fn into_widget(self, info: &ModuleInfo) -> Result<Button> {
-        let button = Button::new();
+    type Message = DateTime<Local>;
 
-        let popup = Popup::new(
-            "popup-clock",
-            info.app,
-            info.monitor,
-            Orientation::Vertical,
-            info.bar_position,
-        );
-        popup.add_clock_widgets();
-
-        button.show_all();
-
-        button.connect_clicked(move |button| {
-            popup.show(button);
-        });
-
-        let (tx, rx) = glib::MainContext::channel(glib::PRIORITY_DEFAULT);
+    fn spawn_controller(
+        &self,
+        info: &ModuleInfo,
+        tx: mpsc::Sender<ModuleUpdateEvent<Self::Message>>,
+    ) -> Result<()> {
         spawn(async move {
-            let format = self.format.as_str();
             loop {
                 let date = Local::now();
-                let date_string = format!("{}", date.format(format));
-
-                tx.send(date_string).expect("Failed to send date string");
-
+                tx.send(ModuleUpdateEvent::Update(date))
+                    .await
+                    .expect("Failed to send date");
                 sleep(tokio::time::Duration::from_millis(500)).await;
             }
         });
 
+        Ok(())
+    }
+
+    fn into_widget(self, context: WidgetContext<Self::Message>) -> Result<ModuleWidget<Button>> {
+        let button = Button::new();
+
+        button.connect_clicked(move |button| {
+            context
+                .tx
+                .try_send(super::ModuleUpdateEvent::TogglePopup)
+                .expect("Failed to toggle popup");
+        });
+
+        let format = self.format.clone();
         {
             let button = button.clone();
-            rx.attach(None, move |s| {
-                button.set_label(s.as_str());
+            context.widget_rx.attach(None, move |date| {
+                let date_string = format!("{}", date.format(&format));
+                button.set_label(&date_string);
                 Continue(true)
             });
         }
 
-        Ok(button)
+        let popup = self.into_popup(context.popup_rx)?;
+
+        Ok(ModuleWidget {
+            widget: button,
+            popup: Some(popup),
+        })
+    }
+}
+
+impl ClockModule {
+    fn into_popup(self, rx: glib::Receiver<DateTime<Local>>) -> Result<gtk::Box> {
+        let container = gtk::Box::builder()
+            .orientation(Orientation::Vertical)
+            .name("popup-clock")
+            .build();
+
+        let clock = Label::builder()
+            .name("calendar-clock")
+            .halign(Align::Center)
+            .build();
+        let format = "%H:%M:%S";
+
+        container.add(&clock);
+
+        let calendar = Calendar::builder().name("calendar").build();
+        container.add(&calendar);
+
+        {
+            rx.attach(None, move |date| {
+                let date_string = format!("{}", date.format(format));
+                clock.set_label(&date_string);
+                Continue(true)
+            });
+        }
+
+        Ok(container)
     }
 }

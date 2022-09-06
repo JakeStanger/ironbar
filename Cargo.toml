@@ -8,6 +8,7 @@ description = "Customisable wlroots/sway bar"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+derive_builder = "0.11.2"
 gtk = "0.15.5"
 gtk-layer-shell = "0.4.1"
 glib = "0.15.12"

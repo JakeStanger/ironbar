@@ -1,12 +1,16 @@
+use std::collections::HashMap;
+
 use crate::config::BarPosition;
+use crate::modules::ModuleInfo;
 use gtk::gdk::Monitor;
 use gtk::prelude::*;
-use gtk::{Application, ApplicationWindow, Button, Orientation};
+use gtk::{ApplicationWindow, Button};
 
 #[derive(Debug, Clone)]
 pub struct Popup {
     pub window: ApplicationWindow,
-    pub container: gtk::Box,
+    // pub container: gtk::Box,
+    pub cache: HashMap<String, gtk::Box>,
     monitor: Monitor,
 }
 
@@ -14,14 +18,11 @@ impl Popup {
     /// Creates a new popup window.
     /// This includes setting up gtk-layer-shell
     /// and an empty `gtk::Box` container.
-    pub fn new(
-        name: &str,
-        app: &Application,
-        monitor: &Monitor,
-        orientation: Orientation,
-        bar_position: &BarPosition,
-    ) -> Self {
-        let win = ApplicationWindow::builder().application(app).build();
+    pub fn new(module_info: ModuleInfo) -> Self {
+        let pos = module_info.bar_position;
+        let win = ApplicationWindow::builder()
+            .application(module_info.app)
+            .build();
 
         gtk_layer_shell::init_for_window(&win);
         gtk_layer_shell::set_layer(&win, gtk_layer_shell::Layer::Overlay);
@@ -29,47 +30,24 @@ impl Popup {
         gtk_layer_shell::set_margin(
             &win,
             gtk_layer_shell::Edge::Top,
-            if bar_position == &BarPosition::Top {
-                5
-            } else {
-                0
-            },
+            if pos == &BarPosition::Top { 5 } else { 0 },
         );
         gtk_layer_shell::set_margin(
             &win,
             gtk_layer_shell::Edge::Bottom,
-            if bar_position == &BarPosition::Bottom {
-                5
-            } else {
-                0
-            },
+            if pos == &BarPosition::Bottom { 5 } else { 0 },
         );
         gtk_layer_shell::set_margin(&win, gtk_layer_shell::Edge::Left, 0);
         gtk_layer_shell::set_margin(&win, gtk_layer_shell::Edge::Right, 0);
 
-        gtk_layer_shell::set_anchor(
-            &win,
-            gtk_layer_shell::Edge::Top,
-            bar_position == &BarPosition::Top,
-        );
+        gtk_layer_shell::set_anchor(&win, gtk_layer_shell::Edge::Top, pos == &BarPosition::Top);
         gtk_layer_shell::set_anchor(
             &win,
             gtk_layer_shell::Edge::Bottom,
-            bar_position == &BarPosition::Bottom,
+            pos == &BarPosition::Bottom,
         );
         gtk_layer_shell::set_anchor(&win, gtk_layer_shell::Edge::Left, true);
         gtk_layer_shell::set_anchor(&win, gtk_layer_shell::Edge::Right, false);
-
-        let content = gtk::Box::builder()
-            .orientation(orientation)
-            .spacing(0)
-            .hexpand(false)
-            .name(name)
-            .build();
-
-        content.style_context().add_class("popup");
-
-        win.add(&content);
 
         win.connect_leave_notify_event(|win, ev| {
             const THRESHOLD: f64 = 3.0;
@@ -88,8 +66,28 @@ impl Popup {
 
         Self {
             window: win,
-            container: content,
-            monitor: monitor.clone(),
+            // container: content,
+            cache: HashMap::new(),
+            monitor: module_info.monitor.clone(),
+        }
+    }
+
+    pub fn register_content(&mut self, key: String, content: gtk::Box) {
+        self.cache.insert(key, content);
+    }
+
+    pub fn show_content(&self, key: &str) {
+        self.clear_window();
+
+        if let Some(content) = self.cache.get(key) {
+            self.window.add(content);
+        }
+    }
+
+    fn clear_window(&self) {
+        let children = self.window.children();
+        for child in children {
+            self.window.remove(&child);
         }
     }
 

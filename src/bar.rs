@@ -1,10 +1,16 @@
+use crate::broadcaster::BridgeChannel;
 use crate::config::{BarPosition, ModuleConfig};
-use crate::modules::{Module, ModuleInfo, ModuleLocation};
+use crate::modules::{Module, ModuleInfoBuilder, ModuleLocation, ModuleUpdateEvent, WidgetContext};
+use crate::popup::Popup;
 use crate::Config;
+use chrono::{DateTime, Local};
 use color_eyre::Result;
 use gtk::gdk::Monitor;
 use gtk::prelude::*;
 use gtk::{Application, ApplicationWindow, Orientation};
+use std::sync::{Arc, RwLock};
+use tokio::spawn;
+use tokio::sync::mpsc;
 use tracing::{debug, info};
 
 /// Creates a new window for a bar,
@@ -65,40 +71,29 @@ fn load_modules(
     monitor: &Monitor,
     output_name: &str,
 ) -> Result<()> {
-    if let Some(modules) = config.left {
-        let info = ModuleInfo {
-            app,
-            location: ModuleLocation::Left,
-            bar_position: &config.position,
-            monitor,
-            output_name,
-        };
+    let mut info_builder = ModuleInfoBuilder::default();
+    let info_builder = info_builder
+        .app(app)
+        .bar_position(&config.position)
+        .monitor(monitor)
+        .output_name(output_name);
 
-        add_modules(left, modules, &info)?;
+    if let Some(modules) = config.left {
+        let mut info_builder = info_builder.location(ModuleLocation::Left);
+
+        add_modules(left, modules, &mut info_builder)?;
     }
 
     if let Some(modules) = config.center {
-        let info = ModuleInfo {
-            app,
-            location: ModuleLocation::Center,
-            bar_position: &config.position,
-            monitor,
-            output_name,
-        };
+        let mut info_builder = info_builder.location(ModuleLocation::Left);
 
-        add_modules(center, modules, &info)?;
+        add_modules(center, modules, &mut info_builder)?;
     }
 
     if let Some(modules) = config.right {
-        let info = ModuleInfo {
-            app,
-            location: ModuleLocation::Right,
-            bar_position: &config.position,
-            monitor,
-            output_name,
-        };
+        let mut info_builder = info_builder.location(ModuleLocation::Left);
 
-        add_modules(right, modules, &info)?;
+        add_modules(right, modules, &mut info_builder)?;
     }
 
     Ok(())
@@ -106,26 +101,76 @@ fn load_modules(
 
 /// Adds modules into a provided GTK box,
 /// which should be one of its left, center or right containers.
-fn add_modules(content: &gtk::Box, modules: Vec<ModuleConfig>, info: &ModuleInfo) -> Result<()> {
+fn add_modules(
+    content: &gtk::Box,
+    modules: Vec<ModuleConfig>,
+    info_builder: &mut ModuleInfoBuilder,
+) -> Result<()> {
     macro_rules! add_module {
         ($module:expr, $name:literal) => {{
-            let widget = $module.into_widget(&info)?;
-            widget.set_widget_name($name);
-            content.add(&widget);
+            // let widget = $module.into_widget(&info)?;
+            // widget.set_widget_name($name);
+            // content.add(&widget);
             debug!("Added module of type {}", $name);
         }};
     }
 
+    let base_popup_info = info_builder.module_name("").build()?;
+    let popup = Popup::new(base_popup_info);
+    let popup = Arc::new(RwLock::new(popup));
+
     for config in modules {
         match config {
-            ModuleConfig::Clock(module) => add_module!(module, "clock"),
-            ModuleConfig::Mpd(module) => add_module!(module, "mpd"),
-            ModuleConfig::Tray(module) => add_module!(module, "tray"),
-            ModuleConfig::Workspaces(module) => add_module!(module, "workspaces"),
-            ModuleConfig::SysInfo(module) => add_module!(module, "sysinfo"),
-            ModuleConfig::Launcher(module) => add_module!(module, "launcher"),
-            ModuleConfig::Script(module) => add_module!(module, "script"),
-            ModuleConfig::Focused(module) => add_module!(module, "focused"),
+            ModuleConfig::Clock(module) => {
+                let info = info_builder.module_name("clock").build()?;
+                // let broadcaster = GLibBroadcaster::<DateTime<Local>>::new();
+                // setup_module(Box::new(module), content, info);
+                let (w_tx, w_rx) = glib::MainContext::channel::<DateTime<Local>>(glib::PRIORITY_DEFAULT);
+                let (p_tx, p_rx) = glib::MainContext::channel::<DateTime<Local>>(glib::PRIORITY_DEFAULT);
+
+                // let (tx, mut rx) = mpsc::channel::<ModuleUpdateEvent<DateTime<Local>>>(32);
+                let channel = BridgeChannel::<ModuleUpdateEvent<DateTime<Local>>>::new();
+
+                module.spawn_controller(&info, tx.clone())?;
+
+                let context = WidgetContext { id: String::from("clock"), widget_rx: w_rx, popup_rx: p_rx, tx };
+
+                let widget = module.into_widget(context)?;
+                
+                let popup2 = Arc::clone(&popup);
+                spawn(async move {
+                    let popup = popup2;
+                    while let Some(ev) = rx.recv().await {
+                        match ev {
+                            ModuleUpdateEvent::Update(update) => {
+                                p_tx.send(update)?;
+                                w_tx.send(update)?;
+                            },
+                            ModuleUpdateEvent::TogglePopup => {
+                                popup.read().expect("Failed to get read lock on popup").show_content("clock");
+                            }
+                        }
+                    }
+
+                    Ok::<(), std::sync::mpsc::SendError<DateTime<Local>>>(())
+                });
+
+                content.add(&widget.widget);
+                widget.widget.set_widget_name(info.module_name);
+
+                if let Some(popup_content) = widget.popup {
+                    popup.write().expect("Failed to get write lock on popup").register_content(String::from("clock"), popup_content);
+                }
+
+            }
+             // ModuleConfig::Clock(module) => add_module!(module, "clock"),
+             // ModuleConfig::Mpd(module) => add_module!(module, "mpd"),
+             // ModuleConfig::Tray(module) => add_module!(module, "tray"),
+             // ModuleConfig::Workspaces(module) => add_module!(module, "workspaces"),
+             // ModuleConfig::SysInfo(module) => add_module!(module, "sysinfo"),
+             // ModuleConfig::Launcher(module) => add_module!(module, "launcher"),
+             // ModuleConfig::Script(module) => add_module!(module, "script"),
+             // ModuleConfig::Focused(module) => add_module!(module, "focused"),
         }
     }
 

@@ -1,4 +1,5 @@
 mod bar;
+mod broadcaster;
 mod collection;
 mod config;
 mod icon;
