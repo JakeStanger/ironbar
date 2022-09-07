@@ -2,7 +2,7 @@ pub use crate::popup::Popup;
 use gtk::gdk_pixbuf::Pixbuf;
 use gtk::prelude::*;
 use gtk::{Button, Image, Label, Orientation};
-use mpd_client::commands::responses::{PlayState, Song, Status};
+use mpd_client::responses::{PlayState, Song, Status};
 use std::path::Path;
 use tokio::sync::mpsc;
 

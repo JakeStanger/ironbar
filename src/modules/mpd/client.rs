@@ -1,7 +1,8 @@
 use lazy_static::lazy_static;
-use mpd_client::commands::responses::Status;
-use mpd_client::raw::MpdProtocolError;
-use mpd_client::{Client, Connection};
+use mpd_client::client::Connection;
+use mpd_client::protocol::MpdProtocolError;
+use mpd_client::responses::Status;
+use mpd_client::Client;
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
