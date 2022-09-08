@@ -26,6 +26,8 @@ cargo install ironbar
 yay -S ironbar-git
 ```
 
+[aur package](https://aur.archlinux.org/packages/ironbar-git)
+
 ### Source
 
 ```sh
@@ -36,7 +38,7 @@ cargo build --release
 install target/release/ironbar ~/.local/bin/ironbar
 ```
 
-[aur package](https://aur.archlinux.org/packages/ironbar-git)
+[repo](https://github.com/jakestanger/ironbar)
 
 ## Configuration
 
