@@ -15,11 +15,11 @@ pub mod workspaces;
 
 use crate::config::BarPosition;
 use color_eyre::Result;
-/// Shamelessly stolen from here:
-/// <https://github.com/zeroeightysix/rustbar/blob/master/src/modules/module.rs>
+use derive_builder::Builder;
 use glib::IsA;
 use gtk::gdk::Monitor;
 use gtk::{Application, Widget};
+use tokio::sync::mpsc;
 
 #[derive(Clone)]
 pub enum ModuleLocation {
@@ -28,19 +28,71 @@ pub enum ModuleLocation {
     Right,
 }
 
+#[derive(Builder)]
 pub struct ModuleInfo<'a> {
     pub app: &'a Application,
     pub location: ModuleLocation,
     pub bar_position: &'a BarPosition,
     pub monitor: &'a Monitor,
     pub output_name: &'a str,
+    pub module_name: &'a str,
+}
+
+#[derive(Debug)]
+pub enum ModuleUpdateEvent<T> {
+    /// Sends an update to the module UI
+    Update(T),
+    /// Toggles the open state of the popup.
+    /// Takes the button X position and width.
+    TogglePopup((i32, i32)),
+    /// Force sets the popup open.
+    /// Takes the button X position and width.
+    OpenPopup((i32, i32)),
+    /// Force sets the popup closed.
+    ClosePopup,
+}
+
+pub struct WidgetContext<TSend, TReceive> {
+    pub id: usize,
+    pub tx: mpsc::Sender<ModuleUpdateEvent<TSend>>,
+    pub controller_tx: mpsc::Sender<TReceive>,
+    pub widget_rx: glib::Receiver<TSend>,
+    pub popup_rx: glib::Receiver<TSend>,
+}
+
+pub struct ModuleWidget<W: IsA<Widget>> {
+    pub widget: W,
+    pub popup: Option<gtk::Box>,
 }
 
 pub trait Module<W>
 where
     W: IsA<Widget>,
 {
-    /// Consumes the module config
-    /// and produces a GTK widget of type `W`
-    fn into_widget(self, info: &ModuleInfo) -> Result<W>;
+    type SendMessage;
+    type ReceiveMessage;
+
+    fn spawn_controller(
+        &self,
+        info: &ModuleInfo,
+        tx: mpsc::Sender<ModuleUpdateEvent<Self::SendMessage>>,
+        rx: mpsc::Receiver<Self::ReceiveMessage>,
+    ) -> Result<()>;
+
+    fn into_widget(
+        self,
+        context: WidgetContext<Self::SendMessage, Self::ReceiveMessage>,
+        info: &ModuleInfo,
+    ) -> Result<ModuleWidget<W>>;
+
+    fn into_popup(
+        self,
+        _tx: mpsc::Sender<Self::ReceiveMessage>,
+        _rx: glib::Receiver<Self::SendMessage>,
+    ) -> Option<gtk::Box>
+    where
+        Self: Sized,
+    {
+        None
+    }
 }

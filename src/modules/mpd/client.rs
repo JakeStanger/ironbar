@@ -1,32 +1,99 @@
 use lazy_static::lazy_static;
-use mpd_client::client::Connection;
+use mpd_client::client::{CommandError, Connection, ConnectionEvent, Subsystem};
+use mpd_client::commands::Command;
 use mpd_client::protocol::MpdProtocolError;
 use mpd_client::responses::Status;
 use mpd_client::Client;
 use std::collections::HashMap;
+use std::fmt::{Display, Formatter};
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::net::{TcpStream, UnixStream};
+use tokio::spawn;
+use tokio::sync::broadcast::{channel, error::SendError, Receiver, Sender};
 use tokio::sync::Mutex;
 use tokio::time::sleep;
+use tracing::debug;
 
 lazy_static! {
-    static ref CLIENTS: Arc<Mutex<HashMap<String, Arc<Client>>>> =
+    static ref CONNECTIONS: Arc<Mutex<HashMap<String, Arc<MpdClient>>>> =
         Arc::new(Mutex::new(HashMap::new()));
 }
 
-pub async fn get_connection(host: &str) -> Option<Arc<Client>> {
-    let mut clients = CLIENTS.lock().await;
+pub struct MpdClient {
+    client: Client,
+    tx: Sender<()>,
+    _rx: Receiver<()>,
+}
 
-    match clients.get(host) {
-        Some(client) => Some(Arc::clone(client)),
-        None => {
-            let client = wait_for_connection(host, Duration::from_secs(5), None).await?;
-            let client = Arc::new(client);
-            clients.insert(host.to_string(), Arc::clone(&client));
-            Some(client)
+#[derive(Debug)]
+pub enum MpdConnectionError {
+    MaxRetries,
+    ProtocolError(MpdProtocolError),
+}
+
+impl Display for MpdConnectionError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::MaxRetries => write!(f, "Reached max retries"),
+            Self::ProtocolError(e) => write!(f, "{:?}", e),
         }
+    }
+}
+
+impl std::error::Error for MpdConnectionError {}
+
+impl MpdClient {
+    async fn new(host: &str) -> Result<Self, MpdConnectionError> {
+        debug!("Creating new MPD connection to {}", host);
+
+        let (client, mut state_changes) =
+            wait_for_connection(host, Duration::from_secs(5), None).await?;
+
+        let (tx, rx) = channel(16);
+        let tx2 = tx.clone();
+
+        spawn(async move {
+            while let Some(change) = state_changes.next().await {
+                debug!("Received state change: {:?}", change);
+
+                if let ConnectionEvent::SubsystemChange(Subsystem::Player | Subsystem::Queue) =
+                    change
+                {
+                    tx2.send(())?;
+                }
+            }
+
+            Ok::<(), SendError<()>>(())
+        });
+
+        Ok(Self {
+            client,
+            tx,
+            _rx: rx,
+        })
+    }
+
+    pub fn subscribe(&self) -> Receiver<()> {
+        self.tx.subscribe()
+    }
+
+    pub async fn command<C: Command>(&self, command: C) -> Result<C::Response, CommandError> {
+        self.client.command(command).await
+    }
+}
+
+pub async fn get_client(host: &str) -> Result<Arc<MpdClient>, MpdConnectionError> {
+    let mut connections = CONNECTIONS.lock().await;
+    match connections.get(host) {
+        None => {
+            let client = MpdClient::new(host).await?;
+            let client = Arc::new(client);
+            connections.insert(host.to_string(), Arc::clone(&client));
+            Ok(client)
+        }
+        Some(client) => Ok(Arc::clone(client)),
     }
 }
 
@@ -34,20 +101,26 @@ async fn wait_for_connection(
     host: &str,
     interval: Duration,
     max_retries: Option<usize>,
-) -> Option<Client> {
+) -> Result<Connection, MpdConnectionError> {
     let mut retries = 0;
     let max_retries = max_retries.unwrap_or(usize::MAX);
 
     loop {
         if retries == max_retries {
-            break None;
-        }
-
-        if let Some(conn) = try_get_mpd_conn(host).await {
-            break Some(conn.0);
+            break Err(MpdConnectionError::MaxRetries);
         }
 
         retries += 1;
+
+        match try_get_mpd_conn(host).await {
+            Ok(conn) => break Ok(conn),
+            Err(err) => {
+                if retries == max_retries {
+                    break Err(MpdConnectionError::ProtocolError(err));
+                }
+            }
+        }
+
         sleep(interval).await;
     }
 }
@@ -55,14 +128,12 @@ async fn wait_for_connection(
 /// Cycles through each MPD host and
 /// returns the first one which connects,
 /// or none if there are none
-async fn try_get_mpd_conn(host: &str) -> Option<Connection> {
-    let connection = if is_unix_socket(host) {
+async fn try_get_mpd_conn(host: &str) -> Result<Connection, MpdProtocolError> {
+    if is_unix_socket(host) {
         connect_unix(host).await
     } else {
         connect_tcp(host).await
-    };
-
-    connection.ok()
+    }
 }
 
 fn is_unix_socket(host: &str) -> bool {

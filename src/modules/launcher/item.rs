@@ -1,292 +1,299 @@
+use super::open_state::OpenState;
 use crate::collection::Collection;
-use crate::icon::{find_desktop_file, get_icon};
-use crate::modules::launcher::open_state::OpenState;
-use crate::modules::launcher::popup::Popup;
-use crate::modules::launcher::FocusEvent;
-use crate::sway::SwayNode;
-use crate::Report;
-use color_eyre::Help;
+use crate::icon::get_icon;
+use crate::modules::launcher::{ItemEvent, LauncherUpdate};
+use crate::modules::ModuleUpdateEvent;
+use crate::popup::Popup;
+use crate::sway::node::{get_node_id, is_node_xwayland};
 use gtk::prelude::*;
 use gtk::{Button, IconTheme, Image};
-use std::process::{Command, Stdio};
 use std::rc::Rc;
-use std::sync::{Arc, RwLock};
-use tokio::spawn;
-use tokio::sync::mpsc;
-use tracing::error;
+use std::sync::RwLock;
+use swayipc_async::Node;
+use tokio::sync::mpsc::Sender;
 
 #[derive(Debug, Clone)]
-pub struct LauncherItem {
+pub struct Item {
     pub app_id: String,
     pub favorite: bool,
-    pub windows: Rc<RwLock<Collection<i32, LauncherWindow>>>,
-    pub state: Arc<RwLock<State>>,
-    pub button: Button,
+    pub open_state: OpenState,
+    pub windows: Collection<i64, Window>,
+    pub name: Option<String>,
+    pub is_xwayland: bool,
 }
 
-#[derive(Debug, Clone)]
-pub struct LauncherWindow {
-    pub con_id: i32,
+impl Item {
+    pub const fn new(app_id: String, open_state: OpenState, favorite: bool) -> Self {
+        Self {
+            app_id,
+            favorite,
+            open_state,
+            windows: Collection::new(),
+            name: None,
+            is_xwayland: false,
+        }
+    }
+
+    /// Merges the provided node into this launcher item
+    pub fn merge_node(&mut self, node: Node) -> Window {
+        let id = node.id;
+
+        if self.windows.is_empty() {
+            self.name = node.name.clone();
+        }
+
+        self.is_xwayland = self.is_xwayland || is_node_xwayland(&node);
+
+        let window: Window = node.into();
+        self.windows.insert(id, window.clone());
+
+        self.recalculate_open_state();
+
+        window
+    }
+
+    pub fn unmerge_node(&mut self, node: &Node) {
+        self.windows.remove(&node.id);
+        self.recalculate_open_state();
+    }
+
+    pub fn get_name(&self) -> &str {
+        self.name.as_ref().unwrap_or(&self.app_id)
+    }
+
+    pub fn set_window_name(&mut self, window_id: i64, name: Option<String>) {
+        if let Some(window) = self.windows.get_mut(&window_id) {
+            if let OpenState::Open { focused: true, .. } = window.open_state {
+                self.name = name.clone();
+            }
+
+            window.name = name;
+        }
+    }
+
+    pub fn set_unfocused(&mut self) {
+        let focused = self
+            .windows
+            .iter_mut()
+            .find(|window| window.open_state.is_focused());
+
+        if let Some(focused) = focused {
+            focused.open_state = OpenState::Open {
+                focused: false,
+                urgent: focused.open_state.is_urgent(),
+            };
+
+            self.recalculate_open_state();
+        }
+    }
+
+    pub fn set_window_focused(&mut self, window_id: i64, focused: bool) {
+        if let Some(window) = self.windows.get_mut(&window_id) {
+            window.open_state =
+                OpenState::merge_states(&[&window.open_state, &OpenState::focused(focused)]);
+
+            self.recalculate_open_state();
+        }
+    }
+
+    pub fn set_window_urgent(&mut self, window_id: i64, urgent: bool) {
+        if let Some(window) = self.windows.get_mut(&window_id) {
+            window.open_state =
+                OpenState::merge_states(&[&window.open_state, &OpenState::urgent(urgent)]);
+
+            self.recalculate_open_state();
+        }
+    }
+
+    /// Sets this item's open state
+    /// to the merged result of its windows' open states
+    fn recalculate_open_state(&mut self) {
+        let new_state = OpenState::merge_states(
+            &self
+                .windows
+                .iter()
+                .map(|win| &win.open_state)
+                .collect::<Vec<_>>(),
+        );
+        self.open_state = new_state;
+    }
+}
+
+impl From<Node> for Item {
+    fn from(node: Node) -> Self {
+        let app_id = get_node_id(&node).to_string();
+        let open_state = OpenState::from_node(&node);
+        let name = node.name.clone();
+
+        let is_xwayland = is_node_xwayland(&node);
+
+        let mut windows = Collection::new();
+        windows.insert(node.id, node.into());
+
+        Self {
+            app_id,
+            favorite: false,
+            open_state,
+            windows,
+            name,
+            is_xwayland,
+        }
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct Window {
+    pub id: i64,
     pub name: Option<String>,
     pub open_state: OpenState,
 }
 
-#[derive(Debug, Clone)]
-pub struct State {
-    pub is_xwayland: bool,
-    pub open_state: OpenState,
+impl From<Node> for Window {
+    fn from(node: Node) -> Self {
+        let open_state = OpenState::from_node(&node);
+
+        Self {
+            id: node.id,
+            name: node.name,
+            open_state,
+        }
+    }
 }
 
-#[derive(Debug, Clone)]
-pub struct ButtonConfig {
-    pub icon_theme: IconTheme,
+pub struct MenuState {
+    pub num_windows: usize,
+}
+
+pub struct ItemButton {
+    pub button: Button,
+    pub persistent: bool,
     pub show_names: bool,
-    pub show_icons: bool,
-    pub popup: Popup,
-    pub tx: mpsc::Sender<FocusEvent>,
+    pub menu_state: Rc<RwLock<MenuState>>,
 }
 
-impl LauncherItem {
-    pub fn new(app_id: String, favorite: bool, config: &ButtonConfig) -> Self {
-        let button = Button::new();
-        button.style_context().add_class("item");
+impl ItemButton {
+    pub fn new(
+        item: &Item,
+        show_names: bool,
+        show_icons: bool,
+        icon_theme: &IconTheme,
+        tx: &Sender<ModuleUpdateEvent<LauncherUpdate>>,
+        controller_tx: &Sender<ItemEvent>,
+    ) -> Self {
+        let mut button = Button::builder();
 
-        let state = State {
-            open_state: OpenState::Closed,
-            is_xwayland: false,
-        };
-
-        let item = Self {
-            app_id,
-            favorite,
-            windows: Rc::new(RwLock::new(Collection::new())),
-            state: Arc::new(RwLock::new(state)),
-            button,
-        };
-
-        item.configure_button(config);
-        item
-    }
-
-    pub fn from_node(node: &SwayNode, config: &ButtonConfig) -> Self {
-        let button = Button::new();
-        button.style_context().add_class("item");
-
-        let windows = Collection::from((
-            node.id,
-            LauncherWindow {
-                con_id: node.id,
-                name: node.name.clone(),
-                open_state: OpenState::from_node(node),
-            },
-        ));
-
-        let state = State {
-            open_state: OpenState::from_node(node),
-            is_xwayland: node.is_xwayland(),
-        };
-
-        let item = Self {
-            app_id: node.get_id().to_string(),
-            favorite: false,
-            windows: Rc::new(RwLock::new(windows)),
-            state: Arc::new(RwLock::new(state)),
-            button,
-        };
-
-        item.configure_button(config);
-        item
-    }
-
-    fn configure_button(&self, config: &ButtonConfig) {
-        let button = &self.button;
-
-        let windows = self
-            .windows
-            .read()
-            .expect("Failed to get read lock on windows");
-
-        let name = if windows.len() == 1 {
-            windows
-                .first()
-                .expect("Failed to get first window")
-                .name
-                .as_ref()
-        } else {
-            Some(&self.app_id)
-        };
-
-        if let Some(name) = name {
-            self.set_title(name, config);
+        if show_names {
+            button = button.label(item.get_name());
         }
 
-        if config.show_icons {
-            let icon = get_icon(&config.icon_theme, &self.app_id, 32);
+        if show_icons {
+            let icon = get_icon(icon_theme, &item.app_id, 32);
             if icon.is_some() {
                 let image = Image::from_pixbuf(icon.as_ref());
-                button.set_image(Some(&image));
-                button.set_always_show_image(true);
+                button = button.image(&image).always_show_image(true);
             }
         }
 
-        let app_id = self.app_id.clone();
-        let state = Arc::clone(&self.state);
-        let tx_click = config.tx.clone();
+        let button = button.build();
 
-        let (focus_tx, mut focus_rx) = mpsc::channel(32);
+        let style_context = button.style_context();
+        style_context.add_class("item");
 
-        button.connect_clicked(move |_| {
-            let state = state.read().expect("Failed to get read lock on state");
-            if state.open_state.is_open() {
-                focus_tx.try_send(()).expect("Failed to send focus event");
-            } else {
-                // attempt to find desktop file and launch
-                match find_desktop_file(&app_id) {
-                    Some(file) => {
-                        if let Err(err) = Command::new("gtk-launch")
-                            .arg(
-                                file.file_name()
-                                    .expect("File segment missing from path to desktop file"),
-                            )
-                            .stdout(Stdio::null())
-                            .stderr(Stdio::null())
-                            .spawn()
-                        {
-                            error!(
-                                "{:?}",
-                                Report::new(err)
-                                    .wrap_err("Failed to run gtk-launch command.")
-                                    .suggestion("Perhaps the desktop file is invalid?")
-                            );
-                        }
-                    }
-                    None => error!("Could not find desktop file for {}", app_id),
-                }
-            }
-        });
+        if item.favorite {
+            style_context.add_class("favorite");
+        }
+        if item.open_state.is_open() {
+            style_context.add_class("open");
+        }
+        if item.open_state.is_focused() {
+            style_context.add_class("focused");
+        }
+        if item.open_state.is_urgent() {
+            style_context.add_class("urgent");
+        }
 
-        let app_id = self.app_id.clone();
-        let state = Arc::clone(&self.state);
-
-        spawn(async move {
-            while focus_rx.recv().await == Some(()) {
-                let state = state.read().expect("Failed to get read lock on state");
-                if state.is_xwayland {
-                    tx_click
-                        .try_send(FocusEvent::Class(app_id.clone()))
-                        .expect("Failed to send focus event");
+        {
+            let app_id = item.app_id.clone();
+            let tx = controller_tx.clone();
+            button.connect_clicked(move |button| {
+                // lazy check :|
+                let style_context = button.style_context();
+                if style_context.has_class("open") {
+                    tx.try_send(ItemEvent::FocusItem(app_id.clone()))
+                        .expect("Failed to send item focus event");
                 } else {
-                    tx_click
-                        .try_send(FocusEvent::AppId(app_id.clone()))
-                        .expect("Failed to send focus event");
+                    tx.try_send(ItemEvent::OpenItem(app_id.clone()))
+                        .expect("Failed to send item open event");
                 }
-            }
-        });
+            });
+        }
 
-        let popup = config.popup.clone();
-        let popup2 = config.popup.clone();
-        let windows = Rc::clone(&self.windows);
-        let tx_hover = config.tx.clone();
+        let menu_state = Rc::new(RwLock::new(MenuState {
+            num_windows: item.windows.len(),
+        }));
 
-        button.connect_enter_notify_event(move |button, _| {
-            let windows = windows.read().expect("Failed to get read lock on windows");
-            if windows.len() > 1 {
-                popup.set_windows(windows.as_slice(), &tx_hover);
-                popup.show(button);
-            }
+        {
+            let app_id = item.app_id.clone();
+            let tx = tx.clone();
+            let menu_state = menu_state.clone();
 
-            Inhibit(false)
-        });
+            button.connect_enter_notify_event(move |button, _| {
+                let menu_state = menu_state
+                    .read()
+                    .expect("Failed to get read lock on item menu state");
 
-        {}
+                if menu_state.num_windows > 1 {
+                    tx.try_send(ModuleUpdateEvent::Update(LauncherUpdate::Hover(
+                        app_id.clone(),
+                    )))
+                    .expect("Failed to send item open popup event");
 
-        button.connect_leave_notify_event(move |_, e| {
-            let (_, y) = e.position();
-            // hover boundary
-            if y > 2.0 {
-                popup2.hide();
-            }
+                    tx.try_send(ModuleUpdateEvent::OpenPopup(Popup::button_pos(button)))
+                        .expect("Failed to send item open popup event");
+                } else {
+                    tx.try_send(ModuleUpdateEvent::ClosePopup)
+                        .expect("Failed to send item close popup event");
+                }
 
-            Inhibit(false)
-        });
-
-        let style = button.style_context();
-
-        style.add_class("launcher-item");
-        self.update_button_classes(&self.state.read().expect("Failed to get read lock on state"));
+                Inhibit(false)
+            });
+        }
 
         button.show_all();
-    }
 
-    pub fn set_title(&self, title: &str, config: &ButtonConfig) {
-        if config.show_names {
-            self.button.set_label(title);
-        } else {
-            self.button.set_tooltip_text(Some(title));
-        };
-    }
-
-    /// Updates the classnames on the GTK button
-    /// based on its current state.
-    ///
-    /// State must be passed as an arg here rather than
-    /// using `self.state` to avoid a weird `RwLock` issue.
-    pub fn update_button_classes(&self, state: &State) {
-        let style = self.button.style_context();
-
-        if self.favorite {
-            style.add_class("favorite");
-        } else {
-            style.remove_class("favorite");
-        }
-
-        if state.open_state.is_open() {
-            style.add_class("open");
-        } else {
-            style.remove_class("open");
-        }
-
-        if state.open_state.is_focused() {
-            style.add_class("focused");
-        } else {
-            style.remove_class("focused");
-        }
-
-        if state.open_state.is_urgent() {
-            style.add_class("urgent");
-        } else {
-            style.remove_class("urgent");
+        Self {
+            button,
+            persistent: item.favorite,
+            show_names,
+            menu_state,
         }
     }
 
-    /// Sets the open state for a specific window on the item
-    /// and updates the item state based on all its windows.
-    pub fn set_window_open_state(&self, window_id: i32, new_state: OpenState, state: &mut State) {
-        let mut windows = self
-            .windows
-            .write()
-            .expect("Failed to get write lock on windows");
+    pub fn set_open(&self, open: bool) {
+        self.update_class("open", open);
 
-        let window = windows.iter_mut().find(|w| w.con_id == window_id);
-        if let Some(window) = window {
-            window.open_state = new_state;
-
-            state.open_state =
-                OpenState::merge_states(windows.iter().map(|w| &w.open_state).collect());
+        if !open {
+            self.set_focused(false);
+            self.set_urgent(false);
         }
     }
 
-    /// Sets the open state on the item and all its windows.
-    /// This overrides the existing open states.
-    pub fn set_open_state(&self, new_state: OpenState, state: &mut State) {
-        state.open_state = new_state;
-        let mut windows = self
-            .windows
-            .write()
-            .expect("Failed to get write lock on windows");
+    pub fn set_focused(&self, focused: bool) {
+        self.update_class("focused", focused);
+    }
 
-        windows
-            .iter_mut()
-            .for_each(|window| window.open_state = new_state);
+    pub fn set_urgent(&self, urgent: bool) {
+        self.update_class("urgent", urgent);
+    }
+
+    /// Adds or removes a class to the button based on `toggle`.
+    fn update_class(&self, class: &str, toggle: bool) {
+        let style_context = self.button.style_context();
+
+        if toggle {
+            style_context.add_class(class);
+        } else {
+            style_context.remove_class(class);
+        }
     }
 }

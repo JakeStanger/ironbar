@@ -8,10 +8,11 @@ description = "Customisable wlroots/sway bar"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+derive_builder = "0.11.2"
 gtk = "0.15.5"
 gtk-layer-shell = "0.4.1"
 glib = "0.15.12"
-tokio = { version = "1.20.1", features = ["macros", "rt-multi-thread", "time"] }
+tokio = { version = "1.21.0", features = ["macros", "rt-multi-thread", "time"] }
 tracing = "0.1.36"
 tracing-subscriber = { version = "0.3.15", features = ["env-filter"] }
 tracing-error = "0.2.0"
@@ -26,13 +27,12 @@ serde_yaml = "0.9.4"
 toml = "0.5.9"
 cornfig = "0.3.0"
 lazy_static = "1.4.0"
+async_once = "0.2.6"
 regex = "1.6.0"
-stray = "0.1.1"
+stray = { git = "https://github.com/JakeStanger/stray.git", branch = "fix/tracing" }
 dirs = "4.0.0"
 walkdir = "2.3.2"
 notify = "5.0.0"
 mpd_client = "1.0.0"
-ksway = "0.1.0"
+swayipc-async = { git = "https://github.com/JakeStanger/swayipc-rs.git", branch = "feat/derive-clone" }
 sysinfo = "0.26.2"
-# required for wrapping ksway
-crossbeam-channel = "0.5.6"

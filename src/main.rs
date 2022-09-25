@@ -1,4 +1,5 @@
 mod bar;
+mod bridge_channel;
 mod collection;
 mod config;
 mod icon;
@@ -11,16 +12,18 @@ mod sway;
 use crate::bar::create_bar;
 use crate::config::{Config, MonitorConfig};
 use crate::style::load_css;
-use crate::sway::{get_client, SwayOutput};
+use crate::sway::get_client;
 use color_eyre::eyre::Result;
 use color_eyre::Report;
 use dirs::config_dir;
 use gtk::gdk::Display;
 use gtk::prelude::*;
 use gtk::Application;
-use ksway::IpcCommand;
 use std::env;
+use std::future::Future;
 use std::process::exit;
+use tokio::runtime::Handle;
+use tokio::task::block_in_place;
 
 use crate::logging::install_tracing;
 use tracing::{debug, error, info};
@@ -48,14 +51,14 @@ async fn main() -> Result<()> {
         .build();
 
     app.connect_activate(move |app| {
-        let display = match Display::default() {
-            Some(display) => display,
-            None => {
+        let display = Display::default().map_or_else(
+            || {
                 let report = Report::msg("Failed to get default GTK display");
                 error!("{:?}", report);
                 exit(1)
-            }
-        };
+            },
+            |display| display,
+        );
 
         let config = match Config::load() {
             Ok(config) => config,
@@ -66,21 +69,21 @@ async fn main() -> Result<()> {
         };
         debug!("Loaded config file");
 
-        if let Err(err) = create_bars(app, &display, &config) {
+        if let Err(err) = await_sync(create_bars(app, &display, &config)) {
             error!("{:?}", err);
             exit(2);
         }
 
         debug!("Created bars");
 
-        let style_path = match config_dir() {
-            Some(dir) => dir.join("ironbar").join("style.css"),
-            None => {
+        let style_path = config_dir().map_or_else(
+            || {
                 let report = Report::msg("Failed to locate user config dir");
                 error!("{:?}", report);
                 exit(3);
-            }
-        };
+            },
+            |dir| dir.join("ironbar").join("style.css"),
+        );
 
         if style_path.exists() {
             load_css(style_path);
@@ -96,20 +99,18 @@ async fn main() -> Result<()> {
 }
 
 /// Creates each of the bars across each of the (configured) outputs.
-fn create_bars(app: &Application, display: &Display, config: &Config) -> Result<()> {
+async fn create_bars(app: &Application, display: &Display, config: &Config) -> Result<()> {
     let outputs = {
-        let sway = get_client();
-        let mut sway = sway.lock().expect("Failed to get lock on Sway IPC client");
+        let sway = get_client().await;
+        let mut sway = sway.lock().await;
 
-        let outputs = sway.ipc(IpcCommand::GetOutputs);
+        let outputs = sway.get_outputs().await;
 
         match outputs {
             Ok(outputs) => Ok(outputs),
             Err(err) => Err(err),
         }
     }?;
-
-    let outputs = serde_json::from_slice::<Vec<SwayOutput>>(&outputs)?;
 
     debug!("Received {} outputs from Sway IPC", outputs.len());
 
@@ -121,7 +122,7 @@ fn create_bars(app: &Application, display: &Display, config: &Config) -> Result<
 
         info!("Creating bar on '{}'", monitor_name);
 
-        // TODO: Could we use an Arc<Config> here to avoid cloning?
+        // TODO: Could we use an Arc<Config> or `Cow<Config>` here to avoid cloning?
         config.monitors.as_ref().map_or_else(
             || create_bar(app, &monitor, monitor_name, config.clone()),
             |config| {
@@ -144,4 +145,16 @@ fn create_bars(app: &Application, display: &Display, config: &Config) -> Result<
     }
 
     Ok(())
+}
+
+/// Blocks on a `Future` until it resolves.
+///
+/// This is not an `async` operation
+/// so can be used outside of an async function.
+///
+/// Do note it must be called from within a Tokio runtime still.
+///
+/// Use sparingly! Prefer async functions wherever possible.
+pub fn await_sync<F: Future>(f: F) -> F::Output {
+    block_in_place(|| Handle::current().block_on(f))
 }
