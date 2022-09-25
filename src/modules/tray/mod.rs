@@ -1,25 +1,22 @@
-use crate::modules::{Module, ModuleInfo};
+mod client;
+
+use crate::await_sync;
+use crate::modules::tray::client::get_tray_event_client;
+use crate::modules::{Module, ModuleInfo, ModuleUpdateEvent, ModuleWidget, WidgetContext};
 use color_eyre::Result;
-use futures_util::StreamExt;
 use gtk::prelude::*;
 use gtk::{IconLookupFlags, IconTheme, Image, Menu, MenuBar, MenuItem, SeparatorMenuItem};
 use serde::Deserialize;
 use std::collections::HashMap;
-use stray::message::menu::{MenuItem as MenuItemInfo, MenuType, TrayMenu};
+use stray::message::menu::{MenuItem as MenuItemInfo, MenuType};
 use stray::message::tray::StatusNotifierItem;
 use stray::message::{NotifierItemCommand, NotifierItemMessage};
-use stray::SystemTray;
 use tokio::spawn;
 use tokio::sync::mpsc;
+use tokio::sync::mpsc::{Receiver, Sender};
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct TrayModule;
-
-#[derive(Debug)]
-enum TrayUpdate {
-    Update(String, Box<StatusNotifierItem>, Option<TrayMenu>),
-    Remove(String),
-}
 
 /// Gets a GTK `Image` component
 /// for the status notifier item's icon.
@@ -39,7 +36,7 @@ fn get_icon(item: &StatusNotifierItem) -> Option<Image> {
 /// for the provided submenu array.
 fn get_menu_items(
     menu: &[MenuItemInfo],
-    tx: &mpsc::Sender<NotifierItemCommand>,
+    tx: &Sender<NotifierItemCommand>,
     id: &str,
     path: &str,
 ) -> Vec<MenuItem> {
@@ -90,72 +87,88 @@ fn get_menu_items(
 }
 
 impl Module<MenuBar> for TrayModule {
-    fn into_widget(self, _info: &ModuleInfo) -> Result<MenuBar> {
-        let container = MenuBar::new();
+    type SendMessage = NotifierItemMessage;
+    type ReceiveMessage = NotifierItemCommand;
 
-        let (tx, rx) = glib::MainContext::channel(glib::PRIORITY_DEFAULT);
-        let (ui_tx, ui_rx) = mpsc::channel(32);
+    fn spawn_controller(
+        &self,
+        _info: &ModuleInfo,
+        tx: Sender<ModuleUpdateEvent<Self::SendMessage>>,
+        mut rx: Receiver<Self::ReceiveMessage>,
+    ) -> Result<()> {
+        let client = await_sync(async { get_tray_event_client().await });
+        let (tray_tx, mut tray_rx) = client.subscribe();
 
+        // listen to tray updates
         spawn(async move {
-            // FIXME: Can only spawn one of these at a time - means cannot have tray on multiple bars
-            let mut tray = SystemTray::new(ui_rx).await;
-
-            // listen for tray updates & send message to update UI
-            while let Some(message) = tray.next().await {
-                match message {
-                    NotifierItemMessage::Update {
-                        address: id,
-                        item,
-                        menu,
-                    } => {
-                        tx.send(TrayUpdate::Update(id, Box::new(item), menu))
-                            .expect("Failed to send tray update event");
-                    }
-                    NotifierItemMessage::Remove { address: id } => {
-                        tx.send(TrayUpdate::Remove(id))
-                            .expect("Failed to send tray remove event");
-                    }
-                }
+            while let Ok(message) = tray_rx.recv().await {
+                tx.send(ModuleUpdateEvent::Update(message)).await?;
             }
+
+            Ok::<(), mpsc::error::SendError<ModuleUpdateEvent<Self::SendMessage>>>(())
         });
+
+        // send tray commands
+        spawn(async move {
+            while let Some(cmd) = rx.recv().await {
+                tray_tx.send(cmd).await?;
+            }
+
+            Ok::<(), mpsc::error::SendError<NotifierItemCommand>>(())
+        });
+
+        Ok(())
+    }
+
+    fn into_widget(
+        self,
+        context: WidgetContext<Self::SendMessage, Self::ReceiveMessage>,
+        _info: &ModuleInfo,
+    ) -> Result<ModuleWidget<MenuBar>> {
+        let container = MenuBar::new();
 
         {
             let container = container.clone();
             let mut widgets = HashMap::new();
 
             // listen for UI updates
-            rx.attach(None, move |update| {
+            context.widget_rx.attach(None, move |update| {
                 match update {
-                    TrayUpdate::Update(id, item, menu) => {
-                        let menu_item = widgets.remove(id.as_str()).unwrap_or_else(|| {
+                    NotifierItemMessage::Update {
+                        item,
+                        address,
+                        menu,
+                    } => {
+                        let menu_item = widgets.remove(address.as_str()).unwrap_or_else(|| {
                             let menu_item = MenuItem::new();
                             menu_item.style_context().add_class("item");
                             if let Some(image) = get_icon(&item) {
-                                image.set_widget_name(id.as_str());
+                                image.set_widget_name(address.as_str());
                                 menu_item.add(&image);
                             }
-
                             container.add(&menu_item);
                             menu_item.show_all();
-
                             menu_item
                         });
-
                         if let (Some(menu_opts), Some(menu_path)) = (menu, item.menu) {
                             let submenus = menu_opts.submenus;
                             if !submenus.is_empty() {
                                 let menu = Menu::new();
-                                get_menu_items(&submenus, &ui_tx.clone(), &id, &menu_path)
-                                    .iter()
-                                    .for_each(|item| menu.add(item));
+                                get_menu_items(
+                                    &submenus,
+                                    &context.controller_tx.clone(),
+                                    &address,
+                                    &menu_path,
+                                )
+                                .iter()
+                                .for_each(|item| menu.add(item));
                                 menu_item.set_submenu(Some(&menu));
                             }
                         }
-
-                        widgets.insert(id, menu_item);
+                        widgets.insert(address, menu_item);
                     }
-                    TrayUpdate::Remove(id) => {
-                        if let Some(widget) = widgets.get(&id) {
+                    NotifierItemMessage::Remove { address } => {
+                        if let Some(widget) = widgets.get(&address) {
                             container.remove(widget);
                         }
                     }
@@ -165,6 +178,9 @@ impl Module<MenuBar> for TrayModule {
             });
         };
 
-        Ok(container)
+        Ok(ModuleWidget {
+            widget: container,
+            popup: None,
+        })
     }
 }

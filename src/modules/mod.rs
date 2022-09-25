@@ -5,13 +5,13 @@
 /// Clicking the widget opens a popup containing the current time
 /// with second-level precision and a calendar.
 pub mod clock;
-// pub mod focused;
-// pub mod launcher;
-// pub mod mpd;
-// pub mod script;
-// pub mod sysinfo;
-// pub mod tray;
-// pub mod workspaces;
+pub mod focused;
+pub mod launcher;
+pub mod mpd;
+pub mod script;
+pub mod sysinfo;
+pub mod tray;
+pub mod workspaces;
 
 use crate::config::BarPosition;
 use color_eyre::Result;
@@ -38,22 +38,26 @@ pub struct ModuleInfo<'a> {
     pub module_name: &'a str,
 }
 
-#[derive(Clone)]
-pub struct ModuleController<T> {
-    rx: crossbeam_channel::Receiver<T>,
-}
-
 #[derive(Debug)]
 pub enum ModuleUpdateEvent<T> {
+    /// Sends an update to the module UI
     Update(T),
-    TogglePopup,
+    /// Toggles the open state of the popup.
+    /// Takes the button X position and width.
+    TogglePopup((i32, i32)),
+    /// Force sets the popup open.
+    /// Takes the button X position and width.
+    OpenPopup((i32, i32)),
+    /// Force sets the popup closed.
+    ClosePopup,
 }
 
-pub struct WidgetContext<T> {
-    pub id: String,
-    pub tx: mpsc::Sender<ModuleUpdateEvent<T>>,
-    pub widget_rx: glib::Receiver<T>,
-    pub popup_rx: glib::Receiver<T>,
+pub struct WidgetContext<TSend, TReceive> {
+    pub id: usize,
+    pub tx: mpsc::Sender<ModuleUpdateEvent<TSend>>,
+    pub controller_tx: mpsc::Sender<TReceive>,
+    pub widget_rx: glib::Receiver<TSend>,
+    pub popup_rx: glib::Receiver<TSend>,
 }
 
 pub struct ModuleWidget<W: IsA<Widget>> {
@@ -65,52 +69,30 @@ pub trait Module<W>
 where
     W: IsA<Widget>,
 {
-    type Message;
-    // type Sender = mpsc::Sender<Self::Message>;
-    // type Receiver = glib::Receiver<Self::Message>;
+    type SendMessage;
+    type ReceiveMessage;
 
     fn spawn_controller(
         &self,
         info: &ModuleInfo,
-        tx: mpsc::Sender<ModuleUpdateEvent<Self::Message>>,
+        tx: mpsc::Sender<ModuleUpdateEvent<Self::SendMessage>>,
+        rx: mpsc::Receiver<Self::ReceiveMessage>,
     ) -> Result<()>;
 
-    fn into_widget(self, context: WidgetContext<Self::Message>) -> Result<ModuleWidget<W>>;
-    // fn as_popup(&self, rx: glib::Receiver<T>) -> Option<Result<gtk::Box>>;
+    fn into_widget(
+        self,
+        context: WidgetContext<Self::SendMessage, Self::ReceiveMessage>,
+        info: &ModuleInfo,
+    ) -> Result<ModuleWidget<W>>;
 
-    // /// Consumes the module config
-    // /// and produces a GTK widget of type `W`
-    // fn into_widget(self, info: &ModuleInfo) -> Result<W>;
+    fn into_popup(
+        self,
+        _tx: mpsc::Sender<Self::ReceiveMessage>,
+        _rx: glib::Receiver<Self::SendMessage>,
+    ) -> Option<gtk::Box>
+    where
+        Self: Sized,
+    {
+        None
+    }
 }
-
-// pub fn setup_module<W, T>(
-//     module: Box<dyn Module<W, T>>,
-//     content: &gtk::Box,
-//     info: ModuleInfo,
-// ) -> Result<()>
-// where
-//     W: IsA<Widget>,
-//     T: 'static + Clone + Send + Sync,
-// {
-//     let (w_tx, w_rx) = glib::MainContext::channel::<T>(glib::PRIORITY_DEFAULT);
-//     let (p_tx, p_rx) = glib::MainContext::channel::<T>(glib::PRIORITY_DEFAULT);
-//
-//     let (tx, mut rx) = mpsc::channel::<T>(32);
-//
-//     module.spawn_controller(&info, tx);
-//
-//     let widget = module.into_widget(w_rx)?;
-//     // let popup = module.as_popup(p_rx);
-//
-//     spawn(async move {
-//         while let Some(ev) = rx.recv().await {
-//             p_tx.send(ev.clone());
-//             w_tx.send(ev);
-//         }
-//     });
-//
-//     content.add(&widget);
-//     widget.set_widget_name(info.module_name);
-//
-//     Ok(())
-// }

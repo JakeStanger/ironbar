@@ -1,4 +1,4 @@
-use crate::modules::{Module, ModuleInfo};
+use crate::modules::{Module, ModuleInfo, ModuleUpdateEvent, ModuleWidget, WidgetContext};
 use color_eyre::Result;
 use gtk::prelude::*;
 use gtk::{Label, Orientation};
@@ -7,6 +7,7 @@ use serde::Deserialize;
 use std::collections::HashMap;
 use sysinfo::{CpuExt, System, SystemExt};
 use tokio::spawn;
+use tokio::sync::mpsc::{Receiver, Sender};
 use tokio::time::sleep;
 
 #[derive(Debug, Deserialize, Clone)]
@@ -16,20 +17,15 @@ pub struct SysInfoModule {
 }
 
 impl Module<gtk::Box> for SysInfoModule {
-    fn into_widget(self, _info: &ModuleInfo) -> Result<gtk::Box> {
-        let re = Regex::new(r"\{([\w-]+)}")?;
+    type SendMessage = HashMap<String, String>;
+    type ReceiveMessage = ();
 
-        let container = gtk::Box::new(Orientation::Horizontal, 10);
-
-        let mut labels = Vec::new();
-
-        for format in &self.format {
-            let label = Label::builder().label(format).name("item").build();
-            container.add(&label);
-            labels.push(label);
-        }
-
-        let (tx, rx) = glib::MainContext::channel(glib::PRIORITY_DEFAULT);
+    fn spawn_controller(
+        &self,
+        _info: &ModuleInfo,
+        tx: Sender<ModuleUpdateEvent<Self::SendMessage>>,
+        _rx: Receiver<Self::ReceiveMessage>,
+    ) -> Result<()> {
         spawn(async move {
             let mut sys = System::new_all();
 
@@ -45,19 +41,46 @@ impl Module<gtk::Box> for SysInfoModule {
 
                 // TODO: Add remaining format info
 
-                format_info.insert("memory-percent", format!("{:0>2.0}", memory_percent));
-                format_info.insert("cpu-percent", format!("{:0>2.0}", cpu_percent));
+                format_info.insert(
+                    String::from("memory-percent"),
+                    format!("{:0>2.0}", memory_percent),
+                );
+                format_info.insert(
+                    String::from("cpu-percent"),
+                    format!("{:0>2.0}", cpu_percent),
+                );
 
-                tx.send(format_info)
+                tx.send(ModuleUpdateEvent::Update(format_info))
+                    .await
                     .expect("Failed to send system info map");
 
                 sleep(tokio::time::Duration::from_secs(1)).await;
             }
         });
 
+        Ok(())
+    }
+
+    fn into_widget(
+        self,
+        context: WidgetContext<Self::SendMessage, Self::ReceiveMessage>,
+        _info: &ModuleInfo,
+    ) -> Result<ModuleWidget<gtk::Box>> {
+        let re = Regex::new(r"\{([\w-]+)}")?;
+
+        let container = gtk::Box::new(Orientation::Horizontal, 10);
+
+        let mut labels = Vec::new();
+
+        for format in &self.format {
+            let label = Label::builder().label(format).name("item").build();
+            container.add(&label);
+            labels.push(label);
+        }
+
         {
             let formats = self.format;
-            rx.attach(None, move |info| {
+            context.widget_rx.attach(None, move |info| {
                 for (format, label) in formats.iter().zip(labels.clone()) {
                     let format_compiled = re.replace(format, |caps: &Captures| {
                         info.get(&caps[1])
@@ -72,6 +95,9 @@ impl Module<gtk::Box> for SysInfoModule {
             });
         }
 
-        Ok(container)
+        Ok(ModuleWidget {
+            widget: container,
+            popup: None,
+        })
     }
 }

@@ -1,4 +1,4 @@
-use crate::sway::SwayNode;
+use swayipc_async::Node;
 
 /// Open state for a launcher item, or item window.
 #[derive(Debug, Clone, Eq, PartialEq, Copy)]
@@ -9,25 +9,17 @@ pub enum OpenState {
 
 impl OpenState {
     /// Creates from `SwayNode`
-    pub const fn from_node(node: &SwayNode) -> Self {
+    pub const fn from_node(node: &Node) -> Self {
         Self::Open {
             focused: node.focused,
             urgent: node.urgent,
         }
     }
 
-    /// Creates open without focused/urgent
-    pub const fn open() -> Self {
-        Self::Open {
-            focused: false,
-            urgent: false,
-        }
-    }
-
     /// Creates open with focused
-    pub const fn focused() -> Self {
+    pub const fn focused(focused: bool) -> Self {
         Self::Open {
-            focused: true,
+            focused,
             urgent: false,
         }
     }
@@ -59,7 +51,7 @@ impl OpenState {
     /// This is effectively an OR operation,
     /// so sets state to open and flags to true if any state is open
     /// or any instance of the flag is true.
-    pub fn merge_states(states: Vec<&Self>) -> Self {
+    pub fn merge_states(states: &[&Self]) -> Self {
         states.iter().fold(Self::Closed, |merged, current| {
             if merged.is_open() || current.is_open() {
                 Self::Open {

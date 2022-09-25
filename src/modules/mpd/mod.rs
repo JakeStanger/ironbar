@@ -1,26 +1,51 @@
 mod client;
-mod popup;
 
-use self::popup::Popup;
-use crate::modules::mpd::client::{get_connection, get_duration, get_elapsed};
-use crate::modules::mpd::popup::{MpdPopup, PopupEvent};
-use crate::modules::{Module, ModuleInfo};
+use crate::modules::mpd::client::MpdConnectionError;
+use crate::modules::mpd::client::{get_client, get_duration, get_elapsed};
+use crate::modules::{Module, ModuleInfo, ModuleUpdateEvent, ModuleWidget, WidgetContext};
+use crate::popup::Popup;
 use color_eyre::Result;
 use dirs::{audio_dir, home_dir};
 use glib::Continue;
+use gtk::gdk_pixbuf::Pixbuf;
 use gtk::prelude::*;
-use gtk::{Button, Orientation};
+use gtk::{Button, Image, Label, Orientation};
 use mpd_client::commands;
 use mpd_client::responses::{PlayState, Song, Status};
 use mpd_client::tag::Tag;
 use regex::Regex;
 use serde::Deserialize;
 use std::path::PathBuf;
-use std::time::Duration;
 use tokio::spawn;
 use tokio::sync::mpsc;
-use tokio::time::sleep;
+use tokio::sync::mpsc::{Receiver, Sender};
 use tracing::error;
+
+#[derive(Debug)]
+pub enum PlayerCommand {
+    Previous,
+    Toggle,
+    Next,
+}
+
+#[derive(Debug, Deserialize, Clone)]
+pub struct Icons {
+    /// Icon to display when playing.
+    #[serde(default = "default_icon_play")]
+    play: Option<String>,
+    /// Icon to display when paused.
+    #[serde(default = "default_icon_pause")]
+    pause: Option<String>,
+}
+
+impl Default for Icons {
+    fn default() -> Self {
+        Self {
+            pause: default_icon_pause(),
+            play: default_icon_play(),
+        }
+    }
+}
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct MpdModule {
@@ -30,12 +55,10 @@ pub struct MpdModule {
     /// Format of current song info to display on the bar.
     #[serde(default = "default_format")]
     format: String,
-    /// Icon to display when playing.
-    #[serde(default = "default_icon_play")]
-    icon_play: Option<String>,
-    /// Icon to display when paused.
-    #[serde(default = "default_icon_pause")]
-    icon_pause: Option<String>,
+
+    /// Player state icons
+    #[serde(default)]
+    icons: Icons,
 
     /// Path to root of music directory.
     #[serde(default = "default_music_dir")]
@@ -89,76 +112,72 @@ fn get_tokens(re: &Regex, format_string: &str) -> Vec<String> {
         .collect::<Vec<_>>()
 }
 
-enum Event {
-    Open,
-    Update(Box<Option<(Song, Status, String)>>),
+#[derive(Clone, Debug)]
+pub struct SongUpdate {
+    song: Song,
+    status: Status,
+    display_string: String,
 }
 
 impl Module<Button> for MpdModule {
-    fn into_widget(self, info: &ModuleInfo) -> Result<Button> {
+    type SendMessage = Option<SongUpdate>;
+    type ReceiveMessage = PlayerCommand;
+
+    fn spawn_controller(
+        &self,
+        _info: &ModuleInfo,
+        tx: Sender<ModuleUpdateEvent<Self::SendMessage>>,
+        mut rx: Receiver<Self::ReceiveMessage>,
+    ) -> Result<()> {
+        let host1 = self.host.clone();
+        let host2 = self.host.clone();
+        let format = self.format.clone();
+        let icons = self.icons.clone();
+
         let re = Regex::new(r"\{([\w-]+)}")?;
         let tokens = get_tokens(&re, self.format.as_str());
 
-        let button = Button::new();
-
-        let (ui_tx, mut ui_rx) = mpsc::channel(32);
-
-        let popup = Popup::new(
-            "popup-mpd",
-            info.app,
-            info.monitor,
-            Orientation::Horizontal,
-            info.bar_position,
-        );
-        let mpd_popup = MpdPopup::new(popup, ui_tx);
-
-        let (tx, rx) = glib::MainContext::channel(glib::PRIORITY_DEFAULT);
-        let click_tx = tx.clone();
-
-        let music_dir = self.music_dir.clone();
-
-        button.connect_clicked(move |_| {
-            click_tx
-                .send(Event::Open)
-                .expect("Failed to send popup open event");
-        });
-
-        let host = self.host.clone();
-        let host2 = self.host.clone();
+        // poll mpd server
         spawn(async move {
-            let client = get_connection(&host)
-                .await
-                .expect("Unexpected error when trying to connect to MPD server");
+            let client = get_client(&host1).await.expect("Failed to connect to MPD");
+            let mut mpd_rx = client.subscribe();
 
             loop {
                 let current_song = client.command(commands::CurrentSong).await;
                 let status = client.command(commands::Status).await;
 
                 if let (Ok(Some(song)), Ok(status)) = (current_song, status) {
-                    let string = self
-                        .replace_tokens(self.format.as_str(), &tokens, &song.song, &status)
-                        .await;
+                    let display_string =
+                        replace_tokens(format.as_str(), &tokens, &song.song, &status, &icons);
 
-                    tx.send(Event::Update(Box::new(Some((song.song, status, string)))))
-                        .expect("Failed to send update event");
+                    let update = SongUpdate {
+                        song: song.song,
+                        status,
+                        display_string,
+                    };
+
+                    tx.send(ModuleUpdateEvent::Update(Some(update))).await?;
                 } else {
-                    tx.send(Event::Update(Box::new(None)))
-                        .expect("Failed to send update event");
+                    tx.send(ModuleUpdateEvent::Update(None)).await?;
                 }
 
-                sleep(Duration::from_secs(1)).await;
+                // wait for player state change
+                if mpd_rx.recv().await.is_err() {
+                    break;
+                }
             }
+
+            Ok::<(), mpsc::error::SendError<ModuleUpdateEvent<Self::SendMessage>>>(())
         });
 
+        // listen to ui events
         spawn(async move {
-            let client = get_connection(&host2)
-                .await
-                .expect("Unexpected error when trying to connect to MPD server");
+            let client = get_client(&host2).await?;
 
-            while let Some(event) = ui_rx.recv().await {
+            while let Some(event) = rx.recv().await {
                 let res = match event {
-                    PopupEvent::Previous => client.command(commands::Previous).await,
-                    PopupEvent::Toggle => match client.command(commands::Status).await {
+                    PlayerCommand::Previous => client.command(commands::Previous).await,
+                    PlayerCommand::Toggle => match client.command(commands::Status).await {
                         Ok(status) => match status.state {
                             PlayState::Playing => client.command(commands::SetPause(true)).await,
                             PlayState::Paused => client.command(commands::SetPause(false)).await,
@@ -166,86 +185,258 @@ impl Module<Button> for MpdModule {
                         },
                         Err(err) => Err(err),
                     },
-                    PopupEvent::Next => client.command(commands::Next).await,
+                    PlayerCommand::Next => client.command(commands::Next).await,
                 };
 
                 if let Err(err) = res {
                     error!("Failed to send command to MPD server: {:?}", err);
                 }
             }
+
+            Ok::<(), MpdConnectionError>(())
+        });
+
+        Ok(())
+    }
+
+    fn into_widget(
+        self,
+        context: WidgetContext<Self::SendMessage, Self::ReceiveMessage>,
+        _info: &ModuleInfo,
+    ) -> Result<ModuleWidget<Button>> {
+        let button = Button::new();
+
+        button.connect_clicked(move |button| {
+            context
+                .tx
+                .try_send(ModuleUpdateEvent::TogglePopup(Popup::button_pos(button)))
+                .expect("Failed to send MPD popup open event");
         });
 
         {
             let button = button.clone();
 
-            rx.attach(None, move |event| {
-                match event {
-                    Event::Open => {
-                        mpd_popup.popup.show(&button);
-                    }
-                    Event::Update(mut msg) => {
-                        if let Some((song, status, string)) = msg.take() {
-                            mpd_popup.update(&song, &status, music_dir.as_path());
-
-                            button.set_label(&string);
-                            button.show();
-                        } else {
-                            button.hide();
-                        }
-                    }
+            context.widget_rx.attach(None, move |mut event| {
+                if let Some(event) = event.take() {
+                    button.set_label(&event.display_string);
+                    button.show();
+                } else {
+                    button.hide();
                 }
 
                 Continue(true)
             });
         };
 
-        Ok(button)
+        let popup = self.into_popup(context.controller_tx, context.popup_rx);
+
+        Ok(ModuleWidget {
+            widget: button,
+            popup,
+        })
+    }
+
+    fn into_popup(
+        self,
+        tx: Sender<Self::ReceiveMessage>,
+        rx: glib::Receiver<Self::SendMessage>,
+    ) -> Option<gtk::Box> {
+        let container = gtk::Box::builder()
+            .orientation(Orientation::Horizontal)
+            .spacing(10)
+            .name("popup-mpd")
+            .build();
+
+        let album_image = Image::builder()
+            .width_request(128)
+            .height_request(128)
+            .name("album-art")
+            .build();
+
+        let info_box = gtk::Box::new(Orientation::Vertical, 10);
+        let title_label = IconLabel::new("\u{f886}", None);
+        let album_label = IconLabel::new("\u{f524}", None);
+        let artist_label = IconLabel::new("\u{fd01}", None);
+
+        title_label.container.set_widget_name("title");
+        album_label.container.set_widget_name("album");
+        artist_label.container.set_widget_name("label");
+
+        info_box.add(&title_label.container);
+        info_box.add(&album_label.container);
+        info_box.add(&artist_label.container);
+
+        let controls_box = gtk::Box::builder().name("controls").build();
+        let btn_prev = Button::builder().label("\u{f9ad}").name("btn-prev").build();
+        let btn_play_pause = Button::builder().label("").name("btn-play-pause").build();
+        let btn_next = Button::builder().label("\u{f9ac}").name("btn-next").build();
+
+        controls_box.add(&btn_prev);
+        controls_box.add(&btn_play_pause);
+        controls_box.add(&btn_next);
+
+        info_box.add(&controls_box);
+
+        container.add(&album_image);
+        container.add(&info_box);
+
+        let tx_prev = tx.clone();
+        btn_prev.connect_clicked(move |_| {
+            tx_prev
+                .try_send(PlayerCommand::Previous)
+                .expect("Failed to send prev track message");
+        });
+
+        let tx_toggle = tx.clone();
+        btn_play_pause.connect_clicked(move |_| {
+            tx_toggle
+                .try_send(PlayerCommand::Toggle)
+                .expect("Failed to send play/pause track message");
+        });
+
+        let tx_next = tx;
+        btn_next.connect_clicked(move |_| {
+            tx_next
+                .try_send(PlayerCommand::Next)
+                .expect("Failed to send next track message");
+        });
+
+        container.show_all();
+
+        {
+            let music_dir = self.music_dir;
+
+            rx.attach(None, move |update| {
+                if let Some(update) = update {
+                    let prev_album = album_label.label.text();
+                    let curr_album = update.song.album().unwrap_or_default();
+
+                    // only update art when album changes
+                    if prev_album != curr_album {
+                        let cover_path = music_dir.join(
+                            update
+                                .song
+                                .file_path()
+                                .parent()
+                                .expect("Song path should not be root")
+                                .join("cover.jpg"),
+                        );
+
+                        if let Ok(pixbuf) = Pixbuf::from_file_at_scale(cover_path, 128, 128, true) {
+                            album_image.set_from_pixbuf(Some(&pixbuf));
+                        } else {
+                            album_image.set_from_pixbuf(None);
+                        }
+                    }
+
+                    title_label
+                        .label
+                        .set_text(update.song.title().unwrap_or_default());
+                    album_label.label.set_text(curr_album);
+                    artist_label
+                        .label
+                        .set_text(update.song.artists().first().unwrap_or(&String::new()));
+
+                    match update.status.state {
+                        PlayState::Stopped => {
+                            btn_play_pause.set_sensitive(false);
+                        }
+                        PlayState::Playing => {
+                            btn_play_pause.set_sensitive(true);
+                            btn_play_pause.set_label("");
+                        }
+                        PlayState::Paused => {
+                            btn_play_pause.set_sensitive(true);
+                            btn_play_pause.set_label("");
+                        }
+                    }
+
+                    let enable_prev = match update.status.current_song {
+                        Some((pos, _)) => pos.0 > 0,
+                        None => false,
+                    };
+
+                    let enable_next = match update.status.current_song {
+                        Some((pos, _)) => pos.0 < update.status.playlist_length,
+                        None => false,
+                    };
+
+                    btn_prev.set_sensitive(enable_prev);
+                    btn_next.set_sensitive(enable_next);
+                }
+
+                Continue(true)
+            });
+        }
+
+        Some(container)
     }
 }
 
-impl MpdModule {
-    /// Replaces each of the formatting tokens in the formatting string
-    /// with actual data pulled from MPD
-    async fn replace_tokens(
-        &self,
-        format_string: &str,
-        tokens: &Vec<String>,
-        song: &Song,
-        status: &Status,
-    ) -> String {
-        let mut compiled_string = format_string.to_string();
-        for token in tokens {
-            let value = self.get_token_value(song, status, token).await;
-            compiled_string =
-                compiled_string.replace(format!("{{{}}}", token).as_str(), value.as_str());
-        }
-        compiled_string
+/// Replaces each of the formatting tokens in the formatting string
+/// with actual data pulled from MPD
+fn replace_tokens(
+    format_string: &str,
+    tokens: &Vec<String>,
+    song: &Song,
+    status: &Status,
+    icons: &Icons,
+) -> String {
+    let mut compiled_string = format_string.to_string();
+    for token in tokens {
+        let value = get_token_value(song, status, icons, token);
+        compiled_string =
+            compiled_string.replace(format!("{{{}}}", token).as_str(), value.as_str());
     }
+    compiled_string
+}
 
-    /// Converts a string format token value
-    /// into its respective MPD value.
-    pub async fn get_token_value(&self, song: &Song, status: &Status, token: &str) -> String {
-        let s = match token {
-            "icon" => {
-                let icon = match status.state {
-                    PlayState::Stopped => None,
-                    PlayState::Playing => self.icon_play.as_ref(),
-                    PlayState::Paused => self.icon_pause.as_ref(),
-                };
-                icon.map(String::as_str)
-            }
-            "title" => song.title(),
-            "album" => try_get_first_tag(song.tags.get(&Tag::Album)),
-            "artist" => try_get_first_tag(song.tags.get(&Tag::Artist)),
-            "date" => try_get_first_tag(song.tags.get(&Tag::Date)),
-            "disc" => try_get_first_tag(song.tags.get(&Tag::Disc)),
-            "genre" => try_get_first_tag(song.tags.get(&Tag::Genre)),
-            "track" => try_get_first_tag(song.tags.get(&Tag::Track)),
-            "duration" => return get_duration(status).map(format_time).unwrap_or_default(),
+/// Converts a string format token value
+/// into its respective MPD value.
+fn get_token_value(song: &Song, status: &Status, icons: &Icons, token: &str) -> String {
+    let s = match token {
+        "icon" => {
+            let icon = match status.state {
+                PlayState::Stopped => None,
+                PlayState::Playing => icons.play.as_ref(),
+                PlayState::Paused => icons.pause.as_ref(),
+            };
+            icon.map(String::as_str)
+        }
+        "title" => song.title(),
+        "album" => try_get_first_tag(song.tags.get(&Tag::Album)),
+        "artist" => try_get_first_tag(song.tags.get(&Tag::Artist)),
+        "date" => try_get_first_tag(song.tags.get(&Tag::Date)),
+        "disc" => try_get_first_tag(song.tags.get(&Tag::Disc)),
+        "genre" => try_get_first_tag(song.tags.get(&Tag::Genre)),
+        "track" => try_get_first_tag(song.tags.get(&Tag::Track)),
+        "duration" => return get_duration(status).map(format_time).unwrap_or_default(),
 
-            "elapsed" => return get_elapsed(status).map(format_time).unwrap_or_default(),
-            _ => Some(token),
-        };
-        s.unwrap_or_default().to_string()
+        "elapsed" => return get_elapsed(status).map(format_time).unwrap_or_default(),
+        _ => Some(token),
+    };
+    s.unwrap_or_default().to_string()
+}
+
+#[derive(Clone)]
+struct IconLabel {
+    label: Label,
+    container: gtk::Box,
+}
+
+impl IconLabel {
+    fn new(icon: &str, label: Option<&str>) -> Self {
+        let container = gtk::Box::new(Orientation::Horizontal, 5);
+
+        let icon = Label::new(Some(icon));
+        let label = Label::new(label);
+
+        icon.style_context().add_class("icon");
+        label.style_context().add_class("label");
+
+        container.add(&icon);
+        container.add(&label);
+
+        Self { label, container }
     }
 }

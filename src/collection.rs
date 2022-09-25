@@ -1,5 +1,6 @@
 use serde::Serialize;
 use std::slice::{Iter, IterMut};
+use std::vec;
 
 /// An ordered map.
 /// Internally this is just two vectors -
@@ -45,6 +46,11 @@ impl<TKey: PartialEq, TData> Collection<TKey, TData> {
             Some(index) => self.values.get_mut(index),
             None => None,
         }
+    }
+
+    /// Checks if a value for the given key exists inside the collection
+    pub fn contains(&self, key: &TKey) -> bool {
+        self.keys.contains(key)
     }
 
     /// Removes the key/value from the collection
@@ -142,5 +148,14 @@ impl<'a, TKey: PartialEq, TData> Iterator for CollectionIntoIterator<'a, TKey, T
 impl<TKey: PartialEq, TData> Default for Collection<TKey, TData> {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+impl<TKey: PartialEq, TData> IntoIterator for Collection<TKey, TData> {
+    type Item = TData;
+    type IntoIter = vec::IntoIter<TData>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.values.into_iter()
     }
 }

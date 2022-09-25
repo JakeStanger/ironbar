@@ -1,6 +1,5 @@
-mod popup;
-
 use crate::modules::{Module, ModuleInfo, ModuleUpdateEvent, ModuleWidget, WidgetContext};
+use crate::popup::Popup;
 use chrono::{DateTime, Local};
 use color_eyre::Result;
 use glib::Continue;
@@ -27,12 +26,14 @@ fn default_format() -> String {
 }
 
 impl Module<Button> for ClockModule {
-    type Message = DateTime<Local>;
+    type SendMessage = DateTime<Local>;
+    type ReceiveMessage = ();
 
     fn spawn_controller(
         &self,
-        info: &ModuleInfo,
-        tx: mpsc::Sender<ModuleUpdateEvent<Self::Message>>,
+        _info: &ModuleInfo,
+        tx: mpsc::Sender<ModuleUpdateEvent<Self::SendMessage>>,
+        _rx: mpsc::Receiver<Self::ReceiveMessage>,
     ) -> Result<()> {
         spawn(async move {
             loop {
@@ -47,13 +48,17 @@ impl Module<Button> for ClockModule {
         Ok(())
     }
 
-    fn into_widget(self, context: WidgetContext<Self::Message>) -> Result<ModuleWidget<Button>> {
+    fn into_widget(
+        self,
+        context: WidgetContext<Self::SendMessage, Self::ReceiveMessage>,
+        _info: &ModuleInfo,
+    ) -> Result<ModuleWidget<Button>> {
         let button = Button::new();
 
         button.connect_clicked(move |button| {
             context
                 .tx
-                .try_send(super::ModuleUpdateEvent::TogglePopup)
+                .try_send(ModuleUpdateEvent::TogglePopup(Popup::button_pos(button)))
                 .expect("Failed to toggle popup");
         });
 
@@ -67,17 +72,19 @@ impl Module<Button> for ClockModule {
             });
         }
 
-        let popup = self.into_popup(context.popup_rx)?;
+        let popup = self.into_popup(context.controller_tx, context.popup_rx);
 
         Ok(ModuleWidget {
             widget: button,
-            popup: Some(popup),
+            popup,
         })
     }
-}
 
-impl ClockModule {
-    fn into_popup(self, rx: glib::Receiver<DateTime<Local>>) -> Result<gtk::Box> {
+    fn into_popup(
+        self,
+        _tx: mpsc::Sender<Self::ReceiveMessage>,
+        rx: glib::Receiver<Self::SendMessage>,
+    ) -> Option<gtk::Box> {
         let container = gtk::Box::builder()
             .orientation(Orientation::Vertical)
             .name("popup-clock")
@@ -102,6 +109,6 @@ impl ClockModule {
             });
         }
 
-        Ok(container)
+        Some(container)
     }
 }
