@@ -12,7 +12,7 @@
     <envs>
       <env name="IRONBAR_CONFIG" value="examples/config.json" />
       <env name="PATH" value="/usr/local/bin:/usr/bin:$USER_HOME$/.local/share/npm/bin" />
-      <env name="RUST_LOG" value="trace" />
+      <env name="RUST_LOG" value="debug" />
     </envs>
     <option name="isRedirectInput" value="false" />
     <option name="redirectInputPath" value="" />

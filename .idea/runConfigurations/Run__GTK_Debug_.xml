@@ -12,6 +12,8 @@
     <envs>
       <env name="GTK_DEBUG" value="interactive" />
       <env name="IRONBAR_CONFIG" value="examples/config.json" />
+      <env name="RUST_LOG" value="debug" />
+      <env name="PATH" value="/usr/local/bin:/usr/bin:$USER_HOME$/.local/share/npm/bin" />
     </envs>
     <option name="isRedirectInput" value="false" />
     <option name="redirectInputPath" value="" />
