@@ -1,18 +1,39 @@
 {
-  "monitors": {
-    "DP-1": [
-      {
-        "left": [{"type":  "clock"}]
-      },
-      {
-        "position": "top",
-        "left": []
-      }
-    ],
-    "DP-2": {
-      "position": "bottom",
-      "height": 30,
-      "left": []
+  "left": [
+    {
+      "type": "workspaces"
+    },
+    {
+      "type": "launcher",
+      "icon_theme": "Paper",
+      "favorites": ["firefox", "discord", "Steam"],
+      "show_names": false
     }
-  }
+  ],
+  "right": [
+    {
+      "type": "mpd"
+    },
+    {
+      "type": "mpd",
+      "host": "chloe:6600"
+    },
+    {
+      "path": "/home/jake/bin/phone-battery",
+      "type": "script"
+    },
+    {
+      "format": [
+        "{cpu-percent}% ",
+        "{memory-percent}% "
+      ],
+      "type": "sys-info"
+    },
+    {
+      "type": "tray"
+    },
+    {
+      "type": "clock"
+    }
+  ]
 }
