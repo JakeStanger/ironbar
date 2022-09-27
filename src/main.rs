@@ -8,6 +8,7 @@ mod modules;
 mod popup;
 mod style;
 mod sway;
+mod wayland;
 
 use crate::bar::create_bar;
 use crate::config::{Config, MonitorConfig};
@@ -100,25 +101,16 @@ async fn main() -> Result<()> {
 
 /// Creates each of the bars across each of the (configured) outputs.
 async fn create_bars(app: &Application, display: &Display, config: &Config) -> Result<()> {
-    let outputs = {
-        let sway = get_client().await;
-        let mut sway = sway.lock().await;
+    let outputs = wayland::get_output_names();
 
-        let outputs = sway.get_outputs().await;
-
-        match outputs {
-            Ok(outputs) => Ok(outputs),
-            Err(err) => Err(err),
-        }
-    }?;
-
-    debug!("Received {} outputs from Sway IPC", outputs.len());
+    debug!("Received {} outputs from Wayland", outputs.len());
+    debug!("Output names: {:?}", outputs);
 
     let num_monitors = display.n_monitors();
 
     for i in 0..num_monitors {
         let monitor = display.monitor(i).ok_or_else(|| Report::msg("GTK and Sway are reporting a different number of outputs - this is a severe bug and should never happen"))?;
-        let monitor_name = &outputs.get(i as usize).ok_or_else(|| Report::msg("GTK and Sway are reporting a different set of outputs - this is a severe bug and should never happen"))?.name;
+        let monitor_name = outputs.get(i as usize).ok_or_else(|| Report::msg("GTK and Sway are reporting a different set of outputs - this is a severe bug and should never happen"))?;
 
         info!("Creating bar on '{}'", monitor_name);
 

@@ -36,3 +36,5 @@ notify = "5.0.0"
 mpd_client = "1.0.0"
 swayipc-async = { git = "https://github.com/JakeStanger/swayipc-rs.git", branch = "feat/derive-clone" }
 sysinfo = "0.26.2"
+wayland-client = "0.29.5"
+wayland-protocols = { version = "0.29.5", features=["unstable_protocols", "client"] }
