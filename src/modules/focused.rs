@@ -1,16 +1,13 @@
 use crate::modules::{Module, ModuleInfo, ModuleUpdateEvent, ModuleWidget, WidgetContext};
-use crate::sway::node::{get_node_id, get_open_windows};
-use crate::sway::{get_client, get_sub_client};
-use crate::{await_sync, icon};
+use crate::wayland::{ToplevelChange};
+use crate::{await_sync, icon, wayland};
 use color_eyre::Result;
 use glib::Continue;
 use gtk::prelude::*;
 use gtk::{IconTheme, Image, Label, Orientation};
 use serde::Deserialize;
-use swayipc_async::WindowChange;
 use tokio::spawn;
 use tokio::sync::mpsc::{Receiver, Sender};
-use tracing::trace;
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct FocusedModule {
@@ -43,50 +40,42 @@ impl Module<gtk::Box> for FocusedModule {
         _rx: Receiver<Self::ReceiveMessage>,
     ) -> Result<()> {
         let focused = await_sync(async {
-            let sway = get_client().await;
-            let mut sway = sway.lock().await;
-            get_open_windows(&mut sway)
-                .await
-                .expect("Failed to get open windows")
-                .into_iter()
-                .find(|node| node.focused)
+            let wl = wayland::get_client().await;
+            let toplevels = wl
+                .toplevels
+                .read()
+                .expect("Failed to get read lock on toplevels")
+                .clone();
+
+            toplevels.into_iter().find(|top| top.active)
         });
 
-        if let Some(node) = focused {
-            let id = get_node_id(&node);
-            let name = node.name.as_deref().unwrap_or(id);
-
+        if let Some(top) = focused {
             tx.try_send(ModuleUpdateEvent::Update((
-                name.to_string(),
-                id.to_string(),
+                top.title.clone(),
+                top.app_id
             )))?;
         }
 
         spawn(async move {
-            let mut srx = {
-                let sway = get_sub_client();
-                sway.subscribe_window()
+            let mut wlrx = {
+                let wl = wayland::get_client().await;
+                wl.subscribe_toplevels()
             };
 
-            trace!("Set up Sway window subscription");
-
-            while let Ok(payload) = srx.recv().await {
-                let update = match payload.change {
-                    WindowChange::Focus => true,
-                    WindowChange::Title => payload.container.focused,
-                    _ => false,
+            while let Ok(event) = wlrx.recv().await {
+                let update = match event.change {
+                    ToplevelChange::Focus(focus) => focus,
+                    ToplevelChange::Title(_) => event.toplevel.active,
+                    _ => false
                 };
 
                 if update {
-                    let node = payload.container;
-
-                    let id = get_node_id(&node);
-                    let name = node.name.as_deref().unwrap_or(id);
-
-                    tx.try_send(ModuleUpdateEvent::Update((
-                        name.to_string(),
-                        id.to_string(),
+                    tx.send(ModuleUpdateEvent::Update((
+                        event.toplevel.title,
+                        event.toplevel.app_id,
                     )))
+                    .await
                     .expect("Failed to send focus update");
                 }
             }

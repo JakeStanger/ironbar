@@ -28,6 +28,7 @@ use tokio::task::block_in_place;
 
 use crate::logging::install_tracing;
 use tracing::{debug, error, info};
+use wayland::WaylandClient;
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 
@@ -46,6 +47,8 @@ async fn main() -> Result<()> {
 
     info!("Ironbar version {}", VERSION);
     info!("Starting application");
+
+    let wayland_client = wayland::get_client().await;
 
     let app = Application::builder()
         .application_id("dev.jstanger.ironbar")
@@ -70,7 +73,7 @@ async fn main() -> Result<()> {
         };
         debug!("Loaded config file");
 
-        if let Err(err) = await_sync(create_bars(app, &display, &config)) {
+        if let Err(err) = await_sync(create_bars(app, &display, wayland_client, &config)) {
             error!("{:?}", err);
             exit(2);
         }
@@ -100,8 +103,8 @@ async fn main() -> Result<()> {
 }
 
 /// Creates each of the bars across each of the (configured) outputs.
-async fn create_bars(app: &Application, display: &Display, config: &Config) -> Result<()> {
-    let outputs = wayland::get_output_names();
+async fn create_bars(app: &Application, display: &Display, wl: &WaylandClient, config: &Config) -> Result<()> {
+    let outputs = wl.outputs.as_slice();
 
     debug!("Received {} outputs from Wayland", outputs.len());
     debug!("Output names: {:?}", outputs);
@@ -110,7 +113,8 @@ async fn create_bars(app: &Application, display: &Display, config: &Config) -> R
 
     for i in 0..num_monitors {
         let monitor = display.monitor(i).ok_or_else(|| Report::msg("GTK and Sway are reporting a different number of outputs - this is a severe bug and should never happen"))?;
-        let monitor_name = outputs.get(i as usize).ok_or_else(|| Report::msg("GTK and Sway are reporting a different set of outputs - this is a severe bug and should never happen"))?;
+        let output = outputs.get(i as usize).ok_or_else(|| Report::msg("GTK and Sway are reporting a different set of outputs - this is a severe bug and should never happen"))?;
+        let monitor_name = &output.name;
 
         info!("Creating bar on '{}'", monitor_name);
 
