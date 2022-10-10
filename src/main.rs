@@ -72,7 +72,7 @@ async fn main() -> Result<()> {
         };
         debug!("Loaded config file");
 
-        if let Err(err) = await_sync(create_bars(app, &display, wayland_client, &config)) {
+        if let Err(err) = create_bars(app, &display, wayland_client, &config) {
             error!("{:?}", err);
             exit(2);
         }
@@ -102,7 +102,12 @@ async fn main() -> Result<()> {
 }
 
 /// Creates each of the bars across each of the (configured) outputs.
-async fn create_bars(app: &Application, display: &Display, wl: &WaylandClient, config: &Config) -> Result<()> {
+fn create_bars(
+    app: &Application,
+    display: &Display,
+    wl: &WaylandClient,
+    config: &Config,
+) -> Result<()> {
     let outputs = wl.outputs.as_slice();
 
     debug!("Received {} outputs from Wayland", outputs.len());

@@ -8,7 +8,9 @@ const STATE_ACTIVE: u32 = 2;
 const STATE_FULLSCREEN: u32 = 3;
 
 static COUNTER: AtomicUsize = AtomicUsize::new(1);
-fn get_id() -> usize { COUNTER.fetch_add(1, Ordering::Relaxed) }
+fn get_id() -> usize {
+    COUNTER.fetch_add(1, Ordering::Relaxed)
+}
 
 #[derive(Debug, Clone, Default)]
 pub struct ToplevelInfo {
@@ -24,7 +26,10 @@ pub struct ToplevelInfo {
 impl ToplevelInfo {
     fn new() -> Self {
         let id = get_id();
-        Self { id, ..Default::default() }
+        Self {
+            id,
+            ..Default::default()
+        }
     }
 }
 
@@ -99,11 +104,11 @@ where
         Event::Parent { parent: _ } => None,
         Event::Done => {
             assert_ne!(info.app_id, "");
-            if !info.ready {
+            if info.ready {
+                None
+            } else {
                 info.ready = true;
                 Some(ToplevelChange::New)
-            } else {
-                None
             }
         }
         _ => unreachable!(),
@@ -120,7 +125,7 @@ where
 }
 
 impl Toplevel {
-    pub fn init<F>(handle: Main<ZwlrForeignToplevelHandleV1>, mut callback: F) -> Self
+    pub fn init<F>(handle: &Main<ZwlrForeignToplevelHandleV1>, mut callback: F) -> Self
     where
         F: FnMut(ToplevelEvent, DispatchData) + 'static,
     {
@@ -130,7 +135,7 @@ impl Toplevel {
             let mut inner = inner
                 .write()
                 .expect("Failed to get write lock on toplevel inner state");
-            toplevel_implem(event, &mut *inner, &mut callback, ddata);
+            toplevel_implem(event, &mut inner, &mut callback, ddata);
         });
 
         Self

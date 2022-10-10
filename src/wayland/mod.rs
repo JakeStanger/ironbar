@@ -18,7 +18,7 @@ use wayland_protocols::wlr::unstable::foreign_toplevel::v1::client::{
 pub use client::WaylandClient;
 
 /// A utility for lazy-loading globals.
-/// Taken from smithay_client_toolkit where it's not exposed
+/// Taken from `smithay_client_toolkit` where it's not exposed
 #[derive(Debug)]
 enum LazyGlobal<I: Interface> {
     Unknown,

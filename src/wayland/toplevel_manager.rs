@@ -12,7 +12,6 @@ use wayland_protocols::wlr::unstable::foreign_toplevel::v1::client::{
     zwlr_foreign_toplevel_manager_v1::{self, ZwlrForeignToplevelManagerV1},
 };
 
-
 struct ToplevelHandlerInner {
     manager: LazyGlobal<ZwlrForeignToplevelManagerV1>,
     registry: Option<Attached<WlRegistry>>,
@@ -20,7 +19,7 @@ struct ToplevelHandlerInner {
 }
 
 impl ToplevelHandlerInner {
-    fn new() -> Self {
+    const fn new() -> Self {
         let toplevels = vec![];
 
         Self {
@@ -64,7 +63,7 @@ impl GlobalHandler<ZwlrForeignToplevelManagerV1> for ToplevelHandler {
         } else {
             warn!(
                 "Compositor advertised zwlr_foreign_toplevel_manager_v1 multiple times, ignoring."
-            )
+            );
         }
     }
 
@@ -92,14 +91,15 @@ impl GlobalHandler<ZwlrForeignToplevelManagerV1> for ToplevelHandler {
                             zwlr_foreign_toplevel_manager_v1::Event::Toplevel {
                                 toplevel: handle,
                             } => {
-                                let toplevel = Toplevel::init(handle.clone(), move |event, ddata| {
-                                    notify_status_listeners(
-                                        &handle,
-                                        event,
-                                        ddata,
-                                        &status_listeners,
-                                    );
-                                });
+                                let toplevel =
+                                    Toplevel::init(&handle.clone(), move |event, ddata| {
+                                        notify_status_listeners(
+                                            &handle,
+                                            &event,
+                                            ddata,
+                                            &status_listeners,
+                                        );
+                                    });
 
                                 inner.toplevels.push(toplevel);
                             }
@@ -122,18 +122,16 @@ type ToplevelStatusCallback =
 /// Notifies the callbacks of an event on the toplevel
 fn notify_status_listeners(
     toplevel: &ZwlrForeignToplevelHandleV1,
-    event: ToplevelEvent,
+    event: &ToplevelEvent,
     mut ddata: DispatchData,
     listeners: &RefCell<Vec<rc::Weak<RefCell<ToplevelStatusCallback>>>>,
 ) {
     listeners.borrow_mut().retain(|lst| {
-        if let Some(cb) = rc::Weak::upgrade(lst) {
+        rc::Weak::upgrade(lst).map_or(false, |cb| {
             (cb.borrow_mut())(toplevel.clone(), event.clone(), ddata.reborrow());
             true
-        } else {
-            false
-        }
-    })
+        })
+    });
 }
 
 pub struct ToplevelStatusListener {

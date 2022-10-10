@@ -12,11 +12,11 @@ use std::time::Duration;
 use tokio::sync::{broadcast, oneshot};
 use tokio::task::spawn_blocking;
 use tracing::trace;
+use wayland_client::protocol::wl_seat::WlSeat;
 use wayland_protocols::wlr::unstable::foreign_toplevel::v1::client::{
     zwlr_foreign_toplevel_handle_v1::ZwlrForeignToplevelHandleV1,
     zwlr_foreign_toplevel_manager_v1::ZwlrForeignToplevelManagerV1,
 };
-use wayland_client::protocol::wl_seat::WlSeat;
 
 pub struct WaylandClient {
     pub outputs: Vec<OutputInfo>,
@@ -30,6 +30,7 @@ impl WaylandClient {
     pub(super) async fn new() -> Self {
         let (output_tx, output_rx) = oneshot::channel();
         let (seat_tx, seat_rx) = oneshot::channel();
+
         let (toplevel_tx, toplevel_rx) = broadcast::channel(32);
 
         let toplevel_tx2 = toplevel_tx.clone();
@@ -49,23 +50,30 @@ impl WaylandClient {
                 .expect("Failed to send outputs out of task");
 
             let seats = env.get_all_seats();
-            seat_tx.send(seats.into_iter().map(|seat| seat.detach()).collect::<Vec<WlSeat>>()).expect("Failed to send seats out of task");
+            seat_tx
+                .send(
+                    seats
+                        .into_iter()
+                        .map(|seat| seat.detach())
+                        .collect::<Vec<WlSeat>>(),
+                )
+                .expect("Failed to send seats out of task");
 
             let _toplevel_manager = env.require_global::<ZwlrForeignToplevelManagerV1>();
 
             let _listener = listen_for_toplevels(env, move |handle, event, _ddata| {
                 trace!("Received toplevel event: {:?}", event);
 
-                if event.change != ToplevelChange::Close {
-                    toplevels2
-                        .write()
-                        .expect("Failed to get write lock on toplevels")
-                        .insert(event.toplevel.id, (event.toplevel.clone(), handle));
-                } else {
+                if event.change == ToplevelChange::Close {
                     toplevels2
                         .write()
                         .expect("Failed to get write lock on toplevels")
                         .remove(&event.toplevel.id);
+                } else {
+                    toplevels2
+                        .write()
+                        .expect("Failed to get write lock on toplevels")
+                        .insert(event.toplevel.id, (event.toplevel.clone(), handle));
                 }
 
                 toplevel_tx2
@@ -73,15 +81,17 @@ impl WaylandClient {
                     .expect("Failed to send toplevel event");
             });
 
-            let mut event_loop = calloop::EventLoop::<()>::try_new().unwrap();
+            let mut event_loop =
+                calloop::EventLoop::<()>::try_new().expect("Failed to create new event loop");
             WaylandSource::new(queue)
                 .quick_insert(event_loop.handle())
-                .unwrap();
+                .expect("Failed to insert event loop into wayland event queue");
 
             loop {
                 // TODO: Avoid need for duration here - can we force some event when sending requests?
-                event_loop.dispatch(Duration::from_millis(50), &mut ()).unwrap();
-                event_loop.
+                event_loop
+                    .dispatch(Duration::from_millis(50), &mut ())
+                    .expect("Failed to dispatch pending wayland events");
             }
         });
 
@@ -109,7 +119,7 @@ impl WaylandClient {
 
         outputs
             .iter()
-            .filter_map(|output| with_output_info(output, |info| info.clone()))
+            .filter_map(|output| with_output_info(output, Clone::clone))
             .collect()
     }
 }

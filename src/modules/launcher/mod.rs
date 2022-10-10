@@ -108,7 +108,7 @@ impl Module<gtk::Box> for LauncherModule {
 
                 let mut items = items.lock().expect("Failed to get lock on items");
 
-                for (window, _) in open_windows.clone().into_iter() {
+                for (window, _) in open_windows.clone() {
                     let item = items.get_mut(&window.app_id);
                     match item {
                         Some(item) => {
@@ -154,7 +154,8 @@ impl Module<gtk::Box> for LauncherModule {
                     ToplevelChange::New => {
                         let new_item = {
                             let mut items = items();
-                            match items.get_mut(&app_id) {
+                            let item = items.get_mut(&app_id);
+                            match item {
                                 None => {
                                     let item: Item = window.into();
                                     items.insert(app_id.clone(), item.clone());
@@ -180,7 +181,8 @@ impl Module<gtk::Box> for LauncherModule {
                     ToplevelChange::Close => {
                         let remove_item = {
                             let mut items = items();
-                            match items.get_mut(&app_id) {
+                            let item = items.get_mut(&app_id);
+                            match item {
                                 Some(item) => {
                                     item.unmerge_toplevel(&window);
 
@@ -239,7 +241,7 @@ impl Module<gtk::Box> for LauncherModule {
 
                         send_update(LauncherUpdate::Title(app_id, window.id, title)).await?;
                     }
-                    _ => {}
+                    ToplevelChange::Fullscreen(_) => {}
                 }
             }
 
@@ -290,7 +292,7 @@ impl Module<gtk::Box> for LauncherModule {
                             .toplevels
                             .read()
                             .expect("Failed to get read lock on toplevels");
-                        let seat = wl.seats.first().unwrap();
+                        let seat = wl.seats.first().expect("Failed to get Wayland seat");
                         if let Some((_top, handle)) = toplevels.get(&id) {
                             handle.activate(seat);
                         };

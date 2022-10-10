@@ -1,5 +1,5 @@
 use crate::modules::{Module, ModuleInfo, ModuleUpdateEvent, ModuleWidget, WidgetContext};
-use crate::wayland::{ToplevelChange};
+use crate::wayland::ToplevelChange;
 use crate::{await_sync, icon, wayland};
 use color_eyre::Result;
 use glib::Continue;
@@ -51,10 +51,7 @@ impl Module<gtk::Box> for FocusedModule {
         });
 
         if let Some((top, _)) = focused {
-            tx.try_send(ModuleUpdateEvent::Update((
-                top.title.clone(),
-                top.app_id
-            )))?;
+            tx.try_send(ModuleUpdateEvent::Update((top.title.clone(), top.app_id)))?;
         }
 
         spawn(async move {
@@ -67,7 +64,7 @@ impl Module<gtk::Box> for FocusedModule {
                 let update = match event.change {
                     ToplevelChange::Focus(focus) => focus,
                     ToplevelChange::Title(_) => event.toplevel.active,
-                    _ => false
+                    _ => false,
                 };
 
                 if update {

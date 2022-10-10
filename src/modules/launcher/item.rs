@@ -4,12 +4,12 @@ use crate::icon::get_icon;
 use crate::modules::launcher::{ItemEvent, LauncherUpdate};
 use crate::modules::ModuleUpdateEvent;
 use crate::popup::Popup;
+use crate::wayland::ToplevelInfo;
 use gtk::prelude::*;
 use gtk::{Button, IconTheme, Image};
 use std::rc::Rc;
 use std::sync::RwLock;
 use tokio::sync::mpsc::Sender;
-use crate::wayland::ToplevelInfo;
 
 #[derive(Debug, Clone)]
 pub struct Item {
