@@ -47,10 +47,10 @@ impl Module<gtk::Box> for FocusedModule {
                 .expect("Failed to get read lock on toplevels")
                 .clone();
 
-            toplevels.into_iter().find(|top| top.active)
+            toplevels.into_iter().find(|(top, _)| top.active)
         });
 
-        if let Some(top) = focused {
+        if let Some((top, _)) = focused {
             tx.try_send(ModuleUpdateEvent::Update((
                 top.title.clone(),
                 top.app_id

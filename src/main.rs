@@ -13,7 +13,6 @@ mod wayland;
 use crate::bar::create_bar;
 use crate::config::{Config, MonitorConfig};
 use crate::style::load_css;
-use crate::sway::get_client;
 use color_eyre::eyre::Result;
 use color_eyre::Report;
 use dirs::config_dir;

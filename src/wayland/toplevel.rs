@@ -1,19 +1,31 @@
 use std::collections::HashSet;
 use std::sync::{Arc, RwLock};
+use std::sync::atomic::{AtomicUsize, Ordering};
 use wayland_client::{DispatchData, Main};
 use wayland_protocols::wlr::unstable::foreign_toplevel::v1::client::zwlr_foreign_toplevel_handle_v1::{Event, ZwlrForeignToplevelHandleV1};
 
 const STATE_ACTIVE: u32 = 2;
 const STATE_FULLSCREEN: u32 = 3;
 
+static COUNTER: AtomicUsize = AtomicUsize::new(1);
+fn get_id() -> usize { COUNTER.fetch_add(1, Ordering::Relaxed) }
+
 #[derive(Debug, Clone, Default)]
 pub struct ToplevelInfo {
+    pub id: usize,
     pub app_id: String,
     pub title: String,
     pub active: bool,
     pub fullscreen: bool,
 
     ready: bool,
+}
+
+impl ToplevelInfo {
+    fn new() -> Self {
+        let id = get_id();
+        Self { id, ..Default::default() }
+    }
 }
 
 pub struct Toplevel;
@@ -112,7 +124,7 @@ impl Toplevel {
     where
         F: FnMut(ToplevelEvent, DispatchData) + 'static,
     {
-        let inner = Arc::new(RwLock::new(ToplevelInfo::default()));
+        let inner = Arc::new(RwLock::new(ToplevelInfo::new()));
 
         handle.quick_assign(move |_handle, event, ddata| {
             let mut inner = inner

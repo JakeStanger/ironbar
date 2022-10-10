@@ -1,21 +1,27 @@
-use std::sync::{Arc, RwLock};
 use super::{Env, ToplevelHandler};
+use crate::collection::Collection;
+use crate::wayland::toplevel::{ToplevelEvent, ToplevelInfo};
 use crate::wayland::toplevel_manager::listen_for_toplevels;
+use crate::wayland::ToplevelChange;
 use smithay_client_toolkit::environment::Environment;
 use smithay_client_toolkit::output::{with_output_info, OutputInfo};
 use smithay_client_toolkit::reexports::calloop;
 use smithay_client_toolkit::{new_default_environment, WaylandSource};
+use std::sync::{Arc, RwLock};
+use std::time::Duration;
 use tokio::sync::{broadcast, oneshot};
 use tokio::task::spawn_blocking;
-use tracing::{trace};
-use wayland_protocols::wlr::unstable::foreign_toplevel::v1::client::zwlr_foreign_toplevel_manager_v1::ZwlrForeignToplevelManagerV1;
-use crate::collection::Collection;
-use crate::wayland::toplevel::{ToplevelEvent, ToplevelInfo};
-use crate::wayland::ToplevelChange;
+use tracing::trace;
+use wayland_protocols::wlr::unstable::foreign_toplevel::v1::client::{
+    zwlr_foreign_toplevel_handle_v1::ZwlrForeignToplevelHandleV1,
+    zwlr_foreign_toplevel_manager_v1::ZwlrForeignToplevelManagerV1,
+};
+use wayland_client::protocol::wl_seat::WlSeat;
 
 pub struct WaylandClient {
     pub outputs: Vec<OutputInfo>,
-    pub toplevels: Arc<RwLock<Collection<String, ToplevelInfo>>>,
+    pub seats: Vec<WlSeat>,
+    pub toplevels: Arc<RwLock<Collection<usize, (ToplevelInfo, ZwlrForeignToplevelHandleV1)>>>,
     toplevel_tx: broadcast::Sender<ToplevelEvent>,
     _toplevel_rx: broadcast::Receiver<ToplevelEvent>,
 }
@@ -23,6 +29,7 @@ pub struct WaylandClient {
 impl WaylandClient {
     pub(super) async fn new() -> Self {
         let (output_tx, output_rx) = oneshot::channel();
+        let (seat_tx, seat_rx) = oneshot::channel();
         let (toplevel_tx, toplevel_rx) = broadcast::channel(32);
 
         let toplevel_tx2 = toplevel_tx.clone();
@@ -41,21 +48,24 @@ impl WaylandClient {
                 .send(outputs)
                 .expect("Failed to send outputs out of task");
 
+            let seats = env.get_all_seats();
+            seat_tx.send(seats.into_iter().map(|seat| seat.detach()).collect::<Vec<WlSeat>>()).expect("Failed to send seats out of task");
+
             let _toplevel_manager = env.require_global::<ZwlrForeignToplevelManagerV1>();
 
-            let _listener = listen_for_toplevels(env, move |_handle, event, _ddata| {
+            let _listener = listen_for_toplevels(env, move |handle, event, _ddata| {
                 trace!("Received toplevel event: {:?}", event);
 
                 if event.change != ToplevelChange::Close {
                     toplevels2
                         .write()
                         .expect("Failed to get write lock on toplevels")
-                        .insert(event.toplevel.app_id.clone(), event.toplevel.clone());
+                        .insert(event.toplevel.id, (event.toplevel.clone(), handle));
                 } else {
                     toplevels2
                         .write()
                         .expect("Failed to get write lock on toplevels")
-                        .remove(&event.toplevel.app_id);
+                        .remove(&event.toplevel.id);
                 }
 
                 toplevel_tx2
@@ -69,7 +79,9 @@ impl WaylandClient {
                 .unwrap();
 
             loop {
-                event_loop.dispatch(None, &mut ()).unwrap();
+                // TODO: Avoid need for duration here - can we force some event when sending requests?
+                event_loop.dispatch(Duration::from_millis(50), &mut ()).unwrap();
+                event_loop.
             }
         });
 
@@ -77,16 +89,11 @@ impl WaylandClient {
             .await
             .expect("Failed to receive outputs from task");
 
-        // spawn(async move {
-        //     println!("start");
-        //     while let Ok(ev) = toplevel_rx.recv().await {
-        //         println!("recv {:?}", ev)
-        //     }
-        //     println!("stop");
-        // });
+        let seats = seat_rx.await.expect("Failed to receive seats from task");
 
         Self {
             outputs,
+            seats,
             toplevels,
             toplevel_tx,
             _toplevel_rx: toplevel_rx,
