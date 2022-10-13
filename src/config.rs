@@ -10,6 +10,7 @@ use color_eyre::eyre::{Context, ContextCompat};
 use color_eyre::{eyre, Help, Report};
 use dirs::config_dir;
 use eyre::Result;
+use gtk::Orientation;
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
@@ -40,6 +41,8 @@ pub enum MonitorConfig {
 pub enum BarPosition {
     Top,
     Bottom,
+    Left,
+    Right,
 }
 
 impl Default for BarPosition {
@@ -48,16 +51,37 @@ impl Default for BarPosition {
     }
 }
 
+impl BarPosition {
+    pub fn get_orientation(&self) -> Orientation {
+        if self == &Self::Top || self == &Self::Bottom {
+            Orientation::Horizontal
+        } else {
+            Orientation::Vertical
+        }
+    }
+
+    pub fn get_angle(&self) -> f64 {
+        match self {
+            BarPosition::Top => 0.0,
+            BarPosition::Bottom => 0.0,
+            BarPosition::Left => 90.0,
+            BarPosition::Right => 270.0
+        }
+    }
+}
+
 #[derive(Debug, Deserialize, Clone, Default)]
 pub struct Config {
     #[serde(default = "default_bar_position")]
     pub position: BarPosition,
+    #[serde(default = "default_true")]
+    pub anchor_to_edges: bool,
     #[serde(default = "default_bar_height")]
     pub height: i32,
 
-    pub left: Option<Vec<ModuleConfig>>,
+    pub start: Option<Vec<ModuleConfig>>,
     pub center: Option<Vec<ModuleConfig>>,
-    pub right: Option<Vec<ModuleConfig>>,
+    pub end: Option<Vec<ModuleConfig>>,
 
     pub monitors: Option<HashMap<String, MonitorConfig>>,
 }

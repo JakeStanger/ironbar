@@ -1,7 +1,7 @@
 use crate::modules::{Module, ModuleInfo, ModuleUpdateEvent, ModuleWidget, WidgetContext};
 use color_eyre::Result;
 use gtk::prelude::*;
-use gtk::{Label, Orientation};
+use gtk::Label;
 use regex::{Captures, Regex};
 use serde::Deserialize;
 use std::collections::HashMap;
@@ -64,16 +64,17 @@ impl Module<gtk::Box> for SysInfoModule {
     fn into_widget(
         self,
         context: WidgetContext<Self::SendMessage, Self::ReceiveMessage>,
-        _info: &ModuleInfo,
+        info: &ModuleInfo,
     ) -> Result<ModuleWidget<gtk::Box>> {
         let re = Regex::new(r"\{([\w-]+)}")?;
 
-        let container = gtk::Box::new(Orientation::Horizontal, 10);
+        let container = gtk::Box::new(info.bar_position.get_orientation(), 10);
 
         let mut labels = Vec::new();
 
         for format in &self.format {
             let label = Label::builder().label(format).name("item").build();
+            label.set_angle(info.bar_position.get_angle());
             container.add(&label);
             labels.push(label);
         }

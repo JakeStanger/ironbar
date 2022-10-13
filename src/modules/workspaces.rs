@@ -3,7 +3,7 @@ use crate::modules::{Module, ModuleInfo, ModuleUpdateEvent, ModuleWidget, Widget
 use crate::sway::{get_client, get_sub_client};
 use color_eyre::{Report, Result};
 use gtk::prelude::*;
-use gtk::{Button, Orientation};
+use gtk::Button;
 use serde::Deserialize;
 use std::collections::HashMap;
 use swayipc_async::{Workspace, WorkspaceChange, WorkspaceEvent};
@@ -128,7 +128,7 @@ impl Module<gtk::Box> for WorkspacesModule {
         context: WidgetContext<Self::SendMessage, Self::ReceiveMessage>,
         info: &ModuleInfo,
     ) -> Result<ModuleWidget<gtk::Box>> {
-        let container = gtk::Box::new(Orientation::Horizontal, 0);
+        let container = gtk::Box::new(info.bar_position.get_orientation(), 0);
 
         let name_map = self.name_map.unwrap_or_default();
 

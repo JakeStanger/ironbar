@@ -202,9 +202,12 @@ impl Module<Button> for MpdModule {
     fn into_widget(
         self,
         context: WidgetContext<Self::SendMessage, Self::ReceiveMessage>,
-        _info: &ModuleInfo,
+        info: &ModuleInfo,
     ) -> Result<ModuleWidget<Button>> {
         let button = Button::new();
+        let label = Label::new(None);
+        label.set_angle(info.bar_position.get_angle());
+        button.add(&label);
 
         button.connect_clicked(move |button| {
             context
@@ -218,7 +221,7 @@ impl Module<Button> for MpdModule {
 
             context.widget_rx.attach(None, move |mut event| {
                 if let Some(event) = event.take() {
-                    button.set_label(&event.display_string);
+                    label.set_label(&event.display_string);
                     button.show();
                 } else {
                     button.hide();
