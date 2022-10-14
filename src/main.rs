@@ -8,11 +8,11 @@ mod modules;
 mod popup;
 mod style;
 mod sway;
+mod wayland;
 
 use crate::bar::create_bar;
 use crate::config::{Config, MonitorConfig};
 use crate::style::load_css;
-use crate::sway::get_client;
 use color_eyre::eyre::Result;
 use color_eyre::Report;
 use dirs::config_dir;
@@ -27,6 +27,7 @@ use tokio::task::block_in_place;
 
 use crate::logging::install_tracing;
 use tracing::{debug, error, info};
+use wayland::WaylandClient;
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 
@@ -45,6 +46,8 @@ async fn main() -> Result<()> {
 
     info!("Ironbar version {}", VERSION);
     info!("Starting application");
+
+    let wayland_client = wayland::get_client().await;
 
     let app = Application::builder()
         .application_id("dev.jstanger.ironbar")
@@ -69,7 +72,7 @@ async fn main() -> Result<()> {
         };
         debug!("Loaded config file");
 
-        if let Err(err) = await_sync(create_bars(app, &display, &config)) {
+        if let Err(err) = create_bars(app, &display, wayland_client, &config) {
             error!("{:?}", err);
             exit(2);
         }
@@ -99,26 +102,23 @@ async fn main() -> Result<()> {
 }
 
 /// Creates each of the bars across each of the (configured) outputs.
-async fn create_bars(app: &Application, display: &Display, config: &Config) -> Result<()> {
-    let outputs = {
-        let sway = get_client().await;
-        let mut sway = sway.lock().await;
+fn create_bars(
+    app: &Application,
+    display: &Display,
+    wl: &WaylandClient,
+    config: &Config,
+) -> Result<()> {
+    let outputs = wl.outputs.as_slice();
 
-        let outputs = sway.get_outputs().await;
-
-        match outputs {
-            Ok(outputs) => Ok(outputs),
-            Err(err) => Err(err),
-        }
-    }?;
-
-    debug!("Received {} outputs from Sway IPC", outputs.len());
+    debug!("Received {} outputs from Wayland", outputs.len());
+    debug!("Output names: {:?}", outputs);
 
     let num_monitors = display.n_monitors();
 
     for i in 0..num_monitors {
         let monitor = display.monitor(i).ok_or_else(|| Report::msg("GTK and Sway are reporting a different number of outputs - this is a severe bug and should never happen"))?;
-        let monitor_name = &outputs.get(i as usize).ok_or_else(|| Report::msg("GTK and Sway are reporting a different set of outputs - this is a severe bug and should never happen"))?.name;
+        let output = outputs.get(i as usize).ok_or_else(|| Report::msg("GTK and Sway are reporting a different set of outputs - this is a severe bug and should never happen"))?;
+        let monitor_name = &output.name;
 
         info!("Creating bar on '{}'", monitor_name);
 

@@ -1,14 +1,13 @@
 mod item;
 mod open_state;
 
+use self::item::{Item, ItemButton, Window};
+use self::open_state::OpenState;
 use crate::collection::Collection;
 use crate::icon::find_desktop_file;
-use crate::modules::launcher::item::{Item, ItemButton, Window};
-use crate::modules::launcher::open_state::OpenState;
 use crate::modules::{Module, ModuleInfo, ModuleUpdateEvent, ModuleWidget, WidgetContext};
-use crate::sway::get_sub_client;
-use crate::sway::node::{get_node_id, get_open_windows};
-use crate::{await_sync, get_client};
+use crate::wayland;
+use crate::wayland::ToplevelChange;
 use color_eyre::{Help, Report};
 use glib::Continue;
 use gtk::prelude::*;
@@ -16,7 +15,6 @@ use gtk::{Button, IconTheme, Orientation};
 use serde::Deserialize;
 use std::process::{Command, Stdio};
 use std::sync::{Arc, Mutex};
-use swayipc_async::WindowChange;
 use tokio::spawn;
 use tokio::sync::mpsc;
 use tokio::sync::mpsc::{Receiver, Sender};
@@ -47,13 +45,11 @@ pub enum LauncherUpdate {
     /// Removes item with `app_id`
     RemoveItem(String),
     /// Removes window from item with `app_id`.
-    RemoveWindow(String, i64),
+    RemoveWindow(String, usize),
     /// Sets title for `app_id`
-    Title(String, i64, Option<String>),
-    /// Focuses first `app_id`, unfocuses second `app_id` (if present)
-    Focus(String, Option<String>),
-    /// Marks the item with `app_id` as urgent or not urgent
-    Urgent(String, bool),
+    Title(String, usize, String),
+    /// Marks the item with `app_id` as focused or not focused
+    Focus(String, bool),
     /// Declares the item with `app_id` has been hovered over
     Hover(String),
 }
@@ -61,7 +57,7 @@ pub enum LauncherUpdate {
 #[derive(Debug)]
 pub enum ItemEvent {
     FocusItem(String),
-    FocusWindow(i64),
+    FocusWindow(usize),
     OpenItem(String),
 }
 
@@ -100,69 +96,74 @@ impl Module<gtk::Box> for LauncherModule {
 
         let items = Arc::new(Mutex::new(items));
 
-        let open_windows = await_sync(async {
-            let sway = get_client().await;
-            let mut sway = sway.lock().await;
-            get_open_windows(&mut sway).await
-        })?;
-
         {
-            let mut items = items.lock().expect("Failed to get lock on items");
-            for window in open_windows {
-                let id = get_node_id(&window).to_string();
+            let items = Arc::clone(&items);
+            let tx = tx.clone();
+            spawn(async move {
+                let wl = wayland::get_client().await;
+                let open_windows = wl
+                    .toplevels
+                    .read()
+                    .expect("Failed to get read lock on toplevels");
 
-                let item = items.get_mut(&id);
-                match item {
-                    Some(item) => {
-                        item.merge_node(window);
-                    }
-                    None => {
-                        items.insert(id, window.into());
+                let mut items = items.lock().expect("Failed to get lock on items");
+
+                for (window, _) in open_windows.clone() {
+                    let item = items.get_mut(&window.app_id);
+                    match item {
+                        Some(item) => {
+                            item.merge_toplevel(window);
+                        }
+                        None => {
+                            items.insert(window.app_id.clone(), window.into());
+                        }
                     }
                 }
-            }
 
-            let items = items.iter();
-            for item in items {
-                tx.try_send(ModuleUpdateEvent::Update(LauncherUpdate::AddItem(
-                    item.clone(),
-                )))?;
-            }
+                let items = items.iter();
+                for item in items {
+                    tx.try_send(ModuleUpdateEvent::Update(LauncherUpdate::AddItem(
+                        item.clone(),
+                    )))?;
+                }
+
+                Ok::<(), Report>(())
+            });
         }
 
         let items2 = Arc::clone(&items);
         spawn(async move {
             let items = items2;
 
-            let mut srx = {
-                let sway = get_sub_client();
-                sway.subscribe_window()
+            let mut wlrx = {
+                let wl = wayland::get_client().await;
+                wl.subscribe_toplevels()
             };
 
-            while let Ok(event) = srx.recv().await {
+            let send_update = |update: LauncherUpdate| tx.send(ModuleUpdateEvent::Update(update));
+
+            while let Ok(event) = wlrx.recv().await {
                 trace!("event: {:?}", event);
 
-                let window = event.container;
-                let id = get_node_id(&window).to_string();
-
-                let send_update =
-                    |update: LauncherUpdate| tx.send(ModuleUpdateEvent::Update(update));
+                let window = event.toplevel;
+                let app_id = window.app_id.clone();
 
                 let items = || items.lock().expect("Failed to get lock on items");
 
                 match event.change {
-                    WindowChange::New => {
+                    ToplevelChange::New => {
                         let new_item = {
                             let mut items = items();
-                            match items.get_mut(&id) {
+                            let item = items.get_mut(&app_id);
+                            match item {
                                 None => {
                                     let item: Item = window.into();
-                                    items.insert(id.clone(), item.clone());
+                                    items.insert(app_id.clone(), item.clone());
 
                                     ItemOrWindow::Item(item)
                                 }
                                 Some(item) => {
-                                    let window = item.merge_node(window);
+                                    let window = item.merge_toplevel(window);
                                     ItemOrWindow::Window(window)
                                 }
                             }
@@ -173,19 +174,20 @@ impl Module<gtk::Box> for LauncherModule {
                                 send_update(LauncherUpdate::AddItem(item)).await
                             }
                             ItemOrWindow::Window(window) => {
-                                send_update(LauncherUpdate::AddWindow(id, window)).await
+                                send_update(LauncherUpdate::AddWindow(app_id, window)).await
                             }
                         }?;
                     }
-                    WindowChange::Close => {
+                    ToplevelChange::Close => {
                         let remove_item = {
                             let mut items = items();
-                            match items.get_mut(&id) {
+                            let item = items.get_mut(&app_id);
+                            match item {
                                 Some(item) => {
-                                    item.unmerge_node(&window);
+                                    item.unmerge_toplevel(&window);
 
                                     if item.windows.is_empty() {
-                                        items.remove(&id);
+                                        items.remove(&app_id);
                                         Some(ItemOrWindowId::Item)
                                     } else {
                                         Some(ItemOrWindowId::Window)
@@ -197,60 +199,49 @@ impl Module<gtk::Box> for LauncherModule {
 
                         match remove_item {
                             Some(ItemOrWindowId::Item) => {
-                                send_update(LauncherUpdate::RemoveItem(id)).await?;
+                                send_update(LauncherUpdate::RemoveItem(app_id)).await?;
                             }
                             Some(ItemOrWindowId::Window) => {
-                                send_update(LauncherUpdate::RemoveWindow(id, window.id)).await?;
+                                send_update(LauncherUpdate::RemoveWindow(app_id, window.id))
+                                    .await?;
                             }
                             None => {}
                         };
                     }
-                    WindowChange::Focus => {
-                        let prev_id = {
-                            let mut items = items();
+                    ToplevelChange::Focus(focused) => {
+                        let update_title = if focused {
+                            if let Some(item) = items().get_mut(&app_id) {
+                                item.set_window_focused(window.id, true);
 
-                            let prev_focused =
-                                items.iter_mut().find(|item| item.open_state.is_focused());
-                            if let Some(prev_focused) = prev_focused {
-                                prev_focused.set_unfocused();
-                                Some(prev_focused.app_id.to_string())
+                                // might be switching focus between windows of same app
+                                if item.windows.len() > 1 {
+                                    item.set_window_name(window.id, window.title.clone());
+                                    true
+                                } else {
+                                    false
+                                }
                             } else {
-                                None
+                                false
                             }
+                        } else {
+                            false
                         };
 
-                        let mut update_title = false;
-                        if let Some(item) = items().get_mut(&id) {
-                            item.set_window_focused(window.id, true);
-
-                            // might be switching focus between windows of same app
-                            if item.windows.len() > 1 {
-                                item.set_window_name(window.id, window.name.clone());
-                                update_title = true;
-                            }
-                        }
-
-                        send_update(LauncherUpdate::Focus(id.clone(), prev_id)).await?;
+                        send_update(LauncherUpdate::Focus(app_id.clone(), focused)).await?;
 
                         if update_title {
-                            send_update(LauncherUpdate::Title(id, window.id, window.name)).await?;
+                            send_update(LauncherUpdate::Title(app_id, window.id, window.title))
+                                .await?;
                         }
                     }
-                    WindowChange::Title => {
-                        if let Some(item) = items().get_mut(&id) {
-                            item.set_window_name(window.id, window.name.clone());
-                        }
-
-                        send_update(LauncherUpdate::Title(id, window.id, window.name)).await?;
-                    }
-                    WindowChange::Urgent => {
-                        if let Some(item) = items().get_mut(&id) {
-                            item.set_window_urgent(window.id, window.urgent);
+                    ToplevelChange::Title(title) => {
+                        if let Some(item) = items().get_mut(&app_id) {
+                            item.set_window_name(window.id, title.clone());
                         }
 
-                        send_update(LauncherUpdate::Urgent(id, window.urgent)).await?;
+                        send_update(LauncherUpdate::Title(app_id, window.id, title)).await?;
                     }
-                    _ => {}
+                    ToplevelChange::Fullscreen(_) => {}
                 }
             }
 
@@ -259,8 +250,6 @@ impl Module<gtk::Box> for LauncherModule {
 
         // listen to ui events
         spawn(async move {
-            let sway = get_client().await;
-
             while let Some(event) = rx.recv().await {
                 trace!("{:?}", event);
 
@@ -287,25 +276,26 @@ impl Module<gtk::Box> for LauncherModule {
                         },
                     );
                 } else {
-                    let selector = {
-                        let items = items.lock().expect("Failed to get lock on items");
+                    let wl = wayland::get_client().await;
+                    let items = items.lock().expect("Failed to get lock on items");
 
-                        match event {
-                            ItemEvent::FocusItem(app_id) => items.get(&app_id).map(|item| {
-                                if item.is_xwayland {
-                                    format!("[class={}]", app_id)
-                                } else {
-                                    format!("[app_id={}]", app_id)
-                                }
-                            }),
-                            ItemEvent::FocusWindow(con_id) => Some(format!("[con_id={}]", con_id)),
-                            ItemEvent::OpenItem(_) => unreachable!(),
-                        }
+                    let id = match event {
+                        ItemEvent::FocusItem(app_id) => items
+                            .get(&app_id)
+                            .and_then(|item| item.windows.first().map(|win| win.id)),
+                        ItemEvent::FocusWindow(id) => Some(id),
+                        ItemEvent::OpenItem(_) => unreachable!(),
                     };
 
-                    if let Some(selector) = selector {
-                        let mut sway = sway.lock().await;
-                        sway.run_command(format!("{} focus", selector)).await?;
+                    if let Some(id) = id {
+                        let toplevels = wl
+                            .toplevels
+                            .read()
+                            .expect("Failed to get read lock on toplevels");
+                        let seat = wl.seats.first().expect("Failed to get Wayland seat");
+                        if let Some((_top, handle)) = toplevels.get(&id) {
+                            handle.activate(seat);
+                        };
                     }
                 }
             }
@@ -391,20 +381,11 @@ impl Module<gtk::Box> for LauncherModule {
                             menu_state.num_windows -= 1;
                         }
                     }
-                    LauncherUpdate::Focus(new, prev) => {
-                        debug!(
-                            "Changing focus to item with id {} (removing from {:?})",
-                            new, prev
-                        );
+                    LauncherUpdate::Focus(app_id, focus) => {
+                        debug!("Changing focus to {} on item with id {}", focus, app_id);
 
-                        if let Some(prev) = prev {
-                            if let Some(button) = buttons.get(&prev) {
-                                button.set_focused(false);
-                            }
-                        }
-
-                        if let Some(button) = buttons.get(&new) {
-                            button.set_focused(true);
+                        if let Some(button) = buttons.get(&app_id) {
+                            button.set_focused(focus);
                         }
                     }
                     LauncherUpdate::Title(app_id, _, name) => {
@@ -412,15 +393,8 @@ impl Module<gtk::Box> for LauncherModule {
 
                         if show_names {
                             if let Some(button) = buttons.get(&app_id) {
-                                button.button.set_label(&name.unwrap_or_default());
+                                button.button.set_label(&name);
                             }
-                        }
-                    }
-                    LauncherUpdate::Urgent(app_id, urgent) => {
-                        debug!("Updating urgency for item with id {}: {}", app_id, urgent);
-
-                        if let Some(button) = buttons.get(&app_id) {
-                            button.set_urgent(urgent);
                         }
                     }
                     LauncherUpdate::Hover(_) => {}
@@ -444,7 +418,7 @@ impl Module<gtk::Box> for LauncherModule {
     ) -> Option<gtk::Box> {
         let container = gtk::Box::new(Orientation::Vertical, 0);
 
-        let mut buttons = Collection::<String, Collection<i64, Button>>::new();
+        let mut buttons = Collection::<String, Collection<usize, Button>>::new();
 
         {
             let container = container.clone();
@@ -458,7 +432,7 @@ impl Module<gtk::Box> for LauncherModule {
                             .into_iter()
                             .map(|win| {
                                 let button = Button::builder()
-                                    .label(win.name.as_ref().unwrap_or(&String::new()))
+                                    .label(&win.name)
                                     .height_request(40)
                                     .width_request(100)
                                     .build();
@@ -484,7 +458,7 @@ impl Module<gtk::Box> for LauncherModule {
                     LauncherUpdate::AddWindow(app_id, win) => {
                         if let Some(buttons) = buttons.get_mut(&app_id) {
                             let button = Button::builder()
-                                .label(win.name.as_ref().unwrap_or(&String::new()))
+                                .label(&win.name)
                                 .height_request(40)
                                 .width_request(100)
                                 .build();
@@ -512,9 +486,7 @@ impl Module<gtk::Box> for LauncherModule {
                     LauncherUpdate::Title(app_id, win_id, title) => {
                         if let Some(buttons) = buttons.get_mut(&app_id) {
                             if let Some(button) = buttons.get(&win_id) {
-                                if let Some(title) = title {
-                                    button.set_label(&title);
-                                }
+                                button.set_label(&title);
                             }
                         }
                     }
