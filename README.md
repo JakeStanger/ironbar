@@ -1,6 +1,6 @@
 # Ironbar
 
-Ironbar is a customisable and feature-rich bar targeting the Sway compositor, written in Rust.
+Ironbar is a customisable and feature-rich bar targeting wlroots compositors, written in Rust.
 It uses GTK3 and gtk-layer-shell.
 
 The bar can be styled to your liking using CSS and hot-loads style changes.
