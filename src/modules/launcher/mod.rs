@@ -420,6 +420,7 @@ impl Module<gtk::Box> for LauncherModule {
 
         let container = gtk::Box::builder()
             .orientation(Orientation::Vertical)
+            .name("popup-launcher")
             .build();
 
         let placeholder = Button::with_label("PLACEHOLDER");
@@ -505,6 +506,7 @@ impl Module<gtk::Box> for LauncherModule {
                         // add app's buttons
                         if let Some(buttons) = buttons.get(&app_id) {
                             for button in buttons {
+                                button.style_context().add_class("popup-item");
                                 container.add(button);
                             }
 
