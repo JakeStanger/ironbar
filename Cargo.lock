@@ -2121,7 +2121,7 @@ checksum = "73473c0e59e6d5812c5dfe2a064a6444949f089e20eec9a2e5506596494e4623"
 [[package]]
 name = "swayipc-async"
 version = "2.0.1"
-source = "git+https://github.com/JakeStanger/swayipc-rs.git?branch=feat/derive-clone#be4235b075889b66a27ba739df9ef13a571979ff"
+source = "git+https://github.com/JakeStanger/swayipc-rs.git?branch=feat/derive-clone#d8322a5412b021d0c002506b92b83b91ffd238d7"
 dependencies = [
  "async-io",
  "async-pidfd",
@@ -2134,7 +2134,7 @@ dependencies = [
 [[package]]
 name = "swayipc-types"
 version = "1.1.2"
-source = "git+https://github.com/JakeStanger/swayipc-rs.git?branch=feat/derive-clone#be4235b075889b66a27ba739df9ef13a571979ff"
+source = "git+https://github.com/JakeStanger/swayipc-rs.git?branch=feat/derive-clone#d8322a5412b021d0c002506b92b83b91ffd238d7"
 dependencies = [
  "serde",
  "serde_json",

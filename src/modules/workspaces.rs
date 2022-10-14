@@ -29,28 +29,25 @@ pub enum WorkspaceUpdate {
 
 /// Creates a button from a workspace
 fn create_button(
-    workspace: &Workspace,
+    name: &str,
+    focused: bool,
     name_map: &HashMap<String, String>,
     tx: &Sender<String>,
 ) -> Button {
     let button = Button::builder()
-        .label(
-            name_map
-                .get(workspace.name.as_str())
-                .unwrap_or(&workspace.name),
-        )
+        .label(name_map.get(name).map(|str| str.as_str()).unwrap_or(name))
         .build();
 
     let style_context = button.style_context();
     style_context.add_class("item");
 
-    if workspace.focused {
+    if focused {
         style_context.add_class("focused");
     }
 
     {
         let tx = tx.clone();
-        let name = workspace.name.clone();
+        let name = name.to_string();
         button.connect_clicked(move |_item| {
             tx.try_send(name.clone())
                 .expect("Failed to send workspace click event");
@@ -143,49 +140,75 @@ impl Module<gtk::Box> for WorkspacesModule {
                     WorkspaceUpdate::Init(workspaces) => {
                         trace!("Creating workspace buttons");
                         for workspace in workspaces {
-                            let item = create_button(&workspace, &name_map, &context.controller_tx);
+                            let item = create_button(
+                                &workspace.name,
+                                workspace.focused,
+                                &name_map,
+                                &context.controller_tx,
+                            );
                             container.add(&item);
                             button_map.insert(workspace.name, item);
                         }
                         container.show_all();
                     }
                     WorkspaceUpdate::Update(event) if event.change == WorkspaceChange::Focus => {
-                        let old = event.old.and_then(|old| button_map.get(&old.name));
+                        let old = event
+                            .old
+                            .and_then(|old| old.name)
+                            .and_then(|name| button_map.get(&name));
                         if let Some(old) = old {
                             old.style_context().remove_class("focused");
                         }
 
-                        let new = event.current.and_then(|new| button_map.get(&new.name));
+                        let new = event
+                            .current
+                            .and_then(|old| old.name)
+                            .and_then(|new| button_map.get(&new));
                         if let Some(new) = new {
                             new.style_context().add_class("focused");
                         }
                     }
                     WorkspaceUpdate::Update(event) if event.change == WorkspaceChange::Init => {
                         if let Some(workspace) = event.current {
-                            if self.all_monitors || workspace.output == output_name {
-                                let item =
-                                    create_button(&workspace, &name_map, &context.controller_tx);
+                            if self.all_monitors || workspace.output.unwrap_or_default() == output_name {
+                                let name = workspace.name.unwrap_or_default();
+                                let item = create_button(
+                                    &name,
+                                    workspace.focused,
+                                    &name_map,
+                                    &context.controller_tx,
+                                );
 
                                 item.show();
                                 container.add(&item);
-                                button_map.insert(workspace.name, item);
+
+                                if !name.is_empty() {
+                                    button_map.insert(name, item);
+                                }
                             }
                         }
                     }
                     WorkspaceUpdate::Update(event) if event.change == WorkspaceChange::Move => {
                         if let Some(workspace) = event.current {
                             if !self.all_monitors {
-                                if workspace.output == output_name {
+                                if workspace.output.unwrap_or_default() == output_name {
+                                    let name = workspace.name.unwrap_or_default();
                                     let item = create_button(
-                                        &workspace,
+                                        &name,
+                                        workspace.focused,
                                         &name_map,
                                         &context.controller_tx,
                                     );
 
                                     item.show();
                                     container.add(&item);
-                                    button_map.insert(workspace.name, item);
-                                } else if let Some(item) = button_map.get(&workspace.name) {
+
+                                    if !name.is_empty() {
+                                        button_map.insert(name, item);
+                                    }
+                                } else if let Some(item) =
+                                    button_map.get(&workspace.name.unwrap_or_default())
+                                {
                                     container.remove(item);
                                 }
                             }
@@ -193,7 +216,8 @@ impl Module<gtk::Box> for WorkspacesModule {
                     }
                     WorkspaceUpdate::Update(event) if event.change == WorkspaceChange::Empty => {
                         if let Some(workspace) = event.current {
-                            if let Some(item) = button_map.get(&workspace.name) {
+                            if let Some(item) = button_map.get(&workspace.name.unwrap_or_default())
+                            {
                                 container.remove(item);
                             }
                         }
