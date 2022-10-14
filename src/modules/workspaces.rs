@@ -170,7 +170,9 @@ impl Module<gtk::Box> for WorkspacesModule {
                     }
                     WorkspaceUpdate::Update(event) if event.change == WorkspaceChange::Init => {
                         if let Some(workspace) = event.current {
-                            if self.all_monitors || workspace.output.unwrap_or_default() == output_name {
+                            if self.all_monitors
+                                || workspace.output.unwrap_or_default() == output_name
+                            {
                                 let name = workspace.name.unwrap_or_default();
                                 let item = create_button(
                                     &name,
