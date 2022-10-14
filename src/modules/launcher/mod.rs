@@ -416,7 +416,15 @@ impl Module<gtk::Box> for LauncherModule {
         controller_tx: Sender<Self::ReceiveMessage>,
         rx: glib::Receiver<Self::SendMessage>,
     ) -> Option<gtk::Box> {
-        let container = gtk::Box::new(Orientation::Vertical, 0);
+        const MAX_WIDTH: i32 = 250;
+
+        let container = gtk::Box::builder()
+            .orientation(Orientation::Vertical)
+            .build();
+
+        let placeholder = Button::with_label("PLACEHOLDER");
+        placeholder.set_width_request(MAX_WIDTH);
+        container.add(&placeholder);
 
         let mut buttons = Collection::<String, Collection<usize, Button>>::new();
 
@@ -432,9 +440,8 @@ impl Module<gtk::Box> for LauncherModule {
                             .into_iter()
                             .map(|win| {
                                 let button = Button::builder()
-                                    .label(&win.name)
+                                    .label(&clamp(&win.name))
                                     .height_request(40)
-                                    .width_request(100)
                                     .build();
 
                                 {
@@ -458,9 +465,8 @@ impl Module<gtk::Box> for LauncherModule {
                     LauncherUpdate::AddWindow(app_id, win) => {
                         if let Some(buttons) = buttons.get_mut(&app_id) {
                             let button = Button::builder()
-                                .label(&win.name)
                                 .height_request(40)
-                                .width_request(100)
+                                .label(&clamp(&win.name))
                                 .build();
 
                             {
@@ -503,6 +509,7 @@ impl Module<gtk::Box> for LauncherModule {
                             }
 
                             container.show_all();
+                            container.set_width_request(MAX_WIDTH);
                         }
                     }
                     _ => {}
@@ -513,5 +520,20 @@ impl Module<gtk::Box> for LauncherModule {
         }
 
         Some(container)
+    }
+}
+
+/// Clamps a string at 24 characters.
+///
+/// This is a hacky number derived from
+/// "what fits inside the 250px popup"
+/// and probably won't hold up with wide fonts.
+fn clamp(str: &str) -> String {
+    const MAX_CHARS: usize = 24;
+
+    if str.len() > MAX_CHARS {
+        str.chars().take(MAX_CHARS - 3).collect::<String>() + "..."
+    } else {
+        str.to_string()
     }
 }
