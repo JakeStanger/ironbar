@@ -14,6 +14,8 @@ Run using `ironbar`.
 
 ### Cargo
 
+> ⚠ The Cargo version is currently outdated due to restrictions around publishing crates with patched dependencies.
+
 ```sh
 cargo install ironbar
 ```
