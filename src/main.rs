@@ -116,11 +116,9 @@ fn create_bars(
     let num_monitors = display.n_monitors();
 
     for i in 0..num_monitors {
-        let monitor = display.monitor(i).ok_or_else(|| Report::msg("GTK and Sway are reporting a different number of outputs - this is a severe bug and should never happen"))?;
+        let monitor = display.monitor(i).ok_or_else(|| Report::msg("GTK and Sway are reporting a different set of outputs - this is a severe bug and should never happen"))?;
         let output = outputs.get(i as usize).ok_or_else(|| Report::msg("GTK and Sway are reporting a different set of outputs - this is a severe bug and should never happen"))?;
         let monitor_name = &output.name;
-
-        info!("Creating bar on '{}'", monitor_name);
 
         // TODO: Could we use an Arc<Config> or `Cow<Config>` here to avoid cloning?
         config.monitors.as_ref().map_or_else(
@@ -129,10 +127,12 @@ fn create_bars(
                 let config = config.get(monitor_name);
                 match &config {
                     Some(MonitorConfig::Single(config)) => {
+                        info!("Creating bar on '{}'", monitor_name);
                         create_bar(app, &monitor, monitor_name, config.clone())
                     }
                     Some(MonitorConfig::Multiple(configs)) => {
                         for config in configs {
+                            info!("Creating bar on '{}'", monitor_name);
                             create_bar(app, &monitor, monitor_name, config.clone())?;
                         }
 
