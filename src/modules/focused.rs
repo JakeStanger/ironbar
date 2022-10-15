@@ -4,7 +4,7 @@ use crate::{await_sync, icon, wayland};
 use color_eyre::Result;
 use glib::Continue;
 use gtk::prelude::*;
-use gtk::{IconTheme, Image, Label, Orientation};
+use gtk::{IconTheme, Image, Label};
 use serde::Deserialize;
 use tokio::spawn;
 use tokio::sync::mpsc::{Receiver, Sender};
@@ -84,7 +84,7 @@ impl Module<gtk::Box> for FocusedModule {
     fn into_widget(
         self,
         context: WidgetContext<Self::SendMessage, Self::ReceiveMessage>,
-        _info: &ModuleInfo,
+        info: &ModuleInfo,
     ) -> Result<ModuleWidget<gtk::Box>> {
         let icon_theme = IconTheme::new();
 
@@ -92,7 +92,7 @@ impl Module<gtk::Box> for FocusedModule {
             icon_theme.set_custom_theme(Some(&theme));
         }
 
-        let container = gtk::Box::new(Orientation::Horizontal, 5);
+        let container = gtk::Box::new(info.bar_position.get_orientation(), 5);
 
         let icon = Image::builder().name("icon").build();
         let label = Label::builder().name("label").build();

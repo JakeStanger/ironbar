@@ -39,5 +39,7 @@ let {
     $right = [ $mpd_local $mpd_server $phone_battery $sys_info $clock ]
 }
 in {
-    left = $left right = $right
+    anchor_to_edges = true
+    position = "top"
+    start = $left end = $right
 }

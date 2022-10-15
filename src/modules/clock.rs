@@ -51,23 +51,29 @@ impl Module<Button> for ClockModule {
     fn into_widget(
         self,
         context: WidgetContext<Self::SendMessage, Self::ReceiveMessage>,
-        _info: &ModuleInfo,
+        info: &ModuleInfo,
     ) -> Result<ModuleWidget<Button>> {
         let button = Button::new();
+        let label = Label::new(None);
+        label.set_angle(info.bar_position.get_angle());
+        button.add(&label);
 
+        let orientation = info.bar_position.get_orientation();
         button.connect_clicked(move |button| {
             context
                 .tx
-                .try_send(ModuleUpdateEvent::TogglePopup(Popup::button_pos(button)))
+                .try_send(ModuleUpdateEvent::TogglePopup(Popup::button_pos(
+                    button,
+                    orientation,
+                )))
                 .expect("Failed to toggle popup");
         });
 
         let format = self.format.clone();
         {
-            let button = button.clone();
             context.widget_rx.attach(None, move |date| {
                 let date_string = format!("{}", date.format(&format));
-                button.set_label(&date_string);
+                label.set_label(&date_string);
                 Continue(true)
             });
         }

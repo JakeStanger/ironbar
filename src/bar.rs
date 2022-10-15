@@ -28,30 +28,42 @@ pub fn create_bar(
 ) -> Result<()> {
     let win = ApplicationWindow::builder().application(app).build();
 
-    setup_layer_shell(&win, monitor, &config.position);
+    setup_layer_shell(&win, monitor, config.position, config.anchor_to_edges);
 
     let content = gtk::Box::builder()
-        .orientation(Orientation::Horizontal)
+        .orientation(config.position.get_orientation())
         .spacing(0)
         .hexpand(false)
         .height_request(config.height)
         .name("bar")
         .build();
 
-    let left = gtk::Box::builder().spacing(0).name("left").build();
-    let center = gtk::Box::builder().spacing(0).name("center").build();
-    let right = gtk::Box::builder().spacing(0).name("right").build();
+    let start = gtk::Box::builder()
+        .orientation(config.position.get_orientation())
+        .spacing(0)
+        .name("start")
+        .build();
+    let center = gtk::Box::builder()
+        .orientation(config.position.get_orientation())
+        .spacing(0)
+        .name("center")
+        .build();
+    let end = gtk::Box::builder()
+        .orientation(config.position.get_orientation())
+        .spacing(0)
+        .name("end")
+        .build();
 
     content.style_context().add_class("container");
-    left.style_context().add_class("container");
+    start.style_context().add_class("container");
     center.style_context().add_class("container");
-    right.style_context().add_class("container");
+    end.style_context().add_class("container");
 
-    content.add(&left);
+    content.add(&start);
     content.set_center_widget(Some(&center));
-    content.pack_end(&right, false, false, 0);
+    content.pack_end(&end, false, false, 0);
 
-    load_modules(&left, &center, &right, app, config, monitor, monitor_name)?;
+    load_modules(&start, &center, &end, app, config, monitor, monitor_name)?;
     win.add(&content);
 
     win.connect_destroy_event(|_, _| {
@@ -79,11 +91,11 @@ fn load_modules(
     let mut info_builder = ModuleInfoBuilder::default();
     let info_builder = info_builder
         .app(app)
-        .bar_position(&config.position)
+        .bar_position(config.position)
         .monitor(monitor)
         .output_name(output_name);
 
-    if let Some(modules) = config.left {
+    if let Some(modules) = config.start {
         let info_builder = info_builder.location(ModuleLocation::Left);
 
         add_modules(left, modules, info_builder)?;
@@ -95,7 +107,7 @@ fn load_modules(
         add_modules(center, modules, info_builder)?;
     }
 
-    if let Some(modules) = config.right {
+    if let Some(modules) = config.end {
         let info_builder = info_builder.location(ModuleLocation::Right);
 
         add_modules(right, modules, info_builder)?;
@@ -160,23 +172,23 @@ fn add_modules(
 
                         w_tx.send(update).expect("Failed to send update to module");
                     }
-                    ModuleUpdateEvent::TogglePopup((x, w)) => {
+                    ModuleUpdateEvent::TogglePopup(geometry) => {
                         debug!("Toggling popup for {} [#{}]", $name, $id);
                         let popup = popup.read().expect("Failed to get read lock on popup");
                         if popup.is_visible() {
                             popup.hide()
                         } else {
                             popup.show_content($id);
-                            popup.show(x, w);
+                            popup.show(geometry);
                         }
                     }
-                    ModuleUpdateEvent::OpenPopup((x, w)) => {
+                    ModuleUpdateEvent::OpenPopup(geometry) => {
                         debug!("Opening popup for {} [#{}]", $name, $id);
 
                         let popup = popup.read().expect("Failed to get read lock on popup");
                         popup.hide();
                         popup.show_content($id);
-                        popup.show(x, w);
+                        popup.show(geometry);
                     }
                     ModuleUpdateEvent::ClosePopup => {
                         debug!("Closing popup for {} [#{}]", $name, $id);
@@ -224,7 +236,12 @@ fn add_modules(
 }
 
 /// Sets up GTK layer shell for a provided application window.
-fn setup_layer_shell(win: &ApplicationWindow, monitor: &Monitor, position: &BarPosition) {
+fn setup_layer_shell(
+    win: &ApplicationWindow,
+    monitor: &Monitor,
+    position: BarPosition,
+    anchor_to_edges: bool,
+) {
     gtk_layer_shell::init_for_window(win);
     gtk_layer_shell::set_monitor(win, monitor);
     gtk_layer_shell::set_layer(win, gtk_layer_shell::Layer::Top);
@@ -235,16 +252,30 @@ fn setup_layer_shell(win: &ApplicationWindow, monitor: &Monitor, position: &BarP
     gtk_layer_shell::set_margin(win, gtk_layer_shell::Edge::Left, 0);
     gtk_layer_shell::set_margin(win, gtk_layer_shell::Edge::Right, 0);
 
+    let bar_orientation = position.get_orientation();
+
     gtk_layer_shell::set_anchor(
         win,
         gtk_layer_shell::Edge::Top,
-        position == &BarPosition::Top,
+        position == BarPosition::Top
+            || (bar_orientation == Orientation::Vertical && anchor_to_edges),
     );
     gtk_layer_shell::set_anchor(
         win,
         gtk_layer_shell::Edge::Bottom,
-        position == &BarPosition::Bottom,
+        position == BarPosition::Bottom
+            || (bar_orientation == Orientation::Vertical && anchor_to_edges),
     );
-    gtk_layer_shell::set_anchor(win, gtk_layer_shell::Edge::Left, true);
-    gtk_layer_shell::set_anchor(win, gtk_layer_shell::Edge::Right, true);
+    gtk_layer_shell::set_anchor(
+        win,
+        gtk_layer_shell::Edge::Left,
+        position == BarPosition::Left
+            || (bar_orientation == Orientation::Horizontal && anchor_to_edges),
+    );
+    gtk_layer_shell::set_anchor(
+        win,
+        gtk_layer_shell::Edge::Right,
+        position == BarPosition::Right
+            || (bar_orientation == Orientation::Horizontal && anchor_to_edges),
+    );
 }

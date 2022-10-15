@@ -6,7 +6,7 @@ use crate::modules::ModuleUpdateEvent;
 use crate::popup::Popup;
 use crate::wayland::ToplevelInfo;
 use gtk::prelude::*;
-use gtk::{Button, IconTheme, Image};
+use gtk::{Button, IconTheme, Image, Orientation};
 use std::rc::Rc;
 use std::sync::RwLock;
 use tokio::sync::mpsc::Sender;
@@ -139,6 +139,7 @@ impl ItemButton {
         item: &Item,
         show_names: bool,
         show_icons: bool,
+        orientation: Orientation,
         icon_theme: &IconTheme,
         tx: &Sender<ModuleUpdateEvent<LauncherUpdate>>,
         controller_tx: &Sender<ItemEvent>,
@@ -208,8 +209,11 @@ impl ItemButton {
                     )))
                     .expect("Failed to send item open popup event");
 
-                    tx.try_send(ModuleUpdateEvent::OpenPopup(Popup::button_pos(button)))
-                        .expect("Failed to send item open popup event");
+                    tx.try_send(ModuleUpdateEvent::OpenPopup(Popup::button_pos(
+                        button,
+                        orientation,
+                    )))
+                    .expect("Failed to send item open popup event");
                 } else {
                     tx.try_send(ModuleUpdateEvent::ClosePopup)
                         .expect("Failed to send item close popup event");

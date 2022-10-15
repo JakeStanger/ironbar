@@ -202,14 +202,22 @@ impl Module<Button> for MpdModule {
     fn into_widget(
         self,
         context: WidgetContext<Self::SendMessage, Self::ReceiveMessage>,
-        _info: &ModuleInfo,
+        info: &ModuleInfo,
     ) -> Result<ModuleWidget<Button>> {
         let button = Button::new();
+        let label = Label::new(None);
+        label.set_angle(info.bar_position.get_angle());
+        button.add(&label);
+
+        let orientation = info.bar_position.get_orientation();
 
         button.connect_clicked(move |button| {
             context
                 .tx
-                .try_send(ModuleUpdateEvent::TogglePopup(Popup::button_pos(button)))
+                .try_send(ModuleUpdateEvent::TogglePopup(Popup::button_pos(
+                    button,
+                    orientation,
+                )))
                 .expect("Failed to send MPD popup open event");
         });
 
@@ -218,7 +226,7 @@ impl Module<Button> for MpdModule {
 
             context.widget_rx.attach(None, move |mut event| {
                 if let Some(event) = event.take() {
-                    button.set_label(&event.display_string);
+                    label.set_label(&event.display_string);
                     button.show();
                 } else {
                     button.hide();

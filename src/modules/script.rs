@@ -55,9 +55,10 @@ impl Module<Label> for ScriptModule {
     fn into_widget(
         self,
         context: WidgetContext<Self::SendMessage, Self::ReceiveMessage>,
-        _info: &ModuleInfo,
+        info: &ModuleInfo,
     ) -> Result<ModuleWidget<Label>> {
         let label = Label::builder().use_markup(true).build();
+        label.set_angle(info.bar_position.get_angle());
 
         {
             let label = label.clone();

@@ -1,16 +1,20 @@
 {
-  "left": [
+  "start": [
     {
       "type": "workspaces"
     },
     {
       "type": "launcher",
       "icon_theme": "Paper",
-      "favorites": ["firefox", "discord", "Steam"],
+      "favorites": [
+        "firefox",
+        "discord",
+        "Steam"
+      ],
       "show_names": false
     }
   ],
-  "right": [
+  "end": [
     {
       "type": "mpd"
     },

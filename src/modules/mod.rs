@@ -14,6 +14,7 @@ pub mod tray;
 pub mod workspaces;
 
 use crate::config::BarPosition;
+use crate::popup::ButtonGeometry;
 use color_eyre::Result;
 use derive_builder::Builder;
 use glib::IsA;
@@ -32,7 +33,7 @@ pub enum ModuleLocation {
 pub struct ModuleInfo<'a> {
     pub app: &'a Application,
     pub location: ModuleLocation,
-    pub bar_position: &'a BarPosition,
+    pub bar_position: BarPosition,
     pub monitor: &'a Monitor,
     pub output_name: &'a str,
     pub module_name: &'a str,
@@ -43,11 +44,10 @@ pub enum ModuleUpdateEvent<T> {
     /// Sends an update to the module UI
     Update(T),
     /// Toggles the open state of the popup.
-    /// Takes the button X position and width.
-    TogglePopup((i32, i32)),
+    TogglePopup(ButtonGeometry),
     /// Force sets the popup open.
     /// Takes the button X position and width.
-    OpenPopup((i32, i32)),
+    OpenPopup(ButtonGeometry),
     /// Force sets the popup closed.
     ClosePopup,
 }

@@ -309,20 +309,21 @@ impl Module<gtk::Box> for LauncherModule {
     fn into_widget(
         self,
         context: WidgetContext<Self::SendMessage, Self::ReceiveMessage>,
-        _info: &ModuleInfo,
+        info: &ModuleInfo,
     ) -> crate::Result<ModuleWidget<gtk::Box>> {
         let icon_theme = IconTheme::new();
         if let Some(ref theme) = self.icon_theme {
             icon_theme.set_custom_theme(Some(theme));
         }
 
-        let container = gtk::Box::new(Orientation::Horizontal, 0);
+        let container = gtk::Box::new(info.bar_position.get_orientation(), 0);
 
         {
             let container = container.clone();
 
             let show_names = self.show_names;
             let show_icons = self.show_icons;
+            let orientation = info.bar_position.get_orientation();
 
             let mut buttons = Collection::<String, ItemButton>::new();
 
@@ -339,6 +340,7 @@ impl Module<gtk::Box> for LauncherModule {
                                 &item,
                                 show_names,
                                 show_icons,
+                                orientation,
                                 &icon_theme,
                                 &context.tx,
                                 &controller_tx2,
