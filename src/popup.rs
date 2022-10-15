@@ -111,7 +111,7 @@ impl Popup {
     /// Sets the popover's X position relative to the left border of the screen
     fn set_pos(&self, button_x: i32, button_width: i32) {
         let screen_width = self.monitor.workarea().width();
-        let popup_width = self.window.allocated_width();
+        let (popup_width, _popup_height) = self.window.size();
 
         let widget_center = f64::from(button_x) + f64::from(button_width) / 2.0;
 

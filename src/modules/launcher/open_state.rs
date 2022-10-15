@@ -1,35 +1,23 @@
-use swayipc_async::Node;
+use crate::wayland::ToplevelInfo;
 
 /// Open state for a launcher item, or item window.
 #[derive(Debug, Clone, Eq, PartialEq, Copy)]
 pub enum OpenState {
     Closed,
-    Open { focused: bool, urgent: bool },
+    Open { focused: bool },
 }
 
 impl OpenState {
     /// Creates from `SwayNode`
-    pub const fn from_node(node: &Node) -> Self {
+    pub const fn from_toplevel(toplevel: &ToplevelInfo) -> Self {
         Self::Open {
-            focused: node.focused,
-            urgent: node.urgent,
+            focused: toplevel.active,
         }
     }
 
     /// Creates open with focused
     pub const fn focused(focused: bool) -> Self {
-        Self::Open {
-            focused,
-            urgent: false,
-        }
-    }
-
-    /// Creates open with urgent
-    pub const fn urgent(urgent: bool) -> Self {
-        Self::Open {
-            focused: false,
-            urgent,
-        }
+        Self::Open { focused }
     }
 
     /// Checks if open
@@ -39,12 +27,7 @@ impl OpenState {
 
     /// Checks if open with focus
     pub const fn is_focused(self) -> bool {
-        matches!(self, Self::Open { focused: true, .. })
-    }
-
-    /// check if open with urgent
-    pub const fn is_urgent(self) -> bool {
-        matches!(self, Self::Open { urgent: true, .. })
+        matches!(self, Self::Open { focused: true })
     }
 
     /// Merges states together to produce a single state.
@@ -56,7 +39,6 @@ impl OpenState {
             if merged.is_open() || current.is_open() {
                 Self::Open {
                     focused: merged.is_focused() || current.is_focused(),
-                    urgent: merged.is_urgent() || current.is_urgent(),
                 }
             } else {
                 Self::Closed

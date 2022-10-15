@@ -4,12 +4,11 @@ use crate::icon::get_icon;
 use crate::modules::launcher::{ItemEvent, LauncherUpdate};
 use crate::modules::ModuleUpdateEvent;
 use crate::popup::Popup;
-use crate::sway::node::{get_node_id, is_node_xwayland};
+use crate::wayland::ToplevelInfo;
 use gtk::prelude::*;
 use gtk::{Button, IconTheme, Image};
 use std::rc::Rc;
 use std::sync::RwLock;
-use swayipc_async::Node;
 use tokio::sync::mpsc::Sender;
 
 #[derive(Debug, Clone)]
@@ -17,9 +16,8 @@ pub struct Item {
     pub app_id: String,
     pub favorite: bool,
     pub open_state: OpenState,
-    pub windows: Collection<i64, Window>,
-    pub name: Option<String>,
-    pub is_xwayland: bool,
+    pub windows: Collection<usize, Window>,
+    pub name: String,
 }
 
 impl Item {
@@ -29,20 +27,17 @@ impl Item {
             favorite,
             open_state,
             windows: Collection::new(),
-            name: None,
-            is_xwayland: false,
+            name: String::new(),
         }
     }
 
     /// Merges the provided node into this launcher item
-    pub fn merge_node(&mut self, node: Node) -> Window {
+    pub fn merge_toplevel(&mut self, node: ToplevelInfo) -> Window {
         let id = node.id;
 
         if self.windows.is_empty() {
-            self.name = node.name.clone();
+            self.name = node.title.clone();
         }
-
-        self.is_xwayland = self.is_xwayland || is_node_xwayland(&node);
 
         let window: Window = node.into();
         self.windows.insert(id, window.clone());
@@ -52,16 +47,12 @@ impl Item {
         window
     }
 
-    pub fn unmerge_node(&mut self, node: &Node) {
+    pub fn unmerge_toplevel(&mut self, node: &ToplevelInfo) {
         self.windows.remove(&node.id);
         self.recalculate_open_state();
     }
 
-    pub fn get_name(&self) -> &str {
-        self.name.as_ref().unwrap_or(&self.app_id)
-    }
-
-    pub fn set_window_name(&mut self, window_id: i64, name: Option<String>) {
+    pub fn set_window_name(&mut self, window_id: usize, name: String) {
         if let Some(window) = self.windows.get_mut(&window_id) {
             if let OpenState::Open { focused: true, .. } = window.open_state {
                 self.name = name.clone();
@@ -71,35 +62,10 @@ impl Item {
         }
     }
 
-    pub fn set_unfocused(&mut self) {
-        let focused = self
-            .windows
-            .iter_mut()
-            .find(|window| window.open_state.is_focused());
-
-        if let Some(focused) = focused {
-            focused.open_state = OpenState::Open {
-                focused: false,
-                urgent: focused.open_state.is_urgent(),
-            };
-
-            self.recalculate_open_state();
-        }
-    }
-
-    pub fn set_window_focused(&mut self, window_id: i64, focused: bool) {
+    pub fn set_window_focused(&mut self, window_id: usize, focused: bool) {
         if let Some(window) = self.windows.get_mut(&window_id) {
             window.open_state =
                 OpenState::merge_states(&[&window.open_state, &OpenState::focused(focused)]);
-
-            self.recalculate_open_state();
-        }
-    }
-
-    pub fn set_window_urgent(&mut self, window_id: i64, urgent: bool) {
-        if let Some(window) = self.windows.get_mut(&window_id) {
-            window.open_state =
-                OpenState::merge_states(&[&window.open_state, &OpenState::urgent(urgent)]);
 
             self.recalculate_open_state();
         }
@@ -119,16 +85,14 @@ impl Item {
     }
 }
 
-impl From<Node> for Item {
-    fn from(node: Node) -> Self {
-        let app_id = get_node_id(&node).to_string();
-        let open_state = OpenState::from_node(&node);
-        let name = node.name.clone();
-
-        let is_xwayland = is_node_xwayland(&node);
+impl From<ToplevelInfo> for Item {
+    fn from(toplevel: ToplevelInfo) -> Self {
+        let open_state = OpenState::from_toplevel(&toplevel);
+        let name = toplevel.title.clone();
+        let app_id = toplevel.app_id.clone();
 
         let mut windows = Collection::new();
-        windows.insert(node.id, node.into());
+        windows.insert(toplevel.id, toplevel.into());
 
         Self {
             app_id,
@@ -136,25 +100,24 @@ impl From<Node> for Item {
             open_state,
             windows,
             name,
-            is_xwayland,
         }
     }
 }
 
 #[derive(Clone, Debug)]
 pub struct Window {
-    pub id: i64,
-    pub name: Option<String>,
+    pub id: usize,
+    pub name: String,
     pub open_state: OpenState,
 }
 
-impl From<Node> for Window {
-    fn from(node: Node) -> Self {
-        let open_state = OpenState::from_node(&node);
+impl From<ToplevelInfo> for Window {
+    fn from(node: ToplevelInfo) -> Self {
+        let open_state = OpenState::from_toplevel(&node);
 
         Self {
             id: node.id,
-            name: node.name,
+            name: node.title,
             open_state,
         }
     }
@@ -183,7 +146,7 @@ impl ItemButton {
         let mut button = Button::builder();
 
         if show_names {
-            button = button.label(item.get_name());
+            button = button.label(&item.name);
         }
 
         if show_icons {
@@ -207,9 +170,6 @@ impl ItemButton {
         }
         if item.open_state.is_focused() {
             style_context.add_class("focused");
-        }
-        if item.open_state.is_urgent() {
-            style_context.add_class("urgent");
         }
 
         {
@@ -274,16 +234,11 @@ impl ItemButton {
 
         if !open {
             self.set_focused(false);
-            self.set_urgent(false);
         }
     }
 
     pub fn set_focused(&self, focused: bool) {
         self.update_class("focused", focused);
-    }
-
-    pub fn set_urgent(&self, urgent: bool) {
-        self.update_class("urgent", urgent);
     }
 
     /// Adds or removes a class to the button based on `toggle`.

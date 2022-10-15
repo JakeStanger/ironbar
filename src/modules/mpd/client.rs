@@ -6,6 +6,7 @@ use mpd_client::responses::Status;
 use mpd_client::Client;
 use std::collections::HashMap;
 use std::fmt::{Display, Formatter};
+use std::os::unix::fs::FileTypeExt;
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
@@ -137,7 +138,12 @@ async fn try_get_mpd_conn(host: &str) -> Result<Connection, MpdProtocolError> {
 }
 
 fn is_unix_socket(host: &str) -> bool {
-    PathBuf::from(host).is_file()
+    let path = PathBuf::from(host);
+    path.exists()
+        && match path.metadata() {
+            Ok(metadata) => metadata.file_type().is_socket(),
+            Err(_) => false,
+        }
 }
 
 async fn connect_unix(host: &str) -> Result<Connection, MpdProtocolError> {

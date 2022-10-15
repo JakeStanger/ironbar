@@ -187,8 +187,8 @@ fn add_modules(
 
                         let popup = popup.read().expect("Failed to get read lock on popup");
                         popup.hide();
-                        popup.show(x, w);
                         popup.show_content($id);
+                        popup.show(x, w);
                     }
                     ModuleUpdateEvent::ClosePopup => {
                         debug!("Closing popup for {} [#{}]", $name, $id);
