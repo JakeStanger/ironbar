@@ -38,32 +38,32 @@ pub fn create_bar(
         .name("bar")
         .build();
 
-    let left = gtk::Box::builder()
+    let start = gtk::Box::builder()
         .orientation(config.position.get_orientation())
         .spacing(0)
-        .name("left")
+        .name("start")
         .build();
     let center = gtk::Box::builder()
         .orientation(config.position.get_orientation())
         .spacing(0)
         .name("center")
         .build();
-    let right = gtk::Box::builder()
+    let end = gtk::Box::builder()
         .orientation(config.position.get_orientation())
         .spacing(0)
-        .name("right")
+        .name("end")
         .build();
 
     content.style_context().add_class("container");
-    left.style_context().add_class("container");
+    start.style_context().add_class("container");
     center.style_context().add_class("container");
-    right.style_context().add_class("container");
+    end.style_context().add_class("container");
 
-    content.add(&left);
+    content.add(&start);
     content.set_center_widget(Some(&center));
-    content.pack_end(&right, false, false, 0);
+    content.pack_end(&end, false, false, 0);
 
-    load_modules(&left, &center, &right, app, config, monitor, monitor_name)?;
+    load_modules(&start, &center, &end, app, config, monitor, monitor_name)?;
     win.add(&content);
 
     win.connect_destroy_event(|_, _| {
