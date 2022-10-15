@@ -214,7 +214,10 @@ impl Module<Button> for MpdModule {
         button.connect_clicked(move |button| {
             context
                 .tx
-                .try_send(ModuleUpdateEvent::TogglePopup(Popup::button_pos(button, orientation)))
+                .try_send(ModuleUpdateEvent::TogglePopup(Popup::button_pos(
+                    button,
+                    orientation,
+                )))
                 .expect("Failed to send MPD popup open event");
         });
 

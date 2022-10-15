@@ -65,7 +65,7 @@ impl BarPosition {
             BarPosition::Top => 0.0,
             BarPosition::Bottom => 0.0,
             BarPosition::Left => 90.0,
-            BarPosition::Right => 270.0
+            BarPosition::Right => 270.0,
         }
     }
 }

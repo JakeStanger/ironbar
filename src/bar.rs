@@ -236,7 +236,12 @@ fn add_modules(
 }
 
 /// Sets up GTK layer shell for a provided application window.
-fn setup_layer_shell(win: &ApplicationWindow, monitor: &Monitor, position: &BarPosition, anchor_to_edges: bool) {
+fn setup_layer_shell(
+    win: &ApplicationWindow,
+    monitor: &Monitor,
+    position: &BarPosition,
+    anchor_to_edges: bool,
+) {
     gtk_layer_shell::init_for_window(win);
     gtk_layer_shell::set_monitor(win, monitor);
     gtk_layer_shell::set_layer(win, gtk_layer_shell::Layer::Top);
@@ -252,21 +257,25 @@ fn setup_layer_shell(win: &ApplicationWindow, monitor: &Monitor, position: &BarP
     gtk_layer_shell::set_anchor(
         win,
         gtk_layer_shell::Edge::Top,
-        position == &BarPosition::Top || (bar_orientation == Orientation::Vertical && anchor_to_edges),
+        position == &BarPosition::Top
+            || (bar_orientation == Orientation::Vertical && anchor_to_edges),
     );
     gtk_layer_shell::set_anchor(
         win,
         gtk_layer_shell::Edge::Bottom,
-        position == &BarPosition::Bottom || (bar_orientation == Orientation::Vertical && anchor_to_edges),
+        position == &BarPosition::Bottom
+            || (bar_orientation == Orientation::Vertical && anchor_to_edges),
     );
     gtk_layer_shell::set_anchor(
         win,
         gtk_layer_shell::Edge::Left,
-        position == &BarPosition::Left || (bar_orientation == Orientation::Horizontal && anchor_to_edges),
+        position == &BarPosition::Left
+            || (bar_orientation == Orientation::Horizontal && anchor_to_edges),
     );
     gtk_layer_shell::set_anchor(
         win,
         gtk_layer_shell::Edge::Right,
-        position == &BarPosition::Right || (bar_orientation == Orientation::Horizontal && anchor_to_edges),
+        position == &BarPosition::Right
+            || (bar_orientation == Orientation::Horizontal && anchor_to_edges),
     );
 }

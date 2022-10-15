@@ -86,13 +86,17 @@ impl Popup {
                 // so check we're actually outside the window
                 let hide = match pos {
                     BarPosition::Top => {
-                        x < THRESHOLD || y > f64::from(h) - THRESHOLD || x > f64::from(w) - THRESHOLD
+                        x < THRESHOLD
+                            || y > f64::from(h) - THRESHOLD
+                            || x > f64::from(w) - THRESHOLD
                     }
                     BarPosition::Bottom => {
                         x < THRESHOLD || y < THRESHOLD || x > f64::from(w) - THRESHOLD
                     }
                     BarPosition::Left => {
-                        y < THRESHOLD || x > f64::from(w) - THRESHOLD || y > f64::from(h) - THRESHOLD
+                        y < THRESHOLD
+                            || x > f64::from(w) - THRESHOLD
+                            || y > f64::from(h) - THRESHOLD
                     }
                     BarPosition::Right => {
                         y < THRESHOLD || x < THRESHOLD || y > f64::from(h) - THRESHOLD

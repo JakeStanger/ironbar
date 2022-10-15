@@ -207,9 +207,12 @@ impl ItemButton {
                     tx.try_send(ModuleUpdateEvent::Update(LauncherUpdate::Hover(
                         app_id.clone(),
                     )))
-                    .expect("Failed to send item open popup event");
+                        .expect("Failed to send item open popup event");
 
-                    tx.try_send(ModuleUpdateEvent::OpenPopup(Popup::button_pos(button, orientation)))
+                    tx.try_send(ModuleUpdateEvent::OpenPopup(Popup::button_pos(
+                        button,
+                        orientation,
+                    )))
                         .expect("Failed to send item open popup event");
                 } else {
                     tx.try_send(ModuleUpdateEvent::ClosePopup)
