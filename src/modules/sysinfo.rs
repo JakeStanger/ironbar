@@ -34,27 +34,21 @@ impl Module<gtk::Box> for SysInfoModule {
 
                 let mut format_info = HashMap::new();
 
-                let actual_used_memory = sys.total_memory() - sys.available_memory();
-                let memory_percent = actual_used_memory as f64 / sys.total_memory() as f64 * 100.0;
+            while let Some(refresh) = refresh_rx.recv().await {
+                match refresh {
+                    RefreshType::Memory => refresh_memory_tokens(&mut format_info, &mut sys),
+                    RefreshType::Cpu => refresh_cpu_tokens(&mut format_info, &mut sys),
+                    RefreshType::Temps => refresh_temp_tokens(&mut format_info, &mut sys),
+                    RefreshType::Disks => refresh_disk_tokens(&mut format_info, &mut sys),
+                    RefreshType::Network => {
+                        refresh_network_tokens(&mut format_info, &mut sys, interval.networks())
+                    }
+                    RefreshType::System => refresh_system_tokens(&mut format_info, &mut sys),
+                };
 
-                let cpu_percent = sys.global_cpu_info().cpu_usage();
-
-                // TODO: Add remaining format info
-
-                format_info.insert(
-                    String::from("memory-percent"),
-                    format!("{:0>2.0}", memory_percent),
-                );
-                format_info.insert(
-                    String::from("cpu-percent"),
-                    format!("{:0>2.0}", cpu_percent),
-                );
-
-                tx.send(ModuleUpdateEvent::Update(format_info))
+                tx.send(ModuleUpdateEvent::Update(format_info.clone()))
                     .await
                     .expect("Failed to send system info map");
-
-                sleep(tokio::time::Duration::from_secs(1)).await;
             }
         });
 
@@ -101,4 +95,172 @@ impl Module<gtk::Box> for SysInfoModule {
             popup: None,
         })
     }
+}
+
+fn refresh_memory_tokens(format_info: &mut HashMap<String, String>, sys: &mut System) {
+    sys.refresh_memory();
+
+    let total_memory = sys.total_memory();
+    let available_memory = sys.available_memory();
+
+    let actual_used_memory = total_memory - available_memory;
+    let memory_percent = actual_used_memory as f64 / total_memory as f64 * 100.0;
+
+    format_info.insert(
+        String::from("memory-free"),
+        (bytes_to_gigabytes(available_memory)).to_string(),
+    );
+    format_info.insert(
+        String::from("memory-used"),
+        (bytes_to_gigabytes(actual_used_memory)).to_string(),
+    );
+    format_info.insert(
+        String::from("memory-total"),
+        (bytes_to_gigabytes(total_memory)).to_string(),
+    );
+    format_info.insert(
+        String::from("memory-percent"),
+        format!("{:0>2.0}", memory_percent),
+    );
+
+    let used_swap = sys.used_swap();
+    let total_swap = sys.total_swap();
+
+    format_info.insert(
+        String::from("swap-free"),
+        (bytes_to_gigabytes(sys.free_swap())).to_string(),
+    );
+    format_info.insert(
+        String::from("swap-used"),
+        (bytes_to_gigabytes(used_swap)).to_string(),
+    );
+    format_info.insert(
+        String::from("swap-total"),
+        (bytes_to_gigabytes(total_swap)).to_string(),
+    );
+    format_info.insert(
+        String::from("swap-percent"),
+        format!("{:0>2.0}", used_swap as f64 / total_swap as f64 * 100.0),
+    );
+}
+
+fn refresh_cpu_tokens(format_info: &mut HashMap<String, String>, sys: &mut System) {
+    sys.refresh_cpu();
+
+    let cpu_info = sys.global_cpu_info();
+    let cpu_percent = cpu_info.cpu_usage();
+
+    format_info.insert(
+        String::from("cpu-percent"),
+        format!("{:0>2.0}", cpu_percent),
+    );
+}
+
+fn refresh_temp_tokens(format_info: &mut HashMap<String, String>, sys: &mut System) {
+    sys.refresh_components();
+
+    let components = sys.components();
+    for component in components {
+        let key = component.label().replace(' ', "-");
+        let temp = component.temperature();
+
+        format_info.insert(format!("temp-c:{key}"), format!("{temp:.0}"));
+        format_info.insert(format!("temp-f:{key}"), format!("{:.0}", c_to_f(temp)));
+    }
+}
+
+fn refresh_disk_tokens(format_info: &mut HashMap<String, String>, sys: &mut System) {
+    sys.refresh_disks();
+
+    for disk in sys.disks() {
+        // replace braces to avoid conflict with regex
+        let key = disk
+            .mount_point()
+            .to_str()
+            .map(|s| s.replace('{', "").replace('}', ""));
+
+        if let Some(key) = key {
+            let total = disk.total_space();
+            let available = disk.available_space();
+            let used = total - available;
+
+            format_info.insert(
+                format!("disk-free:{key}"),
+                bytes_to_gigabytes(available).to_string(),
+            );
+
+            format_info.insert(
+                format!("disk-used:{key}"),
+                bytes_to_gigabytes(used).to_string(),
+            );
+
+            format_info.insert(
+                format!("disk-total:{key}"),
+                bytes_to_gigabytes(total).to_string(),
+            );
+
+            format_info.insert(
+                format!("disk-percent:{key}"),
+                format!("{:0>2.0}", used as f64 / total as f64 * 100.0),
+            );
+        }
+    }
+}
+
+fn refresh_network_tokens(format_info: &mut HashMap<String, String>, sys: &mut System, interval: u64) {
+    sys.refresh_networks();
+
+    for (iface, network) in sys.networks() {
+        format_info.insert(
+            format!("net-down:{iface}"),
+            format!("{:0>2.0}", bytes_to_megabits(network.received()) / interval),
+        );
+
+        format_info.insert(
+            format!("net-up:{iface}"),
+            format!(
+                "{:0>2.0}",
+                bytes_to_megabits(network.transmitted()) / interval
+            ),
+        );
+    }
+}
+
+fn refresh_system_tokens(format_info: &mut HashMap<String, String>, sys: &System) {
+    // no refresh required for these tokens
+
+    let load_average = sys.load_average();
+    format_info.insert(String::from("load-average:1"), load_average.one.to_string());
+
+    format_info.insert(
+        String::from("load-average:5"),
+        load_average.five.to_string(),
+    );
+
+    format_info.insert(
+        String::from("load-average:15"),
+        load_average.fifteen.to_string(),
+    );
+
+    let uptime = Duration::from_secs(sys.uptime()).as_secs();
+    let hours = uptime / 3600;
+    format_info.insert(
+        String::from("uptime"),
+        format!("{:0>2}:{:0>2}", hours, (uptime % 3600) / 60),
+    );
+}
+
+/// Converts celsius to fahrenheit.
+fn c_to_f(c: f32) -> f32 {
+    c * 9.0 / 5.0 + 32.0
+}
+
+const fn bytes_to_gigabytes(b: u64) -> u64 {
+    const BYTES_IN_GIGABYTE: u64 = 1_000_000_000;
+    b / BYTES_IN_GIGABYTE
+}
+
+const fn bytes_to_megabits(b: u64) -> u64 {
+    const BYTES_IN_MEGABIT: u64 = 125_000;
+    b / BYTES_IN_MEGABIT
 }
