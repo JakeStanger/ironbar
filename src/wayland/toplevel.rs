@@ -104,8 +104,10 @@ where
         Event::Closed => {
             if info.ready {
                 Some(ToplevelChange::Close)
-            } else { None }
-        },
+            } else {
+                None
+            }
+        }
         Event::OutputEnter { output: _ } => None,
         Event::OutputLeave { output: _ } => None,
         Event::Parent { parent: _ } => None,
