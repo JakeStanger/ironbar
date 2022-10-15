@@ -352,6 +352,8 @@ impl Module<gtk::Box> for LauncherModule {
                     }
                     LauncherUpdate::AddWindow(app_id, _) => {
                         if let Some(button) = buttons.get(&app_id) {
+                            button.set_open(true);
+
                             let mut menu_state = button
                                 .menu_state
                                 .write()

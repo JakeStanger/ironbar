@@ -1,6 +1,7 @@
 use std::collections::HashSet;
 use std::sync::{Arc, RwLock};
 use std::sync::atomic::{AtomicUsize, Ordering};
+use tracing::trace;
 use wayland_client::{DispatchData, Main};
 use wayland_protocols::wlr::unstable::foreign_toplevel::v1::client::zwlr_foreign_toplevel_handle_v1::{Event, ZwlrForeignToplevelHandleV1};
 
@@ -54,6 +55,8 @@ fn toplevel_implem<F>(event: Event, info: &mut ToplevelInfo, implem: &mut F, dda
 where
     F: FnMut(ToplevelEvent, DispatchData),
 {
+    trace!("event: {event:?} (info: {info:?})");
+
     let change = match event {
         Event::AppId { app_id } => {
             info.app_id = app_id;
@@ -98,13 +101,16 @@ where
 
             change
         }
-        Event::Closed => Some(ToplevelChange::Close),
+        Event::Closed => {
+            if info.ready {
+                Some(ToplevelChange::Close)
+            } else { None }
+        },
         Event::OutputEnter { output: _ } => None,
         Event::OutputLeave { output: _ } => None,
         Event::Parent { parent: _ } => None,
         Event::Done => {
-            assert_ne!(info.app_id, "");
-            if info.ready {
+            if info.ready || info.app_id.is_empty() {
                 None
             } else {
                 info.ready = true;
