@@ -323,6 +323,7 @@ impl Module<gtk::Box> for LauncherModule {
 
             let show_names = self.show_names;
             let show_icons = self.show_icons;
+            let orientation = info.bar_position.get_orientation();
 
             let mut buttons = Collection::<String, ItemButton>::new();
 
@@ -339,6 +340,7 @@ impl Module<gtk::Box> for LauncherModule {
                                 &item,
                                 show_names,
                                 show_icons,
+                                orientation,
                                 &icon_theme,
                                 &context.tx,
                                 &controller_tx2,

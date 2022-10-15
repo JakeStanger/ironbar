@@ -209,10 +209,12 @@ impl Module<Button> for MpdModule {
         label.set_angle(info.bar_position.get_angle());
         button.add(&label);
 
+        let orientation = info.bar_position.get_orientation();
+
         button.connect_clicked(move |button| {
             context
                 .tx
-                .try_send(ModuleUpdateEvent::TogglePopup(Popup::button_pos(button)))
+                .try_send(ModuleUpdateEvent::TogglePopup(Popup::button_pos(button, orientation)))
                 .expect("Failed to send MPD popup open event");
         });
 
