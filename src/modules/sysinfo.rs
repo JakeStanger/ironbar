@@ -5,8 +5,10 @@ use gtk::Label;
 use regex::{Captures, Regex};
 use serde::Deserialize;
 use std::collections::HashMap;
-use sysinfo::{CpuExt, System, SystemExt};
+use std::time::Duration;
+use sysinfo::{ComponentExt, CpuExt, DiskExt, NetworkExt, RefreshKind, System, SystemExt};
 use tokio::spawn;
+use tokio::sync::mpsc;
 use tokio::sync::mpsc::{Receiver, Sender};
 use tokio::time::sleep;
 
@@ -14,6 +16,96 @@ use tokio::time::sleep;
 pub struct SysInfoModule {
     /// List of formatting strings.
     format: Vec<String>,
+    /// Number of seconds between refresh
+    #[serde(default = "Interval::default")]
+    interval: Interval,
+}
+
+#[derive(Debug, Deserialize, Copy, Clone)]
+pub struct Intervals {
+    #[serde(default = "default_interval")]
+    memory: u64,
+    #[serde(default = "default_interval")]
+    cpu: u64,
+    #[serde(default = "default_interval")]
+    temps: u64,
+    #[serde(default = "default_interval")]
+    disks: u64,
+    #[serde(default = "default_interval")]
+    networks: u64,
+    #[serde(default = "default_interval")]
+    system: u64,
+}
+
+#[derive(Debug, Deserialize, Copy, Clone)]
+#[serde(untagged)]
+pub enum Interval {
+    All(u64),
+    Individual(Intervals),
+}
+
+impl Default for Interval {
+    fn default() -> Self {
+        Self::All(default_interval())
+    }
+}
+
+impl Interval {
+    fn memory(self) -> u64 {
+        match self {
+            Interval::All(n) => n,
+            Interval::Individual(intervals) => intervals.memory,
+        }
+    }
+
+    fn cpu(self) -> u64 {
+        match self {
+            Interval::All(n) => n,
+            Interval::Individual(intervals) => intervals.cpu,
+        }
+    }
+
+    fn temps(self) -> u64 {
+        match self {
+            Interval::All(n) => n,
+            Interval::Individual(intervals) => intervals.temps,
+        }
+    }
+
+    fn disks(self) -> u64 {
+        match self {
+            Interval::All(n) => n,
+            Interval::Individual(intervals) => intervals.disks,
+        }
+    }
+
+    fn networks(self) -> u64 {
+        match self {
+            Interval::All(n) => n,
+            Interval::Individual(intervals) => intervals.networks,
+        }
+    }
+
+    fn system(self) -> u64 {
+        match self {
+            Interval::All(n) => n,
+            Interval::Individual(intervals) => intervals.system,
+        }
+    }
+}
+
+const fn default_interval() -> u64 {
+    5
+}
+
+#[derive(Debug)]
+enum RefreshType {
+    Memory,
+    Cpu,
+    Temps,
+    Disks,
+    Network,
+    System,
 }
 
 impl Module<gtk::Box> for SysInfoModule {
@@ -26,13 +118,99 @@ impl Module<gtk::Box> for SysInfoModule {
         tx: Sender<ModuleUpdateEvent<Self::SendMessage>>,
         _rx: Receiver<Self::ReceiveMessage>,
     ) -> Result<()> {
+        let interval = self.interval;
+
+        let refresh_kind = RefreshKind::everything()
+            .without_processes()
+            .without_users_list();
+
+        let mut sys = System::new_with_specifics(refresh_kind);
+        sys.refresh_components_list();
+        sys.refresh_disks_list();
+        sys.refresh_networks_list();
+
+        let (refresh_tx, mut refresh_rx) = mpsc::channel(16);
+
+        // memory refresh
+        {
+            let tx = refresh_tx.clone();
+            spawn(async move {
+                loop {
+                    tx.send(RefreshType::Memory)
+                        .await
+                        .expect("Failed to send memory refresh");
+                    sleep(Duration::from_secs(interval.memory())).await;
+                }
+            });
+        }
+
+        // cpu refresh
+        {
+            let tx = refresh_tx.clone();
+            spawn(async move {
+                loop {
+                    tx.send(RefreshType::Cpu)
+                        .await
+                        .expect("Failed to send cpu refresh");
+                    sleep(Duration::from_secs(interval.cpu())).await;
+                }
+            });
+        }
+
+        // temp refresh
+        {
+            let tx = refresh_tx.clone();
+            spawn(async move {
+                loop {
+                    tx.send(RefreshType::Temps)
+                        .await
+                        .expect("Failed to send temperature refresh");
+                    sleep(Duration::from_secs(interval.temps())).await;
+                }
+            });
+        }
+
+        // disk refresh
+        {
+            let tx = refresh_tx.clone();
+            spawn(async move {
+                loop {
+                    tx.send(RefreshType::Disks)
+                        .await
+                        .expect("Failed to send disk refresh");
+                    sleep(Duration::from_secs(interval.disks())).await;
+                }
+            });
+        }
+
+        // network refresh
+        {
+            let tx = refresh_tx.clone();
+            spawn(async move {
+                loop {
+                    tx.send(RefreshType::Network)
+                        .await
+                        .expect("Failed to send network refresh");
+                    sleep(Duration::from_secs(interval.networks())).await;
+                }
+            });
+        }
+
+        // system refresh
+        {
+            let tx = refresh_tx.clone();
+            spawn(async move {
+                loop {
+                    tx.send(RefreshType::System)
+                        .await
+                        .expect("Failed to send system refresh");
+                    sleep(Duration::from_secs(interval.system())).await;
+                }
+            });
+        }
+
         spawn(async move {
-            let mut sys = System::new_all();
-
-            loop {
-                sys.refresh_all();
-
-                let mut format_info = HashMap::new();
+            let mut format_info = HashMap::new();
 
             while let Some(refresh) = refresh_rx.recv().await {
                 match refresh {
