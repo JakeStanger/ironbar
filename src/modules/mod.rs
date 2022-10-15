@@ -14,13 +14,13 @@ pub mod tray;
 pub mod workspaces;
 
 use crate::config::BarPosition;
+use crate::popup::ButtonGeometry;
 use color_eyre::Result;
 use derive_builder::Builder;
 use glib::IsA;
 use gtk::gdk::Monitor;
 use gtk::{Application, Widget};
 use tokio::sync::mpsc;
-use crate::popup::ButtonGeometry;
 
 #[derive(Clone)]
 pub enum ModuleLocation {
