@@ -35,7 +35,7 @@ fn create_button(
     tx: &Sender<String>,
 ) -> Button {
     let button = Button::builder()
-        .label(name_map.get(name).map(|str| str.as_str()).unwrap_or(name))
+        .label(name_map.get(name).map_or(name, String::as_str))
         .build();
 
     let style_context = button.style_context();
