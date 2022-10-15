@@ -36,7 +36,7 @@ pub enum MonitorConfig {
     Multiple(Vec<Config>),
 }
 
-#[derive(Debug, Deserialize, Clone, PartialEq, Eq)]
+#[derive(Debug, Deserialize, Copy, Clone, PartialEq, Eq)]
 #[serde(rename_all = "kebab-case")]
 pub enum BarPosition {
     Top,
@@ -52,20 +52,19 @@ impl Default for BarPosition {
 }
 
 impl BarPosition {
-    pub fn get_orientation(&self) -> Orientation {
-        if self == &Self::Top || self == &Self::Bottom {
+    pub fn get_orientation(self) -> Orientation {
+        if self == Self::Top || self == Self::Bottom {
             Orientation::Horizontal
         } else {
             Orientation::Vertical
         }
     }
 
-    pub fn get_angle(&self) -> f64 {
+    pub const fn get_angle(self) -> f64 {
         match self {
-            BarPosition::Top => 0.0,
-            BarPosition::Bottom => 0.0,
-            BarPosition::Left => 90.0,
-            BarPosition::Right => 270.0,
+            Self::Top | Self::Bottom => 0.0,
+            Self::Left => 90.0,
+            Self::Right => 270.0,
         }
     }
 }

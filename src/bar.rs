@@ -28,7 +28,7 @@ pub fn create_bar(
 ) -> Result<()> {
     let win = ApplicationWindow::builder().application(app).build();
 
-    setup_layer_shell(&win, monitor, &config.position, config.anchor_to_edges);
+    setup_layer_shell(&win, monitor, config.position, config.anchor_to_edges);
 
     let content = gtk::Box::builder()
         .orientation(config.position.get_orientation())
@@ -91,7 +91,7 @@ fn load_modules(
     let mut info_builder = ModuleInfoBuilder::default();
     let info_builder = info_builder
         .app(app)
-        .bar_position(&config.position)
+        .bar_position(config.position)
         .monitor(monitor)
         .output_name(output_name);
 
@@ -172,23 +172,23 @@ fn add_modules(
 
                         w_tx.send(update).expect("Failed to send update to module");
                     }
-                    ModuleUpdateEvent::TogglePopup((x, w)) => {
+                    ModuleUpdateEvent::TogglePopup(geometry) => {
                         debug!("Toggling popup for {} [#{}]", $name, $id);
                         let popup = popup.read().expect("Failed to get read lock on popup");
                         if popup.is_visible() {
                             popup.hide()
                         } else {
                             popup.show_content($id);
-                            popup.show(x, w);
+                            popup.show(geometry);
                         }
                     }
-                    ModuleUpdateEvent::OpenPopup((x, w)) => {
+                    ModuleUpdateEvent::OpenPopup(geometry) => {
                         debug!("Opening popup for {} [#{}]", $name, $id);
 
                         let popup = popup.read().expect("Failed to get read lock on popup");
                         popup.hide();
                         popup.show_content($id);
-                        popup.show(x, w);
+                        popup.show(geometry);
                     }
                     ModuleUpdateEvent::ClosePopup => {
                         debug!("Closing popup for {} [#{}]", $name, $id);
@@ -239,7 +239,7 @@ fn add_modules(
 fn setup_layer_shell(
     win: &ApplicationWindow,
     monitor: &Monitor,
-    position: &BarPosition,
+    position: BarPosition,
     anchor_to_edges: bool,
 ) {
     gtk_layer_shell::init_for_window(win);
@@ -257,25 +257,25 @@ fn setup_layer_shell(
     gtk_layer_shell::set_anchor(
         win,
         gtk_layer_shell::Edge::Top,
-        position == &BarPosition::Top
+        position == BarPosition::Top
             || (bar_orientation == Orientation::Vertical && anchor_to_edges),
     );
     gtk_layer_shell::set_anchor(
         win,
         gtk_layer_shell::Edge::Bottom,
-        position == &BarPosition::Bottom
+        position == BarPosition::Bottom
             || (bar_orientation == Orientation::Vertical && anchor_to_edges),
     );
     gtk_layer_shell::set_anchor(
         win,
         gtk_layer_shell::Edge::Left,
-        position == &BarPosition::Left
+        position == BarPosition::Left
             || (bar_orientation == Orientation::Horizontal && anchor_to_edges),
     );
     gtk_layer_shell::set_anchor(
         win,
         gtk_layer_shell::Edge::Right,
-        position == &BarPosition::Right
+        position == BarPosition::Right
             || (bar_orientation == Orientation::Horizontal && anchor_to_edges),
     );
 }
