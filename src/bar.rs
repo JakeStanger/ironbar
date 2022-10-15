@@ -30,26 +30,33 @@ pub fn create_bar(
 
     setup_layer_shell(&win, monitor, config.position, config.anchor_to_edges);
 
+    let orientation = config.position.get_orientation();
+
     let content = gtk::Box::builder()
-        .orientation(config.position.get_orientation())
+        .orientation(orientation)
         .spacing(0)
         .hexpand(false)
-        .height_request(config.height)
-        .name("bar")
-        .build();
+        .name("bar");
+
+    let content = if orientation == Orientation::Horizontal {
+        content.height_request(config.height)
+    } else {
+        content.width_request(config.height)
+    }
+    .build();
 
     let start = gtk::Box::builder()
-        .orientation(config.position.get_orientation())
+        .orientation(orientation)
         .spacing(0)
         .name("start")
         .build();
     let center = gtk::Box::builder()
-        .orientation(config.position.get_orientation())
+        .orientation(orientation)
         .spacing(0)
         .name("center")
         .build();
     let end = gtk::Box::builder()
-        .orientation(config.position.get_orientation())
+        .orientation(orientation)
         .spacing(0)
         .name("end")
         .build();
