@@ -14,3 +14,4 @@ I welcome contributions of any kind with open arms. That said, please do stick t
 
 - For issues:
   - Please provide as much information as you can - share your config, any logs, steps to reproduce...
+  - If reporting an error, please ensure you use `IRONBAR_LOG` or `IRONBAR_FILE_LOG` set to `debug`.
