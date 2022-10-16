@@ -1,0 +1,23 @@
+{
+    end = [
+        {
+            type = "sys-info"
+
+            interval.memory = 30
+            interval.cpu = 1
+            interval.temps = 5
+            interval.disks = 300
+            interval.networks = 3
+
+            format = [
+                " {cpu-percent}% | {temp-c:k10temp-Tccd1}°C"
+                " {memory-used} / {memory-total} GB ({memory-percent}%)"
+                "| {swap-used} / {swap-total} GB ({swap-percent}%)"
+                " {disk-used:/} / {disk-total:/} GB ({disk-percent:/}%)"
+                "李 {net-down:enp39s0} / {net-up:enp39s0} Mbps"
+                "猪 {load-average:1} | {load-average:5} | {load-average:15}"
+                " {uptime}"
+            ]
+        }
+    ]
+}
