@@ -227,7 +227,7 @@ impl Module<Button> for MpdModule {
                     button,
                     orientation,
                 )))
-                    .expect("Failed to send MPD popup open event");
+                .expect("Failed to send MPD popup open event");
             });
         }
 
