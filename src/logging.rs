@@ -32,7 +32,8 @@ impl<'a> MakeWriter<'a> for MakeFileWriter {
 /// for the lifetime of the application for logging to file to work.
 pub fn install_tracing() -> Result<WorkerGuard> {
     let fmt_layer = fmt::layer().with_target(true);
-    let filter_layer = EnvFilter::try_from_env("IRONBAR_LOG").or_else(|_| EnvFilter::try_new("info"))?;
+    let filter_layer =
+        EnvFilter::try_from_env("IRONBAR_LOG").or_else(|_| EnvFilter::try_new("info"))?;
 
     let file_filter_layer =
         EnvFilter::try_from_env("IRONBAR_FILE_LOG").or_else(|_| EnvFilter::try_new("warn"))?;

@@ -19,23 +19,23 @@ use dirs::config_dir;
 use gtk::gdk::Display;
 use gtk::prelude::*;
 use gtk::Application;
-use std::{env, panic};
 use std::future::Future;
 use std::process::exit;
+use std::{env, panic};
 use tokio::runtime::Handle;
 use tokio::task::block_in_place;
 
 use crate::logging::install_tracing;
-use tracing::{debug, error, info, warn};
+use tracing::{debug, error, info};
 use wayland::WaylandClient;
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[repr(i32)]
-enum ExitCode {
-    ErrGtkDisplay = 1,
-    ErrCreateBars = 2,
-    ErrConfig = 3
+enum ErrorCode {
+    GtkDisplay = 1,
+    CreateBars = 2,
+    Config = 3,
 }
 
 #[tokio::main]
@@ -56,7 +56,7 @@ async fn main() -> Result<()> {
 
     // custom hook allows tracing_appender to capture panics
     panic::set_hook(Box::new(move |panic_info| {
-        error!("{}", panic_hook.panic_report(panic_info))
+        error!("{}", panic_hook.panic_report(panic_info));
     }));
 
     info!("Ironbar version {}", VERSION);
@@ -73,7 +73,7 @@ async fn main() -> Result<()> {
             || {
                 let report = Report::msg("Failed to get default GTK display");
                 error!("{:?}", report);
-                exit(ExitCode::ErrGtkDisplay as i32)
+                exit(ErrorCode::GtkDisplay as i32)
             },
             |display| display,
         );
@@ -82,14 +82,14 @@ async fn main() -> Result<()> {
             Ok(config) => config,
             Err(err) => {
                 error!("{:?}", err);
-                exit(ExitCode::ErrConfig as i32)
+                exit(ErrorCode::Config as i32)
             }
         };
         debug!("Loaded config file");
 
         if let Err(err) = create_bars(app, &display, wayland_client, &config) {
             error!("{:?}", err);
-            exit(ExitCode::ErrCreateBars as i32);
+            exit(ErrorCode::CreateBars as i32);
         }
 
         debug!("Created bars");
@@ -98,7 +98,7 @@ async fn main() -> Result<()> {
             || {
                 let report = Report::msg("Failed to locate user config dir");
                 error!("{:?}", report);
-                exit(ExitCode::ErrCreateBars as i32);
+                exit(ErrorCode::CreateBars as i32);
             },
             |dir| dir.join("ironbar").join("style.css"),
         );
