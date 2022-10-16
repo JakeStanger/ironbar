@@ -31,6 +31,13 @@ use wayland::WaylandClient;
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 
+#[repr(i32)]
+enum ExitCode {
+    ErrGtkDisplay = 1,
+    ErrCreateBars = 2,
+    ErrConfig = 3
+}
+
 #[tokio::main]
 async fn main() -> Result<()> {
     // Disable backtraces by default
@@ -58,7 +65,7 @@ async fn main() -> Result<()> {
             || {
                 let report = Report::msg("Failed to get default GTK display");
                 error!("{:?}", report);
-                exit(1)
+                exit(ExitCode::ErrGtkDisplay as i32)
             },
             |display| display,
         );
@@ -67,14 +74,14 @@ async fn main() -> Result<()> {
             Ok(config) => config,
             Err(err) => {
                 error!("{:?}", err);
-                Config::default()
+                exit(ExitCode::ErrConfig as i32)
             }
         };
         debug!("Loaded config file");
 
         if let Err(err) = create_bars(app, &display, wayland_client, &config) {
             error!("{:?}", err);
-            exit(2);
+            exit(ExitCode::ErrCreateBars as i32);
         }
 
         debug!("Created bars");
@@ -83,7 +90,7 @@ async fn main() -> Result<()> {
             || {
                 let report = Report::msg("Failed to locate user config dir");
                 error!("{:?}", report);
-                exit(3);
+                exit(ExitCode::ErrCreateBars as i32);
             },
             |dir| dir.join("ironbar").join("style.css"),
         );

@@ -15,6 +15,7 @@ use serde::Deserialize;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::{env, fs};
+use tracing::instrument;
 
 #[derive(Debug, Deserialize, Clone)]
 #[serde(tag = "type", rename_all = "kebab-case")]
@@ -69,7 +70,7 @@ impl BarPosition {
     }
 }
 
-#[derive(Debug, Deserialize, Clone, Default)]
+#[derive(Debug, Deserialize, Clone)]
 pub struct Config {
     #[serde(default = "default_bar_position")]
     pub position: BarPosition,
@@ -96,14 +97,18 @@ const fn default_bar_height() -> i32 {
 impl Config {
     /// Attempts to load the config file from file,
     /// parse it and return a new instance of `Self`.
+    #[instrument]
     pub fn load() -> Result<Self> {
         let config_path = if let Ok(config_path) = env::var("IRONBAR_CONFIG") {
             let path = PathBuf::from(config_path);
             if path.exists() {
                 Ok(path)
             } else {
-                Err(Report::msg("Specified config file does not exist")
-                    .note("Config file was specified using `IRONBAR_CONFIG` environment variable"))
+                Err(Report::msg(format!(
+                    "Specified config file does not exist: {}",
+                    path.display()
+                ))
+                .note("Config file was specified using `IRONBAR_CONFIG` environment variable"))
             }
         } else {
             Self::try_find_config()
@@ -116,6 +121,7 @@ impl Config {
     /// by checking each valid format's extension.
     ///
     /// Returns the path of the first valid match, if any.
+    #[instrument]
     fn try_find_config() -> Result<PathBuf> {
         let config_dir = config_dir().wrap_err("Failed to locate user config dir")?;
 
@@ -135,7 +141,10 @@ impl Config {
 
         match file {
             Some(file) => Ok(file),
-            None => Err(Report::msg("Could not find config file")),
+            None => Err(Report::msg("Could not find config file")
+                .suggestion("Ironbar does not include a configuration out of the box")
+                .suggestion("A guide on writing a config can be found on the wiki:")
+                .suggestion("https://github.com/JakeStanger/ironbar/wiki/configuration-guide")),
         }
     }
 
