@@ -340,10 +340,12 @@ impl Module<Button> for MpdModule {
         });
 
         let tx_vol = tx;
-        volume_slider.connect_value_changed(move |slider| {
+        volume_slider.connect_change_value(move |_, _, val| {
             tx_vol
-                .try_send(PlayerCommand::Volume(slider.value() as u8))
+                .try_send(PlayerCommand::Volume(val as u8))
                 .expect("Failed to send volume message");
+
+            Inhibit(false)
         });
 
         container.show_all();
