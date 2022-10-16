@@ -245,7 +245,11 @@ impl Module<gtk::Box> for SysInfoModule {
         let mut labels = Vec::new();
 
         for format in &self.format {
-            let label = Label::builder().label(format).name("item").build();
+            let label = Label::builder()
+                .label(format)
+                .use_markup(true)
+                .name("item")
+                .build();
             label.set_angle(info.bar_position.get_angle());
             container.add(&label);
             labels.push(label);
@@ -261,7 +265,7 @@ impl Module<gtk::Box> for SysInfoModule {
                             .to_string()
                     });
 
-                    label.set_text(format_compiled.as_ref());
+                    label.set_markup(format_compiled.as_ref());
                 }
 
                 Continue(true)
