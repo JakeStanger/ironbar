@@ -105,7 +105,6 @@ async fn main() -> Result<()> {
 
         if style_path.exists() {
             load_css(style_path);
-            debug!("Loaded CSS watcher file");
         }
     });
 
