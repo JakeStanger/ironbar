@@ -19,14 +19,14 @@ use dirs::config_dir;
 use gtk::gdk::Display;
 use gtk::prelude::*;
 use gtk::Application;
-use std::env;
+use std::{env, panic};
 use std::future::Future;
 use std::process::exit;
 use tokio::runtime::Handle;
 use tokio::task::block_in_place;
 
 use crate::logging::install_tracing;
-use tracing::{debug, error, info};
+use tracing::{debug, error, info, warn};
 use wayland::WaylandClient;
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -49,7 +49,15 @@ async fn main() -> Result<()> {
     // otherwise file logging drops
     let _guard = install_tracing()?;
 
-    color_eyre::install()?;
+    let hook_builder = color_eyre::config::HookBuilder::default();
+    let (panic_hook, eyre_hook) = hook_builder.into_hooks();
+
+    eyre_hook.install()?;
+
+    // custom hook allows tracing_appender to capture panics
+    panic::set_hook(Box::new(move |panic_info| {
+        error!("{}", panic_hook.panic_report(panic_info))
+    }));
 
     info!("Ironbar version {}", VERSION);
     info!("Starting application");

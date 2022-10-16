@@ -13,8 +13,8 @@ gtk = "0.15.5"
 gtk-layer-shell = "0.4.1"
 glib = "0.15.12"
 tokio = { version = "1.21.2", features = ["macros", "rt-multi-thread", "time"] }
-tracing = "0.1.36"
-tracing-subscriber = { version = "0.3.15", features = ["env-filter"] }
+tracing = "0.1.37"
+tracing-subscriber = { version = "0.3.16", features = ["env-filter"] }
 tracing-error = "0.2.0"
 tracing-appender = "0.2.2"
 strip-ansi-escapes = "0.1.1"
