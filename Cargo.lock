@@ -2088,8 +2088,9 @@ checksum = "a2eb9349b6444b326872e140eb1cf5e7c522154d69e7a0ffb0fb81c06b37543f"
 
 [[package]]
 name = "stray"
-version = "0.1.1"
-source = "git+https://github.com/JakeStanger/stray.git?branch=fix/tracing#719d921b769f85772caa181c4469e0fedd61df87"
+version = "0.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e467969fcbf600ebb8d302aa6f2ee6cdf65d2a4c642844632bbdbcaf9c9e2b3e"
 dependencies = [
  "anyhow",
  "byteorder",
