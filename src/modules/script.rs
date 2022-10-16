@@ -63,7 +63,7 @@ impl Module<Label> for ScriptModule {
         {
             let label = label.clone();
             context.widget_rx.attach(None, move |s| {
-                label.set_label(s.as_str());
+                label.set_markup(s.as_str());
                 Continue(true)
             });
         }
