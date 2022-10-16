@@ -238,7 +238,7 @@ impl Module<gtk::Box> for SysInfoModule {
         context: WidgetContext<Self::SendMessage, Self::ReceiveMessage>,
         info: &ModuleInfo,
     ) -> Result<ModuleWidget<gtk::Box>> {
-        let re = Regex::new(r"\{([\w-]+)}")?;
+        let re = Regex::new(r"\{([^}]+)}")?;
 
         let container = gtk::Box::new(info.bar_position.get_orientation(), 10);
 
@@ -259,7 +259,7 @@ impl Module<gtk::Box> for SysInfoModule {
             let formats = self.format;
             context.widget_rx.attach(None, move |info| {
                 for (format, label) in formats.iter().zip(labels.clone()) {
-                    let format_compiled = re.replace(format, |caps: &Captures| {
+                    let format_compiled = re.replace_all(format, |caps: &Captures| {
                         info.get(&caps[1])
                             .unwrap_or(&caps[0].to_string())
                             .to_string()
