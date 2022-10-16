@@ -1,13 +1,13 @@
 use crate::modules::{Module, ModuleInfo, ModuleUpdateEvent, ModuleWidget, WidgetContext};
-use color_eyre::{eyre::Report, eyre::Result, eyre::WrapErr, Section};
+use crate::script::exec_command;
+use color_eyre::Result;
 use gtk::prelude::*;
 use gtk::Label;
 use serde::Deserialize;
-use std::process::Command;
 use tokio::spawn;
 use tokio::sync::mpsc::{Receiver, Sender};
 use tokio::time::sleep;
-use tracing::{error, instrument};
+use tracing::error;
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct ScriptModule {
@@ -37,7 +37,7 @@ impl Module<Label> for ScriptModule {
         let path = self.path.clone();
         spawn(async move {
             loop {
-                match run_script(&path) {
+                match exec_command(&path) {
                     Ok(stdout) => tx
                         .send(ModuleUpdateEvent::Update(stdout))
                         .await
@@ -72,31 +72,5 @@ impl Module<Label> for ScriptModule {
             widget: label,
             popup: None,
         })
-    }
-}
-
-#[instrument]
-fn run_script(path: &str) -> Result<String> {
-    let output = Command::new("sh")
-        .arg("-c")
-        .arg(path)
-        .output()
-        .wrap_err("Failed to get script output")?;
-
-    if output.status.success() {
-        let stdout = String::from_utf8(output.stdout)
-            .map(|output| output.trim().to_string())
-            .wrap_err("Script stdout not valid UTF-8")?;
-
-        Ok(stdout)
-    } else {
-        let stderr = String::from_utf8(output.stderr)
-            .map(|output| output.trim().to_string())
-            .wrap_err("Script stderr not valid UTF-8")?;
-
-        Err(Report::msg(stderr)
-            .wrap_err("Script returned non-zero error code")
-            .suggestion("Check the path to your script")
-            .suggestion("Check the script for errors"))
     }
 }

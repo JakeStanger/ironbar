@@ -1,4 +1,5 @@
 use crate::modules::clock::ClockModule;
+use crate::modules::custom::CustomModule;
 use crate::modules::focused::FocusedModule;
 use crate::modules::launcher::LauncherModule;
 use crate::modules::mpd::MpdModule;
@@ -28,6 +29,7 @@ pub enum ModuleConfig {
     Launcher(LauncherModule),
     Script(ScriptModule),
     Focused(FocusedModule),
+    Custom(CustomModule),
 }
 
 #[derive(Debug, Deserialize, Clone)]

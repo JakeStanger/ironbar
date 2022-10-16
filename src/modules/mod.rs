@@ -5,6 +5,7 @@
 /// Clicking the widget opens a popup containing the current time
 /// with second-level precision and a calendar.
 pub mod clock;
+pub mod custom;
 pub mod focused;
 pub mod launcher;
 pub mod mpd;

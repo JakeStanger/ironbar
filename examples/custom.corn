@@ -1,0 +1,25 @@
+let {
+    $power_menu = {
+        type = "custom"
+        class = "power-menu"
+
+        bar = [ { type = "button" name="power-btn" label = "" exec = "popup:toggle" } ]
+
+        popup = [ {
+            type = "box"
+            orientation = "vertical"
+            widgets = [
+                { type = "label" name = "header" label = "Power menu" }
+                {
+                    type = "box"
+                    widgets = [
+                        { type = "button" class="power-btn" label = "<span font-size='40pt'></span>" exec = "!shutdown now" }
+                        { type = "button" class="power-btn" label = "<span font-size='40pt'></span>" exec = "!reboot" }
+                    ]
+                }
+            ]
+        } ]
+    }
+} in {
+    end = [ { type = "clock" } $power_menu ]
+}
