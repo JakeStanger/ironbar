@@ -111,7 +111,7 @@ fn create_bars(
     let outputs = wl.outputs.as_slice();
 
     debug!("Received {} outputs from Wayland", outputs.len());
-    debug!("Output names: {:?}", outputs);
+    debug!("Outputs: {:?}", outputs);
 
     let num_monitors = display.n_monitors();
 
@@ -122,7 +122,10 @@ fn create_bars(
 
         // TODO: Could we use an Arc<Config> or `Cow<Config>` here to avoid cloning?
         config.monitors.as_ref().map_or_else(
-            || create_bar(app, &monitor, monitor_name, config.clone()),
+            || {
+                info!("Creating bar on '{}'", monitor_name);
+                create_bar(app, &monitor, monitor_name, config.clone())
+            },
             |config| {
                 let config = config.get(monitor_name);
                 match &config {
