@@ -59,7 +59,7 @@ impl MpdClient {
             while let Some(change) = state_changes.next().await {
                 debug!("Received state change: {:?}", change);
 
-                if let ConnectionEvent::SubsystemChange(Subsystem::Player | Subsystem::Queue) =
+                if let ConnectionEvent::SubsystemChange(Subsystem::Player | Subsystem::Queue | Subsystem::Mixer) =
                     change
                 {
                     tx2.send(())?;

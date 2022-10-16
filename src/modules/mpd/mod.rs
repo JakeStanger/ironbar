@@ -9,7 +9,7 @@ use dirs::{audio_dir, home_dir};
 use glib::Continue;
 use gtk::gdk_pixbuf::Pixbuf;
 use gtk::prelude::*;
-use gtk::{Button, Image, Label, Orientation};
+use gtk::{Button, Image, Label, Orientation, Scale};
 use mpd_client::commands;
 use mpd_client::responses::{PlayState, Song, Status};
 use mpd_client::tag::Tag;
@@ -26,16 +26,20 @@ pub enum PlayerCommand {
     Previous,
     Toggle,
     Next,
+    Volume(u8),
 }
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct Icons {
     /// Icon to display when playing.
     #[serde(default = "default_icon_play")]
-    play: Option<String>,
+    play: String,
     /// Icon to display when paused.
     #[serde(default = "default_icon_pause")]
-    pause: Option<String>,
+    pause: String,
+    /// Icon to display under volume slider
+    #[serde(default = "default_icon_volume")]
+    volume: String,
 }
 
 impl Default for Icons {
@@ -43,6 +47,7 @@ impl Default for Icons {
         Self {
             pause: default_icon_pause(),
             play: default_icon_play(),
+            volume: default_icon_volume(),
         }
     }
 }
@@ -73,14 +78,16 @@ fn default_format() -> String {
     String::from("{icon}  {title} / {artist}")
 }
 
-#[allow(clippy::unnecessary_wraps)]
-fn default_icon_play() -> Option<String> {
-    Some(String::from(""))
+fn default_icon_play() -> String {
+    String::from("")
 }
 
-#[allow(clippy::unnecessary_wraps)]
-fn default_icon_pause() -> Option<String> {
-    Some(String::from(""))
+fn default_icon_pause() -> String {
+    String::from("")
+}
+
+fn default_icon_volume() -> String {
+    String::from("墳")
 }
 
 fn default_music_dir() -> PathBuf {
@@ -186,6 +193,7 @@ impl Module<Button> for MpdModule {
                         Err(err) => Err(err),
                     },
                     PlayerCommand::Next => client.command(commands::Next).await,
+                    PlayerCommand::Volume(vol) => client.command(commands::SetVolume(vol)).await,
                 };
 
                 if let Err(err) = res {
@@ -211,18 +219,21 @@ impl Module<Button> for MpdModule {
 
         let orientation = info.bar_position.get_orientation();
 
-        button.connect_clicked(move |button| {
-            context
-                .tx
-                .try_send(ModuleUpdateEvent::TogglePopup(Popup::button_pos(
+        {
+            let tx = context.tx.clone();
+
+            button.connect_clicked(move |button| {
+                tx.try_send(ModuleUpdateEvent::TogglePopup(Popup::button_pos(
                     button,
                     orientation,
                 )))
-                .expect("Failed to send MPD popup open event");
-        });
+                    .expect("Failed to send MPD popup open event");
+            });
+        }
 
         {
             let button = button.clone();
+            let tx = context.tx.clone();
 
             context.widget_rx.attach(None, move |mut event| {
                 if let Some(event) = event.take() {
@@ -230,6 +241,8 @@ impl Module<Button> for MpdModule {
                     button.show();
                 } else {
                     button.hide();
+                    tx.try_send(ModuleUpdateEvent::ClosePopup)
+                        .expect("Failed to send close popup message");
                 }
 
                 Continue(true)
@@ -285,8 +298,25 @@ impl Module<Button> for MpdModule {
 
         info_box.add(&controls_box);
 
+        let volume_box = gtk::Box::builder()
+            .orientation(Orientation::Vertical)
+            .spacing(5)
+            .name("volume")
+            .build();
+
+        let volume_slider = Scale::with_range(Orientation::Vertical, 0.0, 100.0, 5.0);
+        volume_slider.set_inverted(true);
+        volume_slider.set_widget_name("scale");
+
+        let volume_icon = Label::new(Some(&self.icons.volume));
+        volume_icon.style_context().add_class("icon");
+
+        volume_box.pack_start(&volume_slider, true, true, 0);
+        volume_box.pack_end(&volume_icon, false, false, 0);
+
         container.add(&album_image);
         container.add(&info_box);
+        container.add(&volume_box);
 
         let tx_prev = tx.clone();
         btn_prev.connect_clicked(move |_| {
@@ -302,11 +332,18 @@ impl Module<Button> for MpdModule {
                 .expect("Failed to send play/pause track message");
         });
 
-        let tx_next = tx;
+        let tx_next = tx.clone();
         btn_next.connect_clicked(move |_| {
             tx_next
                 .try_send(PlayerCommand::Next)
                 .expect("Failed to send next track message");
+        });
+
+        let tx_vol = tx;
+        volume_slider.connect_value_changed(move |slider| {
+            tx_vol
+                .try_send(PlayerCommand::Volume(slider.value() as u8))
+                .expect("Failed to send volume message");
         });
 
         container.show_all();
@@ -371,6 +408,8 @@ impl Module<Button> for MpdModule {
 
                     btn_prev.set_sensitive(enable_prev);
                     btn_next.set_sensitive(enable_next);
+
+                    volume_slider.set_value(update.status.volume as f64);
                 }
 
                 Continue(true)
@@ -406,8 +445,8 @@ fn get_token_value(song: &Song, status: &Status, icons: &Icons, token: &str) -> 
         "icon" => {
             let icon = match status.state {
                 PlayState::Stopped => None,
-                PlayState::Playing => icons.play.as_ref(),
-                PlayState::Paused => icons.pause.as_ref(),
+                PlayState::Playing => Some(&icons.play),
+                PlayState::Paused => Some(&icons.pause),
             };
             icon.map(String::as_str)
         }
