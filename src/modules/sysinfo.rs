@@ -51,45 +51,45 @@ impl Default for Interval {
 }
 
 impl Interval {
-    fn memory(self) -> u64 {
+    const fn memory(self) -> u64 {
         match self {
-            Interval::All(n) => n,
-            Interval::Individual(intervals) => intervals.memory,
+            Self::All(n) => n,
+            Self::Individual(intervals) => intervals.memory,
         }
     }
 
-    fn cpu(self) -> u64 {
+    const fn cpu(self) -> u64 {
         match self {
-            Interval::All(n) => n,
-            Interval::Individual(intervals) => intervals.cpu,
+            Self::All(n) => n,
+            Self::Individual(intervals) => intervals.cpu,
         }
     }
 
-    fn temps(self) -> u64 {
+    const fn temps(self) -> u64 {
         match self {
-            Interval::All(n) => n,
-            Interval::Individual(intervals) => intervals.temps,
+            Self::All(n) => n,
+            Self::Individual(intervals) => intervals.temps,
         }
     }
 
-    fn disks(self) -> u64 {
+    const fn disks(self) -> u64 {
         match self {
-            Interval::All(n) => n,
-            Interval::Individual(intervals) => intervals.disks,
+            Self::All(n) => n,
+            Self::Individual(intervals) => intervals.disks,
         }
     }
 
-    fn networks(self) -> u64 {
+    const fn networks(self) -> u64 {
         match self {
-            Interval::All(n) => n,
-            Interval::Individual(intervals) => intervals.networks,
+            Self::All(n) => n,
+            Self::Individual(intervals) => intervals.networks,
         }
     }
 
-    fn system(self) -> u64 {
+    const fn system(self) -> u64 {
         match self {
-            Interval::All(n) => n,
-            Interval::Individual(intervals) => intervals.system,
+            Self::All(n) => n,
+            Self::Individual(intervals) => intervals.system,
         }
     }
 }
@@ -198,7 +198,7 @@ impl Module<gtk::Box> for SysInfoModule {
 
         // system refresh
         {
-            let tx = refresh_tx.clone();
+            let tx = refresh_tx;
             spawn(async move {
                 loop {
                     tx.send(RefreshType::System)
@@ -219,9 +219,9 @@ impl Module<gtk::Box> for SysInfoModule {
                     RefreshType::Temps => refresh_temp_tokens(&mut format_info, &mut sys),
                     RefreshType::Disks => refresh_disk_tokens(&mut format_info, &mut sys),
                     RefreshType::Network => {
-                        refresh_network_tokens(&mut format_info, &mut sys, interval.networks())
+                        refresh_network_tokens(&mut format_info, &mut sys, interval.networks());
                     }
-                    RefreshType::System => refresh_system_tokens(&mut format_info, &mut sys),
+                    RefreshType::System => refresh_system_tokens(&mut format_info, &sys),
                 };
 
                 tx.send(ModuleUpdateEvent::Update(format_info.clone()))
@@ -389,7 +389,11 @@ fn refresh_disk_tokens(format_info: &mut HashMap<String, String>, sys: &mut Syst
     }
 }
 
-fn refresh_network_tokens(format_info: &mut HashMap<String, String>, sys: &mut System, interval: u64) {
+fn refresh_network_tokens(
+    format_info: &mut HashMap<String, String>,
+    sys: &mut System,
+    interval: u64,
+) {
     sys.refresh_networks();
 
     for (iface, network) in sys.networks() {
