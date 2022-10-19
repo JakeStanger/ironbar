@@ -169,7 +169,7 @@ impl Config {
                 // so serialize the interpreted result then deserialize that
                 let file =
                     String::from_utf8(file).wrap_err("Config file contains invalid UTF-8")?;
-                let config = cornfig::parse(&file).wrap_err("Invalid corn config")?.value;
+                let config = libcorn::parse(&file).wrap_err("Invalid corn config")?.value;
                 Ok(serde_json::from_str(&serde_json::to_string(&config)?)?)
             }
             _ => unreachable!(),
