@@ -1,5 +1,6 @@
 use crate::bridge_channel::BridgeChannel;
 use crate::config::{BarPosition, ModuleConfig};
+use crate::modules::custom::ExecEvent;
 use crate::modules::launcher::{ItemEvent, LauncherUpdate};
 use crate::modules::mpd::{PlayerCommand, SongUpdate};
 use crate::modules::workspaces::WorkspaceUpdate;
@@ -235,6 +236,9 @@ fn add_modules(
             }
             ModuleConfig::Launcher(module) => {
                 add_module!(module, id, "launcher", LauncherUpdate, ItemEvent);
+            }
+            ModuleConfig::Custom(module) => {
+                add_module!(module, id, "custom", (), ExecEvent);
             }
         }
     }

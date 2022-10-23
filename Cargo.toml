@@ -10,7 +10,7 @@ description = "Customisable wlroots/sway bar"
 [dependencies]
 derive_builder = "0.11.2"
 gtk = "0.15.5"
-gtk-layer-shell = "0.4.1"
+gtk-layer-shell = "0.4.4"
 glib = "0.15.12"
 tokio = { version = "1.21.2", features = ["macros", "rt-multi-thread", "time"] }
 tracing = "0.1.37"
@@ -25,20 +25,17 @@ serde = { version = "1.0.141", features = ["derive"] }
 serde_json = "1.0.82"
 serde_yaml = "0.9.4"
 toml = "0.5.9"
-cornfig = "0.3.0"
+libcorn = "0.4.0"
 lazy_static = "1.4.0"
 async_once = "0.2.6"
-regex = "1.6.0"
+regex = { version = "1.6.0", default-features = false, features = ["std"] }
 stray = { version = "0.1.2" }
 dirs = "4.0.0"
 walkdir = "2.3.2"
-notify = "5.0.0"
+notify = { version = "5.0.0", default-features = false }
 mpd_client = "1.0.0"
 swayipc-async = { version = "2.0.1" }
 sysinfo = "0.26.4"
 wayland-client = "0.29.5"
-wayland-protocols = { version = "0.29.5", features=["unstable_protocols", "client"] }
-smithay-client-toolkit = "0.16.0"
-
-[patch.crates-io]
-swayipc-async = { git = "https://github.com/JakeStanger/swayipc-rs.git", branch = "feat/derive-clone" }
+wayland-protocols = { version = "0.29.5", features = ["unstable_protocols", "client"] }
+smithay-client-toolkit = { version = "0.16.0", default-features = false, features=["calloop"] }

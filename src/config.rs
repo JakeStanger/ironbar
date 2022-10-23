@@ -1,4 +1,5 @@
 use crate::modules::clock::ClockModule;
+use crate::modules::custom::CustomModule;
 use crate::modules::focused::FocusedModule;
 use crate::modules::launcher::LauncherModule;
 use crate::modules::mpd::MpdModule;
@@ -28,6 +29,7 @@ pub enum ModuleConfig {
     Launcher(LauncherModule),
     Script(ScriptModule),
     Focused(FocusedModule),
+    Custom(CustomModule),
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -167,7 +169,7 @@ impl Config {
                 // so serialize the interpreted result then deserialize that
                 let file =
                     String::from_utf8(file).wrap_err("Config file contains invalid UTF-8")?;
-                let config = cornfig::parse(&file).wrap_err("Invalid corn config")?.value;
+                let config = libcorn::parse(&file).wrap_err("Invalid corn config")?.value;
                 Ok(serde_json::from_str(&serde_json::to_string(&config)?)?)
             }
             _ => unreachable!(),

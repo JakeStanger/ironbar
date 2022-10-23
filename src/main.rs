@@ -6,6 +6,7 @@ mod icon;
 mod logging;
 mod modules;
 mod popup;
+mod script;
 mod style;
 mod sway;
 mod wayland;
