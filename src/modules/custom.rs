@@ -163,7 +163,6 @@ impl Module<gtk::Box> for CustomModule {
     ) -> Result<()> {
         spawn(async move {
             while let Some(event) = rx.recv().await {
-                println!("{:?}", event);
                 if event.cmd.starts_with('!') {
                     debug!("executing command: '{}'", &event.cmd[1..]);
                     if let Err(err) = exec_command(&event.cmd[1..]) {
