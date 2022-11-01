@@ -3,15 +3,13 @@ name = "ironbar"
 version = "0.6.0"
 edition = "2021"
 license = "MIT"
-description = "Customisable wlroots/sway bar"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+description = "Customisable GTK Layer Shell wlroots/sway bar"
 
 [dependencies]
 derive_builder = "0.11.2"
-gtk = "0.15.5"
-gtk-layer-shell = "0.4.4"
-glib = "0.15.12"
+gtk = "0.16.0"
+gtk-layer-shell = "0.5.0"
+glib = "0.16.2"
 tokio = { version = "1.21.2", features = ["macros", "rt-multi-thread", "time"] }
 tracing = "0.1.37"
 tracing-subscriber = { version = "0.3.16", features = ["env-filter"] }
