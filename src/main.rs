@@ -1,6 +1,5 @@
 mod bar;
 mod bridge_channel;
-mod collection;
 mod config;
 mod icon;
 mod logging;

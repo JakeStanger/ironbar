@@ -3,7 +3,6 @@ mod open_state;
 
 use self::item::{Item, ItemButton, Window};
 use self::open_state::OpenState;
-use crate::collection::Collection;
 use crate::icon::find_desktop_file;
 use crate::modules::{Module, ModuleInfo, ModuleUpdateEvent, ModuleWidget, WidgetContext};
 use crate::wayland;
@@ -12,6 +11,7 @@ use color_eyre::{Help, Report};
 use glib::Continue;
 use gtk::prelude::*;
 use gtk::{Button, IconTheme, Orientation};
+use indexmap::IndexMap;
 use serde::Deserialize;
 use std::process::{Command, Stdio};
 use std::sync::{Arc, Mutex};
@@ -90,8 +90,8 @@ impl Module<gtk::Box> for LauncherModule {
                         Item::new(app_id.to_string(), OpenState::Closed, true),
                     )
                 })
-                .collect::<Collection<_, _>>(),
-            None => Collection::new(),
+                .collect::<IndexMap<_, _>>(),
+            None => IndexMap::new(),
         };
 
         let items = Arc::new(Mutex::new(items));
@@ -108,7 +108,7 @@ impl Module<gtk::Box> for LauncherModule {
 
                 let mut items = items.lock().expect("Failed to get lock on items");
 
-                for (window, _) in open_windows.clone() {
+                for (_, (window, _)) in open_windows.clone() {
                     let item = items.get_mut(&window.app_id);
                     match item {
                         Some(item) => {
@@ -121,7 +121,7 @@ impl Module<gtk::Box> for LauncherModule {
                 }
 
                 let items = items.iter();
-                for item in items {
+                for (_, item) in items {
                     tx.try_send(ModuleUpdateEvent::Update(LauncherUpdate::AddItem(
                         item.clone(),
                     )))?;
@@ -282,7 +282,7 @@ impl Module<gtk::Box> for LauncherModule {
                     let id = match event {
                         ItemEvent::FocusItem(app_id) => items
                             .get(&app_id)
-                            .and_then(|item| item.windows.first().map(|win| win.id)),
+                            .and_then(|item| item.windows.first().map(|(_, win)| win.id)),
                         ItemEvent::FocusWindow(id) => Some(id),
                         ItemEvent::OpenItem(_) => unreachable!(),
                     };
@@ -325,7 +325,7 @@ impl Module<gtk::Box> for LauncherModule {
             let show_icons = self.show_icons;
             let orientation = info.bar_position.get_orientation();
 
-            let mut buttons = Collection::<String, ItemButton>::new();
+            let mut buttons = IndexMap::<String, ItemButton>::new();
 
             let controller_tx2 = context.controller_tx.clone();
             context.widget_rx.attach(None, move |event| {
@@ -431,7 +431,7 @@ impl Module<gtk::Box> for LauncherModule {
         placeholder.set_width_request(MAX_WIDTH);
         container.add(&placeholder);
 
-        let mut buttons = Collection::<String, Collection<usize, Button>>::new();
+        let mut buttons = IndexMap::<String, IndexMap<usize, Button>>::new();
 
         {
             let container = container.clone();
@@ -443,7 +443,7 @@ impl Module<gtk::Box> for LauncherModule {
                         let window_buttons = item
                             .windows
                             .into_iter()
-                            .map(|win| {
+                            .map(|(_, win)| {
                                 let button = Button::builder()
                                     .label(&clamp(&win.name))
                                     .height_request(40)
@@ -509,7 +509,7 @@ impl Module<gtk::Box> for LauncherModule {
 
                         // add app's buttons
                         if let Some(buttons) = buttons.get(&app_id) {
-                            for button in buttons {
+                            for (_, button) in buttons {
                                 button.style_context().add_class("popup-item");
                                 container.add(button);
                             }

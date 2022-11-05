@@ -1146,6 +1146,7 @@ dependencies = [
  "glib",
  "gtk",
  "gtk-layer-shell",
+ "indexmap",
  "lazy_static",
  "libcorn",
  "mpd_client",

@@ -1,5 +1,4 @@
 use super::open_state::OpenState;
-use crate::collection::Collection;
 use crate::icon::get_icon;
 use crate::modules::launcher::{ItemEvent, LauncherUpdate};
 use crate::modules::ModuleUpdateEvent;
@@ -7,6 +6,7 @@ use crate::popup::Popup;
 use crate::wayland::ToplevelInfo;
 use gtk::prelude::*;
 use gtk::{Button, IconTheme, Image, Orientation};
+use indexmap::IndexMap;
 use std::rc::Rc;
 use std::sync::RwLock;
 use tokio::sync::mpsc::Sender;
@@ -16,17 +16,17 @@ pub struct Item {
     pub app_id: String,
     pub favorite: bool,
     pub open_state: OpenState,
-    pub windows: Collection<usize, Window>,
+    pub windows: IndexMap<usize, Window>,
     pub name: String,
 }
 
 impl Item {
-    pub const fn new(app_id: String, open_state: OpenState, favorite: bool) -> Self {
+    pub fn new(app_id: String, open_state: OpenState, favorite: bool) -> Self {
         Self {
             app_id,
             favorite,
             open_state,
-            windows: Collection::new(),
+            windows: IndexMap::new(),
             name: String::new(),
         }
     }
@@ -78,7 +78,7 @@ impl Item {
             &self
                 .windows
                 .iter()
-                .map(|win| &win.open_state)
+                .map(|(_, win)| &win.open_state)
                 .collect::<Vec<_>>(),
         );
         self.open_state = new_state;
@@ -91,7 +91,7 @@ impl From<ToplevelInfo> for Item {
         let name = toplevel.title.clone();
         let app_id = toplevel.app_id.clone();
 
-        let mut windows = Collection::new();
+        let mut windows = IndexMap::new();
         windows.insert(toplevel.id, toplevel.into());
 
         Self {

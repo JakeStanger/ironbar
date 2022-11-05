@@ -1,5 +1,4 @@
 use super::{Env, ToplevelHandler};
-use crate::collection::Collection;
 use crate::wayland::toplevel::{ToplevelEvent, ToplevelInfo};
 use crate::wayland::toplevel_manager::listen_for_toplevels;
 use crate::wayland::ToplevelChange;
@@ -21,7 +20,7 @@ use wayland_protocols::wlr::unstable::foreign_toplevel::v1::client::{
 pub struct WaylandClient {
     pub outputs: Vec<OutputInfo>,
     pub seats: Vec<WlSeat>,
-    pub toplevels: Arc<RwLock<Collection<usize, (ToplevelInfo, ZwlrForeignToplevelHandleV1)>>>,
+    pub toplevels: Arc<RwLock<IndexMap<usize, (ToplevelInfo, ZwlrForeignToplevelHandleV1)>>>,
     toplevel_tx: broadcast::Sender<ToplevelEvent>,
     _toplevel_rx: broadcast::Receiver<ToplevelEvent>,
 }
@@ -35,7 +34,7 @@ impl WaylandClient {
 
         let toplevel_tx2 = toplevel_tx.clone();
 
-        let toplevels = Arc::new(RwLock::new(Collection::new()));
+        let toplevels = Arc::new(RwLock::new(IndexMap::new()));
         let toplevels2 = toplevels.clone();
 
         // `queue` is not send so we need to handle everything inside the task
