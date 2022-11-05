@@ -13,8 +13,6 @@ For information and examples on styling please see the [wiki](https://github.com
 
 ### Cargo
 
-> ⚠ The Cargo version is currently outdated due to restrictions around publishing crates with patched dependencies.
-
 ```sh
 cargo install ironbar
 ```
