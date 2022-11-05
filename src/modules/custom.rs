@@ -20,7 +20,7 @@ pub struct CustomModule {
 }
 
 /// Attempts to parse an `Orientation` from `String`
-fn try_get_orientation(orientation: String) -> Result<Orientation> {
+fn try_get_orientation(orientation: &str) -> Result<Orientation> {
     match orientation.to_lowercase().as_str() {
         "horizontal" | "h" => Ok(Orientation::Horizontal),
         "vertical" | "v" => Ok(Orientation::Vertical),
@@ -55,14 +55,14 @@ impl Widget {
     /// Creates this widget and adds it to the parent container
     fn add_to(self, parent: &gtk::Box, tx: Sender<ExecEvent>, bar_orientation: Orientation) {
         match self.widget_type {
-            WidgetType::Box => parent.add(&self.into_box(tx, bar_orientation)),
+            WidgetType::Box => parent.add(&self.into_box(&tx, bar_orientation)),
             WidgetType::Label => parent.add(&self.into_label()),
             WidgetType::Button => parent.add(&self.into_button(tx, bar_orientation)),
         }
     }
 
     /// Creates a `gtk::Box` from this widget
-    fn into_box(self, tx: Sender<ExecEvent>, bar_orientation: Orientation) -> gtk::Box {
+    fn into_box(self, tx: &Sender<ExecEvent>, bar_orientation: Orientation) -> gtk::Box {
         let mut builder = gtk::Box::builder();
 
         if let Some(name) = self.name {
@@ -71,7 +71,7 @@ impl Widget {
 
         if let Some(orientation) = self.orientation {
             builder = builder
-                .orientation(try_get_orientation(orientation).unwrap_or(Orientation::Horizontal));
+                .orientation(try_get_orientation(&orientation).unwrap_or(Orientation::Horizontal));
         }
 
         let container = builder.build();
@@ -83,7 +83,7 @@ impl Widget {
         if let Some(widgets) = self.widgets {
             widgets
                 .into_iter()
-                .for_each(|widget| widget.add_to(&container, tx.clone(), bar_orientation))
+                .for_each(|widget| widget.add_to(&container, tx.clone(), bar_orientation));
         }
 
         container
@@ -198,11 +198,11 @@ impl Module<gtk::Box> for CustomModule {
         let container = gtk::Box::builder().orientation(orientation).build();
 
         if let Some(ref class) = self.class {
-            container.style_context().add_class(class)
+            container.style_context().add_class(class);
         }
 
         self.bar.clone().into_iter().for_each(|widget| {
-            widget.add_to(&container, context.controller_tx.clone(), orientation)
+            widget.add_to(&container, context.controller_tx.clone(), orientation);
         });
 
         let popup = self.into_popup(context.controller_tx, context.popup_rx);
@@ -226,7 +226,7 @@ impl Module<gtk::Box> for CustomModule {
         if let Some(class) = self.class {
             container
                 .style_context()
-                .add_class(format!("popup-{class}").as_str())
+                .add_class(format!("popup-{class}").as_str());
         }
 
         if let Some(popup) = self.popup {

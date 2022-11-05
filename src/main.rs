@@ -95,10 +95,8 @@ async fn main() -> Result<()> {
 
         debug!("Created bars");
 
-        let style_path = env::var("IRONBAR_CSS")
-            .ok()
-            .map(PathBuf::from)
-            .unwrap_or_else(|| {
+        let style_path = env::var("IRONBAR_CSS").ok().map_or_else(
+            || {
                 config_dir().map_or_else(
                     || {
                         let report = Report::msg("Failed to locate user config dir");
@@ -107,7 +105,9 @@ async fn main() -> Result<()> {
                     },
                     |dir| dir.join("ironbar").join("style.css"),
                 )
-            });
+            },
+            PathBuf::from,
+        );
 
         if style_path.exists() {
             load_css(style_path);
