@@ -427,6 +427,7 @@ impl Module<gtk::Box> for LauncherModule {
             .name("popup-launcher")
             .build();
 
+        // we need some content to force the container to have a size
         let placeholder = Button::with_label("PLACEHOLDER");
         placeholder.set_width_request(MAX_WIDTH);
         container.add(&placeholder);
@@ -439,6 +440,7 @@ impl Module<gtk::Box> for LauncherModule {
                 match event {
                     LauncherUpdate::AddItem(item) => {
                         let app_id = item.app_id.clone();
+                        trace!("Adding item with id '{app_id}' to the popup: {item:?}");
 
                         let window_buttons = item
                             .windows
@@ -468,6 +470,11 @@ impl Module<gtk::Box> for LauncherModule {
                         buttons.insert(app_id, window_buttons);
                     }
                     LauncherUpdate::AddWindow(app_id, win) => {
+                        debug!(
+                            "Adding new window to popup for '{app_id}': '{}' ({})",
+                            win.name, win.id
+                        );
+
                         if let Some(buttons) = buttons.get_mut(&app_id) {
                             let button = Button::builder()
                                 .height_request(40)
@@ -490,11 +497,17 @@ impl Module<gtk::Box> for LauncherModule {
                         }
                     }
                     LauncherUpdate::RemoveWindow(app_id, win_id) => {
+                        debug!("Removing window from popup for '{app_id}': {win_id}");
+
                         if let Some(buttons) = buttons.get_mut(&app_id) {
                             buttons.remove(&win_id);
                         }
                     }
                     LauncherUpdate::Title(app_id, win_id, title) => {
+                        debug!(
+                            "Updating window title on popup for '{app_id}'/{win_id} to '{title}'"
+                        );
+
                         if let Some(buttons) = buttons.get_mut(&app_id) {
                             if let Some(button) = buttons.get(&win_id) {
                                 button.set_label(&title);

@@ -2,6 +2,8 @@ use super::{Env, ToplevelHandler};
 use crate::wayland::toplevel::{ToplevelEvent, ToplevelInfo};
 use crate::wayland::toplevel_manager::listen_for_toplevels;
 use crate::wayland::ToplevelChange;
+use color_eyre::Report;
+use indexmap::IndexMap;
 use smithay_client_toolkit::environment::Environment;
 use smithay_client_toolkit::output::{with_output_info, OutputInfo};
 use smithay_client_toolkit::reexports::calloop;
@@ -10,7 +12,7 @@ use std::sync::{Arc, RwLock};
 use std::time::Duration;
 use tokio::sync::{broadcast, oneshot};
 use tokio::task::spawn_blocking;
-use tracing::trace;
+use tracing::{error, trace};
 use wayland_client::protocol::wl_seat::WlSeat;
 use wayland_protocols::wlr::unstable::foreign_toplevel::v1::client::{
     zwlr_foreign_toplevel_handle_v1::ZwlrForeignToplevelHandleV1,
@@ -88,9 +90,12 @@ impl WaylandClient {
 
             loop {
                 // TODO: Avoid need for duration here - can we force some event when sending requests?
-                event_loop
-                    .dispatch(Duration::from_millis(50), &mut ())
-                    .expect("Failed to dispatch pending wayland events");
+                if let Err(err) = event_loop.dispatch(Duration::from_millis(50), &mut ()) {
+                    error!(
+                        "{:?}",
+                        Report::new(err).wrap_err("Failed to dispatch pending wayland events")
+                    );
+                }
             }
         });
 
