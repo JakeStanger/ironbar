@@ -31,12 +31,15 @@ impl<'a> MakeWriter<'a> for MakeFileWriter {
 /// The returned `WorkerGuard` must remain in scope
 /// for the lifetime of the application for logging to file to work.
 pub fn install_tracing() -> Result<WorkerGuard> {
+    const DEFAULT_LOG: &str = "info";
+    const DEFAULT_FILE_LOG: &str = "warn";
+
     let fmt_layer = fmt::layer().with_target(true);
     let filter_layer =
-        EnvFilter::try_from_env("IRONBAR_LOG").or_else(|_| EnvFilter::try_new("info"))?;
+        EnvFilter::try_from_env("IRONBAR_LOG").or_else(|_| EnvFilter::try_new(DEFAULT_LOG))?;
 
-    let file_filter_layer =
-        EnvFilter::try_from_env("IRONBAR_FILE_LOG").or_else(|_| EnvFilter::try_new("warn"))?;
+    let file_filter_layer = EnvFilter::try_from_env("IRONBAR_FILE_LOG")
+        .or_else(|_| EnvFilter::try_new(DEFAULT_FILE_LOG))?;
 
     let log_path = data_dir().unwrap_or(env::current_dir()?).join("ironbar");
 
