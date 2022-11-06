@@ -1,6 +1,6 @@
 use crate::await_sync;
+use crate::clients::sway::{get_client, get_sub_client};
 use crate::modules::{Module, ModuleInfo, ModuleUpdateEvent, ModuleWidget, WidgetContext};
-use crate::sway::{get_client, get_sub_client};
 use color_eyre::{Report, Result};
 use gtk::prelude::*;
 use gtk::Button;

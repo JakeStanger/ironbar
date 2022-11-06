@@ -1,7 +1,7 @@
+use super::toplevel::{ToplevelEvent, ToplevelInfo};
+use super::toplevel_manager::listen_for_toplevels;
+use super::ToplevelChange;
 use super::{Env, ToplevelHandler};
-use crate::wayland::toplevel::{ToplevelEvent, ToplevelInfo};
-use crate::wayland::toplevel_manager::listen_for_toplevels;
-use crate::wayland::ToplevelChange;
 use color_eyre::Report;
 use indexmap::IndexMap;
 use smithay_client_toolkit::environment::Environment;

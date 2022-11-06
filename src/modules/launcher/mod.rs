@@ -3,10 +3,9 @@ mod open_state;
 
 use self::item::{Item, ItemButton, Window};
 use self::open_state::OpenState;
+use crate::clients::wayland::{self, ToplevelChange};
 use crate::icon::find_desktop_file;
 use crate::modules::{Module, ModuleInfo, ModuleUpdateEvent, ModuleWidget, WidgetContext};
-use crate::wayland;
-use crate::wayland::ToplevelChange;
 use color_eyre::{Help, Report};
 use glib::Continue;
 use gtk::prelude::*;

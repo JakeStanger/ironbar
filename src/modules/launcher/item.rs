@@ -1,9 +1,9 @@
 use super::open_state::OpenState;
+use crate::clients::wayland::ToplevelInfo;
 use crate::icon::get_icon;
 use crate::modules::launcher::{ItemEvent, LauncherUpdate};
 use crate::modules::ModuleUpdateEvent;
 use crate::popup::Popup;
-use crate::wayland::ToplevelInfo;
 use gtk::prelude::*;
 use gtk::{Button, IconTheme, Image, Orientation};
 use indexmap::IndexMap;

@@ -1,5 +1,5 @@
-use crate::wayland::toplevel::{Toplevel, ToplevelEvent};
-use crate::wayland::LazyGlobal;
+use super::toplevel::{Toplevel, ToplevelEvent};
+use super::LazyGlobal;
 use smithay_client_toolkit::environment::{Environment, GlobalHandler};
 use std::cell::RefCell;
 use std::rc;

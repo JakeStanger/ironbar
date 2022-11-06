@@ -1,6 +1,6 @@
+use crate::clients::wayland::{self, ToplevelChange};
 use crate::modules::{Module, ModuleInfo, ModuleUpdateEvent, ModuleWidget, WidgetContext};
-use crate::wayland::ToplevelChange;
-use crate::{await_sync, icon, wayland};
+use crate::{await_sync, icon};
 use color_eyre::Result;
 use glib::Continue;
 use gtk::prelude::*;

@@ -1,5 +1,6 @@
 mod bar;
 mod bridge_channel;
+mod clients;
 mod config;
 mod icon;
 mod logging;
@@ -7,8 +8,6 @@ mod modules;
 mod popup;
 mod script;
 mod style;
-mod sway;
-mod wayland;
 
 use crate::bar::create_bar;
 use crate::config::{Config, MonitorConfig};
@@ -27,8 +26,8 @@ use tokio::runtime::Handle;
 use tokio::task::block_in_place;
 
 use crate::logging::install_tracing;
+use clients::wayland::{self, WaylandClient};
 use tracing::{debug, error, info};
-use wayland::WaylandClient;
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 

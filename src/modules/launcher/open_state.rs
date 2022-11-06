@@ -1,4 +1,4 @@
-use crate::wayland::ToplevelInfo;
+use crate::clients::wayland::ToplevelInfo;
 
 /// Open state for a launcher item, or item window.
 #[derive(Debug, Clone, Eq, PartialEq, Copy)]

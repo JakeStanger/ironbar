@@ -1,7 +1,4 @@
-mod client;
-
-use crate::modules::mpd::client::MpdConnectionError;
-use crate::modules::mpd::client::{get_client, get_duration, get_elapsed};
+use crate::clients::mpd::{get_client, get_duration, get_elapsed, MpdConnectionError};
 use crate::modules::{Module, ModuleInfo, ModuleUpdateEvent, ModuleWidget, WidgetContext};
 use crate::popup::Popup;
 use color_eyre::Result;

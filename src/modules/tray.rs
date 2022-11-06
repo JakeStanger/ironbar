@@ -1,7 +1,5 @@
-mod client;
-
 use crate::await_sync;
-use crate::modules::tray::client::get_tray_event_client;
+use crate::clients::system_tray::get_tray_event_client;
 use crate::modules::{Module, ModuleInfo, ModuleUpdateEvent, ModuleWidget, WidgetContext};
 use color_eyre::Result;
 use gtk::prelude::*;

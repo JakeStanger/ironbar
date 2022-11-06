@@ -4,11 +4,10 @@ mod toplevel_manager;
 
 extern crate smithay_client_toolkit as sctk;
 
-use self::toplevel_manager::ToplevelHandler;
-pub use crate::wayland::toplevel::{ToplevelChange, ToplevelEvent, ToplevelInfo};
-use crate::wayland::toplevel_manager::{ToplevelHandling, ToplevelStatusListener};
 use async_once::AsyncOnce;
 use lazy_static::lazy_static;
+pub use toplevel::{ToplevelChange, ToplevelEvent, ToplevelInfo};
+use toplevel_manager::{ToplevelHandler, ToplevelHandling, ToplevelStatusListener};
 use wayland_client::{Attached, DispatchData, Interface};
 use wayland_protocols::wlr::unstable::foreign_toplevel::v1::client::{
     zwlr_foreign_toplevel_handle_v1::ZwlrForeignToplevelHandleV1,
