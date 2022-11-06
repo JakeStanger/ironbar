@@ -12,11 +12,6 @@ jobs:
       - uses: actions/checkout@v3
 
       - name: Sync Wiki
-        uses: joeizzard/action-wiki-sync@master
-        with:
-          username: JakeStanger
-          access_token: ${{ secrets.GITHUB_TOKEN }}
-          wiki_folder: docs
-          commit_username: 'Jake Stanger'
-          commit_email: 'mail@jstanger.dev'
-          commit_message: 'sync wiki from main repo'
+        run: ./.github/scripts/sync-wiki.sh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
