@@ -5,10 +5,17 @@ Pango markup is supported.
 
 > Type: `script`
 
-| Name      | Type     | Default | Description                                             |
-|-----------|----------|---------|---------------------------------------------------------|
-| `path`    | `string` | `null`  | Path to the script on disk                              |
-| `interval` | `number` | `5000`   | Number of milliseconds to wait between executing script |
+| Name       | Type                  | Default | Description                                             |
+|------------|-----------------------|---------|---------------------------------------------------------|
+| `path`     | `string`              | `null`  | Path to the script on disk                              |
+| `mode`     | `'poll'` or `'watch'` | `poll`  | See [#modes](#modes)                                    |
+| `interval` | `number`              | `5000`  | Number of milliseconds to wait between executing script |
+
+### Modes
+
+- Use `poll` to run the script wait for it to exit. On exit, the label is updated to show everything the script wrote to `stdout`.
+- Use `watch` to start a long-running script. Every time the script writes to `stdout`, the label is updated to show the latest line.
+    Note this does not work for all programs as they may use block-buffering instead of line-buffering when they detect output being piped. 
 
 <details>
 <summary>JSON</summary>
@@ -19,6 +26,7 @@ Pango markup is supported.
     {
       "type": "script",
       "path": "/home/jake/.local/bin/phone-battery",
+      "mode": "poll",
       "interval": 5000
     }
   ]
@@ -35,6 +43,7 @@ Pango markup is supported.
 [[end]]
 type = "script"
 path = "/home/jake/.local/bin/phone-battery"
+mode = "poll"
 interval = 5000
 ```
 
@@ -47,6 +56,7 @@ interval = 5000
 end:
   - type: "script"
     path: "/home/jake/.local/bin/phone-battery"
+    mode: 'poll'
     interval : 5000
 ```
 
@@ -61,6 +71,7 @@ end:
     {
       type = "script"
       path = "/home/jake/.local/bin/phone-battery"
+      mode = "poll"
       interval = 5000
     }
   ]
