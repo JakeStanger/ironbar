@@ -68,17 +68,12 @@ fn parse_desktop_file(path: PathBuf) -> io::Result<HashMap<String, String>> {
 
 /// Attempts to get the icon name from the app's `.desktop` file.
 fn get_desktop_icon_name(app_id: &str) -> Option<String> {
-    match find_desktop_file(app_id) {
-        Some(file) => {
-            let map = parse_desktop_file(file);
-
-            match map {
-                Ok(map) => map.get("Icon").map(std::string::ToString::to_string),
-                Err(_) => None,
-            }
-        }
-        None => None,
-    }
+    find_desktop_file(app_id).and_then(|file| {
+        let map = parse_desktop_file(file);
+        map.map_or(None, |map| {
+            map.get("Icon").map(std::string::ToString::to_string)
+        })
+    })
 }
 
 enum IconLocation {
@@ -137,11 +132,7 @@ pub fn get_icon(theme: &IconTheme, app_id: &str, size: i32) -> Option<Pixbuf> {
     match icon_location {
         Some(IconLocation::Theme(icon_name)) => {
             let icon = theme.load_icon(&icon_name, size, IconLookupFlags::FORCE_SIZE);
-
-            match icon {
-                Ok(icon) => icon,
-                Err(_) => None,
-            }
+            icon.map_or(None, |icon| icon)
         }
         Some(IconLocation::File(path)) => Pixbuf::from_file_at_scale(path, size, size, true).ok(),
         None => None,

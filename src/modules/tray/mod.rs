@@ -23,7 +23,7 @@ pub struct TrayModule;
 fn get_icon(item: &StatusNotifierItem) -> Option<Image> {
     item.icon_theme_path.as_ref().and_then(|path| {
         let theme = IconTheme::new();
-        theme.append_search_path(&path);
+        theme.append_search_path(path);
 
         item.icon_name.as_ref().and_then(|icon_name| {
             let icon_info = theme.lookup_icon(icon_name, 16, IconLookupFlags::empty());

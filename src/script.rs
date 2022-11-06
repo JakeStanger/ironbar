@@ -3,7 +3,8 @@ use color_eyre::{Help, Report, Result};
 use std::process::Command;
 use tracing::instrument;
 
-/// Attempts to execute a given command.
+/// Attempts to execute a given command,
+/// waiting for it to finish.
 /// If the command returns status 0,
 /// the `stdout` is returned.
 /// Otherwise, an `Err` variant

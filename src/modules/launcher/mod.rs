@@ -81,18 +81,20 @@ impl Module<gtk::Box> for LauncherModule {
         tx: Sender<ModuleUpdateEvent<Self::SendMessage>>,
         mut rx: Receiver<Self::ReceiveMessage>,
     ) -> crate::Result<()> {
-        let items = match &self.favorites {
-            Some(favorites) => favorites
-                .iter()
-                .map(|app_id| {
-                    (
-                        app_id.to_string(),
-                        Item::new(app_id.to_string(), OpenState::Closed, true),
-                    )
-                })
-                .collect::<IndexMap<_, _>>(),
-            None => IndexMap::new(),
-        };
+        let items = self
+            .favorites
+            .as_ref()
+            .map_or_else(IndexMap::new, |favorites| {
+                favorites
+                    .iter()
+                    .map(|app_id| {
+                        (
+                            app_id.to_string(),
+                            Item::new(app_id.to_string(), OpenState::Closed, true),
+                        )
+                    })
+                    .collect::<IndexMap<_, _>>()
+            });
 
         let items = Arc::new(Mutex::new(items));
 
