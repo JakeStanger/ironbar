@@ -101,20 +101,21 @@ impl Config {
     /// parse it and return a new instance of `Self`.
     #[instrument]
     pub fn load() -> Result<Self> {
-        let config_path = if let Ok(config_path) = env::var("IRONBAR_CONFIG") {
-            let path = PathBuf::from(config_path);
-            if path.exists() {
-                Ok(path)
-            } else {
-                Err(Report::msg(format!(
-                    "Specified config file does not exist: {}",
-                    path.display()
-                ))
-                .note("Config file was specified using `IRONBAR_CONFIG` environment variable"))
-            }
-        } else {
-            Self::try_find_config()
-        }?;
+        let config_path = env::var("IRONBAR_CONFIG").map_or_else(
+            |_| Self::try_find_config(),
+            |config_path| {
+                let path = PathBuf::from(config_path);
+                if path.exists() {
+                    Ok(path)
+                } else {
+                    Err(Report::msg(format!(
+                        "Specified config file does not exist: {}",
+                        path.display()
+                    ))
+                    .note("Config file was specified using `IRONBAR_CONFIG` environment variable"))
+                }
+            },
+        )?;
 
         Self::load_file(&config_path)
     }
@@ -141,13 +142,15 @@ impl Config {
             }
         });
 
-        match file {
-            Some(file) => Ok(file),
-            None => Err(Report::msg("Could not find config file")
-                .suggestion("Ironbar does not include a configuration out of the box")
-                .suggestion("A guide on writing a config can be found on the wiki:")
-                .suggestion("https://github.com/JakeStanger/ironbar/wiki/configuration-guide")),
-        }
+        file.map_or_else(
+            || {
+                Err(Report::msg("Could not find config file")
+                    .suggestion("Ironbar does not include a configuration out of the box")
+                    .suggestion("A guide on writing a config can be found on the wiki:")
+                    .suggestion("https://github.com/JakeStanger/ironbar/wiki/configuration-guide"))
+            },
+            Ok,
+        )
     }
 
     /// Loads the config file at the specified path

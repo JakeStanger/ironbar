@@ -97,10 +97,7 @@ fn default_music_dir() -> PathBuf {
 /// Attempts to read the first value for a tag
 /// (since the MPD client returns a vector of tags, or None)
 pub fn try_get_first_tag(vec: Option<&Vec<String>>) -> Option<&str> {
-    match vec {
-        Some(vec) => vec.first().map(String::as_str),
-        None => None,
-    }
+    vec.and_then(|vec| vec.first().map(String::as_str))
 }
 
 /// Formats a duration given in seconds
@@ -369,11 +366,14 @@ impl Module<Button> for MpdModule {
                                 .join("cover.jpg"),
                         );
 
-                        if let Ok(pixbuf) = Pixbuf::from_file_at_scale(cover_path, 128, 128, true) {
-                            album_image.set_from_pixbuf(Some(&pixbuf));
-                        } else {
-                            album_image.set_from_pixbuf(None);
-                        }
+                        Pixbuf::from_file_at_scale(cover_path, 128, 128, true).map_or_else(
+                            |_| {
+                                album_image.set_from_pixbuf(None);
+                            },
+                            |pixbuf| {
+                                album_image.set_from_pixbuf(Some(&pixbuf));
+                            },
+                        );
                     }
 
                     title_label

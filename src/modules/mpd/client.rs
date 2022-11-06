@@ -141,10 +141,9 @@ async fn try_get_mpd_conn(host: &str) -> Result<Connection, MpdProtocolError> {
 fn is_unix_socket(host: &str) -> bool {
     let path = PathBuf::from(host);
     path.exists()
-        && match path.metadata() {
-            Ok(metadata) => metadata.file_type().is_socket(),
-            Err(_) => false,
-        }
+        && path
+            .metadata()
+            .map_or(false, |metadata| metadata.file_type().is_socket())
 }
 
 async fn connect_unix(host: &str) -> Result<Connection, MpdProtocolError> {

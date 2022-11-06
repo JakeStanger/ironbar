@@ -359,7 +359,7 @@ fn refresh_disk_tokens(format_info: &mut HashMap<String, String>, sys: &mut Syst
         let key = disk
             .mount_point()
             .to_str()
-            .map(|s| s.replace('{', "").replace('}', ""));
+            .map(|s| s.replace(['{', '}'], ""));
 
         if let Some(key) = key {
             let total = disk.total_space();
