@@ -39,7 +39,7 @@ inputs.ironbar.homeManagerModules.default
 programs.ironbar = {
     enable = true;
     config = {};
-    style = ""
+    style = "";
 };
 ```
 
