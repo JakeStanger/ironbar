@@ -27,6 +27,22 @@ yay -S ironbar-git
 
 [aur package](https://aur.archlinux.org/packages/ironbar-git)
 
+### Nix Flake
+```nix
+# Add the ironbar flake input
+inputs.ironbar.url = "github:JakeStanger/ironbar";
+
+# And add the home-manager module
+inputs.ironbar.homeManagerModules.default
+
+# And configure
+programs.ironbar = {
+    enable = true;
+    config = {};
+    style = ""
+};
+```
+
 ### Source
 
 ```sh
