@@ -1,6 +1,7 @@
 name: Build
 
 on:
+  workflow-dispatch:
   push:
     branches: [ "master" ]
   pull_request:
@@ -35,3 +36,27 @@ jobs:
 
       - name: Check formatting
         run: cargo fmt --check
+
+
+
+  build-nix:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: cachix/install-nix-action@v17
+        with:
+          install_url: https://nixos.org/nix/install
+          extra_nix_config: |
+            auto-optimise-store = true
+            experimental-features = nix-command flakes
+
+      - uses: cachix/cachix-action@v11
+        with:
+          name: jakestanger
+          signingKey: '${{ secrets.CACHIX_SIGNING_KEY }}'
+
+      - run: nix build --print-build-logs
+
+      - uses: loophp/flake-lock-update-workflow/.github/workflows/auto-upgrade-flakes.yaml@main
