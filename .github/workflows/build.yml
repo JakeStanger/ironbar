@@ -59,4 +59,5 @@ jobs:
 
       - run: nix build --print-build-logs
 
-      - uses: loophp/flake-lock-update-workflow/.github/workflows/auto-upgrade-flakes.yaml@main
+  update-nix-flake-lock:
+    uses: loophp/flake-lock-update-workflow/.github/workflows/auto-upgrade-flakes.yaml@main
