@@ -58,6 +58,3 @@ jobs:
           signingKey: '${{ secrets.CACHIX_SIGNING_KEY }}'
 
       - run: nix build --print-build-logs
-
-  update-nix-flake-lock:
-    uses: loophp/flake-lock-update-workflow/.github/workflows/auto-upgrade-flakes.yaml@main
