@@ -27,6 +27,49 @@ yay -S ironbar-git
 
 [aur package](https://aur.archlinux.org/packages/ironbar-git)
 
+### Nix Flake
+
+#### Example
+Here is an example nix flake that uses ironbar, this is just a 
+proof of concept, please adapt it to your config
+
+```nix
+{
+  # Add the ironbar flake input
+  inputs.nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
+  inputs.ironbar = {
+    url = "github:JakeStanger/ironbar";
+    inputs.nixpkgs.follows = "nixpkgs";
+  };
+  inputs.hm = {
+    url = "github:nix-community/home-manager";
+    inputs.nixpkgs.follows = "nixpkgs";
+  };
+
+  outputs = inputs: {
+    homeManagerConfigurations."USER@HOSTNAME" = inputs.hm.lib.homeManagerConfiguration {
+      pkgs = nixpkgs.legacyPackages.x86_64-linux;
+      modules = [
+        # And add the home-manager module
+        inputs.ironbar.homeManagerModules.default
+        {
+          # And configure
+          programs.ironbar = {
+            enable = true;
+            config = {};
+            style = "";
+          };
+        }
+      ];
+    };
+  };
+}
+```
+
+#### Binary Caching
+There is also a cachix cache at `https://app.cachix.org/cache/jakestanger`
+incase you don't want to compile ironbar!
+
 ### Source
 
 ```sh
