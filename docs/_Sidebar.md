@@ -17,6 +17,6 @@
 - [Launcher](launcher)
 - [MPD](mpd)
 - [Script](script)
-- [Sys-info](sys-info)
+- [Sys_Info](sys-info)
 - [Tray](tray)
 - [Workspaces](workspaces)

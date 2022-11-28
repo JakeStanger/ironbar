@@ -8,7 +8,7 @@ Pango markup is supported.
 
 ## Configuration
 
-> Type: `sys-info`
+> Type: `sys_info`
 
 | Name               | Type               | Default | Description                                                                                                                    |
 |--------------------|--------------------|---------|--------------------------------------------------------------------------------------------------------------------------------|
@@ -28,12 +28,12 @@ Pango markup is supported.
   "end": [
     {
       "format": [
-        " {cpu-percent}% | {temp-c:k10temp-Tccd1}°C",
-        " {memory-used} / {memory-total} GB ({memory-percent}%)",
-        "| {swap-used} / {swap-total} GB ({swap-percent}%)",
-        " {disk-used:/} / {disk-total:/} GB ({disk-percent:/}%)",
-        "李 {net-down:enp39s0} / {net-up:enp39s0} Mbps",
-        "猪 {load-average:1} | {load-average:5} | {load-average:15}",
+        " {cpu_percent}% | {temp_c:k10temp_Tccd1}°C",
+        " {memory_used} / {memory_total} GB ({memory_percent}%)",
+        "| {swap_used} / {swap_total} GB ({swap_percent}%)",
+        " {disk_used:/} / {disk_total:/} GB ({disk_percent:/}%)",
+        "李 {net_down:enp39s0} / {net_up:enp39s0} Mbps",
+        "猪 {load_average:1} | {load_average:5} | {load_average:15}",
         " {uptime}"
       ],
       "interval": {
@@ -43,7 +43,7 @@ Pango markup is supported.
         "networks": 3,
         "temps": 5
       },
-      "type": "sys-info"
+      "type": "sys_info"
     }
   ]
 }
@@ -56,14 +56,14 @@ Pango markup is supported.
 
 ```toml
 [[end]]
-type = 'sys-info'
+type = 'sys_info'
 format = [
-    ' {cpu-percent}% | {temp-c:k10temp-Tccd1}°C',
-    ' {memory-used} / {memory-total} GB ({memory-percent}%)',
-    '| {swap-used} / {swap-total} GB ({swap-percent}%)',
-    ' {disk-used:/} / {disk-total:/} GB ({disk-percent:/}%)',
-    '李 {net-down:enp39s0} / {net-up:enp39s0} Mbps',
-    '猪 {load-average:1} | {load-average:5} | {load-average:15}',
+    ' {cpu_percent}% | {temp_c:k10temp_Tccd1}°C',
+    ' {memory_used} / {memory_total} GB ({memory_percent}%)',
+    '| {swap_used} / {swap_total} GB ({swap_percent}%)',
+    ' {disk_used:/} / {disk_total:/} GB ({disk_percent:/}%)',
+    '李 {net_down:enp39s0} / {net_up:enp39s0} Mbps',
+    '猪 {load_average:1} | {load_average:5} | {load_average:15}',
     ' {uptime}',
 ]
 
@@ -85,20 +85,20 @@ temps = 5
 ```yaml
 end:
 - format:
-  -  {cpu-percent}% | {temp-c:k10temp-Tccd1}°C
-  -  {memory-used} / {memory-total} GB ({memory-percent}%)
-  - '| {swap-used} / {swap-total} GB ({swap-percent}%)'
-  -  {disk-used:/} / {disk-total:/} GB ({disk-percent:/}%)
-  - 李 {net-down:enp39s0} / {net-up:enp39s0} Mbps
-  - 猪 {load-average:1} | {load-average:5} | {load-average:15}
-  -  {uptime}
+  - ' {cpu_percent}% | {temp_c:k10temp_Tccd1}°C'
+  - ' {memory_used} / {memory_total} GB ({memory_percent}%)'
+  - '| {swap_used} / {swap_total} GB ({swap_percent}%)'
+  - ' {disk_used:/} / {disk_total:/} GB ({disk_percent:/}%)'
+  - '李 {net_down:enp39s0} / {net_up:enp39s0} Mbps'
+  - '猪 {load_average:1} | {load_average:5} | {load_average:15}'
+  - ' {uptime}'
   interval:
     cpu: 1
     disks: 300
     memory: 30
     networks: 3
     temps: 5
-  type: sys-info
+  type: sys_info
 ```
 
 </details>
@@ -110,7 +110,7 @@ end:
 {
   end = [
     {
-      type = "sys-info"
+      type = "sys_info"
 
       interval.memory = 30
       interval.cpu = 1
@@ -119,12 +119,12 @@ end:
       interval.networks = 3
 
       format = [
-        " {cpu-percent}% | {temp-c:k10temp-Tccd1}°C"
-        " {memory-used} / {memory-total} GB ({memory-percent}%)"
-        "| {swap-used} / {swap-total} GB ({swap-percent}%)"
-        " {disk-used:/} / {disk-total:/} GB ({disk-percent:/}%)"
-        "李 {net-down:enp39s0} / {net-up:enp39s0} Mbps"
-        "猪 {load-average:1} | {load-average:5} | {load-average:15}"
+        " {cpu_percent}% | {temp_c:k10temp_Tccd1}°C"
+        " {memory_used} / {memory_total} GB ({memory_percent}%)"
+        "| {swap_used} / {swap_total} GB ({swap_percent}%)"
+        " {disk_used:/} / {disk_total:/} GB ({disk_percent:/}%)"
+        "李 {net_down:enp39s0} / {net_up:enp39s0} Mbps"
+        "猪 {load_average:1} | {load_average:5} | {load_average:15}"
         " {uptime}"
       ]
     }
@@ -141,31 +141,31 @@ The following tokens can be used in the `format` configuration option:
 | Token                    | Description                                                                        |
 |--------------------------|------------------------------------------------------------------------------------|
 | **CPU**                  |                                                                                    |
-| `{cpu-percent}`          | Total CPU utilisation percentage                                                   |
+| `{cpu_percent}`          | Total CPU utilisation percentage                                                   |
 | **Memory**               |                                                                                    |
-| `{memory-free}`          | Memory free in GB.                                                                 |
-| `{memory-used}`          | Memory used in GB.                                                                 |
-| `{memory-total}`         | Memory total in GB.                                                                |
-| `{memory-percent}`       | Memory utilisation percentage.                                                     |
-| `{swap-free}`            | Swap free in GB.                                                                   |
-| `{swap-used}`            | Swap used in GB.                                                                   |
-| `{swap-total}`           | Swap total in GB.                                                                  |
-| `{swap-percent}`         | Swap utilisation percentage.                                                       |
+| `{memory_free}`          | Memory free in GB.                                                                 |
+| `{memory_used}`          | Memory used in GB.                                                                 |
+| `{memory_total}`         | Memory total in GB.                                                                |
+| `{memory_percent}`       | Memory utilisation percentage.                                                     |
+| `{swap_free}`            | Swap free in GB.                                                                   |
+| `{swap_used}`            | Swap used in GB.                                                                   |
+| `{swap_total}`           | Swap total in GB.                                                                  |
+| `{swap_percent}`         | Swap utilisation percentage.                                                       |
 | **Temperature**          |                                                                                    |
-| `{temp-c:[sensor]}`      | Temperature in degrees C. Replace `[sensor]` with the sensor label.                |
-| `{temp-f:[sensor]}`      | Temperature in degrees F. Replace `[sensor]` with the sensor label.                |
+| `{temp_c:[sensor]}`      | Temperature in degrees C. Replace `[sensor]` with the sensor label.                |
+| `{temp_f:[sensor]}`      | Temperature in degrees F. Replace `[sensor]` with the sensor label.                |
 | **Disk**                 |                                                                                    |
-| `{disk-free:[mount]}`    | Disk free space in GB. Replace `[mount]` with the disk mountpoint.                 |
-| `{disk-used:[mount]}`    | Disk used space in GB. Replace `[mount]` with the disk mountpoint.                 |
-| `{disk-total:[mount]}`   | Disk total space in GB. Replace `[mount]` with the disk mountpoint.                |
-| `{disk-percent:[mount]}` | Disk utilisation percentage. Replace `[mount]` with the disk mountpoint.           |
+| `{disk_free:[mount]}`    | Disk free space in GB. Replace `[mount]` with the disk mountpoint.                 |
+| `{disk_used:[mount]}`    | Disk used space in GB. Replace `[mount]` with the disk mountpoint.                 |
+| `{disk_total:[mount]}`   | Disk total space in GB. Replace `[mount]` with the disk mountpoint.                |
+| `{disk_percent:[mount]}` | Disk utilisation percentage. Replace `[mount]` with the disk mountpoint.           |
 | **Network**              |                                                                                    |
-| `{net-down:[adapter]}`   | Average network download speed in Mbps. Replace `[adapter]` with the adapter name. |
-| `{net-up:[adapter]}`     | Average network upload speed in Mbps. Replace `[adapter]` with the adapter name.   |
+| `{net_down:[adapter]}`   | Average network download speed in Mbps. Replace `[adapter]` with the adapter name. |
+| `{net_up:[adapter]}`     | Average network upload speed in Mbps. Replace `[adapter]` with the adapter name.   |
 | **System**               |                                                                                    |
-| `{load-average:1}`       | 1-minute load average.                                                             |
-| `{load-average:5}`       | 5-minute load average.                                                             |
-| `{load-average:15}`      | 15-minute load average.                                                            |
+| `{load_average:1}`       | 1-minute load average.                                                             |
+| `{load_average:5}`       | 5-minute load average.                                                             |
+| `{load_average:15}`      | 15-minute load average.                                                            |
 | `{uptime}`               | System uptime formatted as `HH:mm`.                                                |
 
 ## Styling
