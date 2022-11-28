@@ -12,7 +12,7 @@ use tracing::error;
 #[derive(Debug, Deserialize, Clone)]
 pub struct ScriptModule {
     /// Path to script to execute.
-    path: String,
+    cmd: String,
     /// Script execution mode
     #[serde(default = "default_mode")]
     mode: ScriptMode,
@@ -38,7 +38,7 @@ impl From<&ScriptModule> for Script {
     fn from(module: &ScriptModule) -> Self {
         Self {
             mode: module.mode,
-            cmd: module.path.clone(),
+            cmd: module.cmd.clone(),
             interval: module.interval,
         }
     }

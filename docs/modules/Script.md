@@ -7,7 +7,7 @@ Pango markup is supported.
 
 | Name       | Type                  | Default | Description                                             |
 |------------|-----------------------|---------|---------------------------------------------------------|
-| `path`     | `string`              | `null`  | Path to the script on disk                              |
+| `cmd`      | `string`              | `null`  | Path to the script on disk                              |
 | `mode`     | `'poll'` or `'watch'` | `poll`  | See [#modes](#modes)                                    |
 | `interval` | `number`              | `5000`  | Number of milliseconds to wait between executing script |
 
@@ -25,7 +25,7 @@ Pango markup is supported.
   "end": [
     {
       "type": "script",
-      "path": "/home/jake/.local/bin/phone-battery",
+      "cmd": "/home/jake/.local/bin/phone-battery",
       "mode": "poll",
       "interval": 5000
     }
@@ -42,7 +42,7 @@ Pango markup is supported.
 ```toml
 [[end]]
 type = "script"
-path = "/home/jake/.local/bin/phone-battery"
+cmd = "/home/jake/.local/bin/phone-battery"
 mode = "poll"
 interval = 5000
 ```
@@ -55,7 +55,7 @@ interval = 5000
 ```yaml
 end:
   - type: "script"
-    path: "/home/jake/.local/bin/phone-battery"
+    cmd: "/home/jake/.local/bin/phone-battery"
     mode: 'poll'
     interval : 5000
 ```
@@ -70,7 +70,7 @@ end:
   end = [
     {
       type = "script"
-      path = "/home/jake/.local/bin/phone-battery"
+      cmd = "/home/jake/.local/bin/phone-battery"
       mode = "poll"
       interval = 5000
     }
