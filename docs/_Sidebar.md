@@ -1,6 +1,7 @@
 # Guides
 
 - [Configuration guide](configuration-guide)
+  - [Scripts](scripts)
 - [Styling guide](styling-guide)
 
 # Examples

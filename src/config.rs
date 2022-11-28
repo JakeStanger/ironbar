@@ -7,6 +7,7 @@ use crate::modules::script::ScriptModule;
 use crate::modules::sysinfo::SysInfoModule;
 use crate::modules::tray::TrayModule;
 use crate::modules::workspaces::WorkspacesModule;
+use crate::script::ScriptInput;
 use color_eyre::eyre::{Context, ContextCompat};
 use color_eyre::{eyre, Help, Report};
 use dirs::config_dir;
@@ -17,6 +18,13 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::{env, fs};
 use tracing::instrument;
+
+#[derive(Debug, Deserialize, Clone)]
+pub struct CommonConfig {
+    pub show_if: Option<ScriptInput>,
+    pub on_click: Option<ScriptInput>,
+    pub tooltip: Option<String>,
+}
 
 #[derive(Debug, Deserialize, Clone)]
 #[serde(tag = "type", rename_all = "kebab-case")]

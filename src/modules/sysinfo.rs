@@ -1,3 +1,4 @@
+use crate::config::CommonConfig;
 use crate::modules::{Module, ModuleInfo, ModuleUpdateEvent, ModuleWidget, WidgetContext};
 use color_eyre::Result;
 use gtk::prelude::*;
@@ -19,6 +20,9 @@ pub struct SysInfoModule {
     /// Number of seconds between refresh
     #[serde(default = "Interval::default")]
     interval: Interval,
+
+    #[serde(flatten)]
+    pub common: CommonConfig,
 }
 
 #[derive(Debug, Deserialize, Copy, Clone)]

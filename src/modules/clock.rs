@@ -1,3 +1,4 @@
+use crate::config::CommonConfig;
 use crate::modules::{Module, ModuleInfo, ModuleUpdateEvent, ModuleWidget, WidgetContext};
 use crate::popup::Popup;
 use chrono::{DateTime, Local};
@@ -18,7 +19,10 @@ pub struct ClockModule {
     /// Detail on available tokens can be found here:
     /// <https://docs.rs/chrono/latest/chrono/format/strftime/index.html>
     #[serde(default = "default_format")]
-    pub(crate) format: String,
+    format: String,
+
+    #[serde(flatten)]
+    pub common: CommonConfig,
 }
 
 fn default_format() -> String {

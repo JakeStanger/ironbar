@@ -4,6 +4,7 @@ mod open_state;
 use self::item::{Item, ItemButton, Window};
 use self::open_state::OpenState;
 use crate::clients::wayland::{self, ToplevelChange};
+use crate::config::CommonConfig;
 use crate::icon::find_desktop_file;
 use crate::modules::{Module, ModuleInfo, ModuleUpdateEvent, ModuleWidget, WidgetContext};
 use color_eyre::{Help, Report};
@@ -33,6 +34,9 @@ pub struct LauncherModule {
 
     /// Name of the GTK icon theme to use.
     icon_theme: Option<String>,
+
+    #[serde(flatten)]
+    pub common: CommonConfig,
 }
 
 #[derive(Debug, Clone)]

@@ -1,4 +1,5 @@
 use crate::clients::wayland::{self, ToplevelChange};
+use crate::config::CommonConfig;
 use crate::modules::{Module, ModuleInfo, ModuleUpdateEvent, ModuleWidget, WidgetContext};
 use crate::{await_sync, icon};
 use color_eyre::Result;
@@ -23,6 +24,9 @@ pub struct FocusedModule {
     icon_size: i32,
     /// GTK icon theme to use.
     icon_theme: Option<String>,
+
+    #[serde(flatten)]
+    pub common: CommonConfig,
 }
 
 const fn default_icon_size() -> i32 {

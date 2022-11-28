@@ -6,7 +6,8 @@ use crate::modules::mpd::{PlayerCommand, SongUpdate};
 use crate::modules::workspaces::WorkspaceUpdate;
 use crate::modules::{Module, ModuleInfoBuilder, ModuleLocation, ModuleUpdateEvent, WidgetContext};
 use crate::popup::Popup;
-use crate::Config;
+use crate::script::{OutputStream, Script};
+use crate::{await_sync, Config};
 use chrono::{DateTime, Local};
 use color_eyre::Result;
 use gtk::gdk::Monitor;
@@ -16,8 +17,9 @@ use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
 use stray::message::NotifierItemCommand;
 use stray::NotifierItemMessage;
+use tokio::spawn;
 use tokio::sync::mpsc;
-use tracing::{debug, info};
+use tracing::{debug, error, info, trace};
 
 /// Creates a new window for a bar,
 /// sets it up and adds its widgets.
@@ -81,7 +83,11 @@ pub fn create_bar(
     });
 
     debug!("Showing bar");
-    win.show_all();
+    start.show();
+    center.show();
+    end.show();
+    content.show();
+    win.show();
 
     Ok(())
 }
@@ -155,10 +161,59 @@ fn add_modules(
                 controller_tx: ui_tx,
             };
 
+            let common = $module.common.clone();
+
             let widget = $module.into_widget(context, &info)?;
 
-            content.add(&widget.widget);
+            let container = gtk::EventBox::new();
+            container.add(&widget.widget);
+
+            content.add(&container);
             widget.widget.set_widget_name(info.module_name);
+
+            if let Some(show_if) = common.show_if {
+                let script = Script::new_polling(show_if);
+                let container = container.clone();
+
+                let (tx, rx) = glib::MainContext::channel(glib::PRIORITY_DEFAULT);
+
+                spawn(async move {
+                    script
+                        .run(|(_, success)| {
+                            tx.send(success)
+                                .expect("Failed to send widget visibility toggle message");
+                        })
+                        .await;
+                });
+
+                rx.attach(None, move |success| {
+                    if success {
+                        container.show_all()
+                    } else {
+                        container.hide()
+                    };
+                    Continue(true)
+                });
+            } else {
+                container.show_all();
+            }
+
+            if let Some(on_click) = common.on_click {
+                let script = Script::new_polling(on_click);
+                container.connect_button_press_event(move |_, _| {
+                    trace!("Running on-click script");
+                    match await_sync(async { script.get_output().await }) {
+                        Ok((OutputStream::Stderr(out), _)) => error!("{out}"),
+                        Err(err) => error!("{err:?}"),
+                        _ => {}
+                    }
+                    Inhibit(false)
+                });
+            }
+
+            if let Some(tooltip) = common.tooltip {
+                container.set_tooltip_text(Some(&tooltip));
+            }
 
             let has_popup = widget.popup.is_some();
             if let Some(popup_content) = widget.popup {

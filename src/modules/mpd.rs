@@ -1,4 +1,5 @@
 use crate::clients::mpd::{get_client, get_duration, get_elapsed, MpdConnectionError};
+use crate::config::CommonConfig;
 use crate::modules::{Module, ModuleInfo, ModuleUpdateEvent, ModuleWidget, WidgetContext};
 use crate::popup::Popup;
 use color_eyre::Result;
@@ -65,6 +66,9 @@ pub struct MpdModule {
     /// Path to root of music directory.
     #[serde(default = "default_music_dir")]
     music_dir: PathBuf,
+
+    #[serde(flatten)]
+    pub common: CommonConfig,
 }
 
 fn default_socket() -> String {
