@@ -42,7 +42,7 @@ pub struct Widget {
     label: Option<String>,
     name: Option<String>,
     class: Option<String>,
-    exec: Option<String>,
+    on_click: Option<String>,
     orientation: Option<String>,
 }
 
@@ -135,7 +135,7 @@ impl Widget {
             button.style_context().add_class(&class);
         }
 
-        if let Some(exec) = self.exec {
+        if let Some(exec) = self.on_click {
             button.connect_clicked(move |button| {
                 tx.try_send(ExecEvent {
                     cmd: exec.clone(),
