@@ -175,14 +175,7 @@ impl Config {
             "json" => serde_json::from_slice(&file).wrap_err("Invalid JSON config"),
             "toml" => toml::from_slice(&file).wrap_err("Invalid TOML config"),
             "yaml" | "yml" => serde_yaml::from_slice(&file).wrap_err("Invalid YAML config"),
-            "corn" => {
-                // corn doesn't support deserialization yet
-                // so serialize the interpreted result then deserialize that
-                let file =
-                    String::from_utf8(file).wrap_err("Config file contains invalid UTF-8")?;
-                let config = libcorn::parse(&file).wrap_err("Invalid corn config")?.value;
-                Ok(serde_json::from_str(&serde_json::to_string(&config)?)?)
-            }
+            "corn" => libcorn::from_slice(&file).wrap_err("Invalid Corn config"),
             _ => unreachable!(),
         }
     }
