@@ -24,19 +24,53 @@ let {
 
     $sys_info = {
         type = "sys-info"
-        format = ["{cpu-percent}% " "{memory-percent}% "]
+        format = ["{cpu_percent}% " "{memory_percent}% "]
     }
 
     $tray = { type = "tray" }
-    $clock = { type = "clock" }
+    $clock = {
+        type = "clock"
+        // show-if = "500:[ $(($(date +%s) % 2)) -eq 0 ]"
+        show_if.cmd = "exit 0"
+        show_if.interval = 500
+    }
 
     $phone_battery = {
         type = "script"
         path = "/home/jake/bin/phone-battery"
     }
 
+    $log_tail = {
+        type = "script"
+        path = "tail -f /home/jake/.local/share/ironbar/error.log"
+        mode = "watch"
+    }
+
+    $power_menu = {
+        type = "custom"
+        class = "power-menu"
+
+        bar = [ { type = "button" name="power-btn" label = "" on_click = "popup:toggle" } ]
+
+        popup = [ {
+            type = "box"
+            orientation = "vertical"
+            widgets = [
+                { type = "label" name = "header" label = "Power menu" }
+                {
+                    type = "box"
+                    widgets = [
+                        { type = "button" class="power-btn" label = "<span font-size='20pt'></span>" on_click = "!shutdown now" }
+                        { type = "button" class="power-btn" label = "<span font-size='20pt'></span>" on_click = "!reboot" }
+                    ]
+                }
+                { type = "label" name = "uptime" label = "Uptime: {{30000:uptime -p | cut -d ' ' -f2-}}" }
+            ]
+        } ]
+    }
+
     $left = [ $workspaces $launcher ]
-    $right = [ $mpd_local $mpd_server $phone_battery $sys_info $clock ]
+    $right = [ $mpd_local $mpd_server $phone_battery $sys_info $power_menu $clock ]
 }
 in {
     anchor_to_edges = true

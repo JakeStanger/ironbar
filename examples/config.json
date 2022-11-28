@@ -28,10 +28,10 @@
     },
     {
       "format": [
-        "{cpu-percent}% ",
-        "{memory-percent}% "
+        "{cpu_percent}% ",
+        "{memory_percent}% "
       ],
-      "type": "sys-info"
+      "type": "sys_info"
     },
     {
       "type": "tray"
