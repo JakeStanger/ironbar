@@ -1,7 +1,8 @@
 use crate::modules::{Module, ModuleInfo, ModuleUpdateEvent, ModuleWidget, WidgetContext};
 use crate::popup::{ButtonGeometry, Popup};
-use crate::script::exec_command;
+use crate::config::CommonConfig;
 use color_eyre::{Report, Result};
+use crate::script::Script;
 use gtk::prelude::*;
 use gtk::{Button, Label, Orientation};
 use serde::Deserialize;
@@ -17,6 +18,9 @@ pub struct CustomModule {
     bar: Vec<Widget>,
     /// Widgets to add to the popup container
     popup: Option<Vec<Widget>>,
+
+    #[serde(flatten)]
+    pub common: CommonConfig,
 }
 
 /// Attempts to parse an `Orientation` from `String`
@@ -164,8 +168,11 @@ impl Module<gtk::Box> for CustomModule {
         spawn(async move {
             while let Some(event) = rx.recv().await {
                 if event.cmd.starts_with('!') {
-                    debug!("executing command: '{}'", &event.cmd[1..]);
-                    if let Err(err) = exec_command(&event.cmd[1..]) {
+                    let script = Script::from(&event.cmd[1..]);
+
+                    debug!("executing command: '{}'", script.cmd);
+                    // TODO: Migrate to use script.run
+                    if let Err(err) = script.get_output().await {
                         error!("{err:?}");
                     }
                 } else if event.cmd == "popup:toggle" {

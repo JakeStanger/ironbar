@@ -1,5 +1,6 @@
 use crate::await_sync;
 use crate::clients::sway::{get_client, get_sub_client};
+use crate::config::CommonConfig;
 use crate::modules::{Module, ModuleInfo, ModuleUpdateEvent, ModuleWidget, WidgetContext};
 use color_eyre::{Report, Result};
 use gtk::prelude::*;
@@ -19,6 +20,9 @@ pub struct WorkspacesModule {
     /// Whether to display buttons for all monitors.
     #[serde(default = "crate::config::default_false")]
     all_monitors: bool,
+
+    #[serde(flatten)]
+    pub common: CommonConfig,
 }
 
 #[derive(Clone, Debug)]

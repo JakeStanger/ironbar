@@ -1,5 +1,6 @@
 use crate::await_sync;
 use crate::clients::system_tray::get_tray_event_client;
+use crate::config::CommonConfig;
 use crate::modules::{Module, ModuleInfo, ModuleUpdateEvent, ModuleWidget, WidgetContext};
 use color_eyre::Result;
 use gtk::prelude::*;
@@ -14,7 +15,10 @@ use tokio::sync::mpsc;
 use tokio::sync::mpsc::{Receiver, Sender};
 
 #[derive(Debug, Deserialize, Clone)]
-pub struct TrayModule;
+pub struct TrayModule {
+    #[serde(flatten)]
+    pub common: CommonConfig,
+}
 
 /// Gets a GTK `Image` component
 /// for the status notifier item's icon.
