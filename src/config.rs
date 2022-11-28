@@ -27,7 +27,7 @@ pub struct CommonConfig {
 }
 
 #[derive(Debug, Deserialize, Clone)]
-#[serde(tag = "type", rename_all = "kebab-case")]
+#[serde(tag = "type", rename_all = "snake_case")]
 pub enum ModuleConfig {
     Clock(ClockModule),
     Mpd(MpdModule),
@@ -48,7 +48,7 @@ pub enum MonitorConfig {
 }
 
 #[derive(Debug, Deserialize, Copy, Clone, PartialEq, Eq)]
-#[serde(rename_all = "kebab-case")]
+#[serde(rename_all = "snake_case")]
 pub enum BarPosition {
     Top,
     Bottom,

@@ -8,6 +8,7 @@ mod modules;
 mod popup;
 mod script;
 mod style;
+mod widgets;
 
 use crate::bar::create_bar;
 use crate::config::{Config, MonitorConfig};

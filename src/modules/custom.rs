@@ -4,6 +4,7 @@ use crate::config::CommonConfig;
 use color_eyre::{Report, Result};
 use crate::script::Script;
 use gtk::prelude::*;
+use crate::widgets::DynamicLabel;
 use gtk::{Button, Label, Orientation};
 use serde::Deserialize;
 use tokio::spawn;
@@ -48,7 +49,7 @@ pub struct Widget {
 
 /// Supported GTK widget types
 #[derive(Debug, Deserialize, Clone)]
-#[serde(rename_all = "kebab-case")]
+#[serde(rename_all = "snake_case")]
 pub enum WidgetType {
     Box,
     Label,
@@ -60,7 +61,7 @@ impl Widget {
     fn add_to(self, parent: &gtk::Box, tx: Sender<ExecEvent>, bar_orientation: Orientation) {
         match self.widget_type {
             WidgetType::Box => parent.add(&self.into_box(&tx, bar_orientation)),
-            WidgetType::Label => parent.add(&self.into_label()),
+            WidgetType::Label => parent.add(&self.into_label().label),
             WidgetType::Button => parent.add(&self.into_button(tx, bar_orientation)),
         }
     }
@@ -94,7 +95,7 @@ impl Widget {
     }
 
     /// Creates a `gtk::Label` from this widget
-    fn into_label(self) -> Label {
+    fn into_label(self) -> DynamicLabel {
         let mut builder = Label::builder().use_markup(true);
 
         if let Some(name) = self.name {
@@ -103,15 +104,13 @@ impl Widget {
 
         let label = builder.build();
 
-        if let Some(text) = self.label {
-            label.set_markup(&text);
-        }
-
         if let Some(class) = self.class {
             label.style_context().add_class(&class);
         }
 
-        label
+        let text = self.label.map_or_else(String::new, |text| text);
+
+        DynamicLabel::new(label, &text)
     }
 
     /// Creates a `gtk::Button` from this widget

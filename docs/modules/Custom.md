@@ -1,5 +1,5 @@
 Allows you to compose custom modules consisting of multiple widgets, including popups. 
-Buttons can interact with the bar or execute commands on click.
+Labels can display dynamic content from scripts, and buttons can interact with the bar or execute commands on click.
 
 ![Custom module with a button on the bar, and the popup open. The popup contains a header, shutdown button and restart button.](https://user-images.githubusercontent.com/5057870/196058785-042ef171-7e77-4d5c-921a-eca03c6424bd.png)
 
@@ -24,9 +24,22 @@ It is well worth looking at the examples.
 | `name`        | `string`                     | `null`       | Widget name.                                                              |
 | `class`       | `string`                     | `null`       | Widget class name.                                                        |
 | `label`       | `string`                     | `null`       | [`label` and `button`] Widget text label. Pango markup supported.         |
-| `exec`        | `string`                     | `null`       | [`button`] Command to execute. More on this [below](#commands).           |
+| `on_click`    | `string`                     | `null`       | [`button`] Command to execute. More on this [below](#commands).           |
 | `orientation` | `horizontal` or `vertical`   | `horizontal` | [`box`] Whether child widgets should be horizontally or vertically added. |
 | `widgets`     | `Widget[]`                   | `[]`         | [`box`] List of widgets to add to this box.                               |
+
+### Labels
+
+Labels can interpolate text from scripts to dynamically show content. 
+This can be done by including scripts in `{{double braces}}` using the shorthand script syntax.
+
+For example, the following label would output your system uptime, updated every 30 seconds.
+
+```
+Uptime: {{30000:uptime -p | cut -d ' ' -f2-}}
+```
+
+Both polling and watching mode are supported. For more information on script syntax, see [here](script).
 
 ### Commands
 
@@ -35,7 +48,7 @@ as well as any arbitrary shell command.
 
 To execute shell commands, prefix them with an `!`. 
 For example, if you want to run `~/.local/bin/my-script.sh` on click, 
-you'd set `exec` to `!~/.local/bin/my-script.sh`.
+you'd set `on_click` to `!~/.local/bin/my-script.sh`.
 
 The following bar commands are supported:
 
@@ -44,7 +57,7 @@ The following bar commands are supported:
 - `popup:close`
 
 XML is arguably better-suited and easier to read for this sort of markup, 
-but currently not supported.
+but currently is not supported.
 Nonetheless, it may be worth comparing the examples to the below equivalent
 to help get your head around what's going on:
 
@@ -53,15 +66,16 @@ to help get your head around what's going on:
 <?xml version="1.0" encoding="utf-8" ?>
 <custom class="power-menu">
     <bar>
-        <button name="power-btn" label="" exec="popup:toggle"/>
+        <button name="power-btn" label="" on_click="popup:toggle"/>
     </bar>
     <popup>
         <box orientation="vertical">
             <label name="header" label="Power menu" />
             <box>
-                <button class="power-btn" label="" exec="!shutdown now" />
-                <button class="power-btn" label="" exec="!reboot" />
+                <button class="power-btn" label="" on_click="!shutdown now" />
+                <button class="power-btn" label="" on_click="!reboot" />
             </box>
+            <label name="uptime" label="Uptime: {{30000:uptime -p | cut -d ' ' -f2-}}" />
         </box>
     </popup>
 </custom>
@@ -74,10 +88,12 @@ to help get your head around what's going on:
 {
   "end": [
     {
-      "type": "custom",
+      "type": "clock"
+    },
+    {
       "bar": [
         {
-          "exec": "popup:toggle",
+          "on_click": "popup:toggle",
           "label": "",
           "name": "power-btn",
           "type": "button"
@@ -99,21 +115,27 @@ to help get your head around what's going on:
               "widgets": [
                 {
                   "class": "power-btn",
-                  "exec": "!shutdown now",
+                  "on_click": "!shutdown now",
                   "label": "<span font-size='40pt'></span>",
                   "type": "button"
                 },
                 {
                   "class": "power-btn",
-                  "exec": "!reboot",
+                  "on_click": "!reboot",
                   "label": "<span font-size='40pt'></span>",
                   "type": "button"
                 }
               ]
+            },
+            {
+              "label": "Uptime: {{30000:uptime -p | cut -d ' ' -f2-}}",
+              "name": "uptime",
+              "type": "label"
             }
           ]
         }
-      ]
+      ],
+      "type": "custom"
     }
   ]
 }
@@ -126,11 +148,14 @@ to help get your head around what's going on:
 
 ```toml
 [[end]]
+type = 'clock'
+
+[[end]]
 class = 'power-menu'
 type = 'custom'
 
 [[end.bar]]
-exec = 'popup:toggle'
+on_click = 'popup:toggle'
 label = ''
 name = 'power-btn'
 type = 'button'
@@ -149,15 +174,20 @@ type = 'box'
 
 [[end.popup.widgets.widgets]]
 class = 'power-btn'
-exec = '!shutdown now'
+on_click = '!shutdown now'
 label = '''<span font-size='40pt'></span>'''
 type = 'button'
 
 [[end.popup.widgets.widgets]]
 class = 'power-btn'
-exec = '!reboot'
+on_click = '!reboot'
 label = '''<span font-size='40pt'></span>'''
 type = 'button'
+
+[[end.popup.widgets]]
+label = '''Uptime: {{30000:uptime -p | cut -d ' ' -f2-}}'''
+name = 'uptime'
+type = 'label'
 ```
 
 </details>
@@ -167,9 +197,9 @@ type = 'button'
 
 ```yaml
 end:
-- type: custom
-  bar:
-  - exec: popup:toggle
+- type: clock
+- bar:
+  - on_click: popup:toggle
     label: 
     name: power-btn
     type: button
@@ -184,13 +214,17 @@ end:
     - type: box
       widgets:
       - class: power-btn
-        exec: '!shutdown now'
+        on_click: '!shutdown now'
         label: <span font-size='40pt'></span>
         type: button
       - class: power-btn
-        exec: '!reboot'
+        on_click: '!reboot'
         label: <span font-size='40pt'></span>
         type: button
+    - label: 'Uptime: {{30000:uptime -p | cut -d '' '' -f2-}}'
+      name: uptime
+      type: label
+  type: custom
 ```
 
 </details>
@@ -204,7 +238,7 @@ let {
         type = "custom"
         class = "power-menu"
 
-        bar = [ { type = "button" name="power-btn" label = "" exec = "popup:toggle" } ]
+        bar = [ { type = "button" name="power-btn" label = "" on_click = "popup:toggle" } ]
 
         popup = [ {
             type = "box"
@@ -214,10 +248,11 @@ let {
                 {
                     type = "box"
                     widgets = [
-                        { type = "button" class="power-btn" label = "<span font-size='40pt'></span>" exec = "!shutdown now" }
-                        { type = "button" class="power-btn" label = "<span font-size='40pt'></span>" exec = "!reboot" }
+                        { type = "button" class="power-btn" label = "<span font-size='40pt'></span>" on_click = "!shutdown now" }
+                        { type = "button" class="power-btn" label = "<span font-size='40pt'></span>" on_click = "!reboot" }
                     ]
                 }
+                { type = "label" name = "uptime" label = "Uptime: {{30000:uptime -p | cut -d ' ' -f2-}}" }
             ]
         } ]
     }
