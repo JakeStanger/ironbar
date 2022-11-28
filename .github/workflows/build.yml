@@ -37,6 +37,11 @@ jobs:
       - name: Check formatting
         run: cargo fmt --check
 
+      - name: Run tests
+        uses: actions-rs/cargo@v1
+        with:
+          command: test
+
 
 
   build-nix:
