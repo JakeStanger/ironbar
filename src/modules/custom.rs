@@ -1,10 +1,10 @@
+use crate::config::CommonConfig;
 use crate::modules::{Module, ModuleInfo, ModuleUpdateEvent, ModuleWidget, WidgetContext};
 use crate::popup::{ButtonGeometry, Popup};
-use crate::config::CommonConfig;
-use color_eyre::{Report, Result};
 use crate::script::Script;
-use gtk::prelude::*;
 use crate::widgets::DynamicLabel;
+use color_eyre::{Report, Result};
+use gtk::prelude::*;
 use gtk::{Button, Label, Orientation};
 use serde::Deserialize;
 use tokio::spawn;
