@@ -23,7 +23,7 @@ let {
     $mpd_server = { type = "mpd" host = "chloe:6600" }
 
     $sys_info = {
-        type = "sys-info"
+        type = "sys_info"
         format = ["{cpu_percent}% " "{memory_percent}% "]
     }
 
@@ -37,7 +37,7 @@ let {
 
     $phone_battery = {
         type = "script"
-        path = "/home/jake/bin/phone-battery"
+        cmd = "/home/jake/bin/phone-battery"
     }
 
     $log_tail = {
