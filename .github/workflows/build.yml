@@ -25,8 +25,8 @@ jobs:
       - name: Install build deps
         run: sudo apt install libgtk-3-dev libgtk-layer-shell-dev
 
-      - name: Build
-        run: cargo build --verbose
+      - name: Check formatting
+        run: cargo fmt --check
 
       - name: Clippy
         uses: actions-rs/clippy-check@v1
@@ -34,8 +34,8 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           args: --all-features
 
-      - name: Check formatting
-        run: cargo fmt --check
+      - name: Build
+        run: cargo build --verbose
 
       - name: Run tests
         uses: actions-rs/cargo@v1
