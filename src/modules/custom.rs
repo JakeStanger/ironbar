@@ -1,8 +1,8 @@
 use crate::config::CommonConfig;
+use crate::dynamic_string::DynamicString;
 use crate::modules::{Module, ModuleInfo, ModuleUpdateEvent, ModuleWidget, WidgetContext};
 use crate::popup::{ButtonGeometry, Popup};
 use crate::script::Script;
-use crate::dynamic_string::DynamicString;
 use color_eyre::{Report, Result};
 use gtk::prelude::*;
 use gtk::{Button, Label, Orientation};

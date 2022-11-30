@@ -1,5 +1,6 @@
 use crate::bridge_channel::BridgeChannel;
 use crate::config::{BarPosition, ModuleConfig};
+use crate::dynamic_string::DynamicString;
 use crate::modules::custom::ExecEvent;
 use crate::modules::launcher::{ItemEvent, LauncherUpdate};
 use crate::modules::mpd::{PlayerCommand, SongUpdate};
@@ -7,7 +8,6 @@ use crate::modules::workspaces::WorkspaceUpdate;
 use crate::modules::{Module, ModuleInfoBuilder, ModuleLocation, ModuleUpdateEvent, WidgetContext};
 use crate::popup::Popup;
 use crate::script::{OutputStream, Script};
-use crate::dynamic_string::DynamicString;
 use crate::{await_sync, Config};
 use chrono::{DateTime, Local};
 use color_eyre::Result;

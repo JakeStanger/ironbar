@@ -2,13 +2,13 @@ mod bar;
 mod bridge_channel;
 mod clients;
 mod config;
+mod dynamic_string;
 mod icon;
 mod logging;
 mod modules;
 mod popup;
 mod script;
 mod style;
-mod dynamic_string;
 
 use crate::bar::create_bar;
 use crate::config::{Config, MonitorConfig};
