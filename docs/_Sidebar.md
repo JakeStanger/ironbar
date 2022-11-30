@@ -9,6 +9,10 @@
 - [Config](config)
 - [Stylesheet](stylesheet)
 
+## Custom
+
+- [Power Menu](power-menu)
+
 # Modules
 
 - [Clock](clock)
