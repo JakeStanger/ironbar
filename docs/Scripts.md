@@ -42,6 +42,17 @@ For example:
 poll:5000:uptime -p | cut -d ' ' -f2-
 ```
 
+#### Embedding
+
+Some string config options support "embedding scripts". This allows you to mix static/dynamic content.
+An example of this is the common `tooltip` option.
+
+Scripts can be embedded in these cases using `{{double braces}}` and the shorthand syntax:
+
+```json
+"Up: {{30000:uptime -p | cut -d ' ' -f2-}}"
+```
+
 ### Longhand (object)
 
 An object consisting of the `cmd` key and optionally the `mode` and/or `interval` keys.

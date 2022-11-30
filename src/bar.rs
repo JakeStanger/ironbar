@@ -7,6 +7,7 @@ use crate::modules::workspaces::WorkspaceUpdate;
 use crate::modules::{Module, ModuleInfoBuilder, ModuleLocation, ModuleUpdateEvent, WidgetContext};
 use crate::popup::Popup;
 use crate::script::{OutputStream, Script};
+use crate::widgets::DynamicString;
 use crate::{await_sync, Config};
 use chrono::{DateTime, Local};
 use color_eyre::Result;
@@ -212,7 +213,10 @@ fn add_modules(
             }
 
             if let Some(tooltip) = common.tooltip {
-                container.set_tooltip_text(Some(&tooltip));
+                DynamicString::new(&tooltip, move |string| {
+                    container.set_tooltip_text(Some(&string));
+                    Continue(true)
+                });
             }
 
             let has_popup = widget.popup.is_some();

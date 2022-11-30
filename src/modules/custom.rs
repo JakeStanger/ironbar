@@ -2,7 +2,7 @@ use crate::config::CommonConfig;
 use crate::modules::{Module, ModuleInfo, ModuleUpdateEvent, ModuleWidget, WidgetContext};
 use crate::popup::{ButtonGeometry, Popup};
 use crate::script::Script;
-use crate::widgets::DynamicLabel;
+use crate::widgets::DynamicString;
 use color_eyre::{Report, Result};
 use gtk::prelude::*;
 use gtk::{Button, Label, Orientation};
@@ -61,7 +61,7 @@ impl Widget {
     fn add_to(self, parent: &gtk::Box, tx: Sender<ExecEvent>, bar_orientation: Orientation) {
         match self.widget_type {
             WidgetType::Box => parent.add(&self.into_box(&tx, bar_orientation)),
-            WidgetType::Label => parent.add(&self.into_label().label),
+            WidgetType::Label => parent.add(&self.into_label()),
             WidgetType::Button => parent.add(&self.into_button(tx, bar_orientation)),
         }
     }
@@ -95,7 +95,7 @@ impl Widget {
     }
 
     /// Creates a `gtk::Label` from this widget
-    fn into_label(self) -> DynamicLabel {
+    fn into_label(self) -> Label {
         let mut builder = Label::builder().use_markup(true);
 
         if let Some(name) = self.name {
@@ -110,7 +110,17 @@ impl Widget {
 
         let text = self.label.map_or_else(String::new, |text| text);
 
-        DynamicLabel::new(label, &text)
+        {
+            let label = label.clone();
+            DynamicString::new(&text, move |string| {
+                label.set_label(&string);
+                Continue(true)
+            });
+        }
+
+        label
+
+        // DynamicString::new(label, &text)
     }
 
     /// Creates a `gtk::Button` from this widget

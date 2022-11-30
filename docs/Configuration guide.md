@@ -279,10 +279,10 @@ The following table lists each of the top-level bar config options:
 The following table lists each of the module-level options that are present on **all** modules.
 For details on available modules and each of their config options, check the sidebar.
 
-For information on the `Script` type, see [here](script).
+For information on the `Script` type, and embedding scripts in strings, see [here](script).
 
 | Name       | Type               | Default | Description                                                                                                        |
 |------------|--------------------|---------|--------------------------------------------------------------------------------------------------------------------|
 | `show_if`  | `Script [polling]` | `null`  | Polls the script to check its exit code. If exit code is zero, the module is shown. For other codes, it is hidden. |
 | `on_click` | `Script [polling]` | `null`  | Runs the script when the module is clicked.                                                                        |
-| `tooltip`  | `string`           | `null`  | Shows this text on hover.                                                                                          |
+| `tooltip`  | `string`           | `null`  | Shows this text on hover. Supports embedding scripts between `{{double braces}}`.                                  |

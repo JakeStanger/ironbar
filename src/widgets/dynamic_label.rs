@@ -5,17 +5,20 @@ use std::sync::{Arc, Mutex};
 use tokio::spawn;
 
 #[derive(Debug)]
-enum DynamicLabelSegment {
+enum DynamicStringSegment {
     Static(String),
     Dynamic(Script),
 }
 
-pub struct DynamicLabel {
-    pub label: gtk::Label,
+pub struct DynamicString {
+    // pub label: gtk::Label,
 }
 
-impl DynamicLabel {
-    pub fn new(label: gtk::Label, input: &str) -> Self {
+impl DynamicString {
+    pub fn new<F>(input: &str, f: F) -> Self
+    where
+        F: FnMut(String) -> Continue + 'static,
+    {
         let mut segments = vec![];
 
         let mut chars = input.chars().collect::<Vec<_>>();
@@ -36,7 +39,7 @@ impl DynamicLabel {
                 let len = str.len();
 
                 (
-                    DynamicLabelSegment::Dynamic(Script::from(str.as_str())),
+                    DynamicStringSegment::Dynamic(Script::from(str.as_str())),
                     len + SKIP_BRACKETS,
                 )
             } else {
@@ -49,7 +52,7 @@ impl DynamicLabel {
 
                 let len = str.len();
 
-                (DynamicLabelSegment::Static(str), len)
+                (DynamicStringSegment::Static(str), len)
             };
 
             assert_ne!(skip, 0);
@@ -63,13 +66,13 @@ impl DynamicLabel {
 
         for (i, segment) in segments.into_iter().enumerate() {
             match segment {
-                DynamicLabelSegment::Static(str) => {
+                DynamicStringSegment::Static(str) => {
                     label_parts
                         .lock()
                         .expect("Failed to get lock on label parts")
                         .insert(i, str);
                 }
-                DynamicLabelSegment::Dynamic(script) => {
+                DynamicStringSegment::Dynamic(script) => {
                     let tx = tx.clone();
                     let label_parts = label_parts.clone();
 
@@ -77,11 +80,21 @@ impl DynamicLabel {
                         script
                             .run(|(out, _)| {
                                 if let OutputStream::Stdout(out) = out {
-                                    label_parts
+                                    let mut label_parts = label_parts
                                         .lock()
-                                        .expect("Failed to get lock on label parts")
+                                        .expect("Failed to get lock on label parts");
+
+                                    label_parts
+                                        // .lock()
+                                        // .expect("Failed to get lock on label parts")
                                         .insert(i, out);
-                                    tx.send(()).expect("Failed to send update");
+
+                                    let string = label_parts
+                                        .iter()
+                                        .map(|(_, part)| part.as_str())
+                                        .collect::<String>();
+
+                                    tx.send(string).expect("Failed to send update");
                                 }
                             })
                             .await;
@@ -90,25 +103,22 @@ impl DynamicLabel {
             }
         }
 
-        tx.send(()).expect("Failed to send update");
-
+        // initialize
         {
-            let label = label.clone();
-            rx.attach(None, move |_| {
-                let new_label = label_parts
-                    .lock()
-                    .expect("Failed to get lock on label parts")
-                    .iter()
-                    .map(|(_, part)| part.as_str())
-                    .collect::<String>();
+            let label_parts = label_parts
+                .lock()
+                .expect("Failed to get lock on label parts")
+                .iter()
+                .map(|(_, part)| part.as_str())
+                .collect::<String>();
 
-                label.set_label(new_label.as_str());
-
-                Continue(true)
-            });
+            tx.send(label_parts).expect("Failed to send update");
         }
 
-        Self { label }
+        rx.attach(None, f);
+
+        // Self { label }
+        Self {}
     }
 }
 
@@ -121,7 +131,13 @@ mod tests {
         // TODO: see if we can run gtk tests in ci
         if gtk::init().is_ok() {
             let label = gtk::Label::new(None);
-            DynamicLabel::new(label, "Uptime: {{1000:uptime -p | cut -d ' ' -f2-}}");
+            DynamicString::new(
+                "Uptime: {{1000:uptime -p | cut -d ' ' -f2-}}",
+                move |string| {
+                    label.set_label(string);
+                    Continue(true)
+                },
+            );
         }
     }
 }

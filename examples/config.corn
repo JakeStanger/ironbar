@@ -67,6 +67,8 @@ let {
                 { type = "label" name = "uptime" label = "Up: {{30000:uptime -p | cut -d ' ' -f2-}}" }
             ]
         } ]
+
+        tooltip = "Up: {{30000:uptime -p | cut -d ' ' -f2-}}"
     }
 
     $left = [ $workspaces $launcher ]
