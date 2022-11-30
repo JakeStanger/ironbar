@@ -60,11 +60,11 @@ let {
                 {
                     type = "box"
                     widgets = [
-                        { type = "button" class="power-btn" label = "<span font-size='20pt'></span>" on_click = "!shutdown now" }
-                        { type = "button" class="power-btn" label = "<span font-size='20pt'></span>" on_click = "!reboot" }
+                        { type = "button" class="power-btn" label = "<span font-size='40pt'></span>" on_click = "!shutdown now" }
+                        { type = "button" class="power-btn" label = "<span font-size='40pt'></span>" on_click = "!reboot" }
                     ]
                 }
-                { type = "label" name = "uptime" label = "Uptime: {{30000:uptime -p | cut -d ' ' -f2-}}" }
+                { type = "label" name = "uptime" label = "Up: {{30000:uptime -p | cut -d ' ' -f2-}}" }
             ]
         } ]
     }
