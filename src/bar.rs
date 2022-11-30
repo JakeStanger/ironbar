@@ -7,7 +7,7 @@ use crate::modules::workspaces::WorkspaceUpdate;
 use crate::modules::{Module, ModuleInfoBuilder, ModuleLocation, ModuleUpdateEvent, WidgetContext};
 use crate::popup::Popup;
 use crate::script::{OutputStream, Script};
-use crate::widgets::DynamicString;
+use crate::dynamic_string::DynamicString;
 use crate::{await_sync, Config};
 use chrono::{DateTime, Local};
 use color_eyre::Result;

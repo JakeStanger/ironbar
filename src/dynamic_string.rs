@@ -134,7 +134,7 @@ mod tests {
             DynamicString::new(
                 "Uptime: {{1000:uptime -p | cut -d ' ' -f2-}}",
                 move |string| {
-                    label.set_label(string);
+                    label.set_label(&string);
                     Continue(true)
                 },
             );
