@@ -68,7 +68,7 @@ pub struct MpdModule {
     music_dir: PathBuf,
 
     #[serde(flatten)]
-    pub common: CommonConfig,
+    pub common: Option<CommonConfig>,
 }
 
 fn default_socket() -> String {
@@ -127,6 +127,10 @@ pub struct SongUpdate {
 impl Module<Button> for MpdModule {
     type SendMessage = Option<SongUpdate>;
     type ReceiveMessage = PlayerCommand;
+
+    fn name() -> &'static str {
+        "mpd"
+    }
 
     fn spawn_controller(
         &self,

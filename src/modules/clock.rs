@@ -22,7 +22,7 @@ pub struct ClockModule {
     format: String,
 
     #[serde(flatten)]
-    pub common: CommonConfig,
+    pub common: Option<CommonConfig>,
 }
 
 fn default_format() -> String {
@@ -32,6 +32,10 @@ fn default_format() -> String {
 impl Module<Button> for ClockModule {
     type SendMessage = DateTime<Local>;
     type ReceiveMessage = ();
+
+    fn name() -> &'static str {
+        "clock"
+    }
 
     fn spawn_controller(
         &self,

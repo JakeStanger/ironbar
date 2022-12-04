@@ -9,6 +9,7 @@ const STATE_ACTIVE: u32 = 2;
 const STATE_FULLSCREEN: u32 = 3;
 
 static COUNTER: AtomicUsize = AtomicUsize::new(1);
+
 fn get_id() -> usize {
     COUNTER.fetch_add(1, Ordering::Relaxed)
 }
@@ -108,9 +109,9 @@ where
                 None
             }
         }
-        Event::OutputEnter { output: _ } => None,
-        Event::OutputLeave { output: _ } => None,
-        Event::Parent { parent: _ } => None,
+        Event::OutputEnter { output: _ }
+        | Event::OutputLeave { output: _ }
+        | Event::Parent { parent: _ } => None,
         Event::Done => {
             if info.ready || info.app_id.is_empty() {
                 None
@@ -119,6 +120,7 @@ where
                 Some(ToplevelChange::New)
             }
         }
+
         _ => unreachable!(),
     };
 

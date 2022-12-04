@@ -17,7 +17,7 @@ use tokio::sync::mpsc::{Receiver, Sender};
 #[derive(Debug, Deserialize, Clone)]
 pub struct TrayModule {
     #[serde(flatten)]
-    pub common: CommonConfig,
+    pub common: Option<CommonConfig>,
 }
 
 /// Gets a GTK `Image` component
@@ -91,6 +91,10 @@ fn get_menu_items(
 impl Module<MenuBar> for TrayModule {
     type SendMessage = NotifierItemMessage;
     type ReceiveMessage = NotifierItemCommand;
+
+    fn name() -> &'static str {
+        "tray"
+    }
 
     fn spawn_controller(
         &self,

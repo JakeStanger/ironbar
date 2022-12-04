@@ -178,6 +178,8 @@ fn create_bars(
 /// Do note it must be called from within a Tokio runtime still.
 ///
 /// Use sparingly! Prefer async functions wherever possible.
+///
+/// TODO: remove all instances of this once async trait funcs are stable
 pub fn await_sync<F: Future>(f: F) -> F::Output {
     block_in_place(|| Handle::current().block_on(f))
 }

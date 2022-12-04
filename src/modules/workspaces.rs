@@ -22,7 +22,7 @@ pub struct WorkspacesModule {
     all_monitors: bool,
 
     #[serde(flatten)]
-    pub common: CommonConfig,
+    pub common: Option<CommonConfig>,
 }
 
 #[derive(Clone, Debug)]
@@ -64,6 +64,10 @@ fn create_button(
 impl Module<gtk::Box> for WorkspacesModule {
     type SendMessage = WorkspaceUpdate;
     type ReceiveMessage = String;
+
+    fn name() -> &'static str {
+        "workspaces"
+    }
 
     fn spawn_controller(
         &self,

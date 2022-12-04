@@ -36,7 +36,7 @@ pub struct LauncherModule {
     icon_theme: Option<String>,
 
     #[serde(flatten)]
-    pub common: CommonConfig,
+    pub common: Option<CommonConfig>,
 }
 
 #[derive(Debug, Clone)]
@@ -77,6 +77,10 @@ enum ItemOrWindowId {
 impl Module<gtk::Box> for LauncherModule {
     type SendMessage = LauncherUpdate;
     type ReceiveMessage = ItemEvent;
+
+    fn name() -> &'static str {
+        "launcher"
+    }
 
     fn spawn_controller(
         &self,

@@ -22,7 +22,7 @@ pub struct SysInfoModule {
     interval: Interval,
 
     #[serde(flatten)]
-    pub common: CommonConfig,
+    pub common: Option<CommonConfig>,
 }
 
 #[derive(Debug, Deserialize, Copy, Clone)]
@@ -115,6 +115,10 @@ enum RefreshType {
 impl Module<gtk::Box> for SysInfoModule {
     type SendMessage = HashMap<String, String>;
     type ReceiveMessage = ();
+
+    fn name() -> &'static str {
+        "sysinfo"
+    }
 
     fn spawn_controller(
         &self,

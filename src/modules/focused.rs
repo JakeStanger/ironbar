@@ -26,7 +26,7 @@ pub struct FocusedModule {
     icon_theme: Option<String>,
 
     #[serde(flatten)]
-    pub common: CommonConfig,
+    pub common: Option<CommonConfig>,
 }
 
 const fn default_icon_size() -> i32 {
@@ -36,6 +36,10 @@ const fn default_icon_size() -> i32 {
 impl Module<gtk::Box> for FocusedModule {
     type SendMessage = (String, String);
     type ReceiveMessage = ();
+
+    fn name() -> &'static str {
+        "focused"
+    }
 
     fn spawn_controller(
         &self,

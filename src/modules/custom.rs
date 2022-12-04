@@ -21,7 +21,7 @@ pub struct CustomModule {
     popup: Option<Vec<Widget>>,
 
     #[serde(flatten)]
-    pub common: CommonConfig,
+    pub common: Option<CommonConfig>,
 }
 
 /// Attempts to parse an `Orientation` from `String`
@@ -167,6 +167,10 @@ pub struct ExecEvent {
 impl Module<gtk::Box> for CustomModule {
     type SendMessage = ();
     type ReceiveMessage = ExecEvent;
+
+    fn name() -> &'static str {
+        "custom"
+    }
 
     fn spawn_controller(
         &self,
