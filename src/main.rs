@@ -121,7 +121,6 @@ fn create_bars(
             .ok_or_else(|| Report::msg(error::ERR_OUTPUTS))?;
         let monitor_name = &output.name;
 
-        // TODO: Could we use an Arc<Config> or `Cow<Config>` here to avoid cloning?
         config.monitors.as_ref().map_or_else(
             || {
                 info!("Creating bar on '{}'", monitor_name);

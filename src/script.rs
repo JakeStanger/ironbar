@@ -131,8 +131,10 @@ impl From<&str> for Script {
                         .take_while(|c| c.is_ascii_digit())
                         .collect::<String>();
 
-                    // TODO: Handle this better than panicking
-                    let interval = interval_str.parse::<u64>().expect("Invalid interval");
+                    let interval = interval_str.parse::<u64>().unwrap_or_else(|_| {
+                        warn!("Received invalid interval in script string. Falling back to default `5000ms`.");
+                        5000
+                    });
                     (ScriptInputToken::Interval(interval), interval_str.len())
                 }
                 // watching or polling

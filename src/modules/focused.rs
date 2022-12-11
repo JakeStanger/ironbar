@@ -49,13 +49,15 @@ impl Module<gtk::Box> for FocusedModule {
     ) -> Result<()> {
         let focused = await_sync(async {
             let wl = wayland::get_client().await;
-            // TODO: Avoid cloning
-            let toplevels = read_lock!(wl.toplevels).clone();
+            let toplevels = read_lock!(wl.toplevels);
 
-            toplevels.into_iter().find(|(_, (top, _))| top.active)
+            toplevels
+                .iter()
+                .find(|(_, (top, _))| top.active)
+                .map(|(_, (top, _))| top.clone())
         });
 
-        if let Some((_, (top, _))) = focused {
+        if let Some(top) = focused {
             tx.try_send(ModuleUpdateEvent::Update((top.title.clone(), top.app_id)))?;
         }
 

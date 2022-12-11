@@ -214,24 +214,19 @@ impl Module<gtk::Box> for LauncherModule {
                         };
                     }
                     ToplevelChange::Focus(focused) => {
-                        // TODO: Flatten this
-                        let update_title = if focused {
+                        let mut update_title = false;
+
+                        if focused {
                             if let Some(item) = lock!(items).get_mut(&app_id) {
                                 item.set_window_focused(window.id, true);
 
                                 // might be switching focus between windows of same app
                                 if item.windows.len() > 1 {
                                     item.set_window_name(window.id, window.title.clone());
-                                    true
-                                } else {
-                                    false
+                                    update_title = true;
                                 }
-                            } else {
-                                false
                             }
-                        } else {
-                            false
-                        };
+                        }
 
                         send_update(LauncherUpdate::Focus(app_id.clone(), focused)).await?;
 
@@ -266,7 +261,6 @@ impl Module<gtk::Box> for LauncherModule {
                             if let Err(err) = Command::new("gtk-launch")
                                 .arg(
                                     file.file_name()
-                                        // TODO: Don't panic for this
                                         .expect("File segment missing from path to desktop file"),
                                 )
                                 .stdout(Stdio::null())
