@@ -1,5 +1,5 @@
-use crate::error;
 use crate::script::{OutputStream, Script};
+use crate::{lock, send};
 use gtk::prelude::*;
 use indexmap::IndexMap;
 use std::sync::{Arc, Mutex};
@@ -66,10 +66,7 @@ impl DynamicString {
         for (i, segment) in segments.into_iter().enumerate() {
             match segment {
                 DynamicStringSegment::Static(str) => {
-                    label_parts
-                        .lock()
-                        .expect(error::ERR_MUTEX_LOCK)
-                        .insert(i, str);
+                    lock!(label_parts).insert(i, str);
                 }
                 DynamicStringSegment::Dynamic(script) => {
                     let tx = tx.clone();
@@ -79,20 +76,16 @@ impl DynamicString {
                         script
                             .run(|(out, _)| {
                                 if let OutputStream::Stdout(out) = out {
-                                    let mut label_parts =
-                                        label_parts.lock().expect(error::ERR_MUTEX_LOCK);
+                                    let mut label_parts = lock!(label_parts);
 
-                                    label_parts
-                                        // .lock()
-                                        // .expect("Failed to get lock on label parts")
-                                        .insert(i, out);
+                                    label_parts.insert(i, out);
 
                                     let string = label_parts
                                         .iter()
                                         .map(|(_, part)| part.as_str())
                                         .collect::<String>();
 
-                                    tx.send(string).expect(error::ERR_CHANNEL_SEND);
+                                    send!(tx, string);
                                 }
                             })
                             .await;
@@ -103,14 +96,12 @@ impl DynamicString {
 
         // initialize
         {
-            let label_parts = label_parts
-                .lock()
-                .expect(error::ERR_MUTEX_LOCK)
+            let label_parts = lock!(label_parts)
                 .iter()
                 .map(|(_, part)| part.as_str())
                 .collect::<String>();
 
-            tx.send(label_parts).expect(error::ERR_CHANNEL_SEND);
+            send!(tx, label_parts);
         }
 
         rx.attach(None, f);

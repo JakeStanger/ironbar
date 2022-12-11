@@ -1,4 +1,4 @@
-use crate::error;
+use crate::send;
 use tokio::spawn;
 use tokio::sync::mpsc;
 
@@ -22,7 +22,7 @@ impl<T: Send + 'static> BridgeChannel<T> {
 
         spawn(async move {
             while let Some(val) = async_rx.recv().await {
-                sync_tx.send(val).expect(error::ERR_CHANNEL_SEND);
+                send!(sync_tx, val);
             }
         });
 

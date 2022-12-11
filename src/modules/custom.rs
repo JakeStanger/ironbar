@@ -1,9 +1,9 @@
 use crate::config::CommonConfig;
 use crate::dynamic_string::DynamicString;
-use crate::error as err;
 use crate::modules::{Module, ModuleInfo, ModuleUpdateEvent, ModuleWidget, WidgetContext};
 use crate::popup::{ButtonGeometry, Popup};
 use crate::script::Script;
+use crate::{send_async, try_send};
 use color_eyre::{Report, Result};
 use gtk::prelude::*;
 use gtk::{Button, Label, Orientation};
@@ -145,11 +145,13 @@ impl Widget {
 
         if let Some(exec) = self.on_click {
             button.connect_clicked(move |button| {
-                tx.try_send(ExecEvent {
-                    cmd: exec.clone(),
-                    geometry: Popup::button_pos(button, bar_orientation),
-                })
-                .expect(err::ERR_CHANNEL_SEND);
+                try_send!(
+                    tx,
+                    ExecEvent {
+                        cmd: exec.clone(),
+                        geometry: Popup::button_pos(button, bar_orientation),
+                    }
+                );
             });
         }
 
@@ -188,17 +190,11 @@ impl Module<gtk::Box> for CustomModule {
                         error!("{err:?}");
                     }
                 } else if event.cmd == "popup:toggle" {
-                    tx.send(ModuleUpdateEvent::TogglePopup(event.geometry))
-                        .await
-                        .expect(err::ERR_CHANNEL_SEND);
+                    send_async!(tx, ModuleUpdateEvent::TogglePopup(event.geometry));
                 } else if event.cmd == "popup:open" {
-                    tx.send(ModuleUpdateEvent::OpenPopup(event.geometry))
-                        .await
-                        .expect(err::ERR_CHANNEL_SEND);
+                    send_async!(tx, ModuleUpdateEvent::OpenPopup(event.geometry));
                 } else if event.cmd == "popup:close" {
-                    tx.send(ModuleUpdateEvent::ClosePopup)
-                        .await
-                        .expect(err::ERR_CHANNEL_SEND);
+                    send_async!(tx, ModuleUpdateEvent::ClosePopup);
                 } else {
                     error!("Received invalid command: '{}'", event.cmd);
                 }

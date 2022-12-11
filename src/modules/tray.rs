@@ -1,7 +1,7 @@
 use crate::clients::system_tray::get_tray_event_client;
 use crate::config::CommonConfig;
 use crate::modules::{Module, ModuleInfo, ModuleUpdateEvent, ModuleWidget, WidgetContext};
-use crate::{await_sync, error};
+use crate::{await_sync, try_send};
 use color_eyre::Result;
 use gtk::prelude::*;
 use gtk::{IconLookupFlags, IconTheme, Image, Menu, MenuBar, MenuItem, SeparatorMenuItem};
@@ -70,12 +70,14 @@ fn get_menu_items(
                     {
                         let tx = tx.clone();
                         item.connect_activate(move |_item| {
-                            tx.try_send(NotifierItemCommand::MenuItemClicked {
-                                submenu_id: info.id,
-                                menu_path: path.clone(),
-                                notifier_address: id.clone(),
-                            })
-                            .expect(error::ERR_CHANNEL_SEND);
+                            try_send!(
+                                tx,
+                                NotifierItemCommand::MenuItemClicked {
+                                    submenu_id: info.id,
+                                    menu_path: path.clone(),
+                                    notifier_address: id.clone(),
+                                }
+                            );
                         });
                     }
 

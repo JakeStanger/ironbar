@@ -1,4 +1,4 @@
-use crate::error as err;
+use crate::send_async;
 use color_eyre::eyre::WrapErr;
 use color_eyre::{Report, Result};
 use serde::Deserialize;
@@ -261,10 +261,10 @@ impl Script {
                 select! {
                     _ = handle.wait() => break,
                     Ok(Some(line)) = stdout_lines.next_line() => {
-                        tx.send(OutputStream::Stdout(line)).await.expect(err::ERR_CHANNEL_SEND);
+                        send_async!(tx, OutputStream::Stdout(line));
                     }
                     Ok(Some(line)) = stderr_lines.next_line() => {
-                        tx.send(OutputStream::Stderr(line)).await.expect(err::ERR_CHANNEL_SEND);
+                        send_async!(tx, OutputStream::Stderr(line));
                     }
                 }
             }

@@ -6,6 +6,7 @@ mod dynamic_string;
 mod error;
 mod icon;
 mod logging;
+mod macros;
 mod modules;
 mod popup;
 mod script;

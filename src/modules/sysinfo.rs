@@ -1,6 +1,6 @@
 use crate::config::CommonConfig;
-use crate::error;
 use crate::modules::{Module, ModuleInfo, ModuleUpdateEvent, ModuleWidget, WidgetContext};
+use crate::send_async;
 use color_eyre::Result;
 use gtk::prelude::*;
 use gtk::Label;
@@ -140,83 +140,24 @@ impl Module<gtk::Box> for SysInfoModule {
 
         let (refresh_tx, mut refresh_rx) = mpsc::channel(16);
 
-        // memory refresh
-        {
-            let tx = refresh_tx.clone();
-            spawn(async move {
-                loop {
-                    tx.send(RefreshType::Memory)
-                        .await
-                        .expect(error::ERR_CHANNEL_SEND);
-                    sleep(Duration::from_secs(interval.memory())).await;
-                }
-            });
+        macro_rules! spawn_refresh {
+            ($refresh_type:expr, $func:ident) => {{
+                let tx = refresh_tx.clone();
+                spawn(async move {
+                    loop {
+                        send_async!(tx, $refresh_type);
+                        sleep(Duration::from_secs(interval.$func())).await;
+                    }
+                });
+            }};
         }
 
-        // cpu refresh
-        {
-            let tx = refresh_tx.clone();
-            spawn(async move {
-                loop {
-                    tx.send(RefreshType::Cpu)
-                        .await
-                        .expect(error::ERR_CHANNEL_SEND);
-                    sleep(Duration::from_secs(interval.cpu())).await;
-                }
-            });
-        }
-
-        // temp refresh
-        {
-            let tx = refresh_tx.clone();
-            spawn(async move {
-                loop {
-                    tx.send(RefreshType::Temps)
-                        .await
-                        .expect(error::ERR_CHANNEL_SEND);
-                    sleep(Duration::from_secs(interval.temps())).await;
-                }
-            });
-        }
-
-        // disk refresh
-        {
-            let tx = refresh_tx.clone();
-            spawn(async move {
-                loop {
-                    tx.send(RefreshType::Disks)
-                        .await
-                        .expect(error::ERR_CHANNEL_SEND);
-                    sleep(Duration::from_secs(interval.disks())).await;
-                }
-            });
-        }
-
-        // network refresh
-        {
-            let tx = refresh_tx.clone();
-            spawn(async move {
-                loop {
-                    tx.send(RefreshType::Network)
-                        .await
-                        .expect(error::ERR_CHANNEL_SEND);
-                    sleep(Duration::from_secs(interval.networks())).await;
-                }
-            });
-        }
-
-        // system refresh
-        {
-            let tx = refresh_tx;
-            spawn(async move {
-                loop {
-                    tx.send(RefreshType::System)
-                        .await
-                        .expect(error::ERR_CHANNEL_SEND);
-                    sleep(Duration::from_secs(interval.system())).await;
-                }
-            });
-        }
+        spawn_refresh!(RefreshType::Memory, memory);
+        spawn_refresh!(RefreshType::Cpu, cpu);
+        spawn_refresh!(RefreshType::Temps, temps);
+        spawn_refresh!(RefreshType::Disks, disks);
+        spawn_refresh!(RefreshType::Network, networks);
+        spawn_refresh!(RefreshType::System, system);
 
         spawn(async move {
             let mut format_info = HashMap::new();
@@ -233,9 +174,7 @@ impl Module<gtk::Box> for SysInfoModule {
                     RefreshType::System => refresh_system_tokens(&mut format_info, &sys),
                 };
 
-                tx.send(ModuleUpdateEvent::Update(format_info.clone()))
-                    .await
-                    .expect(error::ERR_CHANNEL_SEND);
+                send_async!(tx, ModuleUpdateEvent::Update(format_info.clone()));
             }
         });
 

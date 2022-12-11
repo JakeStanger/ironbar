@@ -5,9 +5,9 @@ use self::item::{Item, ItemButton, Window};
 use self::open_state::OpenState;
 use crate::clients::wayland::{self, ToplevelChange};
 use crate::config::CommonConfig;
-use crate::error as err;
 use crate::icon::find_desktop_file;
 use crate::modules::{Module, ModuleInfo, ModuleUpdateEvent, ModuleWidget, WidgetContext};
+use crate::{lock, read_lock, try_send, write_lock};
 use color_eyre::{Help, Report};
 use glib::Continue;
 use gtk::prelude::*;
@@ -111,9 +111,9 @@ impl Module<gtk::Box> for LauncherModule {
             let tx = tx.clone();
             spawn(async move {
                 let wl = wayland::get_client().await;
-                let open_windows = wl.toplevels.read().expect(err::ERR_READ_LOCK);
+                let open_windows = read_lock!(wl.toplevels);
 
-                let mut items = items.lock().expect(err::ERR_MUTEX_LOCK);
+                let mut items = lock!(items);
 
                 for (_, (window, _)) in open_windows.clone() {
                     let item = items.get_mut(&window.app_id);
@@ -155,12 +155,10 @@ impl Module<gtk::Box> for LauncherModule {
                 let window = event.toplevel;
                 let app_id = window.app_id.clone();
 
-                let items = || items.lock().expect(err::ERR_MUTEX_LOCK);
-
                 match event.change {
                     ToplevelChange::New => {
                         let new_item = {
-                            let mut items = items();
+                            let mut items = lock!(items);
                             let item = items.get_mut(&app_id);
                             match item {
                                 None => {
@@ -187,7 +185,7 @@ impl Module<gtk::Box> for LauncherModule {
                     }
                     ToplevelChange::Close => {
                         let remove_item = {
-                            let mut items = items();
+                            let mut items = lock!(items);
                             let item = items.get_mut(&app_id);
                             match item {
                                 Some(item) => {
@@ -218,7 +216,7 @@ impl Module<gtk::Box> for LauncherModule {
                     ToplevelChange::Focus(focused) => {
                         // TODO: Flatten this
                         let update_title = if focused {
-                            if let Some(item) = items().get_mut(&app_id) {
+                            if let Some(item) = lock!(items).get_mut(&app_id) {
                                 item.set_window_focused(window.id, true);
 
                                 // might be switching focus between windows of same app
@@ -243,7 +241,7 @@ impl Module<gtk::Box> for LauncherModule {
                         }
                     }
                     ToplevelChange::Title(title) => {
-                        if let Some(item) = items().get_mut(&app_id) {
+                        if let Some(item) = lock!(items).get_mut(&app_id) {
                             item.set_window_name(window.id, title.clone());
                         }
 
@@ -286,7 +284,7 @@ impl Module<gtk::Box> for LauncherModule {
                     );
                 } else {
                     let wl = wayland::get_client().await;
-                    let items = items.lock().expect(err::ERR_MUTEX_LOCK);
+                    let items = lock!(items);
 
                     let id = match event {
                         ItemEvent::FocusItem(app_id) => items
@@ -297,7 +295,7 @@ impl Module<gtk::Box> for LauncherModule {
                     };
 
                     if let Some(id) = id {
-                        let toplevels = wl.toplevels.read().expect(err::ERR_READ_LOCK);
+                        let toplevels = read_lock!(wl.toplevels);
                         let seat = wl.seats.first().expect("Failed to get Wayland seat");
                         if let Some((_top, handle)) = toplevels.get(&id) {
                             handle.activate(seat);
@@ -360,8 +358,7 @@ impl Module<gtk::Box> for LauncherModule {
                         if let Some(button) = buttons.get(&app_id) {
                             button.set_open(true);
 
-                            let mut menu_state =
-                                button.menu_state.write().expect(err::ERR_WRITE_LOCK);
+                            let mut menu_state = write_lock!(button.menu_state);
                             menu_state.num_windows += 1;
                         }
                     }
@@ -382,8 +379,7 @@ impl Module<gtk::Box> for LauncherModule {
                     }
                     LauncherUpdate::RemoveWindow(app_id, _) => {
                         if let Some(button) = buttons.get(&app_id) {
-                            let mut menu_state =
-                                button.menu_state.write().expect(err::ERR_WRITE_LOCK);
+                            let mut menu_state = write_lock!(button.menu_state);
                             menu_state.num_windows -= 1;
                         }
                     }
@@ -456,8 +452,7 @@ impl Module<gtk::Box> for LauncherModule {
                                 {
                                     let tx = controller_tx.clone();
                                     button.connect_clicked(move |button| {
-                                        tx.try_send(ItemEvent::FocusWindow(win.id))
-                                            .expect(err::ERR_CHANNEL_SEND);
+                                        try_send!(tx, ItemEvent::FocusWindow(win.id));
 
                                         if let Some(win) = button.window() {
                                             win.hide();
@@ -486,8 +481,7 @@ impl Module<gtk::Box> for LauncherModule {
                             {
                                 let tx = controller_tx.clone();
                                 button.connect_clicked(move |button| {
-                                    tx.try_send(ItemEvent::FocusWindow(win.id))
-                                        .expect(err::ERR_CHANNEL_SEND);
+                                    try_send!(tx, ItemEvent::FocusWindow(win.id));
 
                                     if let Some(win) = button.window() {
                                         win.hide();

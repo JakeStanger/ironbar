@@ -1,10 +1,10 @@
 use super::open_state::OpenState;
 use crate::clients::wayland::ToplevelInfo;
-use crate::error;
 use crate::icon::get_icon;
 use crate::modules::launcher::{ItemEvent, LauncherUpdate};
 use crate::modules::ModuleUpdateEvent;
 use crate::popup::Popup;
+use crate::{read_lock, try_send};
 use gtk::prelude::*;
 use gtk::{Button, IconTheme, Image, Orientation};
 use indexmap::IndexMap;
@@ -178,14 +178,12 @@ impl ItemButton {
             let app_id = item.app_id.clone();
             let tx = controller_tx.clone();
             button.connect_clicked(move |button| {
-                // lazy check :|
+                // lazy check :| TODO: Improve this
                 let style_context = button.style_context();
                 if style_context.has_class("open") {
-                    tx.try_send(ItemEvent::FocusItem(app_id.clone()))
-                        .expect(error::ERR_CHANNEL_SEND);
+                    try_send!(tx, ItemEvent::FocusItem(app_id.clone()));
                 } else {
-                    tx.try_send(ItemEvent::OpenItem(app_id.clone()))
-                        .expect(error::ERR_CHANNEL_SEND);
+                    try_send!(tx, ItemEvent::OpenItem(app_id.clone()));
                 }
             });
         }
@@ -200,22 +198,20 @@ impl ItemButton {
             let menu_state = menu_state.clone();
 
             button.connect_enter_notify_event(move |button, _| {
-                let menu_state = menu_state.read().expect(error::ERR_READ_LOCK);
+                let menu_state = read_lock!(menu_state);
 
                 if menu_state.num_windows > 1 {
-                    tx.try_send(ModuleUpdateEvent::Update(LauncherUpdate::Hover(
-                        app_id.clone(),
-                    )))
-                    .expect(error::ERR_CHANNEL_SEND);
+                    try_send!(
+                        tx,
+                        ModuleUpdateEvent::Update(LauncherUpdate::Hover(app_id.clone(),))
+                    );
 
-                    tx.try_send(ModuleUpdateEvent::OpenPopup(Popup::button_pos(
-                        button,
-                        orientation,
-                    )))
-                    .expect(error::ERR_CHANNEL_SEND);
+                    try_send!(
+                        tx,
+                        ModuleUpdateEvent::OpenPopup(Popup::button_pos(button, orientation,))
+                    );
                 } else {
-                    tx.try_send(ModuleUpdateEvent::ClosePopup)
-                        .expect(error::ERR_CHANNEL_SEND);
+                    try_send!(tx, ModuleUpdateEvent::ClosePopup);
                 }
 
                 Inhibit(false)

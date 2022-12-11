@@ -2,6 +2,7 @@ use super::toplevel::{ToplevelEvent, ToplevelInfo};
 use super::toplevel_manager::listen_for_toplevels;
 use super::ToplevelChange;
 use super::{Env, ToplevelHandler};
+use crate::{error as err, send, write_lock};
 use color_eyre::Report;
 use indexmap::IndexMap;
 use smithay_client_toolkit::environment::Environment;
@@ -18,7 +19,6 @@ use wayland_protocols::wlr::unstable::foreign_toplevel::v1::client::{
     zwlr_foreign_toplevel_handle_v1::ZwlrForeignToplevelHandleV1,
     zwlr_foreign_toplevel_manager_v1::ZwlrForeignToplevelManagerV1,
 };
-use crate::error as err;
 
 pub struct WaylandClient {
     pub outputs: Vec<OutputInfo>,
@@ -47,19 +47,16 @@ impl WaylandClient {
                     .expect("Failed to connect to Wayland compositor");
 
             let outputs = Self::get_outputs(&env);
-            output_tx
-                .send(outputs)
-                .expect(err::ERR_CHANNEL_SEND);
+            send!(output_tx, outputs);
 
             let seats = env.get_all_seats();
-            seat_tx
-                .send(
-                    seats
-                        .into_iter()
-                        .map(|seat| seat.detach())
-                        .collect::<Vec<WlSeat>>(),
-                )
-                .expect(err::ERR_CHANNEL_SEND);
+            send!(
+                seat_tx,
+                seats
+                    .into_iter()
+                    .map(|seat| seat.detach())
+                    .collect::<Vec<WlSeat>>()
+            );
 
             let _toplevel_manager = env.require_global::<ZwlrForeignToplevelManagerV1>();
 
@@ -67,20 +64,13 @@ impl WaylandClient {
                 trace!("Received toplevel event: {:?}", event);
 
                 if event.change == ToplevelChange::Close {
-                    toplevels2
-                        .write()
-                        .expect(err::ERR_WRITE_LOCK)
-                        .remove(&event.toplevel.id);
+                    write_lock!(toplevels2).remove(&event.toplevel.id);
                 } else {
-                    toplevels2
-                        .write()
-                        .expect(err::ERR_WRITE_LOCK)
+                    write_lock!(toplevels2)
                         .insert(event.toplevel.id, (event.toplevel.clone(), handle));
                 }
 
-                toplevel_tx2
-                    .send(event)
-                    .expect(err::ERR_CHANNEL_SEND);
+                send!(toplevel_tx2, event);
             });
 
             let mut event_loop =
@@ -100,9 +90,7 @@ impl WaylandClient {
             }
         });
 
-        let outputs = output_rx
-            .await
-            .expect(err::ERR_CHANNEL_RECV);
+        let outputs = output_rx.await.expect(err::ERR_CHANNEL_RECV);
 
         let seats = seat_rx.await.expect(err::ERR_CHANNEL_RECV);
 

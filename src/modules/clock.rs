@@ -1,7 +1,7 @@
 use crate::config::CommonConfig;
-use crate::error;
 use crate::modules::{Module, ModuleInfo, ModuleUpdateEvent, ModuleWidget, WidgetContext};
 use crate::popup::Popup;
+use crate::{send_async, try_send};
 use chrono::{DateTime, Local};
 use color_eyre::Result;
 use glib::Continue;
@@ -47,9 +47,7 @@ impl Module<Button> for ClockModule {
         spawn(async move {
             loop {
                 let date = Local::now();
-                tx.send(ModuleUpdateEvent::Update(date))
-                    .await
-                    .expect(error::ERR_CHANNEL_SEND);
+                send_async!(tx, ModuleUpdateEvent::Update(date));
                 sleep(tokio::time::Duration::from_millis(500)).await;
             }
         });
@@ -69,13 +67,10 @@ impl Module<Button> for ClockModule {
 
         let orientation = info.bar_position.get_orientation();
         button.connect_clicked(move |button| {
-            context
-                .tx
-                .try_send(ModuleUpdateEvent::TogglePopup(Popup::button_pos(
-                    button,
-                    orientation,
-                )))
-                .expect(error::ERR_CHANNEL_SEND);
+            try_send!(
+                context.tx,
+                ModuleUpdateEvent::TogglePopup(Popup::button_pos(button, orientation))
+            );
         });
 
         let format = self.format.clone();

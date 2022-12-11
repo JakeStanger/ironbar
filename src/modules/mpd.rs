@@ -1,8 +1,8 @@
 use crate::clients::mpd::{get_client, get_duration, get_elapsed, MpdConnectionError};
 use crate::config::CommonConfig;
-use crate::error as err;
 use crate::modules::{Module, ModuleInfo, ModuleUpdateEvent, ModuleWidget, WidgetContext};
 use crate::popup::Popup;
+use crate::try_send;
 use color_eyre::Result;
 use dirs::{audio_dir, home_dir};
 use glib::Continue;
@@ -226,11 +226,10 @@ impl Module<Button> for MpdModule {
             let tx = context.tx.clone();
 
             button.connect_clicked(move |button| {
-                tx.try_send(ModuleUpdateEvent::TogglePopup(Popup::button_pos(
-                    button,
-                    orientation,
-                )))
-                .expect(err::ERR_CHANNEL_SEND);
+                try_send!(
+                    tx,
+                    ModuleUpdateEvent::TogglePopup(Popup::button_pos(button, orientation,))
+                );
             });
         }
 
@@ -244,8 +243,7 @@ impl Module<Button> for MpdModule {
                     button.show();
                 } else {
                     button.hide();
-                    tx.try_send(ModuleUpdateEvent::ClosePopup)
-                        .expect(err::ERR_CHANNEL_SEND);
+                    try_send!(tx, ModuleUpdateEvent::ClosePopup);
                 }
 
                 Continue(true)
@@ -323,31 +321,22 @@ impl Module<Button> for MpdModule {
 
         let tx_prev = tx.clone();
         btn_prev.connect_clicked(move |_| {
-            tx_prev
-                .try_send(PlayerCommand::Previous)
-                .expect(err::ERR_CHANNEL_SEND);
+            try_send!(tx_prev, PlayerCommand::Previous);
         });
 
         let tx_toggle = tx.clone();
         btn_play_pause.connect_clicked(move |_| {
-            tx_toggle
-                .try_send(PlayerCommand::Toggle)
-                .expect(err::ERR_CHANNEL_SEND);
+            try_send!(tx_toggle, PlayerCommand::Toggle);
         });
 
         let tx_next = tx.clone();
         btn_next.connect_clicked(move |_| {
-            tx_next
-                .try_send(PlayerCommand::Next)
-                .expect(err::ERR_CHANNEL_SEND);
+            try_send!(tx_next, PlayerCommand::Next);
         });
 
         let tx_vol = tx;
         volume_slider.connect_change_value(move |_, _, val| {
-            tx_vol
-                .try_send(PlayerCommand::Volume(val as u8))
-                .expect(err::ERR_CHANNEL_SEND);
-
+            try_send!(tx_vol, PlayerCommand::Volume(val as u8));
             Inhibit(false)
         });
 

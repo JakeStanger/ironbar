@@ -4,7 +4,7 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use tracing::trace;
 use wayland_client::{DispatchData, Main};
 use wayland_protocols::wlr::unstable::foreign_toplevel::v1::client::zwlr_foreign_toplevel_handle_v1::{Event, ZwlrForeignToplevelHandleV1};
-use crate::error;
+use crate::write_lock;
 
 const STATE_ACTIVE: u32 = 2;
 const STATE_FULLSCREEN: u32 = 3;
@@ -143,9 +143,7 @@ impl Toplevel {
         let inner = Arc::new(RwLock::new(ToplevelInfo::new()));
 
         handle.quick_assign(move |_handle, event, ddata| {
-            let mut inner = inner
-                .write()
-                .expect(error::ERR_WRITE_LOCK);
+            let mut inner = write_lock!(inner);
             toplevel_implem(event, &mut inner, &mut callback, ddata);
         });
 

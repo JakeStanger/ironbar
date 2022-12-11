@@ -1,7 +1,7 @@
 use crate::clients::wayland::{self, ToplevelChange};
 use crate::config::CommonConfig;
 use crate::modules::{Module, ModuleInfo, ModuleUpdateEvent, ModuleWidget, WidgetContext};
-use crate::{await_sync, error, icon};
+use crate::{await_sync, icon, read_lock, send_async};
 use color_eyre::Result;
 use glib::Continue;
 use gtk::prelude::*;
@@ -49,7 +49,8 @@ impl Module<gtk::Box> for FocusedModule {
     ) -> Result<()> {
         let focused = await_sync(async {
             let wl = wayland::get_client().await;
-            let toplevels = wl.toplevels.read().expect(error::ERR_READ_LOCK).clone();
+            // TODO: Avoid cloning
+            let toplevels = read_lock!(wl.toplevels).clone();
 
             toplevels.into_iter().find(|(_, (top, _))| top.active)
         });
@@ -72,12 +73,10 @@ impl Module<gtk::Box> for FocusedModule {
                 };
 
                 if update {
-                    tx.send(ModuleUpdateEvent::Update((
-                        event.toplevel.title,
-                        event.toplevel.app_id,
-                    )))
-                    .await
-                    .expect(error::ERR_CHANNEL_SEND);
+                    send_async!(
+                        tx,
+                        ModuleUpdateEvent::Update((event.toplevel.title, event.toplevel.app_id))
+                    );
                 }
             }
         });
