@@ -33,7 +33,7 @@ walkdir = "2.3.2"
 notify = { version = "5.0.0", default-features = false }
 mpd_client = "1.0.0"
 swayipc-async = { version = "2.0.1" }
-sysinfo = "0.26.4"
+sysinfo = "0.27.0"
 wayland-client = "0.29.5"
 wayland-protocols = { version = "0.29.5", features = ["unstable_protocols", "client"] }
 smithay-client-toolkit = { version = "0.16.0", default-features = false, features = ["calloop"] }
