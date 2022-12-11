@@ -19,46 +19,22 @@ use dirs::config_dir;
 use gtk::gdk::Display;
 use gtk::prelude::*;
 use gtk::Application;
+use std::env;
 use std::future::Future;
 use std::path::PathBuf;
 use std::process::exit;
-use std::{env, panic};
 use tokio::runtime::Handle;
 use tokio::task::block_in_place;
 
-use crate::logging::install_tracing;
+use crate::error::ExitCode;
 use clients::wayland::{self, WaylandClient};
 use tracing::{debug, error, info};
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 
-#[repr(i32)]
-enum ErrorCode {
-    GtkDisplay = 1,
-    CreateBars = 2,
-    Config = 3,
-}
-
 #[tokio::main]
 async fn main() -> Result<()> {
-    // Disable backtraces by default
-    if env::var("RUST_LIB_BACKTRACE").is_err() {
-        env::set_var("RUST_LIB_BACKTRACE", "0");
-    }
-
-    // keep guard in scope
-    // otherwise file logging drops
-    let _guard = install_tracing()?;
-
-    let hook_builder = color_eyre::config::HookBuilder::default();
-    let (panic_hook, eyre_hook) = hook_builder.into_hooks();
-
-    eyre_hook.install()?;
-
-    // custom hook allows tracing_appender to capture panics
-    panic::set_hook(Box::new(move |panic_info| {
-        error!("{}", panic_hook.panic_report(panic_info));
-    }));
+    let _guard = logging::install_logging();
 
     info!("Ironbar version {}", VERSION);
     info!("Starting application");
@@ -74,7 +50,7 @@ async fn main() -> Result<()> {
             || {
                 let report = Report::msg("Failed to get default GTK display");
                 error!("{:?}", report);
-                exit(ErrorCode::GtkDisplay as i32)
+                exit(ExitCode::GtkDisplay as i32)
             },
             |display| display,
         );
@@ -83,14 +59,14 @@ async fn main() -> Result<()> {
             Ok(config) => config,
             Err(err) => {
                 error!("{:?}", err);
-                exit(ErrorCode::Config as i32)
+                exit(ExitCode::Config as i32)
             }
         };
         debug!("Loaded config file");
 
         if let Err(err) = create_bars(app, &display, wayland_client, &config) {
             error!("{:?}", err);
-            exit(ErrorCode::CreateBars as i32);
+            exit(ExitCode::CreateBars as i32);
         }
 
         debug!("Created bars");
@@ -101,7 +77,7 @@ async fn main() -> Result<()> {
                     || {
                         let report = Report::msg("Failed to locate user config dir");
                         error!("{:?}", report);
-                        exit(ErrorCode::CreateBars as i32);
+                        exit(ExitCode::CreateBars as i32);
                     },
                     |dir| dir.join("ironbar").join("style.css"),
                 )
