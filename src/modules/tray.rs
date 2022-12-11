@@ -1,7 +1,7 @@
-use crate::await_sync;
 use crate::clients::system_tray::get_tray_event_client;
 use crate::config::CommonConfig;
 use crate::modules::{Module, ModuleInfo, ModuleUpdateEvent, ModuleWidget, WidgetContext};
+use crate::{await_sync, error};
 use color_eyre::Result;
 use gtk::prelude::*;
 use gtk::{IconLookupFlags, IconTheme, Image, Menu, MenuBar, MenuItem, SeparatorMenuItem};
@@ -75,7 +75,7 @@ fn get_menu_items(
                                 menu_path: path.clone(),
                                 notifier_address: id.clone(),
                             })
-                            .expect("Failed to send menu item clicked event");
+                            .expect(error::ERR_CHANNEL_SEND);
                         });
                     }
 

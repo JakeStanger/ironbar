@@ -63,6 +63,8 @@ impl Default for BarPosition {
 }
 
 impl BarPosition {
+    /// Gets the orientation the bar and widgets should use
+    /// based on this position.
     pub fn get_orientation(self) -> Orientation {
         if self == Self::Top || self == Self::Bottom {
             Orientation::Horizontal
@@ -71,6 +73,8 @@ impl BarPosition {
         }
     }
 
+    /// Gets the angle that label text should be displayed at
+    /// based on this position.
     pub const fn get_angle(self) -> f64 {
         match self {
             Self::Top | Self::Bottom => 0.0,

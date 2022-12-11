@@ -1,3 +1,4 @@
+use crate::error as err;
 use color_eyre::eyre::WrapErr;
 use color_eyre::{Report, Result};
 use serde::Deserialize;
@@ -129,12 +130,10 @@ impl From<&str> for Script {
                         .iter()
                         .take_while(|c| c.is_ascii_digit())
                         .collect::<String>();
-                    (
-                        ScriptInputToken::Interval(
-                            interval_str.parse::<u64>().expect("Invalid interval"),
-                        ),
-                        interval_str.len(),
-                    )
+
+                    // TODO: Handle this better than panicking
+                    let interval = interval_str.parse::<u64>().expect("Invalid interval");
+                    (ScriptInputToken::Interval(interval), interval_str.len())
                 }
                 // watching or polling
                 'w' | 'p' => {
@@ -262,10 +261,10 @@ impl Script {
                 select! {
                     _ = handle.wait() => break,
                     Ok(Some(line)) = stdout_lines.next_line() => {
-                        tx.send(OutputStream::Stdout(line)).await.expect("Failed to send stdout");
+                        tx.send(OutputStream::Stdout(line)).await.expect(err::ERR_CHANNEL_SEND);
                     }
                     Ok(Some(line)) = stderr_lines.next_line() => {
-                        tx.send(OutputStream::Stderr(line)).await.expect("Failed to send stderr");
+                        tx.send(OutputStream::Stderr(line)).await.expect(err::ERR_CHANNEL_SEND);
                     }
                 }
             }

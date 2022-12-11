@@ -3,6 +3,7 @@ mod bridge_channel;
 mod clients;
 mod config;
 mod dynamic_string;
+mod error;
 mod icon;
 mod logging;
 mod modules;
@@ -30,6 +31,7 @@ use crate::error::ExitCode;
 use clients::wayland::{self, WaylandClient};
 use tracing::{debug, error, info};
 
+const GTK_APP_ID: &str = "dev.jstanger.ironbar";
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[tokio::main]
@@ -41,9 +43,7 @@ async fn main() -> Result<()> {
 
     let wayland_client = wayland::get_client().await;
 
-    let app = Application::builder()
-        .application_id("dev.jstanger.ironbar")
-        .build();
+    let app = Application::builder().application_id(GTK_APP_ID).build();
 
     app.connect_activate(move |app| {
         let display = Display::default().map_or_else(
@@ -112,8 +112,12 @@ fn create_bars(
     let num_monitors = display.n_monitors();
 
     for i in 0..num_monitors {
-        let monitor = display.monitor(i).ok_or_else(|| Report::msg("GTK and Sway are reporting a different set of outputs - this is a severe bug and should never happen"))?;
-        let output = outputs.get(i as usize).ok_or_else(|| Report::msg("GTK and Sway are reporting a different set of outputs - this is a severe bug and should never happen"))?;
+        let monitor = display
+            .monitor(i)
+            .ok_or_else(|| Report::msg(error::ERR_OUTPUTS))?;
+        let output = outputs
+            .get(i as usize)
+            .ok_or_else(|| Report::msg(error::ERR_OUTPUTS))?;
         let monitor_name = &output.name;
 
         // TODO: Could we use an Arc<Config> or `Cow<Config>` here to avoid cloning?

@@ -1,3 +1,4 @@
+use crate::error;
 use crate::script::{OutputStream, Script};
 use gtk::prelude::*;
 use indexmap::IndexMap;
@@ -10,9 +11,7 @@ enum DynamicStringSegment {
     Dynamic(Script),
 }
 
-pub struct DynamicString {
-    // pub label: gtk::Label,
-}
+pub struct DynamicString;
 
 impl DynamicString {
     pub fn new<F>(input: &str, f: F) -> Self
@@ -69,7 +68,7 @@ impl DynamicString {
                 DynamicStringSegment::Static(str) => {
                     label_parts
                         .lock()
-                        .expect("Failed to get lock on label parts")
+                        .expect(error::ERR_MUTEX_LOCK)
                         .insert(i, str);
                 }
                 DynamicStringSegment::Dynamic(script) => {
@@ -80,9 +79,8 @@ impl DynamicString {
                         script
                             .run(|(out, _)| {
                                 if let OutputStream::Stdout(out) = out {
-                                    let mut label_parts = label_parts
-                                        .lock()
-                                        .expect("Failed to get lock on label parts");
+                                    let mut label_parts =
+                                        label_parts.lock().expect(error::ERR_MUTEX_LOCK);
 
                                     label_parts
                                         // .lock()
@@ -94,7 +92,7 @@ impl DynamicString {
                                         .map(|(_, part)| part.as_str())
                                         .collect::<String>();
 
-                                    tx.send(string).expect("Failed to send update");
+                                    tx.send(string).expect(error::ERR_CHANNEL_SEND);
                                 }
                             })
                             .await;
@@ -107,18 +105,17 @@ impl DynamicString {
         {
             let label_parts = label_parts
                 .lock()
-                .expect("Failed to get lock on label parts")
+                .expect(error::ERR_MUTEX_LOCK)
                 .iter()
                 .map(|(_, part)| part.as_str())
                 .collect::<String>();
 
-            tx.send(label_parts).expect("Failed to send update");
+            tx.send(label_parts).expect(error::ERR_CHANNEL_SEND);
         }
 
         rx.attach(None, f);
 
-        // Self { label }
-        Self {}
+        Self
     }
 }
 

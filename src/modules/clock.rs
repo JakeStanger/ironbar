@@ -1,4 +1,5 @@
 use crate::config::CommonConfig;
+use crate::error;
 use crate::modules::{Module, ModuleInfo, ModuleUpdateEvent, ModuleWidget, WidgetContext};
 use crate::popup::Popup;
 use chrono::{DateTime, Local};
@@ -48,7 +49,7 @@ impl Module<Button> for ClockModule {
                 let date = Local::now();
                 tx.send(ModuleUpdateEvent::Update(date))
                     .await
-                    .expect("Failed to send date");
+                    .expect(error::ERR_CHANNEL_SEND);
                 sleep(tokio::time::Duration::from_millis(500)).await;
             }
         });
@@ -74,7 +75,7 @@ impl Module<Button> for ClockModule {
                     button,
                     orientation,
                 )))
-                .expect("Failed to toggle popup");
+                .expect(error::ERR_CHANNEL_SEND);
         });
 
         let format = self.format.clone();

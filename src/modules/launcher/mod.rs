@@ -5,6 +5,7 @@ use self::item::{Item, ItemButton, Window};
 use self::open_state::OpenState;
 use crate::clients::wayland::{self, ToplevelChange};
 use crate::config::CommonConfig;
+use crate::error as err;
 use crate::icon::find_desktop_file;
 use crate::modules::{Module, ModuleInfo, ModuleUpdateEvent, ModuleWidget, WidgetContext};
 use color_eyre::{Help, Report};
@@ -110,12 +111,9 @@ impl Module<gtk::Box> for LauncherModule {
             let tx = tx.clone();
             spawn(async move {
                 let wl = wayland::get_client().await;
-                let open_windows = wl
-                    .toplevels
-                    .read()
-                    .expect("Failed to get read lock on toplevels");
+                let open_windows = wl.toplevels.read().expect(err::ERR_READ_LOCK);
 
-                let mut items = items.lock().expect("Failed to get lock on items");
+                let mut items = items.lock().expect(err::ERR_MUTEX_LOCK);
 
                 for (_, (window, _)) in open_windows.clone() {
                     let item = items.get_mut(&window.app_id);
@@ -157,7 +155,7 @@ impl Module<gtk::Box> for LauncherModule {
                 let window = event.toplevel;
                 let app_id = window.app_id.clone();
 
-                let items = || items.lock().expect("Failed to get lock on items");
+                let items = || items.lock().expect(err::ERR_MUTEX_LOCK);
 
                 match event.change {
                     ToplevelChange::New => {
@@ -218,6 +216,7 @@ impl Module<gtk::Box> for LauncherModule {
                         };
                     }
                     ToplevelChange::Focus(focused) => {
+                        // TODO: Flatten this
                         let update_title = if focused {
                             if let Some(item) = items().get_mut(&app_id) {
                                 item.set_window_focused(window.id, true);
@@ -269,6 +268,7 @@ impl Module<gtk::Box> for LauncherModule {
                             if let Err(err) = Command::new("gtk-launch")
                                 .arg(
                                     file.file_name()
+                                        // TODO: Don't panic for this
                                         .expect("File segment missing from path to desktop file"),
                                 )
                                 .stdout(Stdio::null())
@@ -286,7 +286,7 @@ impl Module<gtk::Box> for LauncherModule {
                     );
                 } else {
                     let wl = wayland::get_client().await;
-                    let items = items.lock().expect("Failed to get lock on items");
+                    let items = items.lock().expect(err::ERR_MUTEX_LOCK);
 
                     let id = match event {
                         ItemEvent::FocusItem(app_id) => items
@@ -297,10 +297,7 @@ impl Module<gtk::Box> for LauncherModule {
                     };
 
                     if let Some(id) = id {
-                        let toplevels = wl
-                            .toplevels
-                            .read()
-                            .expect("Failed to get read lock on toplevels");
+                        let toplevels = wl.toplevels.read().expect(err::ERR_READ_LOCK);
                         let seat = wl.seats.first().expect("Failed to get Wayland seat");
                         if let Some((_top, handle)) = toplevels.get(&id) {
                             handle.activate(seat);
@@ -363,10 +360,8 @@ impl Module<gtk::Box> for LauncherModule {
                         if let Some(button) = buttons.get(&app_id) {
                             button.set_open(true);
 
-                            let mut menu_state = button
-                                .menu_state
-                                .write()
-                                .expect("Failed to get write lock on item menu state");
+                            let mut menu_state =
+                                button.menu_state.write().expect(err::ERR_WRITE_LOCK);
                             menu_state.num_windows += 1;
                         }
                     }
@@ -387,10 +382,8 @@ impl Module<gtk::Box> for LauncherModule {
                     }
                     LauncherUpdate::RemoveWindow(app_id, _) => {
                         if let Some(button) = buttons.get(&app_id) {
-                            let mut menu_state = button
-                                .menu_state
-                                .write()
-                                .expect("Failed to get write lock on item menu state");
+                            let mut menu_state =
+                                button.menu_state.write().expect(err::ERR_WRITE_LOCK);
                             menu_state.num_windows -= 1;
                         }
                     }
@@ -464,7 +457,7 @@ impl Module<gtk::Box> for LauncherModule {
                                     let tx = controller_tx.clone();
                                     button.connect_clicked(move |button| {
                                         tx.try_send(ItemEvent::FocusWindow(win.id))
-                                            .expect("Failed to send window click event");
+                                            .expect(err::ERR_CHANNEL_SEND);
 
                                         if let Some(win) = button.window() {
                                             win.hide();
@@ -494,7 +487,7 @@ impl Module<gtk::Box> for LauncherModule {
                                 let tx = controller_tx.clone();
                                 button.connect_clicked(move |button| {
                                     tx.try_send(ItemEvent::FocusWindow(win.id))
-                                        .expect("Failed to send window click event");
+                                        .expect(err::ERR_CHANNEL_SEND);
 
                                     if let Some(win) = button.window() {
                                         win.hide();

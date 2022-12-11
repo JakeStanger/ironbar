@@ -4,7 +4,7 @@ use crate::dynamic_string::DynamicString;
 use crate::modules::{Module, ModuleInfo, ModuleLocation, ModuleUpdateEvent, WidgetContext};
 use crate::popup::Popup;
 use crate::script::{OutputStream, Script};
-use crate::{await_sync, Config};
+use crate::{await_sync, error as err, Config};
 use color_eyre::Result;
 use gtk::gdk::Monitor;
 use gtk::prelude::*;
@@ -253,7 +253,7 @@ where
 fn register_popup_content(popup: &Arc<RwLock<Popup>>, id: usize, popup_content: gtk::Box) {
     popup
         .write()
-        .expect("Failed to get write lock on popup")
+        .expect(err::ERR_WRITE_LOCK)
         .register_content(id, popup_content);
 }
 
@@ -277,15 +277,14 @@ fn setup_receiver<TSend>(
         match ev {
             ModuleUpdateEvent::Update(update) => {
                 if has_popup {
-                    p_tx.send(update.clone())
-                        .expect("Failed to send update to popup");
+                    p_tx.send(update.clone()).expect(err::ERR_CHANNEL_SEND);
                 }
 
-                w_tx.send(update).expect("Failed to send update to widget");
+                w_tx.send(update).expect(err::ERR_CHANNEL_SEND);
             }
             ModuleUpdateEvent::TogglePopup(geometry) => {
                 debug!("Toggling popup for {} [#{}]", name, id);
-                let popup = popup.read().expect("Failed to get read lock on popup");
+                let popup = popup.read().expect(err::ERR_READ_LOCK);
                 if popup.is_visible() {
                     popup.hide();
                 } else {
@@ -296,7 +295,7 @@ fn setup_receiver<TSend>(
             ModuleUpdateEvent::OpenPopup(geometry) => {
                 debug!("Opening popup for {} [#{}]", name, id);
 
-                let popup = popup.read().expect("Failed to get read lock on popup");
+                let popup = popup.read().expect(err::ERR_READ_LOCK);
                 popup.hide();
                 popup.show_content(id);
                 popup.show(geometry);
@@ -304,7 +303,7 @@ fn setup_receiver<TSend>(
             ModuleUpdateEvent::ClosePopup => {
                 debug!("Closing popup for {} [#{}]", name, id);
 
-                let popup = popup.read().expect("Failed to get read lock on popup");
+                let popup = popup.read().expect(err::ERR_READ_LOCK);
                 popup.hide();
             }
         }
@@ -334,8 +333,7 @@ fn setup_module_common_options(container: EventBox, common: CommonConfig) {
             spawn(async move {
                 script
                     .run(|(_, success)| {
-                        tx.send(success)
-                            .expect("Failed to send widget visibility toggle message");
+                        tx.send(success).expect(err::ERR_CHANNEL_SEND);
                     })
                     .await;
             });

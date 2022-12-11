@@ -1,5 +1,6 @@
 use super::open_state::OpenState;
 use crate::clients::wayland::ToplevelInfo;
+use crate::error;
 use crate::icon::get_icon;
 use crate::modules::launcher::{ItemEvent, LauncherUpdate};
 use crate::modules::ModuleUpdateEvent;
@@ -181,10 +182,10 @@ impl ItemButton {
                 let style_context = button.style_context();
                 if style_context.has_class("open") {
                     tx.try_send(ItemEvent::FocusItem(app_id.clone()))
-                        .expect("Failed to send item focus event");
+                        .expect(error::ERR_CHANNEL_SEND);
                 } else {
                     tx.try_send(ItemEvent::OpenItem(app_id.clone()))
-                        .expect("Failed to send item open event");
+                        .expect(error::ERR_CHANNEL_SEND);
                 }
             });
         }
@@ -199,24 +200,22 @@ impl ItemButton {
             let menu_state = menu_state.clone();
 
             button.connect_enter_notify_event(move |button, _| {
-                let menu_state = menu_state
-                    .read()
-                    .expect("Failed to get read lock on item menu state");
+                let menu_state = menu_state.read().expect(error::ERR_READ_LOCK);
 
                 if menu_state.num_windows > 1 {
                     tx.try_send(ModuleUpdateEvent::Update(LauncherUpdate::Hover(
                         app_id.clone(),
                     )))
-                    .expect("Failed to send item open popup event");
+                    .expect(error::ERR_CHANNEL_SEND);
 
                     tx.try_send(ModuleUpdateEvent::OpenPopup(Popup::button_pos(
                         button,
                         orientation,
                     )))
-                    .expect("Failed to send item open popup event");
+                    .expect(error::ERR_CHANNEL_SEND);
                 } else {
                     tx.try_send(ModuleUpdateEvent::ClosePopup)
-                        .expect("Failed to send item close popup event");
+                        .expect(error::ERR_CHANNEL_SEND);
                 }
 
                 Inhibit(false)

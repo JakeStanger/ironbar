@@ -1,5 +1,6 @@
 use crate::config::CommonConfig;
 use crate::dynamic_string::DynamicString;
+use crate::error as err;
 use crate::modules::{Module, ModuleInfo, ModuleUpdateEvent, ModuleWidget, WidgetContext};
 use crate::popup::{ButtonGeometry, Popup};
 use crate::script::Script;
@@ -119,8 +120,6 @@ impl Widget {
         }
 
         label
-
-        // DynamicString::new(label, &text)
     }
 
     /// Creates a `gtk::Button` from this widget
@@ -150,7 +149,7 @@ impl Widget {
                     cmd: exec.clone(),
                     geometry: Popup::button_pos(button, bar_orientation),
                 })
-                .expect("Failed to send exec message");
+                .expect(err::ERR_CHANNEL_SEND);
             });
         }
 
@@ -191,15 +190,15 @@ impl Module<gtk::Box> for CustomModule {
                 } else if event.cmd == "popup:toggle" {
                     tx.send(ModuleUpdateEvent::TogglePopup(event.geometry))
                         .await
-                        .expect("Failed to send open popup event");
+                        .expect(err::ERR_CHANNEL_SEND);
                 } else if event.cmd == "popup:open" {
                     tx.send(ModuleUpdateEvent::OpenPopup(event.geometry))
                         .await
-                        .expect("Failed to send open popup event");
+                        .expect(err::ERR_CHANNEL_SEND);
                 } else if event.cmd == "popup:close" {
                     tx.send(ModuleUpdateEvent::ClosePopup)
                         .await
-                        .expect("Failed to send open popup event");
+                        .expect(err::ERR_CHANNEL_SEND);
                 } else {
                     error!("Received invalid command: '{}'", event.cmd);
                 }

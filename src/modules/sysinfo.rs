@@ -1,4 +1,5 @@
 use crate::config::CommonConfig;
+use crate::error;
 use crate::modules::{Module, ModuleInfo, ModuleUpdateEvent, ModuleWidget, WidgetContext};
 use color_eyre::Result;
 use gtk::prelude::*;
@@ -146,7 +147,7 @@ impl Module<gtk::Box> for SysInfoModule {
                 loop {
                     tx.send(RefreshType::Memory)
                         .await
-                        .expect("Failed to send memory refresh");
+                        .expect(error::ERR_CHANNEL_SEND);
                     sleep(Duration::from_secs(interval.memory())).await;
                 }
             });
@@ -159,7 +160,7 @@ impl Module<gtk::Box> for SysInfoModule {
                 loop {
                     tx.send(RefreshType::Cpu)
                         .await
-                        .expect("Failed to send cpu refresh");
+                        .expect(error::ERR_CHANNEL_SEND);
                     sleep(Duration::from_secs(interval.cpu())).await;
                 }
             });
@@ -172,7 +173,7 @@ impl Module<gtk::Box> for SysInfoModule {
                 loop {
                     tx.send(RefreshType::Temps)
                         .await
-                        .expect("Failed to send temperature refresh");
+                        .expect(error::ERR_CHANNEL_SEND);
                     sleep(Duration::from_secs(interval.temps())).await;
                 }
             });
@@ -185,7 +186,7 @@ impl Module<gtk::Box> for SysInfoModule {
                 loop {
                     tx.send(RefreshType::Disks)
                         .await
-                        .expect("Failed to send disk refresh");
+                        .expect(error::ERR_CHANNEL_SEND);
                     sleep(Duration::from_secs(interval.disks())).await;
                 }
             });
@@ -198,7 +199,7 @@ impl Module<gtk::Box> for SysInfoModule {
                 loop {
                     tx.send(RefreshType::Network)
                         .await
-                        .expect("Failed to send network refresh");
+                        .expect(error::ERR_CHANNEL_SEND);
                     sleep(Duration::from_secs(interval.networks())).await;
                 }
             });
@@ -211,7 +212,7 @@ impl Module<gtk::Box> for SysInfoModule {
                 loop {
                     tx.send(RefreshType::System)
                         .await
-                        .expect("Failed to send system refresh");
+                        .expect(error::ERR_CHANNEL_SEND);
                     sleep(Duration::from_secs(interval.system())).await;
                 }
             });
@@ -234,7 +235,7 @@ impl Module<gtk::Box> for SysInfoModule {
 
                 tx.send(ModuleUpdateEvent::Update(format_info.clone()))
                     .await
-                    .expect("Failed to send system info map");
+                    .expect(error::ERR_CHANNEL_SEND);
             }
         });
 

@@ -1,5 +1,6 @@
 use crate::clients::mpd::{get_client, get_duration, get_elapsed, MpdConnectionError};
 use crate::config::CommonConfig;
+use crate::error as err;
 use crate::modules::{Module, ModuleInfo, ModuleUpdateEvent, ModuleWidget, WidgetContext};
 use crate::popup::Popup;
 use color_eyre::Result;
@@ -229,7 +230,7 @@ impl Module<Button> for MpdModule {
                     button,
                     orientation,
                 )))
-                .expect("Failed to send MPD popup open event");
+                .expect(err::ERR_CHANNEL_SEND);
             });
         }
 
@@ -244,7 +245,7 @@ impl Module<Button> for MpdModule {
                 } else {
                     button.hide();
                     tx.try_send(ModuleUpdateEvent::ClosePopup)
-                        .expect("Failed to send close popup message");
+                        .expect(err::ERR_CHANNEL_SEND);
                 }
 
                 Continue(true)
@@ -324,28 +325,28 @@ impl Module<Button> for MpdModule {
         btn_prev.connect_clicked(move |_| {
             tx_prev
                 .try_send(PlayerCommand::Previous)
-                .expect("Failed to send prev track message");
+                .expect(err::ERR_CHANNEL_SEND);
         });
 
         let tx_toggle = tx.clone();
         btn_play_pause.connect_clicked(move |_| {
             tx_toggle
                 .try_send(PlayerCommand::Toggle)
-                .expect("Failed to send play/pause track message");
+                .expect(err::ERR_CHANNEL_SEND);
         });
 
         let tx_next = tx.clone();
         btn_next.connect_clicked(move |_| {
             tx_next
                 .try_send(PlayerCommand::Next)
-                .expect("Failed to send next track message");
+                .expect(err::ERR_CHANNEL_SEND);
         });
 
         let tx_vol = tx;
         volume_slider.connect_change_value(move |_, _, val| {
             tx_vol
                 .try_send(PlayerCommand::Volume(val as u8))
-                .expect("Failed to send volume message");
+                .expect(err::ERR_CHANNEL_SEND);
 
             Inhibit(false)
         });

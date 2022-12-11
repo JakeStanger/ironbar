@@ -18,6 +18,7 @@ use wayland_protocols::wlr::unstable::foreign_toplevel::v1::client::{
     zwlr_foreign_toplevel_handle_v1::ZwlrForeignToplevelHandleV1,
     zwlr_foreign_toplevel_manager_v1::ZwlrForeignToplevelManagerV1,
 };
+use crate::error as err;
 
 pub struct WaylandClient {
     pub outputs: Vec<OutputInfo>,
@@ -48,7 +49,7 @@ impl WaylandClient {
             let outputs = Self::get_outputs(&env);
             output_tx
                 .send(outputs)
-                .expect("Failed to send outputs out of task");
+                .expect(err::ERR_CHANNEL_SEND);
 
             let seats = env.get_all_seats();
             seat_tx
@@ -58,7 +59,7 @@ impl WaylandClient {
                         .map(|seat| seat.detach())
                         .collect::<Vec<WlSeat>>(),
                 )
-                .expect("Failed to send seats out of task");
+                .expect(err::ERR_CHANNEL_SEND);
 
             let _toplevel_manager = env.require_global::<ZwlrForeignToplevelManagerV1>();
 
@@ -68,18 +69,18 @@ impl WaylandClient {
                 if event.change == ToplevelChange::Close {
                     toplevels2
                         .write()
-                        .expect("Failed to get write lock on toplevels")
+                        .expect(err::ERR_WRITE_LOCK)
                         .remove(&event.toplevel.id);
                 } else {
                     toplevels2
                         .write()
-                        .expect("Failed to get write lock on toplevels")
+                        .expect(err::ERR_WRITE_LOCK)
                         .insert(event.toplevel.id, (event.toplevel.clone(), handle));
                 }
 
                 toplevel_tx2
                     .send(event)
-                    .expect("Failed to send toplevel event");
+                    .expect(err::ERR_CHANNEL_SEND);
             });
 
             let mut event_loop =
@@ -101,9 +102,9 @@ impl WaylandClient {
 
         let outputs = output_rx
             .await
-            .expect("Failed to receive outputs from task");
+            .expect(err::ERR_CHANNEL_RECV);
 
-        let seats = seat_rx.await.expect("Failed to receive seats from task");
+        let seats = seat_rx.await.expect(err::ERR_CHANNEL_RECV);
 
         Self {
             outputs,

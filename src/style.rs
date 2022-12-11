@@ -1,3 +1,4 @@
+use crate::error as err;
 use color_eyre::{Help, Report};
 use glib::Continue;
 use gtk::prelude::CssProviderExt;
@@ -37,8 +38,7 @@ pub fn load_css(style_path: PathBuf) {
             Ok(event) if event.kind == EventKind::Modify(ModifyKind::Data(DataChange::Any)) => {
                 debug!("{event:?}");
                 if let Some(path) = event.paths.first() {
-                    tx.send(path.clone())
-                        .expect("Failed to send style changed message");
+                    tx.send(path.clone()).expect(err::ERR_CHANNEL_SEND);
                 }
             }
             Err(e) => error!("Error occurred when watching stylesheet: {:?}", e),
