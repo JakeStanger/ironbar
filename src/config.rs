@@ -13,7 +13,7 @@ use color_eyre::{eyre, Help, Report};
 use dirs::config_dir;
 use eyre::Result;
 use gtk::Orientation;
-use serde::Deserialize;
+use serde::{Deserialize, Deserializer};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::{env, fs};
@@ -40,11 +40,42 @@ pub enum ModuleConfig {
     Custom(CustomModule),
 }
 
-#[derive(Debug, Deserialize, Clone)]
-#[serde(untagged)]
+#[derive(Debug, Clone)]
 pub enum MonitorConfig {
     Single(Config),
     Multiple(Vec<Config>),
+}
+
+// Manually implement for better untagged enum error handling:
+// currently open pr: https://github.com/serde-rs/serde/pull/1544
+impl<'de> Deserialize<'de> for MonitorConfig {
+    fn deserialize<D>(deserializer: D) -> std::result::Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let content =
+            <serde::__private::de::Content as serde::Deserialize>::deserialize(deserializer)?;
+
+        match <Config as serde::Deserialize>::deserialize(
+            serde::__private::de::ContentRefDeserializer::<D::Error>::new(&content),
+        ) {
+            Ok(config) => Ok(Self::Single(config)),
+            Err(outer) => match <Vec<Config> as serde::Deserialize>::deserialize(
+                serde::__private::de::ContentRefDeserializer::<D::Error>::new(&content),
+            ) {
+                Ok(config) => Ok(Self::Multiple(config)),
+                Err(inner) => {
+                    let report = Report::msg(format!(" multi-bar (c): {inner}").replace("An error occurred when deserializing: ", ""))
+                        .wrap_err(format!("single-bar (b): {outer}").replace("An error occurred when deserializing: ", ""))
+                        .wrap_err("An invalid config was found. The following errors were encountered:")
+                        .note("Both the single-bar (type b / error 1) and multi-bar (type c / error 2) config variants were tried. You can likely ignore whichever of these is not relevant to you.")
+                        .suggestion("Please see https://github.com/JakeStanger/ironbar/wiki/configuration-guide#2-pick-your-use-case for more info on the above");
+
+                    Err(serde::de::Error::custom(format!("{report:?}")))
+                }
+            },
+        }
+    }
 }
 
 #[derive(Debug, Deserialize, Copy, Clone, PartialEq, Eq)]
@@ -111,7 +142,6 @@ const fn default_bar_height() -> i32 {
 impl Config {
     /// Attempts to load the config file from file,
     /// parse it and return a new instance of `Self`.
-    #[instrument]
     pub fn load() -> Result<Self> {
         let config_path = env::var("IRONBAR_CONFIG").map_or_else(
             |_| Self::try_find_config(),
