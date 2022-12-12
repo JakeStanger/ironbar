@@ -1,3 +1,4 @@
+use crate::send_async;
 use color_eyre::eyre::WrapErr;
 use color_eyre::{Report, Result};
 use serde::Deserialize;
@@ -129,12 +130,12 @@ impl From<&str> for Script {
                         .iter()
                         .take_while(|c| c.is_ascii_digit())
                         .collect::<String>();
-                    (
-                        ScriptInputToken::Interval(
-                            interval_str.parse::<u64>().expect("Invalid interval"),
-                        ),
-                        interval_str.len(),
-                    )
+
+                    let interval = interval_str.parse::<u64>().unwrap_or_else(|_| {
+                        warn!("Received invalid interval in script string. Falling back to default `5000ms`.");
+                        5000
+                    });
+                    (ScriptInputToken::Interval(interval), interval_str.len())
                 }
                 // watching or polling
                 'w' | 'p' => {
@@ -262,10 +263,10 @@ impl Script {
                 select! {
                     _ = handle.wait() => break,
                     Ok(Some(line)) = stdout_lines.next_line() => {
-                        tx.send(OutputStream::Stdout(line)).await.expect("Failed to send stdout");
+                        send_async!(tx, OutputStream::Stdout(line));
                     }
                     Ok(Some(line)) = stderr_lines.next_line() => {
-                        tx.send(OutputStream::Stderr(line)).await.expect("Failed to send stderr");
+                        send_async!(tx, OutputStream::Stderr(line));
                     }
                 }
             }

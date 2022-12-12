@@ -4,11 +4,13 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use tracing::trace;
 use wayland_client::{DispatchData, Main};
 use wayland_protocols::wlr::unstable::foreign_toplevel::v1::client::zwlr_foreign_toplevel_handle_v1::{Event, ZwlrForeignToplevelHandleV1};
+use crate::write_lock;
 
 const STATE_ACTIVE: u32 = 2;
 const STATE_FULLSCREEN: u32 = 3;
 
 static COUNTER: AtomicUsize = AtomicUsize::new(1);
+
 fn get_id() -> usize {
     COUNTER.fetch_add(1, Ordering::Relaxed)
 }
@@ -108,9 +110,9 @@ where
                 None
             }
         }
-        Event::OutputEnter { output: _ } => None,
-        Event::OutputLeave { output: _ } => None,
-        Event::Parent { parent: _ } => None,
+        Event::OutputEnter { output: _ }
+        | Event::OutputLeave { output: _ }
+        | Event::Parent { parent: _ } => None,
         Event::Done => {
             if info.ready || info.app_id.is_empty() {
                 None
@@ -119,6 +121,7 @@ where
                 Some(ToplevelChange::New)
             }
         }
+
         _ => unreachable!(),
     };
 
@@ -140,9 +143,7 @@ impl Toplevel {
         let inner = Arc::new(RwLock::new(ToplevelInfo::new()));
 
         handle.quick_assign(move |_handle, event, ddata| {
-            let mut inner = inner
-                .write()
-                .expect("Failed to get write lock on toplevel inner state");
+            let mut inner = write_lock!(inner);
             toplevel_implem(event, &mut inner, &mut callback, ddata);
         });
 

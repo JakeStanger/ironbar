@@ -17,7 +17,6 @@ pub mod workspaces;
 use crate::config::BarPosition;
 use crate::popup::ButtonGeometry;
 use color_eyre::Result;
-use derive_builder::Builder;
 use glib::IsA;
 use gtk::gdk::Monitor;
 use gtk::{Application, Widget};
@@ -29,15 +28,12 @@ pub enum ModuleLocation {
     Center,
     Right,
 }
-
-#[derive(Builder)]
 pub struct ModuleInfo<'a> {
     pub app: &'a Application,
     pub location: ModuleLocation,
     pub bar_position: BarPosition,
     pub monitor: &'a Monitor,
     pub output_name: &'a str,
-    pub module_name: &'a str,
 }
 
 #[derive(Debug)]
@@ -72,6 +68,8 @@ where
 {
     type SendMessage;
     type ReceiveMessage;
+
+    fn name() -> &'static str;
 
     fn spawn_controller(
         &self,

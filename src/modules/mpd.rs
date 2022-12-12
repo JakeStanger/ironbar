@@ -2,6 +2,7 @@ use crate::clients::mpd::{get_client, get_duration, get_elapsed, MpdConnectionEr
 use crate::config::CommonConfig;
 use crate::modules::{Module, ModuleInfo, ModuleUpdateEvent, ModuleWidget, WidgetContext};
 use crate::popup::Popup;
+use crate::try_send;
 use color_eyre::Result;
 use dirs::{audio_dir, home_dir};
 use glib::Continue;
@@ -68,7 +69,7 @@ pub struct MpdModule {
     music_dir: PathBuf,
 
     #[serde(flatten)]
-    pub common: CommonConfig,
+    pub common: Option<CommonConfig>,
 }
 
 fn default_socket() -> String {
@@ -127,6 +128,10 @@ pub struct SongUpdate {
 impl Module<Button> for MpdModule {
     type SendMessage = Option<SongUpdate>;
     type ReceiveMessage = PlayerCommand;
+
+    fn name() -> &'static str {
+        "mpd"
+    }
 
     fn spawn_controller(
         &self,
@@ -221,11 +226,10 @@ impl Module<Button> for MpdModule {
             let tx = context.tx.clone();
 
             button.connect_clicked(move |button| {
-                tx.try_send(ModuleUpdateEvent::TogglePopup(Popup::button_pos(
-                    button,
-                    orientation,
-                )))
-                .expect("Failed to send MPD popup open event");
+                try_send!(
+                    tx,
+                    ModuleUpdateEvent::TogglePopup(Popup::button_pos(button, orientation,))
+                );
             });
         }
 
@@ -239,8 +243,7 @@ impl Module<Button> for MpdModule {
                     button.show();
                 } else {
                     button.hide();
-                    tx.try_send(ModuleUpdateEvent::ClosePopup)
-                        .expect("Failed to send close popup message");
+                    try_send!(tx, ModuleUpdateEvent::ClosePopup);
                 }
 
                 Continue(true)
@@ -318,31 +321,22 @@ impl Module<Button> for MpdModule {
 
         let tx_prev = tx.clone();
         btn_prev.connect_clicked(move |_| {
-            tx_prev
-                .try_send(PlayerCommand::Previous)
-                .expect("Failed to send prev track message");
+            try_send!(tx_prev, PlayerCommand::Previous);
         });
 
         let tx_toggle = tx.clone();
         btn_play_pause.connect_clicked(move |_| {
-            tx_toggle
-                .try_send(PlayerCommand::Toggle)
-                .expect("Failed to send play/pause track message");
+            try_send!(tx_toggle, PlayerCommand::Toggle);
         });
 
         let tx_next = tx.clone();
         btn_next.connect_clicked(move |_| {
-            tx_next
-                .try_send(PlayerCommand::Next)
-                .expect("Failed to send next track message");
+            try_send!(tx_next, PlayerCommand::Next);
         });
 
         let tx_vol = tx;
         volume_slider.connect_change_value(move |_, _, val| {
-            tx_vol
-                .try_send(PlayerCommand::Volume(val as u8))
-                .expect("Failed to send volume message");
-
+            try_send!(tx_vol, PlayerCommand::Volume(val as u8));
             Inhibit(false)
         });
 

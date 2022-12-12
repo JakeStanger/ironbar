@@ -2,6 +2,7 @@ use super::toplevel::{ToplevelEvent, ToplevelInfo};
 use super::toplevel_manager::listen_for_toplevels;
 use super::ToplevelChange;
 use super::{Env, ToplevelHandler};
+use crate::{error as err, send, write_lock};
 use color_eyre::Report;
 use indexmap::IndexMap;
 use smithay_client_toolkit::environment::Environment;
@@ -46,19 +47,16 @@ impl WaylandClient {
                     .expect("Failed to connect to Wayland compositor");
 
             let outputs = Self::get_outputs(&env);
-            output_tx
-                .send(outputs)
-                .expect("Failed to send outputs out of task");
+            send!(output_tx, outputs);
 
             let seats = env.get_all_seats();
-            seat_tx
-                .send(
-                    seats
-                        .into_iter()
-                        .map(|seat| seat.detach())
-                        .collect::<Vec<WlSeat>>(),
-                )
-                .expect("Failed to send seats out of task");
+            send!(
+                seat_tx,
+                seats
+                    .into_iter()
+                    .map(|seat| seat.detach())
+                    .collect::<Vec<WlSeat>>()
+            );
 
             let _toplevel_manager = env.require_global::<ZwlrForeignToplevelManagerV1>();
 
@@ -66,20 +64,13 @@ impl WaylandClient {
                 trace!("Received toplevel event: {:?}", event);
 
                 if event.change == ToplevelChange::Close {
-                    toplevels2
-                        .write()
-                        .expect("Failed to get write lock on toplevels")
-                        .remove(&event.toplevel.id);
+                    write_lock!(toplevels2).remove(&event.toplevel.id);
                 } else {
-                    toplevels2
-                        .write()
-                        .expect("Failed to get write lock on toplevels")
+                    write_lock!(toplevels2)
                         .insert(event.toplevel.id, (event.toplevel.clone(), handle));
                 }
 
-                toplevel_tx2
-                    .send(event)
-                    .expect("Failed to send toplevel event");
+                send!(toplevel_tx2, event);
             });
 
             let mut event_loop =
@@ -99,11 +90,9 @@ impl WaylandClient {
             }
         });
 
-        let outputs = output_rx
-            .await
-            .expect("Failed to receive outputs from task");
+        let outputs = output_rx.await.expect(err::ERR_CHANNEL_RECV);
 
-        let seats = seat_rx.await.expect("Failed to receive seats from task");
+        let seats = seat_rx.await.expect(err::ERR_CHANNEL_RECV);
 
         Self {
             outputs,

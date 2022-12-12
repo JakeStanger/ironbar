@@ -3,6 +3,7 @@ use crate::dynamic_string::DynamicString;
 use crate::modules::{Module, ModuleInfo, ModuleUpdateEvent, ModuleWidget, WidgetContext};
 use crate::popup::{ButtonGeometry, Popup};
 use crate::script::Script;
+use crate::{send_async, try_send};
 use color_eyre::{Report, Result};
 use gtk::prelude::*;
 use gtk::{Button, Label, Orientation};
@@ -21,7 +22,7 @@ pub struct CustomModule {
     popup: Option<Vec<Widget>>,
 
     #[serde(flatten)]
-    pub common: CommonConfig,
+    pub common: Option<CommonConfig>,
 }
 
 /// Attempts to parse an `Orientation` from `String`
@@ -119,8 +120,6 @@ impl Widget {
         }
 
         label
-
-        // DynamicString::new(label, &text)
     }
 
     /// Creates a `gtk::Button` from this widget
@@ -146,11 +145,13 @@ impl Widget {
 
         if let Some(exec) = self.on_click {
             button.connect_clicked(move |button| {
-                tx.try_send(ExecEvent {
-                    cmd: exec.clone(),
-                    geometry: Popup::button_pos(button, bar_orientation),
-                })
-                .expect("Failed to send exec message");
+                try_send!(
+                    tx,
+                    ExecEvent {
+                        cmd: exec.clone(),
+                        geometry: Popup::button_pos(button, bar_orientation),
+                    }
+                );
             });
         }
 
@@ -167,6 +168,10 @@ pub struct ExecEvent {
 impl Module<gtk::Box> for CustomModule {
     type SendMessage = ();
     type ReceiveMessage = ExecEvent;
+
+    fn name() -> &'static str {
+        "custom"
+    }
 
     fn spawn_controller(
         &self,
@@ -185,17 +190,11 @@ impl Module<gtk::Box> for CustomModule {
                         error!("{err:?}");
                     }
                 } else if event.cmd == "popup:toggle" {
-                    tx.send(ModuleUpdateEvent::TogglePopup(event.geometry))
-                        .await
-                        .expect("Failed to send open popup event");
+                    send_async!(tx, ModuleUpdateEvent::TogglePopup(event.geometry));
                 } else if event.cmd == "popup:open" {
-                    tx.send(ModuleUpdateEvent::OpenPopup(event.geometry))
-                        .await
-                        .expect("Failed to send open popup event");
+                    send_async!(tx, ModuleUpdateEvent::OpenPopup(event.geometry));
                 } else if event.cmd == "popup:close" {
-                    tx.send(ModuleUpdateEvent::ClosePopup)
-                        .await
-                        .expect("Failed to send open popup event");
+                    send_async!(tx, ModuleUpdateEvent::ClosePopup);
                 } else {
                     error!("Received invalid command: '{}'", event.cmd);
                 }

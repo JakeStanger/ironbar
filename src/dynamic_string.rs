@@ -1,4 +1,5 @@
 use crate::script::{OutputStream, Script};
+use crate::{lock, send};
 use gtk::prelude::*;
 use indexmap::IndexMap;
 use std::sync::{Arc, Mutex};
@@ -10,9 +11,7 @@ enum DynamicStringSegment {
     Dynamic(Script),
 }
 
-pub struct DynamicString {
-    // pub label: gtk::Label,
-}
+pub struct DynamicString;
 
 impl DynamicString {
     pub fn new<F>(input: &str, f: F) -> Self
@@ -67,10 +66,7 @@ impl DynamicString {
         for (i, segment) in segments.into_iter().enumerate() {
             match segment {
                 DynamicStringSegment::Static(str) => {
-                    label_parts
-                        .lock()
-                        .expect("Failed to get lock on label parts")
-                        .insert(i, str);
+                    lock!(label_parts).insert(i, str);
                 }
                 DynamicStringSegment::Dynamic(script) => {
                     let tx = tx.clone();
@@ -80,21 +76,16 @@ impl DynamicString {
                         script
                             .run(|(out, _)| {
                                 if let OutputStream::Stdout(out) = out {
-                                    let mut label_parts = label_parts
-                                        .lock()
-                                        .expect("Failed to get lock on label parts");
+                                    let mut label_parts = lock!(label_parts);
 
-                                    label_parts
-                                        // .lock()
-                                        // .expect("Failed to get lock on label parts")
-                                        .insert(i, out);
+                                    label_parts.insert(i, out);
 
                                     let string = label_parts
                                         .iter()
                                         .map(|(_, part)| part.as_str())
                                         .collect::<String>();
 
-                                    tx.send(string).expect("Failed to send update");
+                                    send!(tx, string);
                                 }
                             })
                             .await;
@@ -105,20 +96,17 @@ impl DynamicString {
 
         // initialize
         {
-            let label_parts = label_parts
-                .lock()
-                .expect("Failed to get lock on label parts")
+            let label_parts = lock!(label_parts)
                 .iter()
                 .map(|(_, part)| part.as_str())
                 .collect::<String>();
 
-            tx.send(label_parts).expect("Failed to send update");
+            send!(tx, label_parts);
         }
 
         rx.attach(None, f);
 
-        // Self { label }
-        Self {}
+        Self
     }
 }
 

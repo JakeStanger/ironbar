@@ -1,7 +1,7 @@
 use crate::clients::wayland::{self, ToplevelChange};
 use crate::config::CommonConfig;
 use crate::modules::{Module, ModuleInfo, ModuleUpdateEvent, ModuleWidget, WidgetContext};
-use crate::{await_sync, icon};
+use crate::{await_sync, icon, read_lock, send_async};
 use color_eyre::Result;
 use glib::Continue;
 use gtk::prelude::*;
@@ -26,7 +26,7 @@ pub struct FocusedModule {
     icon_theme: Option<String>,
 
     #[serde(flatten)]
-    pub common: CommonConfig,
+    pub common: Option<CommonConfig>,
 }
 
 const fn default_icon_size() -> i32 {
@@ -37,6 +37,10 @@ impl Module<gtk::Box> for FocusedModule {
     type SendMessage = (String, String);
     type ReceiveMessage = ();
 
+    fn name() -> &'static str {
+        "focused"
+    }
+
     fn spawn_controller(
         &self,
         _info: &ModuleInfo,
@@ -45,16 +49,15 @@ impl Module<gtk::Box> for FocusedModule {
     ) -> Result<()> {
         let focused = await_sync(async {
             let wl = wayland::get_client().await;
-            let toplevels = wl
-                .toplevels
-                .read()
-                .expect("Failed to get read lock on toplevels")
-                .clone();
+            let toplevels = read_lock!(wl.toplevels);
 
-            toplevels.into_iter().find(|(_, (top, _))| top.active)
+            toplevels
+                .iter()
+                .find(|(_, (top, _))| top.active)
+                .map(|(_, (top, _))| top.clone())
         });
 
-        if let Some((_, (top, _))) = focused {
+        if let Some(top) = focused {
             tx.try_send(ModuleUpdateEvent::Update((top.title.clone(), top.app_id)))?;
         }
 
@@ -72,12 +75,10 @@ impl Module<gtk::Box> for FocusedModule {
                 };
 
                 if update {
-                    tx.send(ModuleUpdateEvent::Update((
-                        event.toplevel.title,
-                        event.toplevel.app_id,
-                    )))
-                    .await
-                    .expect("Failed to send focus update");
+                    send_async!(
+                        tx,
+                        ModuleUpdateEvent::Update((event.toplevel.title, event.toplevel.app_id))
+                    );
                 }
             }
         });

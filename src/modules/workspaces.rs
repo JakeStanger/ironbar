@@ -1,7 +1,7 @@
-use crate::await_sync;
 use crate::clients::sway::{get_client, get_sub_client};
 use crate::config::CommonConfig;
 use crate::modules::{Module, ModuleInfo, ModuleUpdateEvent, ModuleWidget, WidgetContext};
+use crate::{await_sync, send_async, try_send};
 use color_eyre::{Report, Result};
 use gtk::prelude::*;
 use gtk::Button;
@@ -22,7 +22,7 @@ pub struct WorkspacesModule {
     all_monitors: bool,
 
     #[serde(flatten)]
-    pub common: CommonConfig,
+    pub common: Option<CommonConfig>,
 }
 
 #[derive(Clone, Debug)]
@@ -53,8 +53,7 @@ fn create_button(
         let tx = tx.clone();
         let name = name.to_string();
         button.connect_clicked(move |_item| {
-            tx.try_send(name.clone())
-                .expect("Failed to send workspace click event");
+            try_send!(tx, name.clone());
         });
     }
 
@@ -64,6 +63,10 @@ fn create_button(
 impl Module<gtk::Box> for WorkspacesModule {
     type SendMessage = WorkspaceUpdate;
     type ReceiveMessage = String;
+
+    fn name() -> &'static str {
+        "workspaces"
+    }
 
     fn spawn_controller(
         &self,
@@ -90,8 +93,10 @@ impl Module<gtk::Box> for WorkspacesModule {
             }
         };
 
-        tx.try_send(ModuleUpdateEvent::Update(WorkspaceUpdate::Init(workspaces)))
-            .expect("Failed to send initial workspace list");
+        try_send!(
+            tx,
+            ModuleUpdateEvent::Update(WorkspaceUpdate::Init(workspaces))
+        );
 
         // Subscribe & send events
         spawn(async move {
@@ -103,9 +108,10 @@ impl Module<gtk::Box> for WorkspacesModule {
             trace!("Set up Sway workspace subscription");
 
             while let Ok(payload) = srx.recv().await {
-                tx.send(ModuleUpdateEvent::Update(WorkspaceUpdate::Update(payload)))
-                    .await
-                    .expect("Failed to send workspace update");
+                send_async!(
+                    tx,
+                    ModuleUpdateEvent::Update(WorkspaceUpdate::Update(payload))
+                );
             }
         });
 

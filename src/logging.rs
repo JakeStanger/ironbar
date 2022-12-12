@@ -1,7 +1,8 @@
 use color_eyre::Result;
 use dirs::data_dir;
-use std::env;
+use std::{env, panic};
 use strip_ansi_escapes::Writer;
+use tracing::error;
 use tracing_appender::non_blocking::{NonBlocking, WorkerGuard};
 use tracing_error::ErrorLayer;
 use tracing_subscriber::fmt::{Layer, MakeWriter};
@@ -26,11 +27,34 @@ impl<'a> MakeWriter<'a> for MakeFileWriter {
     }
 }
 
+pub fn install_logging() -> Result<WorkerGuard> {
+    // Disable backtraces by default
+    if env::var("RUST_LIB_BACKTRACE").is_err() {
+        env::set_var("RUST_LIB_BACKTRACE", "0");
+    }
+
+    // keep guard in scope
+    // otherwise file logging drops
+    let guard = install_tracing()?;
+
+    let hook_builder = color_eyre::config::HookBuilder::default();
+    let (panic_hook, eyre_hook) = hook_builder.into_hooks();
+
+    eyre_hook.install()?;
+
+    // custom hook allows tracing_appender to capture panics
+    panic::set_hook(Box::new(move |panic_info| {
+        error!("{}", panic_hook.panic_report(panic_info));
+    }));
+
+    Ok(guard)
+}
+
 /// Installs tracing into the current application.
 ///
 /// The returned `WorkerGuard` must remain in scope
 /// for the lifetime of the application for logging to file to work.
-pub fn install_tracing() -> Result<WorkerGuard> {
+fn install_tracing() -> Result<WorkerGuard> {
     const DEFAULT_LOG: &str = "info";
     const DEFAULT_FILE_LOG: &str = "warn";
 

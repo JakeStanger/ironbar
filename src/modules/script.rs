@@ -21,7 +21,7 @@ pub struct ScriptModule {
     interval: u64,
 
     #[serde(flatten)]
-    pub common: CommonConfig,
+    pub common: Option<CommonConfig>,
 }
 
 /// `Mode::Poll`
@@ -47,6 +47,10 @@ impl From<&ScriptModule> for Script {
 impl Module<Label> for ScriptModule {
     type SendMessage = String;
     type ReceiveMessage = ();
+
+    fn name() -> &'static str {
+        "script"
+    }
 
     fn spawn_controller(
         &self,
