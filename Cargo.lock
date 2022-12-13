@@ -1135,9 +1135,9 @@ checksum = "db6d7e329c562c5dfab7a46a2afabc8b987ab9a4834c9d1ca04dc54c1546cef8"
 
 [[package]]
 name = "libcorn"
-version = "0.6.0"
+version = "0.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5684465f57a903e77cd58cc0bd9fcdc75b2b1a361731966183bf1f1743da4553"
+checksum = "ec3c43083c921e27422ac8b8e96b75b55156cc1f6e176d9dbed0f02d57a86832"
 dependencies = [
  "cfg-if",
  "pest",
