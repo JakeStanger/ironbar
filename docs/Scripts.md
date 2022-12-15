@@ -3,13 +3,16 @@ that allow script input to dynamically set values.
 
 Scripts are passed to `sh -c`.
 
-Two types of scripts exist: polling and watching:
+Three types of scripts exist: polling, oneshot and watching:
 
-- Polling scripts will run and wait for exit.
+- **Polling** scripts will run and wait for exit.
   Normally they will repeat this at an interval, hence the name, although in some cases they may only run on a user
   event.
   If the script exited code 0, the `stdout` will be used. Otherwise, `stderr` will be printed to the log.
-- Watching scripts start a long-running process. Every time the process writes to `stdout`, the last line is captured
+- **Oneshot** scripts are a variant of polling scripts. 
+  They wait for script to exit, and may do something with the output, but are only fired by user events instead of the interval.
+  Generally options that accept oneshot scripts do not support the other types.
+- **Watching** scripts start a long-running process. Every time the process writes to `stdout`, the last line is captured
   and used.
 
 One should prefer to use watch-mode where possible, as it removes the overhead of regularly spawning processes.
@@ -27,6 +30,8 @@ spawning the script.
 
 Both `mode` and `interval` are optional and can be excluded to fall back to their defaults of `poll` and `5000`
 respectively.
+
+For oneshot scripts, both the mode and interval are ignored.
 
 ### Shorthand (string)
 
