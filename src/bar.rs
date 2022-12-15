@@ -6,7 +6,7 @@ use crate::popup::Popup;
 use crate::script::{OutputStream, Script};
 use crate::{await_sync, read_lock, send, write_lock, Config};
 use color_eyre::Result;
-use gtk::gdk::Monitor;
+use gtk::gdk::{EventMask, Monitor, ScrollDirection};
 use gtk::prelude::*;
 use gtk::{Application, ApplicationWindow, EventBox, Orientation, Widget};
 use std::sync::{Arc, RwLock};
@@ -313,6 +313,7 @@ fn setup_receiver<TSend>(
 /// The event box container is returned.
 fn wrap_widget<W: IsA<Widget>>(widget: &W) -> EventBox {
     let container = EventBox::new();
+    container.add_events(EventMask::SCROLL_MASK);
     container.add(widget);
     container
 }
@@ -345,18 +346,55 @@ fn setup_module_common_options(container: EventBox, common: CommonConfig) {
         },
     );
 
-    if let Some(on_click) = common.on_click {
-        let script = Script::new_polling(on_click);
-        container.connect_button_press_event(move |_, _| {
-            trace!("Running on-click script");
+    let left_click_script = common.on_click_left.map(Script::new_polling);
+    let middle_click_script = common.on_click_middle.map(Script::new_polling);
+    let right_click_script = common.on_click_right.map(Script::new_polling);
+
+    container.connect_button_press_event(move |_, event| {
+        let script = match event.button() {
+            1 => left_click_script.as_ref(),
+            2 => middle_click_script.as_ref(),
+            3 => right_click_script.as_ref(),
+            _ => None,
+        };
+
+        if let Some(script) = script {
+            trace!("Running on-click script: {}", event.button());
+
             match await_sync(async { script.get_output().await }) {
                 Ok((OutputStream::Stderr(out), _)) => error!("{out}"),
                 Err(err) => error!("{err:?}"),
                 _ => {}
             }
-            Inhibit(false)
-        });
-    }
+        }
+
+        Inhibit(false)
+    });
+
+    let scroll_up_script = common.on_scroll_up.map(Script::new_polling);
+    let scroll_down_script = common.on_scroll_down.map(Script::new_polling);
+
+    container.connect_scroll_event(move |_, event| {
+        println!("{:?}", event.direction());
+
+        let script = match event.direction() {
+            ScrollDirection::Up => scroll_up_script.as_ref(),
+            ScrollDirection::Down => scroll_down_script.as_ref(),
+            _ => None,
+        };
+
+        if let Some(script) = script {
+            trace!("Running on-scroll script: {}", event.direction());
+
+            match await_sync(async { script.get_output().await }) {
+                Ok((OutputStream::Stderr(out), _)) => error!("{out}"),
+                Err(err) => error!("{err:?}"),
+                _ => {}
+            }
+        }
+
+        Inhibit(false)
+    });
 
     if let Some(tooltip) = common.tooltip {
         DynamicString::new(&tooltip, move |string| {

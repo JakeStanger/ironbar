@@ -1,50 +1,13 @@
-use crate::modules::clock::ClockModule;
-use crate::modules::custom::CustomModule;
-use crate::modules::focused::FocusedModule;
-use crate::modules::launcher::LauncherModule;
-use crate::modules::mpd::MpdModule;
-use crate::modules::script::ScriptModule;
-use crate::modules::sysinfo::SysInfoModule;
-use crate::modules::tray::TrayModule;
-use crate::modules::workspaces::WorkspacesModule;
-use crate::script::ScriptInput;
-use color_eyre::eyre::{Context, ContextCompat};
-use color_eyre::{eyre, Help, Report};
+use super::{BarPosition, Config, MonitorConfig};
+use color_eyre::eyre::Result;
+use color_eyre::eyre::{ContextCompat, WrapErr};
+use color_eyre::{Help, Report};
 use dirs::config_dir;
-use eyre::Result;
 use gtk::Orientation;
 use serde::{Deserialize, Deserializer};
-use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::{env, fs};
 use tracing::instrument;
-
-#[derive(Debug, Deserialize, Clone)]
-pub struct CommonConfig {
-    pub show_if: Option<ScriptInput>,
-    pub on_click: Option<ScriptInput>,
-    pub tooltip: Option<String>,
-}
-
-#[derive(Debug, Deserialize, Clone)]
-#[serde(tag = "type", rename_all = "snake_case")]
-pub enum ModuleConfig {
-    Clock(ClockModule),
-    Mpd(MpdModule),
-    Tray(TrayModule),
-    Workspaces(WorkspacesModule),
-    SysInfo(SysInfoModule),
-    Launcher(LauncherModule),
-    Script(ScriptModule),
-    Focused(FocusedModule),
-    Custom(CustomModule),
-}
-
-#[derive(Debug, Clone)]
-pub enum MonitorConfig {
-    Single(Config),
-    Multiple(Vec<Config>),
-}
 
 // Manually implement for better untagged enum error handling:
 // currently open pr: https://github.com/serde-rs/serde/pull/1544
@@ -78,21 +41,6 @@ impl<'de> Deserialize<'de> for MonitorConfig {
     }
 }
 
-#[derive(Debug, Deserialize, Copy, Clone, PartialEq, Eq)]
-#[serde(rename_all = "snake_case")]
-pub enum BarPosition {
-    Top,
-    Bottom,
-    Left,
-    Right,
-}
-
-impl Default for BarPosition {
-    fn default() -> Self {
-        Self::Bottom
-    }
-}
-
 impl BarPosition {
     /// Gets the orientation the bar and widgets should use
     /// based on this position.
@@ -113,30 +61,6 @@ impl BarPosition {
             Self::Right => 270.0,
         }
     }
-}
-
-#[derive(Debug, Deserialize, Clone)]
-pub struct Config {
-    #[serde(default = "default_bar_position")]
-    pub position: BarPosition,
-    #[serde(default = "default_true")]
-    pub anchor_to_edges: bool,
-    #[serde(default = "default_bar_height")]
-    pub height: i32,
-
-    pub start: Option<Vec<ModuleConfig>>,
-    pub center: Option<Vec<ModuleConfig>>,
-    pub end: Option<Vec<ModuleConfig>>,
-
-    pub monitors: Option<HashMap<String, MonitorConfig>>,
-}
-
-const fn default_bar_position() -> BarPosition {
-    BarPosition::Bottom
-}
-
-const fn default_bar_height() -> i32 {
-    42
 }
 
 impl Config {
@@ -213,11 +137,4 @@ impl Config {
             _ => unreachable!(),
         }
     }
-}
-
-pub const fn default_false() -> bool {
-    false
-}
-pub const fn default_true() -> bool {
-    true
 }

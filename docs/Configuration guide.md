@@ -1,10 +1,12 @@
 By default, you get a single bar at the bottom of all your screens.
 To change that, you'll unsurprisingly need a config file.
 
-This page details putting together the skeleton for your config to get you to a stage where you can start configuring modules.
-It may look long and overwhelming, but that is just because the bar supports a lot of scenarios! 
+This page details putting together the skeleton for your config to get you to a stage where you can start configuring
+modules.
+It may look long and overwhelming, but that is just because the bar supports a lot of scenarios!
 
-If you want to see some ready-to-go config files check the [examples folder](https://github.com/JakeStanger/ironbar/tree/master/examples) 
+If you want to see some ready-to-go config files check
+the [examples folder](https://github.com/JakeStanger/ironbar/tree/master/examples)
 and the example pages in the sidebar.
 
 ## 1. Create config file
@@ -239,7 +241,7 @@ monitors:
 <details>
 <summary>Corn</summary>
 
-```
+```corn
 {
   monitors.DP-1 = [
     { start = [] }
@@ -281,8 +283,12 @@ For details on available modules and each of their config options, check the sid
 
 For information on the `Script` type, and embedding scripts in strings, see [here](script).
 
-| Name       | Type               | Default | Description                                                                                                        |
-|------------|--------------------|---------|--------------------------------------------------------------------------------------------------------------------|
-| `show_if`  | `Script [polling]` | `null`  | Polls the script to check its exit code. If exit code is zero, the module is shown. For other codes, it is hidden. |
-| `on_click` | `Script [polling]` | `null`  | Runs the script when the module is clicked.                                                                        |
-| `tooltip`  | `string`           | `null`  | Shows this text on hover. Supports embedding scripts between `{{double braces}}`.                                  |
+| Name              | Type               | Default | Description                                                                                                        |
+|-------------------|--------------------|---------|--------------------------------------------------------------------------------------------------------------------|
+| `show_if`         | `Script [polling]` | `null`  | Polls the script to check its exit code. If exit code is zero, the module is shown. For other codes, it is hidden. |
+| `on_click_left`   | `Script [oneshot]` | `null`  | Runs the script when the module is left clicked.                                                                   |
+| `on_click_middle` | `Script [oneshot]` | `null`  | Runs the script when the module is middle clicked.                                                                 |
+| `on_click_right`  | `Script [oneshot]` | `null`  | Runs the script when the module is right clicked.                                                                  |
+| `on_scroll_up`    | `Script [oneshot]` | `null`  | Runs the script when the module is scroll up on.                                                                   |
+| `on_scroll_down`  | `Script [oneshot]` | `null`  | Runs the script when the module is scrolled down on.                                                               |
+| `tooltip`         | `string`           | `null`  | Shows this text on hover. Supports embedding scripts between `{{double braces}}`.                                  |
