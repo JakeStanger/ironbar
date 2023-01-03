@@ -86,7 +86,7 @@
       ...
     }: let
       cfg = config.programs.ironbar;
-      defaultIronbarPackage = self.packages.${pkgs.system}.default;
+      defaultIronbarPackage = self.packages.${pkgs.hostPlatform.system}.default;
       jsonFormat = pkgs.formats.json {};
     in {
       options.programs.ironbar = {
