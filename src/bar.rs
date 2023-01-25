@@ -195,7 +195,7 @@ fn add_modules(content: &gtk::Box, modules: Vec<ModuleConfig>, info: &ModuleInfo
             ModuleConfig::Focused(mut module) => add_module!(module, id),
             ModuleConfig::Workspaces(mut module) => add_module!(module, id),
             ModuleConfig::Tray(mut module) => add_module!(module, id),
-            ModuleConfig::Mpd(mut module) => add_module!(module, id),
+            ModuleConfig::Music(mut module) => add_module!(module, id),
             ModuleConfig::Launcher(mut module) => add_module!(module, id),
             ModuleConfig::Custom(mut module) => add_module!(module, id),
         }

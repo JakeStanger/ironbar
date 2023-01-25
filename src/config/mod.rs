@@ -4,7 +4,7 @@ use crate::modules::clock::ClockModule;
 use crate::modules::custom::CustomModule;
 use crate::modules::focused::FocusedModule;
 use crate::modules::launcher::LauncherModule;
-use crate::modules::mpd::MpdModule;
+use crate::modules::music::MusicModule;
 use crate::modules::script::ScriptModule;
 use crate::modules::sysinfo::SysInfoModule;
 use crate::modules::tray::TrayModule;
@@ -30,7 +30,7 @@ pub struct CommonConfig {
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum ModuleConfig {
     Clock(ClockModule),
-    Mpd(MpdModule),
+    Music(MusicModule),
     Tray(TrayModule),
     Workspaces(WorkspacesModule),
     SysInfo(SysInfoModule),

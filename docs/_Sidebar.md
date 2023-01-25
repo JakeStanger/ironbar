@@ -19,7 +19,7 @@
 - [Custom](custom)
 - [Focused](focused)
 - [Launcher](launcher)
-- [MPD](mpd)
+- [Music](music)
 - [Script](script)
 - [Sys_Info](sys-info)
 - [Tray](tray)

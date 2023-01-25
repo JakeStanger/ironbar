@@ -32,6 +32,7 @@ dirs = "4.0.0"
 walkdir = "2.3.2"
 notify = { version = "5.0.0", default-features = false }
 mpd_client = "1.0.0"
+mpris = "2.0.0"
 swayipc-async = { version = "2.0.1" }
 sysinfo = "0.27.0"
 wayland-client = "0.29.5"
