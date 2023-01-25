@@ -1,4 +1,4 @@
-use crate::clients::mpd::{get_client, get_duration, get_elapsed, MpdConnectionError};
+use crate::clients::music::{self, MusicClient, PlayerState, Status, Track};
 use crate::config::CommonConfig;
 use crate::modules::{Module, ModuleInfo, ModuleUpdateEvent, ModuleWidget, WidgetContext};
 use crate::popup::Popup;
@@ -9,12 +9,11 @@ use glib::Continue;
 use gtk::gdk_pixbuf::Pixbuf;
 use gtk::prelude::*;
 use gtk::{Button, Image, Label, Orientation, Scale};
-use mpd_client::commands;
-use mpd_client::responses::{PlayState, Song, Status};
-use mpd_client::tag::Tag;
 use regex::Regex;
 use serde::Deserialize;
 use std::path::PathBuf;
+use std::sync::Arc;
+use std::time::Duration;
 use tokio::spawn;
 use tokio::sync::mpsc;
 use tokio::sync::mpsc::{Receiver, Sender};
@@ -23,7 +22,8 @@ use tracing::error;
 #[derive(Debug)]
 pub enum PlayerCommand {
     Previous,
-    Toggle,
+    Play,
+    Pause,
     Next,
     Volume(u8),
 }
@@ -51,11 +51,26 @@ impl Default for Icons {
     }
 }
 
+#[derive(Debug, Deserialize, Clone, Copy)]
+#[serde(rename_all = "snake_case")]
+pub enum PlayerType {
+    // Auto,
+    Mpd,
+    Mpris,
+}
+
+impl Default for PlayerType {
+    fn default() -> Self {
+        Self::Mpris
+    }
+}
+
 #[derive(Debug, Deserialize, Clone)]
-pub struct MpdModule {
-    /// TCP or Unix socket address.
-    #[serde(default = "default_socket")]
-    host: String,
+pub struct MusicModule {
+    /// Type of player to connect to
+    #[serde(default)]
+    player_type: PlayerType,
+
     /// Format of current song info to display on the bar.
     #[serde(default = "default_format")]
     format: String,
@@ -64,6 +79,10 @@ pub struct MpdModule {
     #[serde(default)]
     icons: Icons,
 
+    // -- MPD --
+    /// TCP or Unix socket address.
+    #[serde(default = "default_socket")]
+    host: String,
     /// Path to root of music directory.
     #[serde(default = "default_music_dir")]
     music_dir: PathBuf,
@@ -96,15 +115,10 @@ fn default_music_dir() -> PathBuf {
     audio_dir().unwrap_or_else(|| home_dir().map(|dir| dir.join("Music")).unwrap_or_default())
 }
 
-/// Attempts to read the first value for a tag
-/// (since the MPD client returns a vector of tags, or None)
-pub fn try_get_first_tag(vec: Option<&Vec<String>>) -> Option<&str> {
-    vec.and_then(|vec| vec.first().map(String::as_str))
-}
-
 /// Formats a duration given in seconds
 /// in hh:mm format
-fn format_time(time: u64) -> String {
+fn format_time(duration: Duration) -> String {
+    let time = duration.as_secs();
     let minutes = (time / 60) % 60;
     let seconds = time % 60;
 
@@ -120,17 +134,29 @@ fn get_tokens(re: &Regex, format_string: &str) -> Vec<String> {
 
 #[derive(Clone, Debug)]
 pub struct SongUpdate {
-    song: Song,
+    song: Track,
     status: Status,
     display_string: String,
 }
 
-impl Module<Button> for MpdModule {
+async fn get_client(
+    player_type: PlayerType,
+    host: &str,
+    music_dir: PathBuf,
+) -> Box<Arc<dyn MusicClient>> {
+    match player_type {
+        PlayerType::Mpd => music::get_client(music::ClientType::Mpd { host, music_dir }),
+        PlayerType::Mpris => music::get_client(music::ClientType::Mpris {}),
+    }
+    .await
+}
+
+impl Module<Button> for MusicModule {
     type SendMessage = Option<SongUpdate>;
     type ReceiveMessage = PlayerCommand;
 
     fn name() -> &'static str {
-        "mpd"
+        "music"
     }
 
     fn spawn_controller(
@@ -139,73 +165,69 @@ impl Module<Button> for MpdModule {
         tx: Sender<ModuleUpdateEvent<Self::SendMessage>>,
         mut rx: Receiver<Self::ReceiveMessage>,
     ) -> Result<()> {
-        let host1 = self.host.clone();
-        let host2 = self.host.clone();
         let format = self.format.clone();
         let icons = self.icons.clone();
 
         let re = Regex::new(r"\{([\w-]+)}")?;
         let tokens = get_tokens(&re, self.format.as_str());
 
-        // poll mpd server
-        spawn(async move {
-            let client = get_client(&host1).await.expect("Failed to connect to MPD");
-            let mut mpd_rx = client.subscribe();
+        // receive player updates
+        {
+            let player_type = self.player_type;
+            let host = self.host.clone();
+            let music_dir = self.music_dir.clone();
 
-            loop {
-                let current_song = client.command(commands::CurrentSong).await;
-                let status = client.command(commands::Status).await;
-
-                if let (Ok(Some(song)), Ok(status)) = (current_song, status) {
-                    let display_string =
-                        replace_tokens(format.as_str(), &tokens, &song.song, &status, &icons);
-
-                    let update = SongUpdate {
-                        song: song.song,
-                        status,
-                        display_string,
-                    };
-
-                    tx.send(ModuleUpdateEvent::Update(Some(update))).await?;
-                } else {
-                    tx.send(ModuleUpdateEvent::Update(None)).await?;
-                }
-
-                // wait for player state change
-                if mpd_rx.recv().await.is_err() {
-                    break;
-                }
-            }
-
-            Ok::<(), mpsc::error::SendError<ModuleUpdateEvent<Self::SendMessage>>>(())
-        });
-
-        // listen to ui events
-        spawn(async move {
-            let client = get_client(&host2).await?;
-
-            while let Some(event) = rx.recv().await {
-                let res = match event {
-                    PlayerCommand::Previous => client.command(commands::Previous).await,
-                    PlayerCommand::Toggle => match client.command(commands::Status).await {
-                        Ok(status) => match status.state {
-                            PlayState::Playing => client.command(commands::SetPause(true)).await,
-                            PlayState::Paused => client.command(commands::SetPause(false)).await,
-                            PlayState::Stopped => Ok(()),
-                        },
-                        Err(err) => Err(err),
-                    },
-                    PlayerCommand::Next => client.command(commands::Next).await,
-                    PlayerCommand::Volume(vol) => client.command(commands::SetVolume(vol)).await,
+            spawn(async move {
+                let mut rx = {
+                    let client = get_client(player_type, &host, music_dir).await;
+                    client.subscribe_change()
                 };
 
-                if let Err(err) = res {
-                    error!("Failed to send command to MPD server: {:?}", err);
-                }
-            }
+                while let Ok((track, status)) = rx.recv().await {
+                    match track {
+                        Some(track) => {
+                            let display_string =
+                                replace_tokens(format.as_str(), &tokens, &track, &status, &icons);
 
-            Ok::<(), MpdConnectionError>(())
-        });
+                            let update = SongUpdate {
+                                song: track,
+                                status,
+                                display_string,
+                            };
+
+                            tx.send(ModuleUpdateEvent::Update(Some(update))).await?;
+                        }
+                        None => tx.send(ModuleUpdateEvent::Update(None)).await?,
+                    }
+                }
+
+                Ok::<(), mpsc::error::SendError<ModuleUpdateEvent<Self::SendMessage>>>(())
+            });
+        }
+
+        // listen to ui events
+        {
+            let player_type = self.player_type;
+            let host = self.host.clone();
+            let music_dir = self.music_dir.clone();
+
+            spawn(async move {
+                while let Some(event) = rx.recv().await {
+                    let client = get_client(player_type, &host, music_dir.clone()).await;
+                    let res = match event {
+                        PlayerCommand::Previous => client.prev(),
+                        PlayerCommand::Play => client.play(),
+                        PlayerCommand::Pause => client.pause(),
+                        PlayerCommand::Next => client.next(),
+                        PlayerCommand::Volume(vol) => client.set_volume_percent(vol), // .unwrap_or_else(|_| error!("Failed to update player volume")),
+                    };
+
+                    if let Err(err) = res {
+                        error!("Failed to send command to server: {:?}", err);
+                    }
+                }
+            });
+        }
 
         Ok(())
     }
@@ -266,7 +288,7 @@ impl Module<Button> for MpdModule {
         let container = gtk::Box::builder()
             .orientation(Orientation::Horizontal)
             .spacing(10)
-            .name("popup-mpd")
+            .name("popup-music")
             .build();
 
         let album_image = Image::builder()
@@ -325,8 +347,12 @@ impl Module<Button> for MpdModule {
         });
 
         let tx_toggle = tx.clone();
-        btn_play_pause.connect_clicked(move |_| {
-            try_send!(tx_toggle, PlayerCommand::Toggle);
+        btn_play_pause.connect_clicked(move |button| {
+            if button.style_context().has_class("playing") {
+                try_send!(tx_toggle, PlayerCommand::Pause);
+            } else {
+                try_send!(tx_toggle, PlayerCommand::Play);
+            }
         });
 
         let tx_next = tx.clone();
@@ -343,70 +369,66 @@ impl Module<Button> for MpdModule {
         container.show_all();
 
         {
-            let music_dir = self.music_dir;
-
+            let mut prev_cover = None;
             rx.attach(None, move |update| {
                 if let Some(update) = update {
-                    let prev_album = album_label.label.text();
-                    let curr_album = update.song.album().unwrap_or_default();
-
                     // only update art when album changes
-                    if prev_album != curr_album {
-                        let cover_path = music_dir.join(
-                            update
-                                .song
-                                .file_path()
-                                .parent()
-                                .expect("Song path should not be root")
-                                .join("cover.jpg"),
-                        );
-
-                        Pixbuf::from_file_at_scale(cover_path, 128, 128, true).map_or_else(
-                            |_| {
-                                album_image.set_from_pixbuf(None);
-                            },
-                            |pixbuf| {
-                                album_image.set_from_pixbuf(Some(&pixbuf));
-                            },
-                        );
+                    let new_cover = update.song.cover_path;
+                    if prev_cover != new_cover {
+                        prev_cover = new_cover.clone();
+                        match new_cover.map(|cover_path| {
+                            Pixbuf::from_file_at_scale(cover_path, 128, 128, true)
+                        }) {
+                            Some(Ok(pixbuf)) => album_image.set_from_pixbuf(Some(&pixbuf)),
+                            Some(Err(err)) => {
+                                error!("{:?}", err);
+                                album_image.set_from_pixbuf(None)
+                            }
+                            None => album_image.set_from_pixbuf(None),
+                        };
                     }
 
                     title_label
                         .label
-                        .set_text(update.song.title().unwrap_or_default());
-                    album_label.label.set_text(curr_album);
+                        .set_text(&update.song.title.unwrap_or_default());
+                    album_label
+                        .label
+                        .set_text(&update.song.album.unwrap_or_default());
                     artist_label
                         .label
-                        .set_text(update.song.artists().first().unwrap_or(&String::new()));
+                        .set_text(&update.song.artist.unwrap_or_default());
 
                     match update.status.state {
-                        PlayState::Stopped => {
+                        PlayerState::Stopped => {
                             btn_play_pause.set_sensitive(false);
                         }
-                        PlayState::Playing => {
+                        PlayerState::Playing => {
                             btn_play_pause.set_sensitive(true);
-                            btn_play_pause.set_label("");
+                            btn_play_pause.set_label(&self.icons.pause);
+
+                            let style_context = btn_play_pause.style_context();
+                            style_context.add_class("playing");
+                            style_context.remove_class("paused");
                         }
-                        PlayState::Paused => {
+                        PlayerState::Paused => {
                             btn_play_pause.set_sensitive(true);
-                            btn_play_pause.set_label("");
+                            btn_play_pause.set_label(&self.icons.play);
+
+                            let style_context = btn_play_pause.style_context();
+                            style_context.add_class("paused");
+                            style_context.remove_class("playing");
                         }
                     }
 
-                    let enable_prev = match update.status.current_song {
-                        Some((pos, _)) => pos.0 > 0,
-                        None => false,
-                    };
+                    let enable_prev = update.status.playlist_position > 0;
 
-                    let enable_next = match update.status.current_song {
-                        Some((pos, _)) => pos.0 < update.status.playlist_length,
-                        None => false,
-                    };
+                    let enable_next =
+                        update.status.playlist_position < update.status.playlist_length;
 
                     btn_prev.set_sensitive(enable_prev);
                     btn_next.set_sensitive(enable_next);
 
-                    volume_slider.set_value(update.status.volume as f64);
+                    volume_slider.set_value(update.status.volume_percent as f64);
                 }
 
                 Continue(true)
@@ -418,11 +440,11 @@ impl Module<Button> for MpdModule {
 }
 
 /// Replaces each of the formatting tokens in the formatting string
-/// with actual data pulled from MPD
+/// with actual data pulled from the music player
 fn replace_tokens(
     format_string: &str,
     tokens: &Vec<String>,
-    song: &Song,
+    song: &Track,
     status: &Status,
     icons: &Icons,
 ) -> String {
@@ -436,30 +458,27 @@ fn replace_tokens(
 }
 
 /// Converts a string format token value
-/// into its respective MPD value.
-fn get_token_value(song: &Song, status: &Status, icons: &Icons, token: &str) -> String {
-    let s = match token {
-        "icon" => {
-            let icon = match status.state {
-                PlayState::Stopped => None,
-                PlayState::Playing => Some(&icons.play),
-                PlayState::Paused => Some(&icons.pause),
-            };
-            icon.map(String::as_str)
+/// into its respective value.
+fn get_token_value(song: &Track, status: &Status, icons: &Icons, token: &str) -> String {
+    match token {
+        "icon" => match status.state {
+            PlayerState::Stopped => None,
+            PlayerState::Playing => Some(&icons.play),
+            PlayerState::Paused => Some(&icons.pause),
         }
-        "title" => song.title(),
-        "album" => try_get_first_tag(song.tags.get(&Tag::Album)),
-        "artist" => try_get_first_tag(song.tags.get(&Tag::Artist)),
-        "date" => try_get_first_tag(song.tags.get(&Tag::Date)),
-        "disc" => try_get_first_tag(song.tags.get(&Tag::Disc)),
-        "genre" => try_get_first_tag(song.tags.get(&Tag::Genre)),
-        "track" => try_get_first_tag(song.tags.get(&Tag::Track)),
-        "duration" => return get_duration(status).map(format_time).unwrap_or_default(),
-
-        "elapsed" => return get_elapsed(status).map(format_time).unwrap_or_default(),
-        _ => Some(token),
-    };
-    s.unwrap_or_default().to_string()
+        .map(|s| s.to_string()),
+        "title" => song.title.clone(),
+        "album" => song.album.clone(),
+        "artist" => song.artist.clone(),
+        "date" => song.date.clone(),
+        "disc" => song.disc.map(|x| x.to_string()),
+        "genre" => song.genre.clone(),
+        "track" => song.track.map(|x| x.to_string()),
+        "duration" => status.duration.map(format_time),
+        "elapsed" => status.elapsed.map(format_time),
+        _ => Some(token.to_string()),
+    }
+    .unwrap_or_default()
 }
 
 #[derive(Clone)]

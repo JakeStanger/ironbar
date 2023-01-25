@@ -8,7 +8,7 @@ pub mod clock;
 pub mod custom;
 pub mod focused;
 pub mod launcher;
-pub mod mpd;
+pub mod music;
 pub mod script;
 pub mod sysinfo;
 pub mod tray;
