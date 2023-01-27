@@ -142,7 +142,7 @@ impl EventClient {
                         if prev_workspace.id != workspace.id {
                             tx.send(WorkspaceUpdate::Focus {
                                 old: prev_workspace,
-                                new: workspace.clone(),
+                                new: workspace,
                             })
                             .expect(ERR_CHANNEL_SEND);
                         }
