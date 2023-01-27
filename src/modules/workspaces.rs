@@ -1,13 +1,12 @@
-use crate::clients::sway::{get_client, get_sub_client};
+use crate::clients::compositor::{Compositor, WorkspaceUpdate};
 use crate::config::CommonConfig;
 use crate::modules::{Module, ModuleInfo, ModuleUpdateEvent, ModuleWidget, WidgetContext};
-use crate::{await_sync, send_async, try_send};
+use crate::{send_async, try_send};
 use color_eyre::{Report, Result};
 use gtk::prelude::*;
 use gtk::Button;
 use serde::Deserialize;
 use std::collections::HashMap;
-use swayipc_async::{Workspace, WorkspaceChange, WorkspaceEvent};
 use tokio::spawn;
 use tokio::sync::mpsc::{Receiver, Sender};
 use tracing::trace;
@@ -23,12 +22,6 @@ pub struct WorkspacesModule {
 
     #[serde(flatten)]
     pub common: Option<CommonConfig>,
-}
-
-#[derive(Clone, Debug)]
-pub enum WorkspaceUpdate {
-    Init(Vec<Workspace>),
-    Update(Box<WorkspaceEvent>),
 }
 
 /// Creates a button from a workspace
@@ -70,58 +63,33 @@ impl Module<gtk::Box> for WorkspacesModule {
 
     fn spawn_controller(
         &self,
-        info: &ModuleInfo,
+        _info: &ModuleInfo,
         tx: Sender<ModuleUpdateEvent<Self::SendMessage>>,
         mut rx: Receiver<Self::ReceiveMessage>,
     ) -> Result<()> {
-        let workspaces = {
-            trace!("Getting current workspaces");
-            let workspaces = await_sync(async {
-                let sway = get_client().await;
-                let mut sway = sway.lock().await;
-                sway.get_workspaces().await
-            })?;
-
-            if self.all_monitors {
-                workspaces
-            } else {
-                trace!("Filtering workspaces to current monitor only");
-                workspaces
-                    .into_iter()
-                    .filter(|workspace| workspace.output == info.output_name)
-                    .collect()
-            }
-        };
-
-        try_send!(
-            tx,
-            ModuleUpdateEvent::Update(WorkspaceUpdate::Init(workspaces))
-        );
-
         // Subscribe & send events
         spawn(async move {
             let mut srx = {
-                let sway = get_sub_client();
-                sway.subscribe_workspace()
+                let client =
+                    Compositor::get_workspace_client().expect("Failed to get workspace client");
+                client.subscribe_workspace_change()
             };
 
             trace!("Set up Sway workspace subscription");
 
             while let Ok(payload) = srx.recv().await {
-                send_async!(
-                    tx,
-                    ModuleUpdateEvent::Update(WorkspaceUpdate::Update(payload))
-                );
+                send_async!(tx, ModuleUpdateEvent::Update(payload));
             }
         });
 
         // Change workspace focus
         spawn(async move {
             trace!("Setting up UI event handler");
-            let sway = get_client().await;
+
             while let Some(name) = rx.recv().await {
-                let mut sway = sway.lock().await;
-                sway.run_command(format!("workspace {}", name)).await?;
+                let client =
+                    Compositor::get_workspace_client().expect("Failed to get workspace client");
+                client.focus(name)?;
             }
 
             Ok::<(), Report>(())
@@ -145,45 +113,64 @@ impl Module<gtk::Box> for WorkspacesModule {
             let container = container.clone();
             let output_name = info.output_name.to_string();
 
+            // keep track of whether init event has fired previously
+            // since it fires for every workspace subscriber
+            let mut has_initialized = false;
+
             context.widget_rx.attach(None, move |event| {
                 match event {
                     WorkspaceUpdate::Init(workspaces) => {
-                        trace!("Creating workspace buttons");
-                        for workspace in workspaces {
-                            let item = create_button(
-                                &workspace.name,
-                                workspace.focused,
-                                &name_map,
-                                &context.controller_tx,
-                            );
-                            container.add(&item);
-                            button_map.insert(workspace.name, item);
+                        if !has_initialized {
+                            trace!("Creating workspace buttons");
+                            for workspace in workspaces {
+                                if self.all_monitors || workspace.monitor == output_name {
+                                    let item = create_button(
+                                        &workspace.name,
+                                        workspace.focused,
+                                        &name_map,
+                                        &context.controller_tx,
+                                    );
+                                    container.add(&item);
+                                    button_map.insert(workspace.name, item);
+                                }
+                            }
+                            container.show_all();
+                            has_initialized = true;
                         }
-                        container.show_all();
                     }
-                    WorkspaceUpdate::Update(event) if event.change == WorkspaceChange::Focus => {
-                        let old = event
-                            .old
-                            .and_then(|old| old.name)
-                            .and_then(|name| button_map.get(&name));
+                    WorkspaceUpdate::Focus { old, new } => {
+                        let old = button_map.get(&old.name);
                         if let Some(old) = old {
                             old.style_context().remove_class("focused");
                         }
 
-                        let new = event
-                            .current
-                            .and_then(|old| old.name)
-                            .and_then(|new| button_map.get(&new));
+                        let new = button_map.get(&new.name);
                         if let Some(new) = new {
                             new.style_context().add_class("focused");
                         }
                     }
-                    WorkspaceUpdate::Update(event) if event.change == WorkspaceChange::Init => {
-                        if let Some(workspace) = event.current {
-                            if self.all_monitors
-                                || workspace.output.unwrap_or_default() == output_name
-                            {
-                                let name = workspace.name.unwrap_or_default();
+                    WorkspaceUpdate::Add(workspace) => {
+                        if self.all_monitors || workspace.monitor == output_name {
+                            let name = workspace.name;
+                            let item = create_button(
+                                &name,
+                                workspace.focused,
+                                &name_map,
+                                &context.controller_tx,
+                            );
+
+                            item.show();
+                            container.add(&item);
+
+                            if !name.is_empty() {
+                                button_map.insert(name, item);
+                            }
+                        }
+                    }
+                    WorkspaceUpdate::Move(workspace) => {
+                        if !self.all_monitors {
+                            if workspace.monitor == output_name {
+                                let name = workspace.name;
                                 let item = create_button(
                                     &name,
                                     workspace.focused,
@@ -197,41 +184,15 @@ impl Module<gtk::Box> for WorkspacesModule {
                                 if !name.is_empty() {
                                     button_map.insert(name, item);
                                 }
-                            }
-                        }
-                    }
-                    WorkspaceUpdate::Update(event) if event.change == WorkspaceChange::Move => {
-                        if let Some(workspace) = event.current {
-                            if !self.all_monitors {
-                                if workspace.output.unwrap_or_default() == output_name {
-                                    let name = workspace.name.unwrap_or_default();
-                                    let item = create_button(
-                                        &name,
-                                        workspace.focused,
-                                        &name_map,
-                                        &context.controller_tx,
-                                    );
-
-                                    item.show();
-                                    container.add(&item);
-
-                                    if !name.is_empty() {
-                                        button_map.insert(name, item);
-                                    }
-                                } else if let Some(item) =
-                                    button_map.get(&workspace.name.unwrap_or_default())
-                                {
-                                    container.remove(item);
-                                }
-                            }
-                        }
-                    }
-                    WorkspaceUpdate::Update(event) if event.change == WorkspaceChange::Empty => {
-                        if let Some(workspace) = event.current {
-                            if let Some(item) = button_map.get(&workspace.name.unwrap_or_default())
-                            {
+                            } else if let Some(item) = button_map.get(&workspace.name) {
                                 container.remove(item);
                             }
+                        }
+                    }
+                    WorkspaceUpdate::Remove(workspace) => {
+                        let button = button_map.get(&workspace.name);
+                        if let Some(item) = button {
+                            container.remove(item);
                         }
                     }
                     WorkspaceUpdate::Update(_) => {}

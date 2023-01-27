@@ -34,6 +34,7 @@ notify = { version = "5.0.0", default-features = false }
 mpd_client = "1.0.0"
 mpris = "2.0.0"
 swayipc-async = { version = "2.0.1" }
+hyprland = "0.3.0-alpha.0"
 sysinfo = "0.27.0"
 wayland-client = "0.29.5"
 wayland-protocols = { version = "0.29.5", features = ["unstable_protocols", "client"] }
