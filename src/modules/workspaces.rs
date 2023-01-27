@@ -6,10 +6,27 @@ use color_eyre::{Report, Result};
 use gtk::prelude::*;
 use gtk::Button;
 use serde::Deserialize;
+use std::cmp::Ordering;
 use std::collections::HashMap;
 use tokio::spawn;
 use tokio::sync::mpsc::{Receiver, Sender};
 use tracing::trace;
+
+#[derive(Debug, Deserialize, Clone, Copy, Eq, PartialEq)]
+#[serde(rename_all = "snake_case")]
+pub enum SortOrder {
+    /// Shows workspaces in the order they're added
+    Added,
+    /// Shows workspaces in numeric order.
+    /// Named workspaces are added to the end in alphabetical order.
+    Alphanumeric,
+}
+
+impl Default for SortOrder {
+    fn default() -> Self {
+        Self::Alphanumeric
+    }
+}
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct WorkspacesModule {
@@ -19,6 +36,9 @@ pub struct WorkspacesModule {
     /// Whether to display buttons for all monitors.
     #[serde(default = "crate::config::default_false")]
     all_monitors: bool,
+
+    #[serde(default)]
+    sort: SortOrder,
 
     #[serde(flatten)]
     pub common: Option<CommonConfig>,
@@ -33,6 +53,7 @@ fn create_button(
 ) -> Button {
     let button = Button::builder()
         .label(name_map.get(name).map_or(name, String::as_str))
+        .name(name)
         .build();
 
     let style_context = button.style_context();
@@ -51,6 +72,27 @@ fn create_button(
     }
 
     button
+}
+
+fn reorder_workspaces(container: &gtk::Box) {
+    let mut buttons = container
+        .children()
+        .into_iter()
+        .map(|child| (child.widget_name().to_string(), child))
+        .collect::<Vec<_>>();
+
+    buttons.sort_by(|(label_a, _), (label_b, _a)| {
+        match (label_a.parse::<i32>(), label_b.parse::<i32>()) {
+            (Ok(a), Ok(b)) => a.cmp(&b),
+            (Ok(_), Err(_)) => Ordering::Less,
+            (Err(_), Ok(_)) => Ordering::Greater,
+            (Err(_), Err(_)) => label_a.cmp(label_b),
+        }
+    });
+
+    for (i, (_, button)) in buttons.into_iter().enumerate() {
+        container.reorder_child(&button, i as i32);
+    }
 }
 
 impl Module<gtk::Box> for WorkspacesModule {
@@ -131,9 +173,15 @@ impl Module<gtk::Box> for WorkspacesModule {
                                         &context.controller_tx,
                                     );
                                     container.add(&item);
+
                                     button_map.insert(workspace.name, item);
                                 }
                             }
+
+                            if self.sort == SortOrder::Alphanumeric {
+                                reorder_workspaces(&container);
+                            }
+
                             container.show_all();
                             has_initialized = true;
                         }
@@ -159,8 +207,12 @@ impl Module<gtk::Box> for WorkspacesModule {
                                 &context.controller_tx,
                             );
 
-                            item.show();
                             container.add(&item);
+                            if self.sort == SortOrder::Alphanumeric {
+                                reorder_workspaces(&container);
+                            }
+
+                            item.show();
 
                             if !name.is_empty() {
                                 button_map.insert(name, item);
@@ -178,8 +230,13 @@ impl Module<gtk::Box> for WorkspacesModule {
                                     &context.controller_tx,
                                 );
 
-                                item.show();
                                 container.add(&item);
+
+                                if self.sort == SortOrder::Alphanumeric {
+                                    reorder_workspaces(&container);
+                                }
+
+                                item.show();
 
                                 if !name.is_empty() {
                                     button_map.insert(name, item);
