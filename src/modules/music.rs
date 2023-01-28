@@ -304,7 +304,7 @@ impl Module<Button> for MusicModule {
 
         title_label.container.set_widget_name("title");
         album_label.container.set_widget_name("album");
-        artist_label.container.set_widget_name("label");
+        artist_label.container.set_widget_name("artist");
 
         info_box.add(&title_label.container);
         info_box.add(&album_label.container);
