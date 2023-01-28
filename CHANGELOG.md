@@ -4,6 +4,43 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.9.0] - 2023-01-28
+### :boom: BREAKING CHANGES
+- due to [`fa67d07`](https://github.com/JakeStanger/ironbar/commit/fa67d077b136b109edf6dbaa11a33aebf3e044b4) - mouse event config options *(commit by [@JakeStanger](https://github.com/JakeStanger))*:
+
+  `on_click` is now called `on_click_left` for consistency with new options.
+
+- due to [`6d8e647`](https://github.com/JakeStanger/ironbar/commit/6d8e647f123e54ba389c5ab2fe908200aa5e4cf6) - mpris support *(commit by [@JakeStanger](https://github.com/JakeStanger))*:
+
+  The `mpd` module has been renamed to `music`. You will need to update the `type` value in your config and add `player_type` to continue using MPD. You will also need to update your styles.
+
+
+### :sparkles: New Features
+- [`1dd5863`](https://github.com/JakeStanger/ironbar/commit/1dd586343143bfd501a44c6556719fac9d582d6b) - better surface some config error messages *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`fa67d07`](https://github.com/JakeStanger/ironbar/commit/fa67d077b136b109edf6dbaa11a33aebf3e044b4) - mouse event config options *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`6d8e647`](https://github.com/JakeStanger/ironbar/commit/6d8e647f123e54ba389c5ab2fe908200aa5e4cf6) - mpris support *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`6e5d0c1`](https://github.com/JakeStanger/ironbar/commit/6e5d0c1e8c0b5d7e330608fc835e1e9733f156de) - **workspaces**: hyprland support *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`9ba28fe`](https://github.com/JakeStanger/ironbar/commit/9ba28fe7faf84e06febc2ffea089442f8f5b90a2) - **workspaces**: better ordering *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+
+### :bug: Bug Fixes
+- [`e1f523c`](https://github.com/JakeStanger/ironbar/commit/e1f523cf2a15b74a5c570dd7440db4c1b476d782) - **music**: popup artist label using wrong name *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`08cfbbc`](https://github.com/JakeStanger/ironbar/commit/08cfbbc2eaf6e74780dd7196efcc15ea6d2e7d12) - **music**: unable to go to prev with mpris *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`0cefcbd`](https://github.com/JakeStanger/ironbar/commit/0cefcbd02b0af518352e35060644f281da249d3e) - **music**: wrong widget name on vol slider *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`90cd078`](https://github.com/JakeStanger/ironbar/commit/90cd078973b23b2291cf156e46729842f33c1806) - **mpd**: stops working if connection lost *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+
+### :recycle: Refactors
+- [`2c1b292`](https://github.com/JakeStanger/ironbar/commit/2c1b2924d4a103183d3974ac066623a80277a79a) - move most of the horrible `add_module` macro content into proper functions *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`fd2d7e5`](https://github.com/JakeStanger/ironbar/commit/fd2d7e5c7ab8de50c4621b19d07d8b012a451564) - move startup logging code to logging module *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`9d5049d`](https://github.com/JakeStanger/ironbar/commit/9d5049dde01cdb76f4772f8ce8f61a8b5bad3a50) - standardise error messages *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`5e21cbc`](https://github.com/JakeStanger/ironbar/commit/5e21cbcca6cc30d725acdea0f6561cfd6acdcc3c) - macros to reduce repeated code *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`ea2c84d`](https://github.com/JakeStanger/ironbar/commit/ea2c84d1bd15798e32496397c4a6aa42fab39d95) - general code tidy-up *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`0d7ab54`](https://github.com/JakeStanger/ironbar/commit/0d7ab541604691455ed39c73e039ac0635307bc8) - remove redundant clone *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+
+### :memo: Documentation Changes
+- [`b97f018`](https://github.com/JakeStanger/ironbar/commit/b97f018e81aa55a871a12aa3e1e4b07b1f8eb50f) - update CHANGELOG.md for v0.8.0 [skip ci] *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`c223892`](https://github.com/JakeStanger/ironbar/commit/c223892a57b29ae56431fc585b8cec503f3206c7) - **workspaces**: update for hyprland/new ordering option *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+
+
 ## [v0.8.0] - 2022-11-30
 ### :boom: BREAKING CHANGES
 - due to [`df77020`](https://github.com/JakeStanger/ironbar/commit/df77020c5277ae9e379bb4fd67c221be5cb20426) - use snake_case for module tokens for consistency *(commit by [@JakeStanger](https://github.com/JakeStanger))*:
@@ -157,3 +194,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [v0.6.0]: https://github.com/JakeStanger/ironbar/compare/v0.5.2...v0.6.0
 [v0.7.0]: https://github.com/JakeStanger/ironbar/compare/v0.6.0...v0.7.0
 [v0.8.0]: https://github.com/JakeStanger/ironbar/compare/v0.7.0...v0.8.0
+[v0.9.0]: https://github.com/JakeStanger/ironbar/compare/v0.8.0...v0.9.0
