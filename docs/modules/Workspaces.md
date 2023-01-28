@@ -1,6 +1,6 @@
-> ⚠ **This module is currently only supported on Sway**
+> ⚠ **This module is currently only supported on Sway and Hyprland**
 
-Shows all current Sway workspaces. Clicking a workspace changes focus to it.
+Shows all current workspaces. Clicking a workspace changes focus to it.
 
 ![Screenshot showing workspaces widget using custom icons with browser workspace focused](https://user-images.githubusercontent.com/5057870/184540156-26cfe4ec-ab8d-4e0f-a883-8b641025366b.png)
 
@@ -8,10 +8,11 @@ Shows all current Sway workspaces. Clicking a workspace changes focus to it.
 
 > Type: `workspaces`
 
-| Name           | Type                  | Default | Description                                                                                                          |
-|----------------|-----------------------|---------|----------------------------------------------------------------------------------------------------------------------|
-| `name_map`     | `Map<string, string>` | `{}`    | A map of actual workspace names to their display labels. Workspaces use their actual name if not present in the map. |
-| `all_monitors` | `boolean`             | `false` | Whether to display workspaces from all monitors. When `false`, only shows workspaces on the current monitor.         |
+| Name           | Type                      | Default        | Description                                                                                                          |
+|----------------|---------------------------|----------------|----------------------------------------------------------------------------------------------------------------------|
+| `name_map`     | `Map<string, string>`     | `{}`           | A map of actual workspace names to their display labels. Workspaces use their actual name if not present in the map. |
+| `all_monitors` | `boolean`                 | `false`        | Whether to display workspaces from all monitors. When `false`, only shows workspaces on the current monitor.         |
+| `sort`         | `added` or `alphanumeric` | `alphanumeric` | The method used for sorting workspaces. `added` always appends to the end, `alphanumeric` sorts by number/name.      |
 
 <details>
 <summary>JSON</summary>
