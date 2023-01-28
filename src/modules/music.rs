@@ -1,5 +1,6 @@
-use crate::clients::music::{self, MusicClient, PlayerState, Status, Track};
+use crate::clients::music::{self, MusicClient, PlayerState, PlayerUpdate, Status, Track};
 use crate::config::CommonConfig;
+use crate::error::ERR_CHANNEL_SEND;
 use crate::modules::{Module, ModuleInfo, ModuleUpdateEvent, ModuleWidget, WidgetContext};
 use crate::popup::Popup;
 use crate::try_send;
@@ -15,7 +16,6 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::spawn;
-use tokio::sync::mpsc;
 use tokio::sync::mpsc::{Receiver, Sender};
 use tracing::error;
 
@@ -122,7 +122,7 @@ fn format_time(duration: Duration) -> String {
     let minutes = (time / 60) % 60;
     let seconds = time % 60;
 
-    format!("{:0>2}:{:0>2}", minutes, seconds)
+    format!("{minutes:0>2}:{seconds:0>2}")
 }
 
 /// Extracts the formatting tokens from a formatting string
@@ -395,7 +395,7 @@ impl Module<Button> for MusicModule {
                             Some(Ok(pixbuf)) => album_image.set_from_pixbuf(Some(&pixbuf)),
                             Some(Err(err)) => {
                                 error!("{:?}", err);
-                                album_image.set_from_pixbuf(None)
+                                album_image.set_from_pixbuf(None);
                             }
                             None => album_image.set_from_pixbuf(None),
                         };
@@ -464,8 +464,7 @@ fn replace_tokens(
     let mut compiled_string = format_string.to_string();
     for token in tokens {
         let value = get_token_value(song, status, icons, token);
-        compiled_string =
-            compiled_string.replace(format!("{{{}}}", token).as_str(), value.as_str());
+        compiled_string = compiled_string.replace(format!("{{{token}}}").as_str(), value.as_str());
     }
     compiled_string
 }
@@ -479,7 +478,7 @@ fn get_token_value(song: &Track, status: &Status, icons: &Icons, token: &str) ->
             PlayerState::Playing => Some(&icons.play),
             PlayerState::Paused => Some(&icons.pause),
         }
-        .map(|s| s.to_string()),
+        .map(std::string::ToString::to_string),
         "title" => song.title.clone(),
         "album" => song.album.clone(),
         "artist" => song.artist.clone(),

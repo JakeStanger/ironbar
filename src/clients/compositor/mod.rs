@@ -18,9 +18,9 @@ impl Display for Compositor {
             f,
             "{}",
             match self {
-                Compositor::Sway => "Sway",
-                Compositor::Hyprland => "Hyprland",
-                Compositor::Unsupported => "Unsupported",
+                Self::Sway => "Sway",
+                Self::Hyprland => "Hyprland",
+                Self::Unsupported => "Unsupported",
             }
         )
     }
@@ -44,9 +44,9 @@ impl Compositor {
         let current = Self::get_current();
         debug!("Getting workspace client for: {current}");
         match current {
-            Compositor::Sway => Ok(sway::get_sub_client()),
-            Compositor::Hyprland => Ok(hyprland::get_client()),
-            Compositor::Unsupported => Err(Report::msg("Unsupported compositor")
+            Self::Sway => Ok(sway::get_sub_client()),
+            Self::Hyprland => Ok(hyprland::get_client()),
+            Self::Unsupported => Err(Report::msg("Unsupported compositor")
                 .note("Currently workspaces are only supported by Sway and Hyprland")),
         }
     }

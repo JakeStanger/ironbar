@@ -101,8 +101,7 @@ fn get_icon_location(theme: &IconTheme, app_id: &str, size: i32) -> Option<IconL
         return match dirs::data_dir() {
             Some(dir) => {
                 let path = dir.join(format!(
-                    "icons/hicolor/32x32/apps/steam_icon_{}.png",
-                    steam_id
+                    "icons/hicolor/32x32/apps/steam_icon_{steam_id}.png"
                 ));
 
                 return Some(IconLocation::File(path));

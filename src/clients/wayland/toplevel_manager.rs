@@ -58,7 +58,7 @@ impl GlobalHandler<ZwlrForeignToplevelManagerV1> for ToplevelHandler {
         if inner.registry.is_none() {
             inner.registry = Some(registry);
         }
-        if let LazyGlobal::Unknown = inner.manager {
+        if matches!(inner.manager, LazyGlobal::Unknown) {
             inner.manager = LazyGlobal::Seen { id, version }
         } else {
             warn!(

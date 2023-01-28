@@ -38,7 +38,7 @@ impl From<&str> for ScriptMode {
             "watch" | "w" => Self::Watch,
             _ => {
                 warn!("Invalid script mode: '{str}', falling back to polling");
-                ScriptMode::Poll
+                Self::Poll
             }
         }
     }
@@ -56,8 +56,8 @@ impl Display for ScriptMode {
             f,
             "{}",
             match self {
-                ScriptMode::Poll => "poll",
-                ScriptMode::Watch => "watch",
+                Self::Poll => "poll",
+                Self::Watch => "watch",
             }
         )
     }

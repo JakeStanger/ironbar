@@ -250,7 +250,7 @@ fn refresh_memory_tokens(format_info: &mut HashMap<String, String>, sys: &mut Sy
     );
     format_info.insert(
         String::from("memory_percent"),
-        format!("{:0>2.0}", memory_percent),
+        format!("{memory_percent:0>2.0}"),
     );
 
     let used_swap = sys.used_swap();
@@ -280,10 +280,7 @@ fn refresh_cpu_tokens(format_info: &mut HashMap<String, String>, sys: &mut Syste
     let cpu_info = sys.global_cpu_info();
     let cpu_percent = cpu_info.cpu_usage();
 
-    format_info.insert(
-        String::from("cpu_percent"),
-        format!("{:0>2.0}", cpu_percent),
-    );
+    format_info.insert(String::from("cpu_percent"), format!("{cpu_percent:0>2.0}"));
 }
 
 fn refresh_temp_tokens(format_info: &mut HashMap<String, String>, sys: &mut System) {
