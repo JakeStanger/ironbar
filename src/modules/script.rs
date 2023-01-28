@@ -1,6 +1,7 @@
 use crate::config::CommonConfig;
 use crate::modules::{Module, ModuleInfo, ModuleUpdateEvent, ModuleWidget, WidgetContext};
 use crate::script::{OutputStream, Script, ScriptMode};
+use crate::try_send;
 use color_eyre::{Help, Report, Result};
 use gtk::prelude::*;
 use gtk::Label;
@@ -8,7 +9,6 @@ use serde::Deserialize;
 use tokio::spawn;
 use tokio::sync::mpsc::{Receiver, Sender};
 use tracing::error;
-use crate::try_send;
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct ScriptModule {

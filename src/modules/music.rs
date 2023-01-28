@@ -7,6 +7,7 @@ use color_eyre::Result;
 use dirs::{audio_dir, home_dir};
 use glib::Continue;
 use gtk::gdk_pixbuf::Pixbuf;
+use gtk::pango::EllipsizeMode as GtkEllipsizeMode;
 use gtk::prelude::*;
 use gtk::{Button, Image, Label, Orientation, Scale};
 use regex::Regex;
@@ -53,7 +54,6 @@ impl Default for Icons {
 #[derive(Debug, Deserialize, Clone, Copy)]
 #[serde(rename_all = "snake_case")]
 pub enum PlayerType {
-    // Auto,
     Mpd,
     Mpris,
 }
@@ -61,6 +61,50 @@ pub enum PlayerType {
 impl Default for PlayerType {
     fn default() -> Self {
         Self::Mpris
+    }
+}
+
+#[derive(Debug, Deserialize, Clone, Copy)]
+#[serde(rename_all = "snake_case")]
+pub enum EllipsizeMode {
+    Start,
+    Middle,
+    End,
+}
+
+impl From<EllipsizeMode> for GtkEllipsizeMode {
+    fn from(value: EllipsizeMode) -> Self {
+        match value {
+            EllipsizeMode::Start => Self::Start,
+            EllipsizeMode::Middle => Self::Middle,
+            EllipsizeMode::End => Self::End,
+        }
+    }
+}
+
+#[derive(Debug, Deserialize, Clone, Copy)]
+#[serde(untagged)]
+enum TruncateMode {
+    Auto(EllipsizeMode),
+    MaxLength {
+        mode: EllipsizeMode,
+        length: Option<i32>,
+    },
+}
+
+impl TruncateMode {
+    fn mode(&self) -> EllipsizeMode {
+        match self {
+            TruncateMode::Auto(mode) => *mode,
+            TruncateMode::MaxLength { mode, .. } => *mode,
+        }
+    }
+
+    fn length(&self) -> Option<i32> {
+        match self {
+            TruncateMode::Auto(_) => None,
+            TruncateMode::MaxLength { length, .. } => *length,
+        }
     }
 }
 
@@ -77,6 +121,8 @@ pub struct MusicModule {
     /// Player state icons
     #[serde(default)]
     icons: Icons,
+
+    truncate: Option<TruncateMode>,
 
     // -- MPD --
     /// TCP or Unix socket address.
@@ -245,8 +291,20 @@ impl Module<Button> for MusicModule {
         info: &ModuleInfo,
     ) -> Result<ModuleWidget<Button>> {
         let button = Button::new();
+
         let label = Label::new(None);
         label.set_angle(info.bar_position.get_angle());
+
+        if let Some(truncate) = self.truncate {
+            println!("{truncate:?}");
+
+            label.set_ellipsize(truncate.mode().into());
+
+            if let Some(max_length) = truncate.length() {
+                label.set_max_width_chars(max_length);
+            }
+        }
+
         button.add(&label);
 
         let orientation = info.bar_position.get_orientation();

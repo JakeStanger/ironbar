@@ -11,15 +11,17 @@ in MPRIS mode, the widget will listen to all players and automatically detect/di
 
 > Type: `music`
 
-|                | Type             | Default                     | Description                                                                      |
-|----------------|------------------|-----------------------------|----------------------------------------------------------------------------------|
-| `player_type`  | `mpris` or `mpd` | `mpris`                     | Whether to connect to MPRIS players or an MPD server.                            |
-| `format`       | `string`         | `{icon} {title} / {artist}` | Format string for the widget. More info below.                                   |
-| `icons.play`   | `string`         | ``                         | Icon to show when playing.                                                       |
-| `icons.pause`  | `string`         | ``                         | Icon to show when paused.                                                        |
-| `icons.volume` | `string`         | `墳`                         | Icon to show under popup volume slider.                                          |
-| `host`         | `string`         | `localhost:6600`            | [MPD Only] TCP or Unix socket for the MPD server.                                |
-| `music_dir`    | `string`         | `$HOME/Music`               | [MPD Only] Path to MPD server's music directory on disc. Required for album art. |
+|                               | Type                         | Default                     | Description                                                                                                                                     |
+|-------------------------------|------------------------------|-----------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------|
+| `player_type`                 | `mpris` or `mpd`             | `mpris`                     | Whether to connect to MPRIS players or an MPD server.                                                                                           |
+| `format`                      | `string`                     | `{icon} {title} / {artist}` | Format string for the widget. More info below.                                                                                                  |
+| `truncate` or `truncate.mode` | `start` or `middle` or `end` | `null`                      | The location of the ellipses and where to truncate text from. Leave null to avoid truncating. Use the long-hand version if specifying a length. |
+| `truncate.length`             | `integer`                    | `null`                      | The maximum number of characters before truncating. Leave blank to let GTK automatically handle.                                                |
+| `icons.play`                  | `string`                     | ``                         | Icon to show when playing.                                                                                                                      |
+| `icons.pause`                 | `string`                     | ``                         | Icon to show when paused.                                                                                                                       |
+| `icons.volume`                | `string`                     | `墳`                         | Icon to show under popup volume slider.                                                                                                         |
+| `host`                        | `string`                     | `localhost:6600`            | [MPD Only] TCP or Unix socket for the MPD server.                                                                                               |
+| `music_dir`                   | `string`                     | `$HOME/Music`               | [MPD Only] Path to MPD server's music directory on disc. Required for album art.                                                                |
 
 <details>
 <summary>JSON</summary>
@@ -31,6 +33,7 @@ in MPRIS mode, the widget will listen to all players and automatically detect/di
       "type": "music",
       "player_type": "mpd",
       "format": "{icon} {title} / {artist}",
+      "truncate": "end",
       "icons": {
         "play": "",
         "pause": ""
@@ -52,6 +55,7 @@ type = "music"
 player_type = "mpd"
 format = "{icon} {title} / {artist}"
 music_dir = "/home/jake/Music"
+truncate = "end"
 
 [[start.icons]]
 play = ""
@@ -68,6 +72,7 @@ start:
   - type: "music"
     player_type: "mpd"
     format: "{icon} {title} / {artist}"
+    truncate: "end"
     icons:
       play: ""
       pause: ""
@@ -86,6 +91,7 @@ start:
       type = "music"
       player_type = "mpd"
       format = "{icon} {title} / {artist}"
+      truncate = "end"
       icons.play = ""
       icons.pause = ""
       music_dir = "/home/jake/Music"
