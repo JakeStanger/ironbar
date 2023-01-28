@@ -8,6 +8,7 @@ use serde::Deserialize;
 use tokio::spawn;
 use tokio::sync::mpsc::{Receiver, Sender};
 use tracing::error;
+use crate::try_send;
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct ScriptModule {
@@ -63,8 +64,8 @@ impl Module<Label> for ScriptModule {
         spawn(async move {
             script.run(move |(out, _)| match out {
                OutputStream::Stdout(stdout) => {
-                   tx.try_send(ModuleUpdateEvent::Update(stdout))
-                       .expect("Failed to send stdout"); }
+                   try_send!(tx, ModuleUpdateEvent::Update(stdout));
+               },
                OutputStream::Stderr(stderr) => {
                    error!("{:?}", Report::msg(stderr)
                                     .wrap_err("Watched script error:")

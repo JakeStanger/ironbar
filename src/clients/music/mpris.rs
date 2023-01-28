@@ -1,6 +1,6 @@
 use super::{MusicClient, PlayerUpdate, Status, Track};
 use crate::clients::music::PlayerState;
-use crate::error::ERR_MUTEX_LOCK;
+use crate::{lock, send};
 use color_eyre::Result;
 use lazy_static::lazy_static;
 use mpris::{DBusError, Event, Metadata, PlaybackStatus, Player, PlayerFinder};
@@ -44,7 +44,7 @@ impl Client {
                         .find_all()
                         .expect("Failed to connect to D-Bus");
 
-                    let mut players_list_val = players_list.lock().expect(ERR_MUTEX_LOCK);
+                    let mut players_list_val = lock!(players_list);
                     for player in players {
                         let identity = player.identity();
 
@@ -57,8 +57,7 @@ impl Client {
                                 .expect("Failed to connect to D-Bus");
 
                             {
-                                let mut current_player =
-                                    current_player.lock().expect(ERR_MUTEX_LOCK);
+                                let mut current_player = lock!(current_player);
 
                                 if status == PlaybackStatus::Playing || current_player.is_none() {
                                     debug!("Setting active player to '{identity}'");
@@ -108,22 +107,19 @@ impl Client {
                     trace!("Received player event from '{identity}': {event:?}");
                     match event {
                         Ok(Event::PlayerShutDown) => {
-                            current_player.lock().expect(ERR_MUTEX_LOCK).take();
-                            players.lock().expect(ERR_MUTEX_LOCK).remove(identity);
+                            lock!(current_player).take();
+                            lock!(players).remove(identity);
                             break;
                         }
                         Ok(Event::Playing) => {
-                            current_player
-                                .lock()
-                                .expect(ERR_MUTEX_LOCK)
-                                .replace(identity.to_string());
+                            lock!(current_player).replace(identity.to_string());
 
                             if let Err(err) = Self::send_update(&player, &tx) {
                                 error!("{err:?}");
                             }
                         }
                         Ok(_) => {
-                            let current_player = current_player.lock().expect(ERR_MUTEX_LOCK);
+                            let current_player = lock!(current_player);
                             let current_player = current_player.as_ref();
                             if let Some(current_player) = current_player {
                                 if current_player == identity {
@@ -171,15 +167,13 @@ impl Client {
         let track = Track::from(metadata);
 
         let player_update = PlayerUpdate::Update(Box::new(Some(track)), status);
-
-        tx.send(player_update)
-            .expect("Failed to send player update");
+        send!(tx, player_update);
 
         Ok(())
     }
 
     fn get_player(&self) -> Option<Player> {
-        let player_name = self.current_player.lock().expect(ERR_MUTEX_LOCK);
+        let player_name = lock!(self.current_player);
         let player_name = player_name.as_ref();
 
         player_name.and_then(|player_name| {

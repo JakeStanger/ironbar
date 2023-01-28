@@ -1,5 +1,5 @@
 use super::{Workspace, WorkspaceClient, WorkspaceUpdate};
-use crate::error::{ERR_CHANNEL_SEND, ERR_MUTEX_LOCK};
+use crate::{lock, send};
 use hyprland::data::{Workspace as HWorkspace, Workspaces};
 use hyprland::dispatch::{Dispatch, DispatchType, WorkspaceIdentifierWithSpecial};
 use hyprland::event_listener::EventListenerMutable as EventListener;
@@ -52,8 +52,7 @@ impl EventClient {
                     workspace.map_or_else(
                         || error!("Unable to locate workspace"),
                         |workspace| {
-                            tx.send(WorkspaceUpdate::Add(workspace))
-                                .expect(ERR_CHANNEL_SEND);
+                            send!(tx, WorkspaceUpdate::Add(workspace));
                         },
                     );
                 });
@@ -72,16 +71,17 @@ impl EventClient {
 
                     if let (Some(prev_workspace), Some(workspace)) = (prev_workspace, workspace) {
                         if prev_workspace.id != workspace.id {
-                            tx.send(WorkspaceUpdate::Focus {
-                                old: prev_workspace,
-                                new: workspace.clone(),
-                            })
-                            .expect(ERR_CHANNEL_SEND);
+                            send!(
+                                tx,
+                                WorkspaceUpdate::Focus {
+                                    old: prev_workspace,
+                                    new: workspace.clone(),
+                                }
+                            );
                         }
 
                         // there may be another type of update so dispatch that regardless of focus change
-                        tx.send(WorkspaceUpdate::Update(workspace))
-                            .expect(ERR_CHANNEL_SEND);
+                        send!(tx, WorkspaceUpdate::Update(workspace));
                     } else {
                         error!("Unable to locate workspace");
                     }
@@ -97,8 +97,7 @@ impl EventClient {
                     workspace.map_or_else(
                         || error!("Unable to locate workspace"),
                         |workspace| {
-                            tx.send(WorkspaceUpdate::Remove(workspace))
-                                .expect(ERR_CHANNEL_SEND);
+                            send!(tx, WorkspaceUpdate::Remove(workspace));
                         },
                     );
 
@@ -119,8 +118,7 @@ impl EventClient {
                     workspace.map_or_else(
                         || error!("Unable to locate workspace"),
                         |workspace| {
-                            tx.send(WorkspaceUpdate::Move(workspace))
-                                .expect(ERR_CHANNEL_SEND);
+                            send!(tx, WorkspaceUpdate::Move(workspace));
                         },
                     );
                 });
@@ -140,11 +138,13 @@ impl EventClient {
 
                     if let (Some(prev_workspace), Some(workspace)) = (prev_workspace, workspace) {
                         if prev_workspace.id != workspace.id {
-                            tx.send(WorkspaceUpdate::Focus {
-                                old: prev_workspace,
-                                new: workspace,
-                            })
-                            .expect(ERR_CHANNEL_SEND);
+                            send!(
+                                tx,
+                                WorkspaceUpdate::Focus {
+                                    old: prev_workspace,
+                                    new: workspace,
+                                }
+                            );
                         }
                     } else {
                         error!("Unable to locate workspace");
@@ -159,7 +159,7 @@ impl EventClient {
     }
 
     fn refresh_workspaces(workspaces: &Mutex<Vec<Workspace>>) {
-        let mut workspaces = workspaces.lock().expect(ERR_MUTEX_LOCK);
+        let mut workspaces = lock!(workspaces);
 
         let active = HWorkspace::get_active().expect("Failed to get active workspace");
         let new_workspaces = Workspaces::get()
@@ -173,7 +173,7 @@ impl EventClient {
     fn get_workspace(workspaces: &Mutex<Vec<Workspace>>, id: WorkspaceType) -> Option<Workspace> {
         let id_string = id_to_string(id);
 
-        let workspaces = workspaces.lock().expect(ERR_MUTEX_LOCK);
+        let workspaces = lock!(workspaces);
         workspaces
             .iter()
             .find(|workspace| workspace.id == id_string)
@@ -181,7 +181,7 @@ impl EventClient {
     }
 
     fn get_focused_workspace(workspaces: &Mutex<Vec<Workspace>>) -> Option<Workspace> {
-        let workspaces = workspaces.lock().expect(ERR_MUTEX_LOCK);
+        let workspaces = lock!(workspaces);
         workspaces
             .iter()
             .find(|workspace| workspace.focused)
@@ -206,10 +206,9 @@ impl WorkspaceClient for EventClient {
             let workspaces = self.workspaces.clone();
             Self::refresh_workspaces(&workspaces);
 
-            let workspaces = workspaces.lock().expect(ERR_MUTEX_LOCK);
+            let workspaces = lock!(workspaces);
 
-            tx.send(WorkspaceUpdate::Init(workspaces.clone()))
-                .expect(ERR_CHANNEL_SEND);
+            send!(tx, WorkspaceUpdate::Init(workspaces.clone()));
         }
 
         rx

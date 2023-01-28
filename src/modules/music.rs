@@ -1,9 +1,8 @@
 use crate::clients::music::{self, MusicClient, PlayerState, PlayerUpdate, Status, Track};
 use crate::config::CommonConfig;
-use crate::error::ERR_CHANNEL_SEND;
 use crate::modules::{Module, ModuleInfo, ModuleUpdateEvent, ModuleWidget, WidgetContext};
 use crate::popup::Popup;
-use crate::try_send;
+use crate::{send_async, try_send};
 use color_eyre::Result;
 use dirs::{audio_dir, home_dir};
 use glib::Continue;
@@ -202,14 +201,9 @@ impl Module<Button> for MusicModule {
                                         display_string,
                                     };
 
-                                    tx.send(ModuleUpdateEvent::Update(Some(update)))
-                                        .await
-                                        .expect(ERR_CHANNEL_SEND);
+                                    send_async!(tx, ModuleUpdateEvent::Update(Some(update)));
                                 }
-                                None => tx
-                                    .send(ModuleUpdateEvent::Update(None))
-                                    .await
-                                    .expect(ERR_CHANNEL_SEND),
+                                None => send_async!(tx, ModuleUpdateEvent::Update(None)),
                             },
                             PlayerUpdate::Disconnect => break,
                         }

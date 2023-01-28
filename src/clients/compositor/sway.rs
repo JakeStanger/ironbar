@@ -1,6 +1,5 @@
 use super::{Workspace, WorkspaceClient, WorkspaceUpdate};
-use crate::await_sync;
-use crate::error::ERR_CHANNEL_SEND;
+use crate::{await_sync, send};
 use async_once::AsyncOnce;
 use color_eyre::Report;
 use futures_util::StreamExt;
@@ -75,7 +74,7 @@ impl WorkspaceClient for SwayEventClient {
                 let event =
                     WorkspaceUpdate::Init(workspaces.into_iter().map(Workspace::from).collect());
 
-                tx.send(event).expect(ERR_CHANNEL_SEND);
+                send!(tx, event);
             });
         }
 
