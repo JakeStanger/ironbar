@@ -164,8 +164,6 @@ impl EventClient {
         let active = HWorkspace::get_active().expect("Failed to get active workspace");
         let new_workspaces = Workspaces::get()
             .expect("Failed to get workspaces")
-            .collect()
-            .into_iter()
             .map(|workspace| Workspace::from((workspace.id == active.id, workspace)));
 
         workspaces.clear();
@@ -232,8 +230,7 @@ pub fn get_client() -> &'static EventClient {
 
 fn id_to_string(id: WorkspaceType) -> String {
     match id {
-        WorkspaceType::Unnamed(id) => id.to_string(),
-        WorkspaceType::Named(name) => name,
+        WorkspaceType::Regular(name) => name,
         WorkspaceType::Special(name) => name.unwrap_or_default(),
     }
 }
@@ -241,7 +238,7 @@ fn id_to_string(id: WorkspaceType) -> String {
 impl From<(bool, hyprland::data::Workspace)> for Workspace {
     fn from((focused, workspace): (bool, hyprland::data::Workspace)) -> Self {
         Self {
-            id: id_to_string(workspace.id),
+            id: workspace.id.to_string(),
             name: workspace.name,
             monitor: workspace.monitor,
             focused,

@@ -123,6 +123,9 @@ impl Config {
     /// and parses it into `Self` based on its extension.
     fn load_file(path: &Path) -> Result<Self> {
         let file = fs::read(path).wrap_err("Failed to read config file")?;
+
+        let str = std::str::from_utf8(&file)?;
+
         let extension = path
             .extension()
             .unwrap_or_default()
@@ -130,10 +133,10 @@ impl Config {
             .unwrap_or_default();
 
         match extension {
-            "json" => serde_json::from_slice(&file).wrap_err("Invalid JSON config"),
-            "toml" => toml::from_slice(&file).wrap_err("Invalid TOML config"),
-            "yaml" | "yml" => serde_yaml::from_slice(&file).wrap_err("Invalid YAML config"),
-            "corn" => libcorn::from_slice(&file).wrap_err("Invalid Corn config"),
+            "json" => serde_json::from_str(str).wrap_err("Invalid JSON config"),
+            "toml" => toml::from_str(str).wrap_err("Invalid TOML config"),
+            "yaml" | "yml" => serde_yaml::from_str(str).wrap_err("Invalid YAML config"),
+            "corn" => libcorn::from_str(str).wrap_err("Invalid Corn config"),
             _ => unreachable!(),
         }
     }
