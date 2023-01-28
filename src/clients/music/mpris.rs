@@ -158,8 +158,10 @@ impl Client {
             .unwrap_or(0);
 
         let status = Status {
-            playlist_position: 0,
-            playlist_length: track_list.map(|list| list.len() as u32).unwrap_or(1),
+            // MRPIS doesn't seem to provide playlist info reliably,
+            // so we can just assume next/prev will work by bodging the numbers
+            playlist_position: 1,
+            playlist_length: track_list.map(|list| list.len() as u32).unwrap_or(u32::MAX),
             state: PlayerState::from(playback_status),
             elapsed: player.get_position().ok(),
             duration: metadata.length(),
