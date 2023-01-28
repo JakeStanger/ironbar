@@ -1,5 +1,5 @@
 use crate::clients::wayland::{self, ToplevelChange};
-use crate::config::CommonConfig;
+use crate::config::{CommonConfig, TruncateMode};
 use crate::modules::{Module, ModuleInfo, ModuleUpdateEvent, ModuleWidget, WidgetContext};
 use crate::{await_sync, icon, read_lock, send_async};
 use color_eyre::Result;
@@ -24,6 +24,8 @@ pub struct FocusedModule {
     icon_size: i32,
     /// GTK icon theme to use.
     icon_theme: Option<String>,
+
+    truncate: Option<TruncateMode>,
 
     #[serde(flatten)]
     pub common: Option<CommonConfig>,
@@ -101,6 +103,10 @@ impl Module<gtk::Box> for FocusedModule {
 
         let icon = Image::builder().name("icon").build();
         let label = Label::builder().name("label").build();
+
+        if let Some(truncate) = self.truncate {
+            truncate.truncate_label(&label);
+        }
 
         container.add(&icon);
         container.add(&label);
