@@ -7,7 +7,11 @@ use tokio::sync::broadcast;
 pub mod mpd;
 pub mod mpris;
 
-pub type PlayerUpdate = (Option<Track>, Status);
+#[derive(Clone, Debug)]
+pub enum PlayerUpdate {
+    Update(Box<Option<Track>>, Status),
+    Disconnect,
+}
 
 #[derive(Clone, Debug)]
 pub struct Track {

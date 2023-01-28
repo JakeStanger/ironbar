@@ -178,30 +178,43 @@ impl Module<Button> for MusicModule {
             let music_dir = self.music_dir.clone();
 
             spawn(async move {
-                let mut rx = {
-                    let client = get_client(player_type, &host, music_dir).await;
-                    client.subscribe_change()
-                };
+                loop {
+                    let mut rx = {
+                        let client = get_client(player_type, &host, music_dir.clone()).await;
+                        client.subscribe_change()
+                    };
 
-                while let Ok((track, status)) = rx.recv().await {
-                    match track {
-                        Some(track) => {
-                            let display_string =
-                                replace_tokens(format.as_str(), &tokens, &track, &status, &icons);
+                    while let Ok(update) = rx.recv().await {
+                        match update {
+                            PlayerUpdate::Update(track, status) => match *track {
+                                Some(track) => {
+                                    let display_string = replace_tokens(
+                                        format.as_str(),
+                                        &tokens,
+                                        &track,
+                                        &status,
+                                        &icons,
+                                    );
 
-                            let update = SongUpdate {
-                                song: track,
-                                status,
-                                display_string,
-                            };
+                                    let update = SongUpdate {
+                                        song: track,
+                                        status,
+                                        display_string,
+                                    };
 
-                            tx.send(ModuleUpdateEvent::Update(Some(update))).await?;
+                                    tx.send(ModuleUpdateEvent::Update(Some(update)))
+                                        .await
+                                        .expect(ERR_CHANNEL_SEND);
+                                }
+                                None => tx
+                                    .send(ModuleUpdateEvent::Update(None))
+                                    .await
+                                    .expect(ERR_CHANNEL_SEND),
+                            },
+                            PlayerUpdate::Disconnect => break,
                         }
-                        None => tx.send(ModuleUpdateEvent::Update(None)).await?,
                     }
                 }
-
-                Ok::<(), mpsc::error::SendError<ModuleUpdateEvent<Self::SendMessage>>>(())
             });
         }
 

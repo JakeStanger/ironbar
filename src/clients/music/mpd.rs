@@ -19,7 +19,7 @@ use tokio::spawn;
 use tokio::sync::broadcast::{channel, error::SendError, Receiver, Sender};
 use tokio::sync::Mutex;
 use tokio::time::sleep;
-use tracing::{debug, error};
+use tracing::{debug, error, info};
 
 lazy_static! {
     static ref CONNECTIONS: Arc<Mutex<HashMap<String, Arc<MpdClient>>>> =
@@ -72,7 +72,9 @@ impl MpdClient {
                         Subsystem::Player | Subsystem::Queue | Subsystem::Mixer,
                     ) = change
                     {
-                        Self::send_update(&client, &tx, &music_dir).await?;
+                        Self::send_update(&client, &tx, &music_dir)
+                            .await
+                            .expect("Failed to send update");
                     }
                 }
 
@@ -92,7 +94,7 @@ impl MpdClient {
         client: &Client,
         tx: &Sender<PlayerUpdate>,
         music_dir: &Path,
-    ) -> Result<(), SendError<(Option<Track>, Status)>> {
+    ) -> Result<(), SendError<PlayerUpdate>> {
         let current_song = client.command(commands::CurrentSong).await;
         let status = client.command(commands::Status).await;
 
@@ -100,9 +102,19 @@ impl MpdClient {
             let track = current_song.map(|s| Self::convert_song(&s.song, music_dir));
             let status = Status::from(status);
 
-            tx.send((track, status))?;
+            tx.send(PlayerUpdate::Update(Box::new(track), status))?;
         }
 
+        Ok(())
+    }
+
+    fn is_connected(&self) -> bool {
+        !self.client.is_connection_closed()
+    }
+
+    fn send_disconnect_update(&self) -> Result<(), SendError<PlayerUpdate>> {
+        info!("Connection to MPD server lost");
+        self.tx.send(PlayerUpdate::Disconnect)?;
         Ok(())
     }
 
@@ -189,7 +201,20 @@ pub async fn get_client(
             connections.insert(host.to_string(), Arc::clone(&client));
             Ok(client)
         }
-        Some(client) => Ok(Arc::clone(client)),
+        Some(client) => {
+            if client.is_connected() {
+                Ok(Arc::clone(client))
+            } else {
+                client
+                    .send_disconnect_update()
+                    .expect("Failed to send disconnect update");
+
+                let client = MpdClient::new(host, music_dir).await?;
+                let client = Arc::new(client);
+                connections.insert(host.to_string(), Arc::clone(&client));
+                Ok(client)
+            }
+        }
     }
 }
 

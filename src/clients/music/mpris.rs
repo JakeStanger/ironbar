@@ -170,7 +170,7 @@ impl Client {
 
         let track = Track::from(metadata);
 
-        let player_update: PlayerUpdate = (Some(track), status);
+        let player_update = PlayerUpdate::Update(Box::new(Some(track)), status);
 
         tx.send(player_update)
             .expect("Failed to send player update");
