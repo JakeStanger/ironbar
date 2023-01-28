@@ -165,13 +165,7 @@ impl Module<Button> for MusicModule {
         label.set_angle(info.bar_position.get_angle());
 
         if let Some(truncate) = self.truncate {
-            println!("{truncate:?}");
-
-            label.set_ellipsize(truncate.mode().into());
-
-            if let Some(max_length) = truncate.length() {
-                label.set_max_width_chars(max_length);
-            }
+            truncate.truncate_label(&label);
         }
 
         button.add(&label);

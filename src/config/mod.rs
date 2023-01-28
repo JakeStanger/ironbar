@@ -1,4 +1,5 @@
 mod r#impl;
+mod truncate;
 
 use crate::modules::clock::ClockModule;
 use crate::modules::custom::CustomModule;
@@ -12,6 +13,8 @@ use crate::modules::workspaces::WorkspacesModule;
 use crate::script::ScriptInput;
 use serde::Deserialize;
 use std::collections::HashMap;
+
+pub use self::truncate::{EllipsizeMode, TruncateMode};
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct CommonConfig {
