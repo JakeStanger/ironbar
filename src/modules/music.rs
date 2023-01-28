@@ -329,7 +329,7 @@ impl Module<Button> for MusicModule {
 
         let volume_slider = Scale::with_range(Orientation::Vertical, 0.0, 100.0, 5.0);
         volume_slider.set_inverted(true);
-        volume_slider.set_widget_name("scale");
+        volume_slider.set_widget_name("slider");
 
         let volume_icon = Label::new(Some(&self.icons.volume));
         volume_icon.style_context().add_class("icon");
