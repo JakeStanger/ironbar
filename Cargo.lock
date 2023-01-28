@@ -1186,7 +1186,7 @@ dependencies = [
 
 [[package]]
 name = "ironbar"
-version = "0.8.0"
+version = "0.9.0"
 dependencies = [
  "async_once",
  "chrono",
