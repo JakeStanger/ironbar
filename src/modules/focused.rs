@@ -1,14 +1,16 @@
 use crate::clients::wayland::{self, ToplevelChange};
 use crate::config::{CommonConfig, TruncateMode};
+use crate::image::ImageProvider;
 use crate::modules::{Module, ModuleInfo, ModuleUpdateEvent, ModuleWidget, WidgetContext};
-use crate::{await_sync, icon, read_lock, send_async};
+use crate::{await_sync, read_lock, send_async};
 use color_eyre::Result;
 use glib::Continue;
 use gtk::prelude::*;
-use gtk::{IconTheme, Image, Label};
+use gtk::{IconTheme, Label};
 use serde::Deserialize;
 use tokio::spawn;
 use tokio::sync::mpsc::{Receiver, Sender};
+use tracing::error;
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct FocusedModule {
@@ -101,7 +103,7 @@ impl Module<gtk::Box> for FocusedModule {
 
         let container = gtk::Box::new(info.bar_position.get_orientation(), 5);
 
-        let icon = Image::builder().name("icon").build();
+        let icon = gtk::Image::builder().name("icon").build();
         let label = Label::builder().name("label").build();
 
         if let Some(truncate) = self.truncate {
@@ -113,10 +115,12 @@ impl Module<gtk::Box> for FocusedModule {
 
         {
             context.widget_rx.attach(None, move |(name, id)| {
-                let pixbuf = icon::get_icon(&icon_theme, &id, self.icon_size);
-
                 if self.show_icon {
-                    icon.set_pixbuf(pixbuf.as_ref());
+                    if let Err(err) = ImageProvider::parse(id, &icon_theme, self.icon_size)
+                        .and_then(|image| image.load_into_image(icon.clone()))
+                    {
+                        error!("{err:?}");
+                    }
                 }
 
                 if self.show_title {

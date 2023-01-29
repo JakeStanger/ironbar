@@ -1,16 +1,17 @@
 use super::open_state::OpenState;
 use crate::clients::wayland::ToplevelInfo;
-use crate::icon::get_icon;
+use crate::image::ImageProvider;
 use crate::modules::launcher::{ItemEvent, LauncherUpdate};
 use crate::modules::ModuleUpdateEvent;
 use crate::popup::Popup;
 use crate::{read_lock, try_send};
 use gtk::prelude::*;
-use gtk::{Button, IconTheme, Image, Orientation};
+use gtk::{Button, IconTheme, Orientation};
 use indexmap::IndexMap;
 use std::rc::Rc;
 use std::sync::RwLock;
 use tokio::sync::mpsc::Sender;
+use tracing::error;
 
 #[derive(Debug, Clone)]
 pub struct Item {
@@ -151,15 +152,23 @@ impl ItemButton {
             button = button.label(&item.name);
         }
 
-        if show_icons {
-            let icon = get_icon(icon_theme, &item.app_id, 32);
-            if icon.is_some() {
-                let image = Image::from_pixbuf(icon.as_ref());
-                button = button.image(&image).always_show_image(true);
-            }
-        }
-
         let button = button.build();
+
+        if show_icons {
+            let gtk_image = gtk::Image::new();
+            let image = ImageProvider::parse(item.app_id.clone(), icon_theme, 32);
+            match image {
+                Ok(image) => {
+                    button.set_image(Some(&gtk_image));
+                    button.set_always_show_image(true);
+
+                    if let Err(err) = image.load_into_image(gtk_image) {
+                        error!("{err:?}");
+                    }
+                }
+                Err(err) => error!("{err:?}"),
+            };
+        }
 
         let style_context = button.style_context();
         style_context.add_class("item");

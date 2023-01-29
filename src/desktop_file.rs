@@ -1,6 +1,3 @@
-use gtk::gdk_pixbuf::Pixbuf;
-use gtk::prelude::*;
-use gtk::{IconLookupFlags, IconTheme};
 use std::collections::HashMap;
 use std::fs::File;
 use std::io;
@@ -67,73 +64,11 @@ fn parse_desktop_file(path: PathBuf) -> io::Result<HashMap<String, String>> {
 }
 
 /// Attempts to get the icon name from the app's `.desktop` file.
-fn get_desktop_icon_name(app_id: &str) -> Option<String> {
+pub fn get_desktop_icon_name(app_id: &str) -> Option<String> {
     find_desktop_file(app_id).and_then(|file| {
         let map = parse_desktop_file(file);
         map.map_or(None, |map| {
             map.get("Icon").map(std::string::ToString::to_string)
         })
     })
-}
-
-enum IconLocation {
-    Theme(String),
-    File(PathBuf),
-}
-
-/// Attempts to get the location of an icon.
-///
-/// Handles icons that are part of a GTK theme, icons specified as path
-/// and icons for steam games.
-fn get_icon_location(theme: &IconTheme, app_id: &str, size: i32) -> Option<IconLocation> {
-    let has_icon = theme
-        .lookup_icon(app_id, size, IconLookupFlags::empty())
-        .is_some();
-
-    if has_icon {
-        return Some(IconLocation::Theme(app_id.to_string()));
-    }
-
-    let is_steam_game = app_id.starts_with("steam_app_");
-    if is_steam_game {
-        let steam_id: String = app_id.chars().skip("steam_app_".len()).collect();
-
-        return match dirs::data_dir() {
-            Some(dir) => {
-                let path = dir.join(format!(
-                    "icons/hicolor/32x32/apps/steam_icon_{steam_id}.png"
-                ));
-
-                return Some(IconLocation::File(path));
-            }
-            None => None,
-        };
-    }
-
-    let icon_name = get_desktop_icon_name(app_id);
-    if let Some(icon_name) = icon_name {
-        let is_path = PathBuf::from(&icon_name).exists();
-
-        return if is_path {
-            Some(IconLocation::File(PathBuf::from(icon_name)))
-        } else {
-            return Some(IconLocation::Theme(icon_name));
-        };
-    }
-
-    None
-}
-
-/// Gets the icon associated with an app.
-pub fn get_icon(theme: &IconTheme, app_id: &str, size: i32) -> Option<Pixbuf> {
-    let icon_location = get_icon_location(theme, app_id, size);
-
-    match icon_location {
-        Some(IconLocation::Theme(icon_name)) => {
-            let icon = theme.load_icon(&icon_name, size, IconLookupFlags::FORCE_SIZE);
-            icon.map_or(None, |icon| icon)
-        }
-        Some(IconLocation::File(path)) => Pixbuf::from_file_at_scale(path, size, size, true).ok(),
-        None => None,
-    }
 }
