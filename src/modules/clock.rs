@@ -120,6 +120,8 @@ impl Module<Button> for ClockModule {
             });
         }
 
+        container.show_all();
+
         Some(container)
     }
 }

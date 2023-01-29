@@ -2,6 +2,7 @@
 
 - [Configuration guide](configuration-guide)
   - [Scripts](scripts)
+  - [Images](images)
 - [Styling guide](styling-guide)
 
 # Examples

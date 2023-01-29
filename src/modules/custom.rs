@@ -103,9 +103,9 @@ impl Widget {
         }
 
         if let Some(widgets) = self.widgets {
-            widgets.into_iter().for_each(|widget| {
-                widget.add_to(&container, tx.clone(), bar_orientation, icon_theme)
-            });
+            for widget in widgets {
+                widget.add_to(&container, tx.clone(), bar_orientation, icon_theme);
+            }
         }
 
         container
@@ -185,7 +185,7 @@ impl Widget {
 
         if let Some(src) = self.src {
             let size = self.size.unwrap_or(32);
-            if let Err(err) = ImageProvider::parse(src, icon_theme, size)
+            if let Err(err) = ImageProvider::parse(&src, icon_theme, size)
                 .and_then(|image| image.load_into_image(gtk_image.clone()))
             {
                 error!("{err:?}");
@@ -292,15 +292,17 @@ impl Module<gtk::Box> for CustomModule {
         }
 
         if let Some(popup) = self.popup {
-            popup.into_iter().for_each(|widget| {
+            for widget in popup {
                 widget.add_to(
                     &container,
                     tx.clone(),
                     Orientation::Horizontal,
                     info.icon_theme,
-                )
-            });
+                );
+            }
         }
+
+        container.show_all();
 
         Some(container)
     }

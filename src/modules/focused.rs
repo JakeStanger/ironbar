@@ -111,7 +111,7 @@ impl Module<gtk::Box> for FocusedModule {
             let icon_theme = icon_theme.clone();
             context.widget_rx.attach(None, move |(name, id)| {
                 if self.show_icon {
-                    if let Err(err) = ImageProvider::parse(id, &icon_theme, self.icon_size)
+                    if let Err(err) = ImageProvider::parse(&id, &icon_theme, self.icon_size)
                         .and_then(|image| image.load_into_image(icon.clone()))
                     {
                         error!("{err:?}");

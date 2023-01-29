@@ -30,7 +30,7 @@ impl<'a> ImageProvider<'a> {
     ///
     /// Note this checks that icons exist in theme, or files exist on disk
     /// but no other check is performed.
-    pub fn parse(input: String, theme: &'a IconTheme, size: i32) -> Result<Self> {
+    pub fn parse(input: &str, theme: &'a IconTheme, size: i32) -> Result<Self> {
         let location = Self::get_location(input, theme, size)?;
         Ok(Self { location, size })
     }
@@ -45,11 +45,10 @@ impl<'a> ImageProvider<'a> {
             || input.starts_with("https://")
     }
 
-    fn get_location(input: String, theme: &'a IconTheme, size: i32) -> Result<ImageLocation> {
+    fn get_location(input: &str, theme: &'a IconTheme, size: i32) -> Result<ImageLocation<'a>> {
         let (input_type, input_name) = input
             .split_once(':')
-            .map(|(t, n)| (Some(t), n))
-            .unwrap_or((None, &input));
+            .map_or((None, input), |(t, n)| (Some(t), n));
 
         match input_type {
             Some(input_type) if input_type == "icon" => Ok(ImageLocation::Icon {
@@ -66,7 +65,7 @@ impl<'a> ImageProvider<'a> {
                 input_name.chars().skip("steam_app_".len()).collect(),
             )),
             None if theme
-                .lookup_icon(&input, size, IconLookupFlags::empty())
+                .lookup_icon(input, size, IconLookupFlags::empty())
                 .is_some() =>
             {
                 Ok(ImageLocation::Icon {
@@ -78,10 +77,10 @@ impl<'a> ImageProvider<'a> {
             None if PathBuf::from(input_name).exists() => {
                 Ok(ImageLocation::Local(PathBuf::from(input_name)))
             }
-            None => match get_desktop_icon_name(input_name) {
-                Some(input) => Self::get_location(input, theme, size),
-                None => Err(Report::msg("Unknown image type")),
-            },
+            None => get_desktop_icon_name(input_name).map_or_else(
+                || Err(Report::msg("Unknown image type")),
+                |input| Self::get_location(&input, theme, size),
+            ),
         }
     }
 
@@ -120,8 +119,6 @@ impl<'a> ImageProvider<'a> {
                     Continue(false)
                 });
             }
-
-            Ok(())
         } else {
             let pixbuf = match &self.location {
                 ImageLocation::Icon { name, theme } => self.get_from_icon(name, theme),
@@ -131,8 +128,9 @@ impl<'a> ImageProvider<'a> {
             }?;
 
             image.set_pixbuf(Some(&pixbuf));
-            Ok(())
-        }
+        };
+
+        Ok(())
     }
 
     /// Attempts to get a `Pixbuf` from the GTK icon theme.
@@ -142,10 +140,10 @@ impl<'a> ImageProvider<'a> {
             None => Ok(None),
         }?;
 
-        match pixbuf {
-            Some(pixbuf) => Ok(pixbuf),
-            None => Err(Report::msg("Icon theme does not contain icon '{name}'")),
-        }
+        pixbuf.map_or_else(
+            || Err(Report::msg("Icon theme does not contain icon '{name}'")),
+            Ok,
+        )
     }
 
     /// Attempts to get a `Pixbuf` from a local file.
@@ -158,12 +156,14 @@ impl<'a> ImageProvider<'a> {
     /// using the Steam game ID to look it up.
     fn get_from_steam_id(&self, steam_id: &str) -> Result<Pixbuf> {
         // TODO: Can we load this from icon theme with app id `steam_icon_{}`?
-        let path = match dirs::data_dir() {
-            Some(dir) => Ok(dir.join(format!(
-                "icons/hicolor/32x32/apps/steam_icon_{steam_id}.png"
-            ))),
-            None => Err(Report::msg("Missing XDG data dir")),
-        }?;
+        let path = dirs::data_dir().map_or_else(
+            || Err(Report::msg("Missing XDG data dir")),
+            |dir| {
+                Ok(dir.join(format!(
+                    "icons/hicolor/32x32/apps/steam_icon_{steam_id}.png"
+                )))
+            },
+        )?;
 
         self.get_from_file(&path)
     }

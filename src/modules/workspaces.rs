@@ -1,10 +1,11 @@
 use crate::clients::compositor::{Compositor, WorkspaceUpdate};
 use crate::config::CommonConfig;
+use crate::image::new_icon_button;
 use crate::modules::{Module, ModuleInfo, ModuleUpdateEvent, ModuleWidget, WidgetContext};
 use crate::{send_async, try_send};
 use color_eyre::{Report, Result};
 use gtk::prelude::*;
-use gtk::Button;
+use gtk::{Button, IconTheme};
 use serde::Deserialize;
 use std::cmp::Ordering;
 use std::collections::HashMap;
@@ -49,12 +50,13 @@ fn create_button(
     name: &str,
     focused: bool,
     name_map: &HashMap<String, String>,
+    icon_theme: &IconTheme,
     tx: &Sender<String>,
 ) -> Button {
-    let button = Button::builder()
-        .label(name_map.get(name).map_or(name, String::as_str))
-        .name(name)
-        .build();
+    let label = name_map.get(name).map_or(name, String::as_str);
+
+    let button = new_icon_button(label, icon_theme, 32);
+    button.set_widget_name(name);
 
     let style_context = button.style_context();
     style_context.add_class("item");
@@ -154,6 +156,7 @@ impl Module<gtk::Box> for WorkspacesModule {
         {
             let container = container.clone();
             let output_name = info.output_name.to_string();
+            let icon_theme = info.icon_theme.clone();
 
             // keep track of whether init event has fired previously
             // since it fires for every workspace subscriber
@@ -170,6 +173,7 @@ impl Module<gtk::Box> for WorkspacesModule {
                                         &workspace.name,
                                         workspace.focused,
                                         &name_map,
+                                        &icon_theme,
                                         &context.controller_tx,
                                     );
                                     container.add(&item);
@@ -204,6 +208,7 @@ impl Module<gtk::Box> for WorkspacesModule {
                                 &name,
                                 workspace.focused,
                                 &name_map,
+                                &icon_theme,
                                 &context.controller_tx,
                             );
 
@@ -227,6 +232,7 @@ impl Module<gtk::Box> for WorkspacesModule {
                                     &name,
                                     workspace.focused,
                                     &name_map,
+                                    &icon_theme,
                                     &context.controller_tx,
                                 );
 
