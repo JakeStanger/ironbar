@@ -8,12 +8,34 @@ pub struct Icons {
     /// Icon to display when playing.
     #[serde(default = "default_icon_play")]
     pub(crate) play: String,
+
     /// Icon to display when paused.
     #[serde(default = "default_icon_pause")]
     pub(crate) pause: String,
+
+    /// Icon to display for previous button.
+    #[serde(default = "default_icon_prev")]
+    pub(crate) prev: String,
+
+    /// Icon to display for next button.
+    #[serde(default = "default_icon_next")]
+    pub(crate) next: String,
+
     /// Icon to display under volume slider
     #[serde(default = "default_icon_volume")]
     pub(crate) volume: String,
+
+    /// Icon to display nex to track title
+    #[serde(default = "default_icon_track")]
+    pub(crate) track: String,
+
+    /// Icon to display nex to album name
+    #[serde(default = "default_icon_album")]
+    pub(crate) album: String,
+
+    /// Icon to display nex to artist name
+    #[serde(default = "default_icon_artist")]
+    pub(crate) artist: String,
 }
 
 impl Default for Icons {
@@ -21,7 +43,12 @@ impl Default for Icons {
         Self {
             pause: default_icon_pause(),
             play: default_icon_play(),
+            prev: default_icon_prev(),
+            next: default_icon_next(),
             volume: default_icon_volume(),
+            track: default_icon_track(),
+            album: default_icon_album(),
+            artist: default_icon_artist(),
         }
     }
 }
@@ -73,7 +100,7 @@ fn default_socket() -> String {
 }
 
 fn default_format() -> String {
-    String::from("{icon}  {title} / {artist}")
+    String::from("{title} / {artist}")
 }
 
 fn default_icon_play() -> String {
@@ -84,8 +111,28 @@ fn default_icon_pause() -> String {
     String::from("")
 }
 
+fn default_icon_prev() -> String {
+    String::from("\u{f9ad}")
+}
+
+fn default_icon_next() -> String {
+    String::from("\u{f9ac}")
+}
+
 fn default_icon_volume() -> String {
     String::from("墳")
+}
+
+fn default_icon_track() -> String {
+    String::from("\u{f886}")
+}
+
+fn default_icon_album() -> String {
+    String::from("\u{f524}")
+}
+
+fn default_icon_artist() -> String {
+    String::from("\u{fd01}")
 }
 
 fn default_music_dir() -> PathBuf {
