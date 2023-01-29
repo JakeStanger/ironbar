@@ -73,6 +73,9 @@ pub struct Config {
     #[serde(default = "default_bar_height")]
     pub height: i32,
 
+    /// GTK icon theme to use.
+    pub icon_theme: Option<String>,
+
     pub start: Option<Vec<ModuleConfig>>,
     pub center: Option<Vec<ModuleConfig>>,
     pub end: Option<Vec<ModuleConfig>>,

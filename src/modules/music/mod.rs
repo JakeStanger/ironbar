@@ -200,7 +200,7 @@ impl Module<Button> for MusicModule {
             });
         };
 
-        let popup = self.into_popup(context.controller_tx, context.popup_rx);
+        let popup = self.into_popup(context.controller_tx, context.popup_rx, info);
 
         Ok(ModuleWidget {
             widget: button,
@@ -212,6 +212,7 @@ impl Module<Button> for MusicModule {
         self,
         tx: Sender<Self::ReceiveMessage>,
         rx: glib::Receiver<Self::SendMessage>,
+        _info: &ModuleInfo,
     ) -> Option<gtk::Box> {
         let icon_theme = IconTheme::new();
 

@@ -35,6 +35,16 @@ impl<'a> ImageProvider<'a> {
         Ok(Self { location, size })
     }
 
+    /// Returns true if the input starts with a prefix
+    /// that is supported by the parser
+    /// (ie the parser would not fallback to checking the input).
+    pub fn is_definitely_image_input(input: &str) -> bool {
+        input.starts_with("icon:")
+            || input.starts_with("file://")
+            || input.starts_with("http://")
+            || input.starts_with("https://")
+    }
+
     fn get_location(input: String, theme: &'a IconTheme, size: i32) -> Result<ImageLocation> {
         let (input_type, input_name) = input
             .split_once(':')

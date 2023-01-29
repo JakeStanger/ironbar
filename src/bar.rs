@@ -8,7 +8,7 @@ use crate::{await_sync, read_lock, send, write_lock, Config};
 use color_eyre::Result;
 use gtk::gdk::{EventMask, Monitor, ScrollDirection};
 use gtk::prelude::*;
-use gtk::{Application, ApplicationWindow, EventBox, Orientation, Widget};
+use gtk::{Application, ApplicationWindow, EventBox, IconTheme, Orientation, Widget};
 use std::sync::{Arc, RwLock};
 use tokio::spawn;
 use tokio::sync::mpsc;
@@ -140,6 +140,11 @@ fn load_modules(
     monitor: &Monitor,
     output_name: &str,
 ) -> Result<()> {
+    let icon_theme = IconTheme::new();
+    if let Some(ref theme) = config.icon_theme {
+        icon_theme.set_custom_theme(Some(theme));
+    }
+
     macro_rules! info {
         ($location:expr) => {
             ModuleInfo {
@@ -148,6 +153,7 @@ fn load_modules(
                 monitor,
                 output_name,
                 location: $location,
+                icon_theme: &icon_theme,
             }
         };
     }

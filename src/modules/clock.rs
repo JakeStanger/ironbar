@@ -82,7 +82,7 @@ impl Module<Button> for ClockModule {
             });
         }
 
-        let popup = self.into_popup(context.controller_tx, context.popup_rx);
+        let popup = self.into_popup(context.controller_tx, context.popup_rx, info);
 
         Ok(ModuleWidget {
             widget: button,
@@ -94,6 +94,7 @@ impl Module<Button> for ClockModule {
         self,
         _tx: mpsc::Sender<Self::ReceiveMessage>,
         rx: glib::Receiver<Self::SendMessage>,
+        _info: &ModuleInfo,
     ) -> Option<gtk::Box> {
         let container = gtk::Box::builder()
             .orientation(Orientation::Vertical)

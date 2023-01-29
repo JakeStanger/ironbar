@@ -11,7 +11,7 @@ use crate::{lock, read_lock, try_send, write_lock};
 use color_eyre::{Help, Report};
 use glib::Continue;
 use gtk::prelude::*;
-use gtk::{Button, IconTheme, Orientation};
+use gtk::{Button, Orientation};
 use indexmap::IndexMap;
 use serde::Deserialize;
 use std::process::{Command, Stdio};
@@ -32,9 +32,6 @@ pub struct LauncherModule {
     /// Whether to show application icons on the bar.
     #[serde(default = "crate::config::default_true")]
     show_icons: bool,
-
-    /// Name of the GTK icon theme to use.
-    icon_theme: Option<String>,
 
     #[serde(flatten)]
     pub common: Option<CommonConfig>,
@@ -309,15 +306,15 @@ impl Module<gtk::Box> for LauncherModule {
         context: WidgetContext<Self::SendMessage, Self::ReceiveMessage>,
         info: &ModuleInfo,
     ) -> crate::Result<ModuleWidget<gtk::Box>> {
-        let icon_theme = IconTheme::new();
-        if let Some(ref theme) = self.icon_theme {
-            icon_theme.set_custom_theme(Some(theme));
-        }
+        let icon_theme = info.icon_theme;
 
         let container = gtk::Box::new(info.bar_position.get_orientation(), 0);
 
         {
             let container = container.clone();
+            let icon_theme = icon_theme.clone();
+
+            let controller_tx = context.controller_tx.clone();
 
             let show_names = self.show_names;
             let show_icons = self.show_icons;
@@ -325,7 +322,6 @@ impl Module<gtk::Box> for LauncherModule {
 
             let mut buttons = IndexMap::<String, ItemButton>::new();
 
-            let controller_tx2 = context.controller_tx.clone();
             context.widget_rx.attach(None, move |event| {
                 match event {
                     LauncherUpdate::AddItem(item) => {
@@ -341,7 +337,7 @@ impl Module<gtk::Box> for LauncherModule {
                                 orientation,
                                 &icon_theme,
                                 &context.tx,
-                                &controller_tx2,
+                                &controller_tx,
                             );
 
                             container.add(&button.button);
@@ -400,7 +396,7 @@ impl Module<gtk::Box> for LauncherModule {
             });
         }
 
-        let popup = self.into_popup(context.controller_tx, context.popup_rx);
+        let popup = self.into_popup(context.controller_tx, context.popup_rx, info);
         Ok(ModuleWidget {
             widget: container,
             popup,
@@ -411,6 +407,7 @@ impl Module<gtk::Box> for LauncherModule {
         self,
         controller_tx: Sender<Self::ReceiveMessage>,
         rx: glib::Receiver<Self::SendMessage>,
+        _info: &ModuleInfo,
     ) -> Option<gtk::Box> {
         const MAX_WIDTH: i32 = 250;
 

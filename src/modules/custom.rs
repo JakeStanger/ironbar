@@ -63,17 +63,28 @@ pub enum WidgetType {
 
 impl Widget {
     /// Creates this widget and adds it to the parent container
-    fn add_to(self, parent: &gtk::Box, tx: Sender<ExecEvent>, bar_orientation: Orientation) {
+    fn add_to(
+        self,
+        parent: &gtk::Box,
+        tx: Sender<ExecEvent>,
+        bar_orientation: Orientation,
+        icon_theme: &IconTheme,
+    ) {
         match self.widget_type {
-            WidgetType::Box => parent.add(&self.into_box(&tx, bar_orientation)),
+            WidgetType::Box => parent.add(&self.into_box(&tx, bar_orientation, icon_theme)),
             WidgetType::Label => parent.add(&self.into_label()),
             WidgetType::Button => parent.add(&self.into_button(tx, bar_orientation)),
-            WidgetType::Image => parent.add(&self.into_image()),
+            WidgetType::Image => parent.add(&self.into_image(icon_theme)),
         }
     }
 
     /// Creates a `gtk::Box` from this widget
-    fn into_box(self, tx: &Sender<ExecEvent>, bar_orientation: Orientation) -> gtk::Box {
+    fn into_box(
+        self,
+        tx: &Sender<ExecEvent>,
+        bar_orientation: Orientation,
+        icon_theme: &IconTheme,
+    ) -> gtk::Box {
         let mut builder = gtk::Box::builder();
 
         if let Some(name) = self.name {
@@ -92,9 +103,9 @@ impl Widget {
         }
 
         if let Some(widgets) = self.widgets {
-            widgets
-                .into_iter()
-                .for_each(|widget| widget.add_to(&container, tx.clone(), bar_orientation));
+            widgets.into_iter().for_each(|widget| {
+                widget.add_to(&container, tx.clone(), bar_orientation, icon_theme)
+            });
         }
 
         container
@@ -163,7 +174,7 @@ impl Widget {
         button
     }
 
-    fn into_image(self) -> gtk::Image {
+    fn into_image(self, icon_theme: &IconTheme) -> gtk::Image {
         let mut builder = gtk::Image::builder();
 
         if let Some(name) = self.name {
@@ -173,9 +184,8 @@ impl Widget {
         let gtk_image = builder.build();
 
         if let Some(src) = self.src {
-            let theme = IconTheme::new();
             let size = self.size.unwrap_or(32);
-            if let Err(err) = ImageProvider::parse(src, &theme, size)
+            if let Err(err) = ImageProvider::parse(src, icon_theme, size)
                 .and_then(|image| image.load_into_image(gtk_image.clone()))
             {
                 error!("{err:?}");
@@ -248,10 +258,15 @@ impl Module<gtk::Box> for CustomModule {
         }
 
         self.bar.clone().into_iter().for_each(|widget| {
-            widget.add_to(&container, context.controller_tx.clone(), orientation);
+            widget.add_to(
+                &container,
+                context.controller_tx.clone(),
+                orientation,
+                info.icon_theme,
+            );
         });
 
-        let popup = self.into_popup(context.controller_tx, context.popup_rx);
+        let popup = self.into_popup(context.controller_tx, context.popup_rx, info);
 
         Ok(ModuleWidget {
             widget: container,
@@ -263,6 +278,7 @@ impl Module<gtk::Box> for CustomModule {
         self,
         tx: Sender<Self::ReceiveMessage>,
         _rx: glib::Receiver<Self::SendMessage>,
+        info: &ModuleInfo,
     ) -> Option<gtk::Box>
     where
         Self: Sized,
@@ -276,9 +292,14 @@ impl Module<gtk::Box> for CustomModule {
         }
 
         if let Some(popup) = self.popup {
-            popup
-                .into_iter()
-                .for_each(|widget| widget.add_to(&container, tx.clone(), Orientation::Horizontal));
+            popup.into_iter().for_each(|widget| {
+                widget.add_to(
+                    &container,
+                    tx.clone(),
+                    Orientation::Horizontal,
+                    info.icon_theme,
+                )
+            });
         }
 
         Some(container)

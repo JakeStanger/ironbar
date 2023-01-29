@@ -19,7 +19,7 @@ use crate::popup::ButtonGeometry;
 use color_eyre::Result;
 use glib::IsA;
 use gtk::gdk::Monitor;
-use gtk::{Application, Widget};
+use gtk::{Application, IconTheme, Widget};
 use tokio::sync::mpsc;
 
 #[derive(Clone)]
@@ -34,6 +34,7 @@ pub struct ModuleInfo<'a> {
     pub bar_position: BarPosition,
     pub monitor: &'a Monitor,
     pub output_name: &'a str,
+    pub icon_theme: &'a IconTheme,
 }
 
 #[derive(Debug)]
@@ -88,6 +89,7 @@ where
         self,
         _tx: mpsc::Sender<Self::ReceiveMessage>,
         _rx: glib::Receiver<Self::SendMessage>,
+        _info: &ModuleInfo,
     ) -> Option<gtk::Box>
     where
         Self: Sized,

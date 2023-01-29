@@ -6,7 +6,7 @@ use crate::{await_sync, read_lock, send_async};
 use color_eyre::Result;
 use glib::Continue;
 use gtk::prelude::*;
-use gtk::{IconTheme, Label};
+use gtk::Label;
 use serde::Deserialize;
 use tokio::spawn;
 use tokio::sync::mpsc::{Receiver, Sender};
@@ -24,8 +24,6 @@ pub struct FocusedModule {
     /// Icon size in pixels.
     #[serde(default = "default_icon_size")]
     icon_size: i32,
-    /// GTK icon theme to use.
-    icon_theme: Option<String>,
 
     truncate: Option<TruncateMode>,
 
@@ -95,11 +93,7 @@ impl Module<gtk::Box> for FocusedModule {
         context: WidgetContext<Self::SendMessage, Self::ReceiveMessage>,
         info: &ModuleInfo,
     ) -> Result<ModuleWidget<gtk::Box>> {
-        let icon_theme = IconTheme::new();
-
-        if let Some(theme) = self.icon_theme {
-            icon_theme.set_custom_theme(Some(&theme));
-        }
+        let icon_theme = info.icon_theme;
 
         let container = gtk::Box::new(info.bar_position.get_orientation(), 5);
 
@@ -114,6 +108,7 @@ impl Module<gtk::Box> for FocusedModule {
         container.add(&label);
 
         {
+            let icon_theme = icon_theme.clone();
             context.widget_rx.attach(None, move |(name, id)| {
                 if self.show_icon {
                     if let Err(err) = ImageProvider::parse(id, &icon_theme, self.icon_size)
