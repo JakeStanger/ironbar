@@ -1,16 +1,16 @@
 mod config;
 
+use std::path::PathBuf;
 use crate::clients::music::{self, MusicClient, PlayerState, PlayerUpdate, Status, Track};
+use crate::image::ImageProvider;
 use crate::modules::{Module, ModuleInfo, ModuleUpdateEvent, ModuleWidget, WidgetContext};
 use crate::popup::Popup;
 use crate::{send_async, try_send};
 use color_eyre::Result;
 use glib::Continue;
-use gtk::gdk_pixbuf::Pixbuf;
 use gtk::prelude::*;
-use gtk::{Button, Image, Label, Orientation, Scale};
+use gtk::{Button, IconTheme, Label, Orientation, Scale};
 use regex::Regex;
-use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::spawn;
@@ -213,13 +213,15 @@ impl Module<Button> for MusicModule {
         tx: Sender<Self::ReceiveMessage>,
         rx: glib::Receiver<Self::SendMessage>,
     ) -> Option<gtk::Box> {
+        let icon_theme = IconTheme::new();
+
         let container = gtk::Box::builder()
             .orientation(Orientation::Horizontal)
             .spacing(10)
             .name("popup-music")
             .build();
 
-        let album_image = Image::builder()
+        let album_image = gtk::Image::builder()
             .width_request(128)
             .height_request(128)
             .name("album-art")
@@ -304,16 +306,18 @@ impl Module<Button> for MusicModule {
                     let new_cover = update.song.cover_path;
                     if prev_cover != new_cover {
                         prev_cover = new_cover.clone();
-                        match new_cover.map(|cover_path| {
-                            Pixbuf::from_file_at_scale(cover_path, 128, 128, true)
-                        }) {
-                            Some(Ok(pixbuf)) => album_image.set_from_pixbuf(Some(&pixbuf)),
+                        let res = match new_cover.map(|cover_path| ImageProvider::parse(cover_path, &icon_theme, 128))
+                        {
+                            Some(Ok(image)) => image.load_into_image(album_image.clone()),
                             Some(Err(err)) => {
-                                error!("{:?}", err);
                                 album_image.set_from_pixbuf(None);
+                                Err(err)
                             }
-                            None => album_image.set_from_pixbuf(None),
+                            None => Ok(album_image.set_from_pixbuf(None)),
                         };
+                        if let Err(err) = res {
+                            error!("{err:?}");
+                        }
                     }
 
                     title_label
