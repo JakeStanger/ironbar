@@ -68,7 +68,7 @@ impl<'a> ImageProvider<'a> {
             None if PathBuf::from(input_name).exists() => {
                 Ok(ImageLocation::Local(PathBuf::from(input_name)))
             }
-            None => match get_desktop_icon_name(&input_name) {
+            None => match get_desktop_icon_name(input_name) {
                 Some(input) => Self::get_location(input, theme, size),
                 None => Err(Report::msg("Unknown image type")),
             },

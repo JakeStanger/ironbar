@@ -1,12 +1,13 @@
 use crate::config::CommonConfig;
 use crate::dynamic_string::DynamicString;
+use crate::image::ImageProvider;
 use crate::modules::{Module, ModuleInfo, ModuleUpdateEvent, ModuleWidget, WidgetContext};
 use crate::popup::{ButtonGeometry, Popup};
 use crate::script::Script;
 use crate::{send_async, try_send};
 use color_eyre::{Report, Result};
 use gtk::prelude::*;
-use gtk::{Button, Label, Orientation};
+use gtk::{Button, IconTheme, Label, Orientation};
 use serde::Deserialize;
 use tokio::spawn;
 use tokio::sync::mpsc::{Receiver, Sender};
@@ -46,6 +47,8 @@ pub struct Widget {
     class: Option<String>,
     on_click: Option<String>,
     orientation: Option<String>,
+    src: Option<String>,
+    size: Option<i32>,
 }
 
 /// Supported GTK widget types
@@ -55,6 +58,7 @@ pub enum WidgetType {
     Box,
     Label,
     Button,
+    Image,
 }
 
 impl Widget {
@@ -64,6 +68,7 @@ impl Widget {
             WidgetType::Box => parent.add(&self.into_box(&tx, bar_orientation)),
             WidgetType::Label => parent.add(&self.into_label()),
             WidgetType::Button => parent.add(&self.into_button(tx, bar_orientation)),
+            WidgetType::Image => parent.add(&self.into_image()),
         }
     }
 
@@ -156,6 +161,32 @@ impl Widget {
         }
 
         button
+    }
+
+    fn into_image(self) -> gtk::Image {
+        let mut builder = gtk::Image::builder();
+
+        if let Some(name) = self.name {
+            builder = builder.name(&name);
+        }
+
+        let gtk_image = builder.build();
+
+        if let Some(src) = self.src {
+            let theme = IconTheme::new();
+            let size = self.size.unwrap_or(32);
+            if let Err(err) = ImageProvider::parse(src, &theme, size)
+                .and_then(|image| image.load_into_image(gtk_image.clone()))
+            {
+                error!("{err:?}");
+            }
+        }
+
+        if let Some(class) = self.class {
+            gtk_image.style_context().add_class(&class);
+        }
+
+        gtk_image
     }
 }
 

@@ -1,6 +1,5 @@
 mod config;
 
-use std::path::PathBuf;
 use crate::clients::music::{self, MusicClient, PlayerState, PlayerUpdate, Status, Track};
 use crate::image::ImageProvider;
 use crate::modules::{Module, ModuleInfo, ModuleUpdateEvent, ModuleWidget, WidgetContext};
@@ -11,6 +10,7 @@ use glib::Continue;
 use gtk::prelude::*;
 use gtk::{Button, IconTheme, Label, Orientation, Scale};
 use regex::Regex;
+use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::spawn;
@@ -306,14 +306,18 @@ impl Module<Button> for MusicModule {
                     let new_cover = update.song.cover_path;
                     if prev_cover != new_cover {
                         prev_cover = new_cover.clone();
-                        let res = match new_cover.map(|cover_path| ImageProvider::parse(cover_path, &icon_theme, 128))
+                        let res = match new_cover
+                            .map(|cover_path| ImageProvider::parse(cover_path, &icon_theme, 128))
                         {
                             Some(Ok(image)) => image.load_into_image(album_image.clone()),
                             Some(Err(err)) => {
                                 album_image.set_from_pixbuf(None);
                                 Err(err)
                             }
-                            None => Ok(album_image.set_from_pixbuf(None)),
+                            None => {
+                                album_image.set_from_pixbuf(None);
+                                Ok(())
+                            }
                         };
                         if let Err(err) = res {
                             error!("{err:?}");
