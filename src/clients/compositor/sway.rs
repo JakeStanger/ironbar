@@ -131,12 +131,24 @@ impl From<WorkspaceEvent> for WorkspaceUpdate {
             WorkspaceChange::Init => {
                 Self::Add(event.current.expect("Missing current workspace").into())
             }
-            WorkspaceChange::Empty => {
-                Self::Remove(event.current.expect("Missing current workspace").into())
-            }
+            WorkspaceChange::Empty => Self::Remove(
+                event
+                    .current
+                    .expect("Missing current workspace")
+                    .name
+                    .unwrap_or_default(),
+            ),
             WorkspaceChange::Focus => Self::Focus {
-                old: event.old.expect("Missing old workspace").into(),
-                new: event.current.expect("Missing current workspace").into(),
+                old: event
+                    .old
+                    .expect("Missing old workspace")
+                    .name
+                    .unwrap_or_default(),
+                new: event
+                    .current
+                    .expect("Missing current workspace")
+                    .name
+                    .unwrap_or_default(),
             },
             WorkspaceChange::Move => {
                 Self::Move(event.current.expect("Missing current workspace").into())

@@ -191,12 +191,12 @@ impl Module<gtk::Box> for WorkspacesModule {
                         }
                     }
                     WorkspaceUpdate::Focus { old, new } => {
-                        let old = button_map.get(&old.name);
+                        let old = button_map.get(&old);
                         if let Some(old) = old {
                             old.style_context().remove_class("focused");
                         }
 
-                        let new = button_map.get(&new.name);
+                        let new = button_map.get(&new);
                         if let Some(new) = new {
                             new.style_context().add_class("focused");
                         }
@@ -253,7 +253,7 @@ impl Module<gtk::Box> for WorkspacesModule {
                         }
                     }
                     WorkspaceUpdate::Remove(workspace) => {
-                        let button = button_map.get(&workspace.name);
+                        let button = button_map.get(&workspace);
                         if let Some(item) = button {
                             container.remove(item);
                         }

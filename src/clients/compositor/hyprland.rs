@@ -1,5 +1,6 @@
 use super::{Workspace, WorkspaceClient, WorkspaceUpdate};
 use crate::{lock, send};
+use color_eyre::Result;
 use hyprland::data::{Workspace as HWorkspace, Workspaces};
 use hyprland::dispatch::{Dispatch, DispatchType, WorkspaceIdentifierWithSpecial};
 use hyprland::event_listener::EventListenerMutable as EventListener;
@@ -12,7 +13,6 @@ use tokio::task::spawn_blocking;
 use tracing::{debug, error, info};
 
 pub struct EventClient {
-    workspaces: Arc<Mutex<Vec<Workspace>>>,
     workspace_tx: Sender<WorkspaceUpdate>,
     _workspace_rx: Receiver<WorkspaceUpdate>,
 }
@@ -21,12 +21,7 @@ impl EventClient {
     fn new() -> Self {
         let (workspace_tx, workspace_rx) = channel(16);
 
-        let workspaces = Arc::new(Mutex::new(vec![]));
-        // load initial list
-        Self::refresh_workspaces(&workspaces);
-
         Self {
-            workspaces,
             workspace_tx,
             _workspace_rx: workspace_rx,
         }
@@ -35,57 +30,101 @@ impl EventClient {
     fn listen_workspace_events(&self) {
         info!("Starting Hyprland event listener");
 
-        let workspaces = self.workspaces.clone();
         let tx = self.workspace_tx.clone();
 
         spawn_blocking(move || {
             let mut event_listener = EventListener::new();
 
+            // we need a lock to ensure events don't run at the same time
+            let lock = Arc::new(Mutex::new(()));
+
+            // cache the active workspace since Hyprland doesn't give us the prev active
+            let active = Self::get_active_workspace().expect("Failed to get active workspace");
+            let active = Arc::new(Mutex::new(Some(active)));
+
             {
-                let workspaces = workspaces.clone();
                 let tx = tx.clone();
+                let lock = lock.clone();
+                let active = active.clone();
 
                 event_listener.add_workspace_added_handler(move |workspace_type, _state| {
+                    let _lock = lock!(lock);
                     debug!("Added workspace: {workspace_type:?}");
 
-                    Self::refresh_workspaces(&workspaces);
+                    let workspace_name = get_workspace_name(workspace_type);
+                    let prev_workspace = lock!(active);
+                    let focused = prev_workspace
+                        .as_ref()
+                        .map_or(false, |w| w.name == workspace_name);
 
-                    let workspace = Self::get_workspace(&workspaces, workspace_type);
+                    let workspace = Self::get_workspace(&workspace_name, focused);
+
+                    if let Some(workspace) = workspace {
+                        send!(tx, WorkspaceUpdate::Add(workspace));
+                    }
+                });
+            }
+
+            {
+                let tx = tx.clone();
+                let lock = lock.clone();
+                let active = active.clone();
+
+                event_listener.add_workspace_change_handler(move |workspace_type, _state| {
+                    let _lock = lock!(lock);
+
+                    let mut prev_workspace = lock!(active);
+
+                    debug!(
+                        "Received workspace change: {:?} -> {workspace_type:?}",
+                        prev_workspace.as_ref().map(|w| &w.id)
+                    );
+
+                    let workspace_name = get_workspace_name(workspace_type);
+                    let focused = prev_workspace
+                        .as_ref()
+                        .map_or(false, |w| w.name == workspace_name);
+                    let workspace = Self::get_workspace(&workspace_name, focused);
+
                     workspace.map_or_else(
-                        || error!("Unable to locate workspace"),
+                        || {
+                            error!("Unable to locate workspace");
+                        },
                         |workspace| {
-                            send!(tx, WorkspaceUpdate::Add(workspace));
+                            // there may be another type of update so dispatch that regardless of focus change
+                            send!(tx, WorkspaceUpdate::Update(workspace.clone()));
+                            if !focused {
+                                Self::send_focus_change(&mut prev_workspace, workspace, &tx);
+                            }
                         },
                     );
                 });
             }
 
             {
-                let workspaces = workspaces.clone();
                 let tx = tx.clone();
+                let lock = lock.clone();
+                let active = active.clone();
 
-                event_listener.add_workspace_change_handler(move |workspace_type, _state| {
-                    debug!("Received workspace change: {workspace_type:?}");
+                event_listener.add_active_monitor_change_handler(move |event_data, _state| {
+                    let _lock = lock!(lock);
+                    let workspace_type = event_data.1;
 
-                    let prev_workspace = Self::get_focused_workspace(&workspaces);
+                    let mut prev_workspace = lock!(active);
 
-                    Self::refresh_workspaces(&workspaces);
+                    debug!(
+                        "Received active monitor change: {:?} -> {workspace_type:?}",
+                        prev_workspace.as_ref().map(|w| &w.name)
+                    );
 
-                    let workspace = Self::get_workspace(&workspaces, workspace_type);
+                    let workspace_name = get_workspace_name(workspace_type);
+                    let focused = prev_workspace
+                        .as_ref()
+                        .map_or(false, |w| w.name == workspace_name);
+                    let workspace = Self::get_workspace(&workspace_name, focused);
 
-                    if let (Some(prev_workspace), Some(workspace)) = (prev_workspace, workspace) {
-                        if prev_workspace.id != workspace.id {
-                            send!(
-                                tx,
-                                WorkspaceUpdate::Focus {
-                                    old: prev_workspace,
-                                    new: workspace.clone(),
-                                }
-                            );
-                        }
-
-                        // there may be another type of update so dispatch that regardless of focus change
-                        send!(tx, WorkspaceUpdate::Update(workspace));
+                    if let (Some(workspace), false) = (workspace, focused) {
+                        Self::send_focus_change(&mut prev_workspace, workspace, &tx);
                     } else {
                         error!("Unable to locate workspace");
                     }
@@ -93,70 +132,39 @@ impl EventClient {
             }
 
             {
-                let workspaces = workspaces.clone();
                 let tx = tx.clone();
-
-                event_listener.add_workspace_destroy_handler(move |workspace_type, _state| {
-                    debug!("Received workspace destroy: {workspace_type:?}");
-
-                    let workspace = Self::get_workspace(&workspaces, workspace_type);
-                    workspace.map_or_else(
-                        || error!("Unable to locate workspace"),
-                        |workspace| {
-                            send!(tx, WorkspaceUpdate::Remove(workspace));
-                        },
-                    );
-
-                    Self::refresh_workspaces(&workspaces);
-                });
-            }
-
-            {
-                let workspaces = workspaces.clone();
-                let tx = tx.clone();
+                let lock = lock.clone();
 
                 event_listener.add_workspace_moved_handler(move |event_data, _state| {
+                    let _lock = lock!(lock);
                     let workspace_type = event_data.1;
                     debug!("Received workspace move: {workspace_type:?}");
 
-                    Self::refresh_workspaces(&workspaces);
+                    let mut prev_workspace = lock!(active);
 
-                    let workspace = Self::get_workspace(&workspaces, workspace_type);
-                    workspace.map_or_else(
-                        || error!("Unable to locate workspace"),
-                        |workspace| {
-                            send!(tx, WorkspaceUpdate::Move(workspace));
-                        },
-                    );
+                    let workspace_name = get_workspace_name(workspace_type);
+                    let focused = prev_workspace
+                        .as_ref()
+                        .map_or(false, |w| w.name == workspace_name);
+                    let workspace = Self::get_workspace(&workspace_name, focused);
+
+                    if let Some(workspace) = workspace {
+                        send!(tx, WorkspaceUpdate::Move(workspace.clone()));
+
+                        if !focused {
+                            Self::send_focus_change(&mut prev_workspace, workspace, &tx);
+                        }
+                    }
                 });
             }
 
             {
-                let workspaces = workspaces.clone();
+                event_listener.add_workspace_destroy_handler(move |workspace_type, _state| {
+                    let _lock = lock!(lock);
+                    debug!("Received workspace destroy: {workspace_type:?}");
 
-                event_listener.add_active_monitor_change_handler(move |event_data, _state| {
-                    let workspace_type = event_data.1;
-                    debug!("Received active monitor change: {workspace_type:?}");
-
-                    let prev_workspace = Self::get_focused_workspace(&workspaces);
-
-                    Self::refresh_workspaces(&workspaces);
-
-                    let workspace = Self::get_workspace(&workspaces, workspace_type);
-
-                    if let (Some(prev_workspace), Some(workspace)) = (prev_workspace, workspace) {
-                        if prev_workspace.id != workspace.id {
-                            send!(
-                                tx,
-                                WorkspaceUpdate::Focus {
-                                    old: prev_workspace,
-                                    new: workspace,
-                                }
-                            );
-                        }
-                    } else {
-                        error!("Unable to locate workspace");
-                    }
+                    let name = get_workspace_name(workspace_type);
+                    send!(tx, WorkspaceUpdate::Remove(name));
                 });
             }
 
@@ -166,39 +174,54 @@ impl EventClient {
         });
     }
 
-    fn refresh_workspaces(workspaces: &Mutex<Vec<Workspace>>) {
-        let mut workspaces = lock!(workspaces);
+    /// Sends a `WorkspaceUpdate::Focus` event
+    /// and updates the active workspace cache.
+    fn send_focus_change(
+        prev_workspace: &mut Option<Workspace>,
+        workspace: Workspace,
+        tx: &Sender<WorkspaceUpdate>,
+    ) {
+        let old = prev_workspace
+            .as_ref()
+            .map(|w| w.name.clone())
+            .unwrap_or_default();
 
-        let active = HWorkspace::get_active().expect("Failed to get active workspace");
-        let new_workspaces = Workspaces::get()
+        send!(
+            tx,
+            WorkspaceUpdate::Focus {
+                old,
+                new: workspace.name.clone(),
+            }
+        );
+
+        prev_workspace.replace(workspace);
+    }
+
+    /// Gets a workspace by name from the server.
+    ///
+    /// Use `focused` to manually mark the workspace as focused,
+    /// as this is not automatically checked.
+    fn get_workspace(name: &str, focused: bool) -> Option<Workspace> {
+        Workspaces::get()
             .expect("Failed to get workspaces")
-            .map(|workspace| Workspace::from((workspace.id == active.id, workspace)));
-
-        workspaces.clear();
-        workspaces.extend(new_workspaces);
+            .find_map(|w| {
+                if w.name == name {
+                    Some(Workspace::from((focused, w)))
+                } else {
+                    None
+                }
+            })
     }
 
-    fn get_workspace(workspaces: &Mutex<Vec<Workspace>>, id: WorkspaceType) -> Option<Workspace> {
-        let id_string = id_to_string(id);
-
-        let workspaces = lock!(workspaces);
-        workspaces
-            .iter()
-            .find(|workspace| workspace.id == id_string)
-            .cloned()
-    }
-
-    fn get_focused_workspace(workspaces: &Mutex<Vec<Workspace>>) -> Option<Workspace> {
-        let workspaces = lock!(workspaces);
-        workspaces
-            .iter()
-            .find(|workspace| workspace.focused)
-            .cloned()
+    /// Gets the active workspace from the server.
+    fn get_active_workspace() -> Result<Workspace> {
+        let w = HWorkspace::get_active().map(|w| Workspace::from((true, w)))?;
+        Ok(w)
     }
 }
 
 impl WorkspaceClient for EventClient {
-    fn focus(&self, id: String) -> color_eyre::Result<()> {
+    fn focus(&self, id: String) -> Result<()> {
         Dispatch::call(DispatchType::Workspace(
             WorkspaceIdentifierWithSpecial::Name(&id),
         ))?;
@@ -211,12 +234,16 @@ impl WorkspaceClient for EventClient {
         {
             let tx = self.workspace_tx.clone();
 
-            let workspaces = self.workspaces.clone();
-            Self::refresh_workspaces(&workspaces);
+            let active_name = HWorkspace::get_active()
+                .map(|active| active.name)
+                .unwrap_or_default();
 
-            let workspaces = lock!(workspaces);
+            let workspaces = Workspaces::get()
+                .expect("Failed to get workspaces")
+                .map(|w| Workspace::from((w.name == active_name, w)))
+                .collect();
 
-            send!(tx, WorkspaceUpdate::Init(workspaces.clone()));
+            send!(tx, WorkspaceUpdate::Init(workspaces));
         }
 
         rx
@@ -235,8 +262,8 @@ pub fn get_client() -> &'static EventClient {
     &CLIENT
 }
 
-fn id_to_string(id: WorkspaceType) -> String {
-    match id {
+fn get_workspace_name(name: WorkspaceType) -> String {
+    match name {
         WorkspaceType::Regular(name) => name,
         WorkspaceType::Special(name) => name.unwrap_or_default(),
     }
