@@ -9,7 +9,7 @@ use lazy_static::lazy_static;
 use std::sync::{Arc, Mutex};
 use tokio::sync::broadcast::{channel, Receiver, Sender};
 use tokio::task::spawn_blocking;
-use tracing::{error, info};
+use tracing::{debug, error, info};
 
 pub struct EventClient {
     workspaces: Arc<Mutex<Vec<Workspace>>>,
@@ -46,6 +46,8 @@ impl EventClient {
                 let tx = tx.clone();
 
                 event_listener.add_workspace_added_handler(move |workspace_type, _state| {
+                    debug!("Added workspace: {workspace_type:?}");
+
                     Self::refresh_workspaces(&workspaces);
 
                     let workspace = Self::get_workspace(&workspaces, workspace_type);
@@ -63,6 +65,8 @@ impl EventClient {
                 let tx = tx.clone();
 
                 event_listener.add_workspace_change_handler(move |workspace_type, _state| {
+                    debug!("Received workspace change: {workspace_type:?}");
+
                     let prev_workspace = Self::get_focused_workspace(&workspaces);
 
                     Self::refresh_workspaces(&workspaces);
@@ -93,6 +97,8 @@ impl EventClient {
                 let tx = tx.clone();
 
                 event_listener.add_workspace_destroy_handler(move |workspace_type, _state| {
+                    debug!("Received workspace destroy: {workspace_type:?}");
+
                     let workspace = Self::get_workspace(&workspaces, workspace_type);
                     workspace.map_or_else(
                         || error!("Unable to locate workspace"),
@@ -111,6 +117,7 @@ impl EventClient {
 
                 event_listener.add_workspace_moved_handler(move |event_data, _state| {
                     let workspace_type = event_data.1;
+                    debug!("Received workspace move: {workspace_type:?}");
 
                     Self::refresh_workspaces(&workspaces);
 
@@ -129,6 +136,7 @@ impl EventClient {
 
                 event_listener.add_active_monitor_change_handler(move |event_data, _state| {
                     let workspace_type = event_data.1;
+                    debug!("Received active monitor change: {workspace_type:?}");
 
                     let prev_workspace = Self::get_focused_workspace(&workspaces);
 
