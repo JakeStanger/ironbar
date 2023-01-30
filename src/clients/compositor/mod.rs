@@ -70,13 +70,13 @@ pub enum WorkspaceUpdate {
     /// This is re-sent to all subscribers when a new subscription is created.
     Init(Vec<Workspace>),
     Add(Workspace),
-    Remove(Workspace),
+    Remove(String),
     Update(Workspace),
     Move(Workspace),
     /// Declares focus moved from the old workspace to the new.
     Focus {
-        old: Workspace,
-        new: Workspace,
+        old: String,
+        new: String,
     },
 }
 
