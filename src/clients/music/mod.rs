@@ -22,7 +22,7 @@ pub struct Track {
     pub disc: Option<u64>,
     pub genre: Option<String>,
     pub track: Option<u64>,
-    pub cover_path: Option<PathBuf>,
+    pub cover_path: Option<String>,
 }
 
 #[derive(Clone, Debug)]

@@ -1,14 +1,14 @@
 mod config;
 
 use crate::clients::music::{self, MusicClient, PlayerState, PlayerUpdate, Status, Track};
+use crate::image::{new_icon_button, new_icon_label, ImageProvider};
 use crate::modules::{Module, ModuleInfo, ModuleUpdateEvent, ModuleWidget, WidgetContext};
 use crate::popup::Popup;
 use crate::{send_async, try_send};
 use color_eyre::Result;
 use glib::Continue;
-use gtk::gdk_pixbuf::Pixbuf;
 use gtk::prelude::*;
-use gtk::{Button, Image, Label, Orientation, Scale};
+use gtk::{Button, IconTheme, Label, Orientation, Scale};
 use regex::Regex;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -18,7 +18,7 @@ use tokio::sync::mpsc::{Receiver, Sender};
 use tracing::error;
 
 pub use self::config::MusicModule;
-use self::config::{Icons, PlayerType};
+use self::config::PlayerType;
 
 #[derive(Debug)]
 pub enum PlayerCommand {
@@ -80,7 +80,6 @@ impl Module<Button> for MusicModule {
         mut rx: Receiver<Self::ReceiveMessage>,
     ) -> Result<()> {
         let format = self.format.clone();
-        let icons = self.icons.clone();
 
         let re = Regex::new(r"\{([\w-]+)}")?;
         let tokens = get_tokens(&re, self.format.as_str());
@@ -102,13 +101,8 @@ impl Module<Button> for MusicModule {
                         match update {
                             PlayerUpdate::Update(track, status) => match *track {
                                 Some(track) => {
-                                    let display_string = replace_tokens(
-                                        format.as_str(),
-                                        &tokens,
-                                        &track,
-                                        &status,
-                                        &icons,
-                                    );
+                                    let display_string =
+                                        replace_tokens(format.as_str(), &tokens, &track, &status);
 
                                     let update = SongUpdate {
                                         song: track,
@@ -160,15 +154,22 @@ impl Module<Button> for MusicModule {
         info: &ModuleInfo,
     ) -> Result<ModuleWidget<Button>> {
         let button = Button::new();
+        let button_contents = gtk::Box::new(Orientation::Horizontal, 5);
+        button.add(&button_contents);
 
+        let icon_play = new_icon_label(&self.icons.play, info.icon_theme, 24);
+        let icon_pause = new_icon_label(&self.icons.pause, info.icon_theme, 24);
         let label = Label::new(None);
+
         label.set_angle(info.bar_position.get_angle());
 
         if let Some(truncate) = self.truncate {
             truncate.truncate_label(&label);
         }
 
-        button.add(&label);
+        button_contents.add(&icon_pause);
+        button_contents.add(&icon_play);
+        button_contents.add(&label);
 
         let orientation = info.bar_position.get_orientation();
 
@@ -190,6 +191,21 @@ impl Module<Button> for MusicModule {
             context.widget_rx.attach(None, move |mut event| {
                 if let Some(event) = event.take() {
                     label.set_label(&event.display_string);
+
+                    match event.status.state {
+                        PlayerState::Playing => {
+                            icon_play.show();
+                            icon_pause.hide();
+                        }
+                        PlayerState::Paused => {
+                            icon_pause.show();
+                            icon_play.hide();
+                        }
+                        PlayerState::Stopped => {
+                            button.hide();
+                        }
+                    }
+
                     button.show();
                 } else {
                     button.hide();
@@ -200,7 +216,7 @@ impl Module<Button> for MusicModule {
             });
         };
 
-        let popup = self.into_popup(context.controller_tx, context.popup_rx);
+        let popup = self.into_popup(context.controller_tx, context.popup_rx, info);
 
         Ok(ModuleWidget {
             widget: button,
@@ -212,23 +228,28 @@ impl Module<Button> for MusicModule {
         self,
         tx: Sender<Self::ReceiveMessage>,
         rx: glib::Receiver<Self::SendMessage>,
+        info: &ModuleInfo,
     ) -> Option<gtk::Box> {
+        let icon_theme = info.icon_theme;
+
         let container = gtk::Box::builder()
             .orientation(Orientation::Horizontal)
             .spacing(10)
             .name("popup-music")
             .build();
 
-        let album_image = Image::builder()
+        let album_image = gtk::Image::builder()
             .width_request(128)
             .height_request(128)
             .name("album-art")
             .build();
 
+        let icons = self.icons;
+
         let info_box = gtk::Box::new(Orientation::Vertical, 10);
-        let title_label = IconLabel::new("\u{f886}", None);
-        let album_label = IconLabel::new("\u{f524}", None);
-        let artist_label = IconLabel::new("\u{fd01}", None);
+        let title_label = IconLabel::new(&icons.track, None, icon_theme);
+        let album_label = IconLabel::new(&icons.album, None, icon_theme);
+        let artist_label = IconLabel::new(&icons.artist, None, icon_theme);
 
         title_label.container.set_widget_name("title");
         album_label.container.set_widget_name("album");
@@ -239,12 +260,22 @@ impl Module<Button> for MusicModule {
         info_box.add(&artist_label.container);
 
         let controls_box = gtk::Box::builder().name("controls").build();
-        let btn_prev = Button::builder().label("\u{f9ad}").name("btn-prev").build();
-        let btn_play_pause = Button::builder().label("").name("btn-play-pause").build();
-        let btn_next = Button::builder().label("\u{f9ac}").name("btn-next").build();
+
+        let btn_prev = new_icon_button(&icons.prev, icon_theme, 24);
+        btn_prev.set_widget_name("btn-prev");
+
+        let btn_play = new_icon_button(&icons.play, icon_theme, 24);
+        btn_play.set_widget_name("btn-play");
+
+        let btn_pause = new_icon_button(&icons.pause, icon_theme, 24);
+        btn_pause.set_widget_name("btn-pause");
+
+        let btn_next = new_icon_button(&icons.next, icon_theme, 24);
+        btn_next.set_widget_name("btn-next");
 
         controls_box.add(&btn_prev);
-        controls_box.add(&btn_play_pause);
+        controls_box.add(&btn_play);
+        controls_box.add(&btn_pause);
         controls_box.add(&btn_next);
 
         info_box.add(&controls_box);
@@ -259,7 +290,7 @@ impl Module<Button> for MusicModule {
         volume_slider.set_inverted(true);
         volume_slider.set_widget_name("slider");
 
-        let volume_icon = Label::new(Some(&self.icons.volume));
+        let volume_icon = new_icon_label(&icons.volume, icon_theme, 24);
         volume_icon.style_context().add_class("icon");
 
         volume_box.pack_start(&volume_slider, true, true, 0);
@@ -274,13 +305,14 @@ impl Module<Button> for MusicModule {
             try_send!(tx_prev, PlayerCommand::Previous);
         });
 
-        let tx_toggle = tx.clone();
-        btn_play_pause.connect_clicked(move |button| {
-            if button.style_context().has_class("playing") {
-                try_send!(tx_toggle, PlayerCommand::Pause);
-            } else {
-                try_send!(tx_toggle, PlayerCommand::Play);
-            }
+        let tx_play = tx.clone();
+        btn_play.connect_clicked(move |_| {
+            try_send!(tx_play, PlayerCommand::Play);
+        });
+
+        let tx_pause = tx.clone();
+        btn_pause.connect_clicked(move |_| {
+            try_send!(tx_pause, PlayerCommand::Pause);
         });
 
         let tx_next = tx.clone();
@@ -297,6 +329,8 @@ impl Module<Button> for MusicModule {
         container.show_all();
 
         {
+            let icon_theme = icon_theme.clone();
+
             let mut prev_cover = None;
             rx.attach(None, move |update| {
                 if let Some(update) = update {
@@ -304,16 +338,22 @@ impl Module<Button> for MusicModule {
                     let new_cover = update.song.cover_path;
                     if prev_cover != new_cover {
                         prev_cover = new_cover.clone();
-                        match new_cover.map(|cover_path| {
-                            Pixbuf::from_file_at_scale(cover_path, 128, 128, true)
-                        }) {
-                            Some(Ok(pixbuf)) => album_image.set_from_pixbuf(Some(&pixbuf)),
+                        let res = match new_cover
+                            .map(|cover_path| ImageProvider::parse(&cover_path, &icon_theme, 128))
+                        {
+                            Some(Ok(image)) => image.load_into_image(album_image.clone()),
                             Some(Err(err)) => {
-                                error!("{:?}", err);
                                 album_image.set_from_pixbuf(None);
+                                Err(err)
                             }
-                            None => album_image.set_from_pixbuf(None),
+                            None => {
+                                album_image.set_from_pixbuf(None);
+                                Ok(())
+                            }
                         };
+                        if let Err(err) = res {
+                            error!("{err:?}");
+                        }
                     }
 
                     title_label
@@ -328,23 +368,23 @@ impl Module<Button> for MusicModule {
 
                     match update.status.state {
                         PlayerState::Stopped => {
-                            btn_play_pause.set_sensitive(false);
+                            btn_pause.hide();
+                            btn_play.show();
+                            btn_play.set_sensitive(false);
                         }
                         PlayerState::Playing => {
-                            btn_play_pause.set_sensitive(true);
-                            btn_play_pause.set_label(&self.icons.pause);
+                            btn_play.set_sensitive(false);
+                            btn_play.hide();
 
-                            let style_context = btn_play_pause.style_context();
-                            style_context.add_class("playing");
-                            style_context.remove_class("paused");
+                            btn_pause.set_sensitive(true);
+                            btn_pause.show();
                         }
                         PlayerState::Paused => {
-                            btn_play_pause.set_sensitive(true);
-                            btn_play_pause.set_label(&self.icons.play);
+                            btn_pause.set_sensitive(false);
+                            btn_pause.hide();
 
-                            let style_context = btn_play_pause.style_context();
-                            style_context.add_class("paused");
-                            style_context.remove_class("playing");
+                            btn_play.set_sensitive(true);
+                            btn_play.show();
                         }
                     }
 
@@ -374,11 +414,10 @@ fn replace_tokens(
     tokens: &Vec<String>,
     song: &Track,
     status: &Status,
-    icons: &Icons,
 ) -> String {
     let mut compiled_string = format_string.to_string();
     for token in tokens {
-        let value = get_token_value(song, status, icons, token);
+        let value = get_token_value(song, status, token);
         compiled_string = compiled_string.replace(format!("{{{token}}}").as_str(), value.as_str());
     }
     compiled_string
@@ -386,14 +425,8 @@ fn replace_tokens(
 
 /// Converts a string format token value
 /// into its respective value.
-fn get_token_value(song: &Track, status: &Status, icons: &Icons, token: &str) -> String {
+fn get_token_value(song: &Track, status: &Status, token: &str) -> String {
     match token {
-        "icon" => match status.state {
-            PlayerState::Stopped => None,
-            PlayerState::Playing => Some(&icons.play),
-            PlayerState::Paused => Some(&icons.pause),
-        }
-        .map(std::string::ToString::to_string),
         "title" => song.title.clone(),
         "album" => song.album.clone(),
         "artist" => song.artist.clone(),
@@ -408,17 +441,17 @@ fn get_token_value(song: &Track, status: &Status, icons: &Icons, token: &str) ->
     .unwrap_or_default()
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 struct IconLabel {
     label: Label,
     container: gtk::Box,
 }
 
 impl IconLabel {
-    fn new(icon: &str, label: Option<&str>) -> Self {
+    fn new(icon_input: &str, label: Option<&str>, icon_theme: &IconTheme) -> Self {
         let container = gtk::Box::new(Orientation::Horizontal, 5);
 
-        let icon = Label::new(Some(icon));
+        let icon = new_icon_label(icon_input, icon_theme, 32);
         let label = Label::new(label);
 
         icon.style_context().add_class("icon");

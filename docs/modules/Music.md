@@ -17,11 +17,18 @@ in MPRIS mode, the widget will listen to all players and automatically detect/di
 | `format`                      | `string`                     | `{icon} {title} / {artist}` | Format string for the widget. More info below.                                                                                                  |
 | `truncate` or `truncate.mode` | `start` or `middle` or `end` | `null`                      | The location of the ellipses and where to truncate text from. Leave null to avoid truncating. Use the long-hand version if specifying a length. |
 | `truncate.length`             | `integer`                    | `null`                      | The maximum number of characters before truncating. Leave blank to let GTK automatically handle.                                                |
-| `icons.play`                  | `string`                     | ``                         | Icon to show when playing.                                                                                                                      |
-| `icons.pause`                 | `string`                     | ``                         | Icon to show when paused.                                                                                                                       |
-| `icons.volume`                | `string`                     | `墳`                         | Icon to show under popup volume slider.                                                                                                         |
-| `host`                        | `string`                     | `localhost:6600`            | [MPD Only] TCP or Unix socket for the MPD server.                                                                                               |
-| `music_dir`                   | `string`                     | `$HOME/Music`               | [MPD Only] Path to MPD server's music directory on disc. Required for album art.                                                                |
+| `icons.play`                  | `string/image`               | ``                         | Icon to show when playing.                                                                                                                      |
+| `icons.pause`                 | `string/image`               | ``                         | Icon to show when paused.                                                                                                                       |
+| `icons.prev`                  | `string/image`               | `玲`                         | Icon to show on previous button.                                                                                                                |
+| `icons.next`                  | `string/image`               | `怜`                         | Icon to show on next button.                                                                                                                    |
+| `icons.volume`                | `string/image`               | `墳`                         | Icon to show under popup volume slider.                                                                                                         |
+| `icons.track`                 | `string/image`               | ``                         | Icon to show next to track title.                                                                                                               |
+| `icons.album`                 | `string/image`               | ``                         | Icon to show next to album name.                                                                                                                |
+| `icons.artist`                | `string/image`               | `ﴁ`                         | Icon to show next to artist name.                                                                                                               |
+| `host`                        | `string/image`               | `localhost:6600`            | [MPD Only] TCP or Unix socket for the MPD server.                                                                                               |
+| `music_dir`                   | `string/image`               | `$HOME/Music`               | [MPD Only] Path to MPD server's music directory on disc. Required for album art.                                                                |
+
+See [here](images) for information on images.
 
 <details>
 <summary>JSON</summary>
@@ -122,24 +129,25 @@ and will be replaced with values from the currently playing track:
 
 ## Styling
 
-| Selector                                 | Description                              |
-|------------------------------------------|------------------------------------------|
-| `#music`                                 | Tray widget button                       |
-| `#popup-music`                           | Popup box                                |
-| `#popup-music #album-art`                | Album art image inside popup box         |
-| `#popup-music #title`                    | Track title container inside popup box   |
-| `#popup-music #title .icon`              | Track title icon label inside popup box  |
-| `#popup-music #title .label`             | Track title label inside popup box       |
-| `#popup-music #album`                    | Track album container inside popup box   |
-| `#popup-music #album .icon`              | Track album icon label inside popup box  |
-| `#popup-music #album .label`             | Track album label inside popup box       |
-| `#popup-music #artist`                   | Track artist container inside popup box  |
-| `#popup-music #artist .icon`             | Track artist icon label inside popup box |
-| `#popup-music #artist .label`            | Track artist label inside popup box      |
-| `#popup-music #controls`                 | Controls container inside popup box      |
-| `#popup-music #controls #btn-prev`       | Previous button inside popup box         |
-| `#popup-music #controls #btn-play-pause` | Play/pause button inside popup box       |
-| `#popup-music #controls #btn-next`       | Next button inside popup box             |
-| `#popup-music #volume`                   | Volume container inside popup box        |
-| `#popup-music #volume #slider`           | Volume slider popup box                  |
-| `#popup-music #volume .icon`             | Volume icon label inside popup box       |
+| Selector                            | Description                              |
+|-------------------------------------|------------------------------------------|
+| `#music`                            | Tray widget button                       |
+| `#popup-music`                      | Popup box                                |
+| `#popup-music #album-art`           | Album art image inside popup box         |
+| `#popup-music #title`               | Track title container inside popup box   |
+| `#popup-music #title .icon`         | Track title icon label inside popup box  |
+| `#popup-music #title .label`        | Track title label inside popup box       |
+| `#popup-music #album`               | Track album container inside popup box   |
+| `#popup-music #album .icon`         | Track album icon label inside popup box  |
+| `#popup-music #album .label`        | Track album label inside popup box       |
+| `#popup-music #artist`              | Track artist container inside popup box  |
+| `#popup-music #artist .icon`        | Track artist icon label inside popup box |
+| `#popup-music #artist .label`       | Track artist label inside popup box      |
+| `#popup-music #controls`            | Controls container inside popup box      |
+| `#popup-music #controls #btn-prev`  | Previous button inside popup box         |
+| `#popup-music #controls #btn-play`  | Play button inside popup box             |
+| `#popup-music #controls #btn-pause` | Pause button inside popup box            |
+| `#popup-music #controls #btn-next`  | Next button inside popup box             |
+| `#popup-music #volume`              | Volume container inside popup box        |
+| `#popup-music #volume #slider`      | Volume slider popup box                  |
+| `#popup-music #volume .icon`        | Volume icon label inside popup box       |

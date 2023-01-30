@@ -50,7 +50,7 @@
         cargoDeps = rustPlatform.importCargoLock {lockFile = ./Cargo.lock;};
         cargoLock.lockFile = ./Cargo.lock;
         nativeBuildInputs = with prev; [pkg-config];
-        buildInputs = with prev; [gtk3 gdk-pixbuf gtk-layer-shell libxkbcommon];
+        buildInputs = with prev; [gtk3 gdk-pixbuf gtk-layer-shell libxkbcommon openssl];
       };
     };
     packages = genSystems (
@@ -74,6 +74,7 @@
           gtk3
           gtk-layer-shell
           pkg-config
+          openssl
         ];
 
         RUST_SRC_PATH = "${rust}/lib/rustlib/src/rust/library";

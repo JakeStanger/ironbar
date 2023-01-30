@@ -121,12 +121,16 @@ impl MpdClient {
     fn convert_song(song: &Song, music_dir: &Path) -> Track {
         let (track, disc) = song.number();
 
-        let cover_path = music_dir.join(
-            song.file_path()
-                .parent()
-                .expect("Song path should not be root")
-                .join("cover.jpg"),
-        );
+        let cover_path = music_dir
+            .join(
+                song.file_path()
+                    .parent()
+                    .expect("Song path should not be root")
+                    .join("cover.jpg"),
+            )
+            .into_os_string()
+            .into_string()
+            .ok();
 
         Track {
             title: song.title().map(std::string::ToString::to_string),
@@ -136,7 +140,7 @@ impl MpdClient {
             genre: try_get_first_tag(song, &Tag::Genre).map(std::string::ToString::to_string),
             disc: Some(disc),
             track: Some(track),
-            cover_path: Some(cover_path),
+            cover_path,
         }
     }
 }

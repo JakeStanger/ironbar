@@ -133,7 +133,7 @@ impl Popup {
 
     /// Shows the popup
     pub fn show(&self, geometry: ButtonGeometry) {
-        self.window.show_all();
+        self.window.show();
         self.set_pos(geometry);
     }
 

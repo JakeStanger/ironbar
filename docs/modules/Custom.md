@@ -18,15 +18,17 @@ It is well worth looking at the examples.
 
 ### `Widget`
 
-| Name          | Type                         | Default      | Description                                                               |
-|---------------|------------------------------|--------------|---------------------------------------------------------------------------|
-| `widget_type` | `box` or `label` or `button` | `null`       | Type of GTK widget to create.                                             |
-| `name`        | `string`                     | `null`       | Widget name.                                                              |
-| `class`       | `string`                     | `null`       | Widget class name.                                                        |
-| `label`       | `string`                     | `null`       | [`label` and `button`] Widget text label. Pango markup supported.         |
-| `on_click`    | `string`                     | `null`       | [`button`] Command to execute. More on this [below](#commands).           |
-| `orientation` | `horizontal` or `vertical`   | `horizontal` | [`box`] Whether child widgets should be horizontally or vertically added. |
-| `widgets`     | `Widget[]`                   | `[]`         | [`box`] List of widgets to add to this box.                               |
+| Name          | Type                                    | Default      | Description                                                               |
+|---------------|-----------------------------------------|--------------|---------------------------------------------------------------------------|
+| `widget_type` | `box` or `label` or `button` or `image` | `null`       | Type of GTK widget to create.                                             |
+| `name`        | `string`                                | `null`       | Widget name.                                                              |
+| `class`       | `string`                                | `null`       | Widget class name.                                                        |
+| `label`       | `string`                                | `null`       | [`label` and `button`] Widget text label. Pango markup supported.         |
+| `on_click`    | `string`                                | `null`       | [`button`] Command to execute. More on this [below](#commands).           |
+| `src`         | `image`                                 | `null`       | [`image`] Image source. See [here](images) for information on images.     |
+| `size`        | `integer`                               | `null`       | [`image`] Width/height of the image. Aspect ratio is preserved.           |
+| `orientation` | `horizontal` or `vertical`              | `horizontal` | [`box`] Whether child widgets should be horizontally or vertically added. |
+| `widgets`     | `Widget[]`                              | `[]`         | [`box`] List of widgets to add to this box.                               |
 
 ### Labels
 
@@ -55,6 +57,8 @@ The following bar commands are supported:
 - `popup:toggle`
 - `popup:open`
 - `popup:close`
+
+---
 
 XML is arguably better-suited and easier to read for this sort of markup, 
 but currently is not supported.
