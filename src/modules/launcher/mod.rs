@@ -294,8 +294,6 @@ impl Module<gtk::Box> for LauncherModule {
                     }
                 }
             }
-
-            Ok::<(), swayipc_async::Error>(())
         });
 
         Ok(())

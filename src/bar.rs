@@ -195,15 +195,20 @@ fn add_modules(content: &gtk::Box, modules: Vec<ModuleConfig>, info: &ModuleInfo
 
     for (id, config) in modules.into_iter().enumerate() {
         match config {
+            #[cfg(feature = "clock")]
             ModuleConfig::Clock(mut module) => add_module!(module, id),
-            ModuleConfig::Script(mut module) => add_module!(module, id),
-            ModuleConfig::SysInfo(mut module) => add_module!(module, id),
-            ModuleConfig::Focused(mut module) => add_module!(module, id),
-            ModuleConfig::Workspaces(mut module) => add_module!(module, id),
-            ModuleConfig::Tray(mut module) => add_module!(module, id),
-            ModuleConfig::Music(mut module) => add_module!(module, id),
-            ModuleConfig::Launcher(mut module) => add_module!(module, id),
             ModuleConfig::Custom(mut module) => add_module!(module, id),
+            ModuleConfig::Focused(mut module) => add_module!(module, id),
+            ModuleConfig::Launcher(mut module) => add_module!(module, id),
+            #[cfg(feature = "music")]
+            ModuleConfig::Music(mut module) => add_module!(module, id),
+            ModuleConfig::Script(mut module) => add_module!(module, id),
+            #[cfg(feature = "sys_info")]
+            ModuleConfig::SysInfo(mut module) => add_module!(module, id),
+            #[cfg(feature = "tray")]
+            ModuleConfig::Tray(mut module) => add_module!(module, id),
+            #[cfg(feature = "workspaces")]
+            ModuleConfig::Workspaces(mut module) => add_module!(module, id),
         }
     }
 

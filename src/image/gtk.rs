@@ -3,6 +3,7 @@ use gtk::prelude::*;
 use gtk::{Button, IconTheme, Image, Label, Orientation};
 use tracing::error;
 
+#[cfg(any(feature = "music", feature = "workspaces"))]
 pub fn new_icon_button(input: &str, icon_theme: &IconTheme, size: i32) -> Button {
     let button = Button::new();
 
@@ -27,6 +28,7 @@ pub fn new_icon_button(input: &str, icon_theme: &IconTheme, size: i32) -> Button
     button
 }
 
+#[cfg(feature = "music")]
 pub fn new_icon_label(input: &str, icon_theme: &IconTheme, size: i32) -> gtk::Box {
     let container = gtk::Box::new(Orientation::Horizontal, 0);
 

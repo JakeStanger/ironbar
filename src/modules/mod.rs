@@ -4,14 +4,19 @@
 ///
 /// Clicking the widget opens a popup containing the current time
 /// with second-level precision and a calendar.
+#[cfg(feature = "clock")]
 pub mod clock;
 pub mod custom;
 pub mod focused;
 pub mod launcher;
+#[cfg(feature = "music")]
 pub mod music;
 pub mod script;
+#[cfg(feature = "sys_info")]
 pub mod sysinfo;
+#[cfg(feature = "tray")]
 pub mod tray;
+#[cfg(feature = "workspaces")]
 pub mod workspaces;
 
 use crate::config::BarPosition;

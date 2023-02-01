@@ -4,7 +4,9 @@ use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::broadcast;
 
+#[cfg(feature = "music+mpd")]
 pub mod mpd;
+#[cfg(feature = "music+mpris")]
 pub mod mpris;
 
 #[derive(Clone, Debug)]
