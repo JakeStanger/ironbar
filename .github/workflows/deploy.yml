@@ -18,7 +18,9 @@ jobs:
           override: true
 
       - name: Install build deps
-        run: sudo apt install libgtk-3-dev libgtk-layer-shell-dev
+        run: |
+          sudo apt-get update
+          sudo apt-get install libgtk-3-dev libgtk-layer-shell-dev
 
       - name: Update CHANGELOG
         id: changelog
