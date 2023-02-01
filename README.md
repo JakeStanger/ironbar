@@ -28,9 +28,11 @@ yay -S ironbar-git
 
 ### Nix Flake
 
+A flake is included with the repo which can be used with home-manager.
+
 #### Example
-Here is an example nix flake that uses ironbar, this is just a 
-proof of concept, please adapt it to your config
+
+Here is an example nix flake that uses Ironbar.
 
 ```nix
 {
@@ -66,8 +68,9 @@ proof of concept, please adapt it to your config
 ```
 
 #### Binary Caching
-There is also a cachix cache at `https://app.cachix.org/cache/jakestanger`
-incase you don't want to compile ironbar!
+
+There is a Cachix cache available at `https://app.cachix.org/cache/jakestanger`
+in case you don't want to compile Ironbar.
 
 ### Source
 
@@ -78,6 +81,9 @@ cargo build --release
 # change path to wherever you want to install
 install target/release/ironbar ~/.local/bin/ironbar
 ```
+
+By default, all features are enabled. 
+See [here](https://github.com/JakeStanger/ironbar/wiki/compiling) for controlling which features are included.
 
 [repo](https://github.com/jakestanger/ironbar)
 

@@ -1,22 +1,30 @@
 use crate::desktop_file::get_desktop_icon_name;
-use crate::send;
-use color_eyre::{Report, Result};
-use glib::Bytes;
+use cfg_if::cfg_if;
+use color_eyre::{Help, Report, Result};
 use gtk::gdk_pixbuf::Pixbuf;
-use gtk::gio::{Cancellable, MemoryInputStream};
 use gtk::prelude::*;
 use gtk::{IconLookupFlags, IconTheme};
-use reqwest::Url;
 use std::path::{Path, PathBuf};
-use tokio::spawn;
-use tracing::error;
+
+cfg_if!(
+    if #[cfg(feature = "http")] {
+        use crate::send;
+        use gtk::gio::{Cancellable, MemoryInputStream};
+        use tokio::spawn;
+        use tracing::error;
+    }
+);
 
 #[derive(Debug)]
 enum ImageLocation<'a> {
-    Icon { name: String, theme: &'a IconTheme },
+    Icon {
+        name: String,
+        theme: &'a IconTheme,
+    },
     Local(PathBuf),
     Steam(String),
-    Remote(Url),
+    #[cfg(feature = "http")]
+    Remote(reqwest::Url),
 }
 
 pub struct ImageProvider<'a> {
@@ -38,6 +46,7 @@ impl<'a> ImageProvider<'a> {
     /// Returns true if the input starts with a prefix
     /// that is supported by the parser
     /// (ie the parser would not fallback to checking the input).
+    #[cfg(any(feature = "music", feature = "workspaces"))]
     pub fn is_definitely_image_input(input: &str) -> bool {
         input.starts_with("icon:")
             || input.starts_with("file://")
@@ -58,6 +67,7 @@ impl<'a> ImageProvider<'a> {
             Some(input_type) if input_type == "file" => Ok(ImageLocation::Local(PathBuf::from(
                 input_name[2..].to_string(),
             ))),
+            #[cfg(feature = "http")]
             Some(input_type) if input_type == "http" || input_type == "https" => {
                 Ok(ImageLocation::Remote(input.parse()?))
             }
@@ -73,7 +83,8 @@ impl<'a> ImageProvider<'a> {
                     theme,
                 })
             }
-            Some(input_type) => Err(Report::msg(format!("Unsupported image type: {input_type}"))),
+            Some(input_type) => Err(Report::msg(format!("Unsupported image type: {input_type}"))
+                .note("You may need to recompile with support if available")),
             None if PathBuf::from(input_name).is_file() => {
                 Ok(ImageLocation::Local(PathBuf::from(input_name)))
             }
@@ -88,6 +99,7 @@ impl<'a> ImageProvider<'a> {
     /// and load it into the provided `GTK::Image` widget.
     pub fn load_into_image(&self, image: gtk::Image) -> Result<()> {
         // handle remote locations async to avoid blocking UI thread while downloading
+        #[cfg(feature = "http")]
         if let ImageLocation::Remote(url) = &self.location {
             let url = url.clone();
             let (tx, rx) = glib::MainContext::channel(glib::PRIORITY_DEFAULT);
@@ -120,15 +132,25 @@ impl<'a> ImageProvider<'a> {
                 });
             }
         } else {
-            let pixbuf = match &self.location {
-                ImageLocation::Icon { name, theme } => self.get_from_icon(name, theme),
-                ImageLocation::Local(path) => self.get_from_file(path),
-                ImageLocation::Steam(steam_id) => self.get_from_steam_id(steam_id),
-                ImageLocation::Remote(_) => unreachable!(), // handled above
-            }?;
-
-            image.set_pixbuf(Some(&pixbuf));
+            self.load_into_image_sync(image)?;
         };
+
+        #[cfg(not(feature = "http"))]
+        self.load_into_image_sync(image)?;
+
+        Ok(())
+    }
+
+    fn load_into_image_sync(&self, image: gtk::Image) -> Result<()> {
+        let pixbuf = match &self.location {
+            ImageLocation::Icon { name, theme } => self.get_from_icon(name, theme),
+            ImageLocation::Local(path) => self.get_from_file(path),
+            ImageLocation::Steam(steam_id) => self.get_from_steam_id(steam_id),
+            #[cfg(feature = "http")]
+            _ => unreachable!(), // handled above
+        }?;
+
+        image.set_pixbuf(Some(&pixbuf));
 
         Ok(())
     }
@@ -169,8 +191,9 @@ impl<'a> ImageProvider<'a> {
     }
 
     /// Attempts to get `Bytes` from an HTTP resource asynchronously.
-    async fn get_bytes_from_http(url: Url) -> Result<Bytes> {
+    #[cfg(feature = "http")]
+    async fn get_bytes_from_http(url: reqwest::Url) -> Result<glib::Bytes> {
         let bytes = reqwest::get(url).await?.bytes().await?;
-        Ok(Bytes::from_owned(bytes))
+        Ok(glib::Bytes::from_owned(bytes))
     }
 }

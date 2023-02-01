@@ -1,13 +1,18 @@
+use cfg_if::cfg_if;
 use color_eyre::{Help, Report, Result};
 use std::fmt::{Display, Formatter};
 use tokio::sync::broadcast;
 use tracing::debug;
 
+#[cfg(feature = "workspaces+hyprland")]
 pub mod hyprland;
+#[cfg(feature = "workspaces+sway")]
 pub mod sway;
 
 pub enum Compositor {
+    #[cfg(feature = "workspaces+sway")]
     Sway,
+    #[cfg(feature = "workspaces+hyprland")]
     Hyprland,
     Unsupported,
 }
@@ -18,7 +23,9 @@ impl Display for Compositor {
             f,
             "{}",
             match self {
+                #[cfg(feature = "workspaces+sway")]
                 Self::Sway => "Sway",
+                #[cfg(feature = "workspaces+hyprland")]
                 Self::Hyprland => "Hyprland",
                 Self::Unsupported => "Unsupported",
             }
@@ -31,9 +38,15 @@ impl Compositor {
     /// This is done by checking system env vars.
     fn get_current() -> Self {
         if std::env::var("SWAYSOCK").is_ok() {
-            Self::Sway
+            cfg_if! {
+                if #[cfg(feature = "workspaces+sway")] { Self::Sway }
+                else { tracing::error!("Not compiled with Sway support"); Self::Unsupported }
+            }
         } else if std::env::var("HYPRLAND_INSTANCE_SIGNATURE").is_ok() {
-            Self::Hyprland
+            cfg_if! {
+                if #[cfg(feature = "workspaces+hyprland")] { Self::Hyprland}
+                else { tracing::error!("Not compiled with Hyprland support"); Self::Unsupported }
+            }
         } else {
             Self::Unsupported
         }
@@ -44,7 +57,9 @@ impl Compositor {
         let current = Self::get_current();
         debug!("Getting workspace client for: {current}");
         match current {
+            #[cfg(feature = "workspaces+sway")]
             Self::Sway => Ok(sway::get_sub_client()),
+            #[cfg(feature = "workspaces+hyprland")]
             Self::Hyprland => Ok(hyprland::get_client()),
             Self::Unsupported => Err(Report::msg("Unsupported compositor")
                 .note("Currently workspaces are only supported by Sway and Hyprland")),

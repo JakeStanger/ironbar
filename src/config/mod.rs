@@ -1,14 +1,19 @@
 mod r#impl;
 mod truncate;
 
+#[cfg(feature = "clock")]
 use crate::modules::clock::ClockModule;
 use crate::modules::custom::CustomModule;
 use crate::modules::focused::FocusedModule;
 use crate::modules::launcher::LauncherModule;
+#[cfg(feature = "music")]
 use crate::modules::music::MusicModule;
 use crate::modules::script::ScriptModule;
+#[cfg(feature = "sys_info")]
 use crate::modules::sysinfo::SysInfoModule;
+#[cfg(feature = "tray")]
 use crate::modules::tray::TrayModule;
+#[cfg(feature = "workspaces")]
 use crate::modules::workspaces::WorkspacesModule;
 use crate::script::ScriptInput;
 use serde::Deserialize;
@@ -32,15 +37,20 @@ pub struct CommonConfig {
 #[derive(Debug, Deserialize, Clone)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum ModuleConfig {
+    #[cfg(feature = "clock")]
     Clock(ClockModule),
-    Music(MusicModule),
-    Tray(TrayModule),
-    Workspaces(WorkspacesModule),
-    SysInfo(SysInfoModule),
-    Launcher(LauncherModule),
-    Script(ScriptModule),
-    Focused(FocusedModule),
     Custom(CustomModule),
+    Focused(FocusedModule),
+    Launcher(LauncherModule),
+    #[cfg(feature = "music")]
+    Music(MusicModule),
+    Script(ScriptModule),
+    #[cfg(feature = "sys_info")]
+    SysInfo(SysInfoModule),
+    #[cfg(feature = "tray")]
+    Tray(TrayModule),
+    #[cfg(feature = "workspaces")]
+    Workspaces(WorkspacesModule),
 }
 
 #[derive(Debug, Clone)]

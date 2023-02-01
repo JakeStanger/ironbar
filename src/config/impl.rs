@@ -133,11 +133,16 @@ impl Config {
             .unwrap_or_default();
 
         match extension {
+            #[cfg(feature = "config+json")]
             "json" => serde_json::from_str(str).wrap_err("Invalid JSON config"),
+            #[cfg(feature = "config+toml")]
             "toml" => toml::from_str(str).wrap_err("Invalid TOML config"),
+            #[cfg(feature = "config+yaml")]
             "yaml" | "yml" => serde_yaml::from_str(str).wrap_err("Invalid YAML config"),
+            #[cfg(feature = "config+corn")]
             "corn" => libcorn::from_str(str).wrap_err("Invalid Corn config"),
-            _ => unreachable!(),
+            _ => Err(Report::msg(format!("Unsupported config type: {extension}"))
+                .note("You may need to recompile with support if available")),
         }
     }
 }
