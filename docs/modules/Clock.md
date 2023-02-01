@@ -8,8 +8,8 @@ Clicking on the widget opens a popup with the time and a calendar.
 
 > Type: `clock`
 
-| Name     | Type   | Default          | Description                                                                                                                                |
-|----------|--------|------------------|--------------------------------------------------------------------------------------------------------------------------------------------|
+| Name     | Type     | Default          | Description                                                                                                                              |
+|----------|----------|------------------|------------------------------------------------------------------------------------------------------------------------------------------|
 | `format` | `string` | `%d/%m/%Y %H:%M` | Date/time format string. Detail on available tokens can be found here: <https://docs.rs/chrono/latest/chrono/format/strftime/index.html> |
 
 <details>

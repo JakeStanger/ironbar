@@ -3,7 +3,7 @@ Hovering over a program with multiple windows open shows a popup with each windo
 Clicking an icon/popup item focuses or launches the program.
 Optionally displays a launchable set of favourites.
 
-![Screenshot showing several open applications, including a focused terminal.](https://user-images.githubusercontent.com/5057870/184540058-120e190e-2a45-4167-99c7-ed76482d1f16.png)
+![Screenshot showing several open applications, including a popup showing multiple terminal windows.](https://f.jstanger.dev/github/ironbar/launcher.png)
 
 ## Configuration
 
@@ -28,8 +28,7 @@ Optionally displays a launchable set of favourites.
         "discord"
       ],
       "show_names": false,
-      "show_icons": true,
-      "icon_theme": "Paper"
+      "show_icons": true
     }
   ]
 }
@@ -48,7 +47,6 @@ type = "launcher"
 favorites = ["firefox", "discord"]
 show_names = false
 show_icons = true
-icon_theme = "Paper"
 ```
 
 </details>
@@ -64,7 +62,6 @@ start:
       - discord
     show_names: false
     show_icons: true
-    icon_theme: "Paper"
 ```
 
 </details>
@@ -77,10 +74,9 @@ start:
   start = [
     {
       type = "launcher"
-      favorites = ["firefox" "discord"]
+      favorites = [ "firefox" "discord" ]
       show_names = false
       show_icons = true
-      icon_theme = "Paper"
 
     }
   ]

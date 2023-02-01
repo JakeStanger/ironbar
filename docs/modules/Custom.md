@@ -1,7 +1,7 @@
 Allows you to compose custom modules consisting of multiple widgets, including popups. 
 Labels can display dynamic content from scripts, and buttons can interact with the bar or execute commands on click.
 
-![Custom module with a button on the bar, and the popup open. The popup contains a header, shutdown button and restart button.](https://user-images.githubusercontent.com/5057870/196058785-042ef171-7e77-4d5c-921a-eca03c6424bd.png)
+![Custom module with a button on the bar, and the popup open. The popup contains a header, shutdown button and restart button.](https://f.jstanger.dev/github/ironbar/custom-power-menu.png)
 
 ## Configuration
 

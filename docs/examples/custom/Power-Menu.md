@@ -1,6 +1,6 @@
 Creates a button on the bar, which opens a popup. The popup contains a header, shutdown button, restart button, and uptime.
 
-![A screenshot of the custom power menu module open, with some other modules present on the bar](../../_imgs/custom-power-menu.png)
+![A screenshot of the custom power menu module open, with some other modules present on the bar](https://f.jstanger.dev/github/ironbar/custom-power-menu.png)
 
 ## Configuration
 
@@ -16,9 +16,9 @@ Creates a button on the bar, which opens a popup. The popup contains a header, s
     {
       "bar": [
         {
-          "on_click": "popup:toggle",
           "label": "",
           "name": "power-btn",
+          "on_click": "popup:toggle",
           "type": "button"
         }
       ],
@@ -38,26 +38,27 @@ Creates a button on the bar, which opens a popup. The popup contains a header, s
               "widgets": [
                 {
                   "class": "power-btn",
-                  "on_click": "!shutdown now",
                   "label": "<span font-size='40pt'></span>",
+                  "on_click": "!shutdown now",
                   "type": "button"
                 },
                 {
                   "class": "power-btn",
-                  "on_click": "!reboot",
                   "label": "<span font-size='40pt'></span>",
+                  "on_click": "!reboot",
                   "type": "button"
                 }
               ]
             },
             {
-              "label": "Up: {{30000:uptime -p | cut -d ' ' -f2-}}",
+              "label": "Uptime: {{30000:uptime -p | cut -d ' ' -f2-}}",
               "name": "uptime",
               "type": "label"
             }
           ]
         }
       ],
+      "tooltip": "Up: {{30000:uptime -p | cut -d ' ' -f2-}}",
       "type": "custom"
     }
   ]
@@ -75,12 +76,13 @@ type = 'clock'
 
 [[end]]
 class = 'power-menu'
+tooltip = '''Up: {{30000:uptime -p | cut -d ' ' -f2-}}'''
 type = 'custom'
 
 [[end.bar]]
-on_click = 'popup:toggle'
 label = ''
 name = 'power-btn'
+on_click = 'popup:toggle'
 type = 'button'
 
 [[end.popup]]
@@ -97,18 +99,18 @@ type = 'box'
 
 [[end.popup.widgets.widgets]]
 class = 'power-btn'
-on_click = '!shutdown now'
 label = '''<span font-size='40pt'></span>'''
+on_click = '!shutdown now'
 type = 'button'
 
 [[end.popup.widgets.widgets]]
 class = 'power-btn'
-on_click = '!reboot'
 label = '''<span font-size='40pt'></span>'''
+on_click = '!reboot'
 type = 'button'
 
 [[end.popup.widgets]]
-label = '''Up: {{30000:uptime -p | cut -d ' ' -f2-}}'''
+label = '''Uptime: {{30000:uptime -p | cut -d ' ' -f2-}}'''
 name = 'uptime'
 type = 'label'
 ```
@@ -121,10 +123,11 @@ type = 'label'
 ```yaml
 end:
 - type: clock
+
 - bar:
-  - on_click: popup:toggle
-    label: 
+  - label: 
     name: power-btn
+    on_click: popup:toggle
     type: button
   class: power-menu
   popup:
@@ -137,16 +140,17 @@ end:
     - type: box
       widgets:
       - class: power-btn
-        on_click: '!shutdown now'
         label: <span font-size='40pt'></span>
+        on_click: '!shutdown now'
         type: button
       - class: power-btn
-        on_click: '!reboot'
         label: <span font-size='40pt'></span>
+        on_click: '!reboot'
         type: button
-    - label: 'Up: {{30000:uptime -p | cut -d '' '' -f2-}}'
+    - label: 'Uptime: {{30000:uptime -p | cut -d '' '' -f2-}}'
       name: uptime
       type: label
+  tooltip: 'Up: {{30000:uptime -p | cut -d '' '' -f2-}}'
   type: custom
 ```
 
@@ -157,30 +161,37 @@ end:
 
 ```corn
 let {
+    $button = { type = "button" name="power-btn" label = "" on_click = "popup:toggle" }
+
+    $popup = {
+        type = "box"
+        orientation = "vertical"
+        widgets = [
+            { type = "label" name = "header" label = "Power menu" }
+            {
+                type = "box"
+                widgets = [
+                    { type = "button" class="power-btn" label = "<span font-size='40pt'></span>" on_click = "!shutdown now" }
+                    { type = "button" class="power-btn" label = "<span font-size='40pt'></span>" on_click = "!reboot" }
+                ]
+            }
+            { type = "label" name = "uptime" label = "Uptime: {{30000:uptime -p | cut -d ' ' -f2-}}" }
+        ]
+    }
+
     $power_menu = {
         type = "custom"
         class = "power-menu"
 
-        bar = [ { type = "button" name="power-btn" label = "" on_click = "popup:toggle" } ]
+        bar = [ $button ]
+        popup = [ $popup ]
 
-        popup = [ {
-            type = "box"
-            orientation = "vertical"
-            widgets = [
-                { type = "label" name = "header" label = "Power menu" }
-                {
-                    type = "box"
-                    widgets = [
-                        { type = "button" class="power-btn" label = "<span font-size='40pt'></span>" on_click = "!shutdown now" }
-                        { type = "button" class="power-btn" label = "<span font-size='40pt'></span>" on_click = "!reboot" }
-                    ]
-                }
-                { type = "label" name = "uptime" label = "Up: {{30000:uptime -p | cut -d ' ' -f2-}}" }
-            ]
-        } ]
+        tooltip = "Up: {{30000:uptime -p | cut -d ' ' -f2-}}"
     }
+    
+    $clock = { type = "clock" }
 } in {
-    end = [ $power_menu ]
+    end = [ $power_menu $clock ]
 }
 ```
 </details>

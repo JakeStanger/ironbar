@@ -1,29 +1,17 @@
 * {
     /* `otf-font-awesome` is required to be installed for icons */
     font-family: Noto Sans Nerd Font, sans-serif;
-    /* font-family: 'Jetbrains Mono', monospace;*/
     font-size: 16px;
 
-    /*color: white;*/
-    /*background-color: #2d2d2d;*/
-    /*background-color: red;*/
     border: none;
-
-    /*opacity: 0.4;*/
 }
 
 #bar {
     border-top: 1px solid #424242;
 }
 
-.container {
+.background, .container {
     background-color: #2d2d2d;
-}
-
-/* test  34543*/
-
-#right > * + * {
-    margin-left: 20px;
 }
 
 #workspaces .item {
@@ -57,7 +45,7 @@
 
 #launcher .focused {
     color: white;
-    background-color: black;
+    background-color: #1c1c1c;
     border-bottom: 4px solid #6699cc;
 }
 
@@ -66,25 +54,54 @@
     background-color: #8f0a0a;
 }
 
+#popup-launcher .popup-item {
+    color: white;
+    background-color: #2d2d2d;
+    border-radius: 0;
+}
+
+#popup-launcher .popup-item:hover {
+    background-color: #1c1c1c;
+}
+
+#popup-launcher .popup-item:not(:first-child) {
+    border-top: 1px solid white;
+}
+
 #clock {
     color: white;
     background-color: #2d2d2d;
     font-weight: bold;
+    margin-left: 5px;
+}
+
+#clock:hover {
+    background-color: #1c1c1c;
 }
 
 #script {
+    padding-left: 10px;
     color: white;
 }
 
 #sysinfo {
+    margin-left: 10px;
     color: white;
+}
+
+#sysinfo #item {
+    margin-left: 5px;
+}
+
+#tray {
+    margin-left: 10px;
 }
 
 #tray .item {
     background-color: #2d2d2d;
 }
 
-#mpd {
+#music {
     background-color: #2d2d2d;
     color: white;
 }
@@ -119,30 +136,77 @@
     background-color: #6699cc;
 }
 
-#popup-mpd {
+#music:hover {
+    background-color: #1c1c1c;
+}
+
+#popup-music {
     color: white;
     padding: 1em;
 }
 
-#popup-mpd #album-art {
-    /*border: 1px solid #424242;*/
+#popup-music #album-art {
     margin-right: 1em;
 }
 
-#popup-mpd #title .icon, #popup-mpd #title .label {
+#popup-music #title .icon *, #popup-music #title .label {
     font-size: 1.7em;
 }
 
-#popup-mpd #controls * {
+#popup-music #controls * {
     border-radius: 0;
     background-color: #2d2d2d;
     color: white;
 }
 
-#popup-mpd #controls *:disabled {
+#popup-music #controls *:disabled {
     color: #424242;
+}
+
+#popup-music #volume > box:last-child label {
+    margin-left: 6px;
 }
 
 #focused {
     color: white;
+}
+
+.power-menu {
+    margin-left: 10px;
+}
+
+.power-menu #power-btn {
+    color: white;
+    background-color: #2d2d2d;
+}
+
+.power-menu #power-btn:hover {
+    background-color: #1c1c1c;
+}
+
+.popup-power-menu {
+    padding: 1em;
+}
+
+.popup-power-menu #header {
+    color: white;
+    font-size: 1.4em;
+    border-bottom: 1px solid white;
+    padding-bottom: 0.4em;
+    margin-bottom: 0.8em;
+}
+
+.popup-power-menu .power-btn {
+    color: white;
+    background-color: #2d2d2d;
+    border: 1px solid white;
+    padding: 0.6em 1em;
+}
+
+.popup-power-menu .power-btn + .power-btn {
+    margin-left: 1em;
+}
+
+.popup-power-menu .power-btn:hover {
+    background-color: #1c1c1c;
 }

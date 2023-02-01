@@ -6,8 +6,7 @@ It uses GTK3 and gtk-layer-shell.
 The bar can be styled to your liking using CSS and hot-loads style changes.
 For information and examples on styling please see the [wiki](https://github.com/JakeStanger/ironbar/wiki).
 
-![Screenshot of fully configured bar with MPD widget open](https://user-images.githubusercontent.com/5057870/184539623-92d56a44-a659-49a9-91f9-5cdc453e5dfb.png)
-
+![Screenshot of fully configured bar with MPD widget open](https://f.jstanger.dev/github/ironbar/bar.png)
 
 ## Installation
 
