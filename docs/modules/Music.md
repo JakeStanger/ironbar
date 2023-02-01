@@ -116,7 +116,6 @@ and will be replaced with values from the currently playing track:
 
 | Token        | Description                          |
 |--------------|--------------------------------------|
-| `{icon}`     | Either `icons.play` or `icons.pause` |
 | `{title}`    | Title                                |
 | `{album}`    | Album name                           |
 | `{artist}`   | Artist name                          |
