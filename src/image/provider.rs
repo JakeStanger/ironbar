@@ -85,7 +85,7 @@ impl<'a> ImageProvider<'a> {
             }
             Some(input_type) => Err(Report::msg(format!("Unsupported image type: {input_type}"))
                 .note("You may need to recompile with support if available")),
-            None if PathBuf::from(input_name).exists() => {
+            None if PathBuf::from(input_name).is_file() => {
                 Ok(ImageLocation::Local(PathBuf::from(input_name)))
             }
             None => get_desktop_icon_name(input_name).map_or_else(
