@@ -42,7 +42,7 @@ cargo build --release --no-default-features \
 | clock               | Enables the `clock` module.                                                       |
 | music+all           | Enables the `music` module with support for all player types.                     |
 | music+mpris         | Enables the `music` module with MPRIS support.                                    |
-| music+mpd           | Enables the `music` module with MPD support                                       |
+| music+mpd           | Enables the `music` module with MPD support.                                      |
 | sys_info            | Enables the `sys_info` module.                                                    |
 | tray                | Enables the `tray` module.                                                        |
 | workspaces+all      | Enables the `workspaces` module with support for all compositors.                 |
