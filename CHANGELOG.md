@@ -4,6 +4,44 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.10.0] - 2023-02-01
+### :boom: BREAKING CHANGES
+- due to [`3cf9be8`](https://github.com/JakeStanger/ironbar/commit/3cf9be89fd74face31806165f66b68052b093bab) - global icon theme setting *(commit by [@JakeStanger](https://github.com/JakeStanger))*:
+
+  This removes the `icon_theme` option from `launcher` and `focused`. You will need to set this at the top of your config instead.
+
+- due to [`90f57d6`](https://github.com/JakeStanger/ironbar/commit/90f57d61b94c50c98a6f55de18c6edf3d18aa3fa) - remove irrelevant `icon` format token *(commit by [@JakeStanger](https://github.com/JakeStanger))*:
+
+  (Missed from #96141d4) The `{icon}` token has been removed from the `music` module due to incompatibility with the new image/icon support. The icon now always displays as a separate widget before the label and should be removed from your formatting string.
+
+
+### :sparkles: New Features
+- [`8691824`](https://github.com/JakeStanger/ironbar/commit/8691824db1a12c3f3589ff8b5315b8dba5cb8aec) - **music**: ability to truncate button text *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`07dbf78`](https://github.com/JakeStanger/ironbar/commit/07dbf780105027b533b0bb34c9ae3e4e96f29f4a) - **focused**: ability to truncate label text *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`393800a`](https://github.com/JakeStanger/ironbar/commit/393800aaa2093b9257c43fde8bdb8399f26ebc74) - **custom**: image widget *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`3cf9be8`](https://github.com/JakeStanger/ironbar/commit/3cf9be89fd74face31806165f66b68052b093bab) - global icon theme setting *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`b054c17`](https://github.com/JakeStanger/ironbar/commit/b054c17d14628c9188bfa9aed506ea1de3051f9c) - **workspaces**: support for using images in `name_map` *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`96141d4`](https://github.com/JakeStanger/ironbar/commit/96141d49907412ea26d23ef30c10ade8b32b89b9) - **music**: support for using images in `name_map`, additional icon options *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`c347b6c`](https://github.com/JakeStanger/ironbar/commit/c347b6c9449ce4e16e2e133d7dd35544ab9a533c) - add feature flags *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+
+### :bug: Bug Fixes
+- [`5772711`](https://github.com/JakeStanger/ironbar/commit/57727111923a419f9b7613103283aa4cf6bd082c) - **music**: remote mpris album art not showing *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`5fb4125`](https://github.com/JakeStanger/ironbar/commit/5fb412572f3da60ac482a1960d891f70bc29287b) - **tray**: some init issues *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`058c8f4`](https://github.com/JakeStanger/ironbar/commit/058c8f4228f9f7faa66cda9dd1636ea32e9de68b) - **hyprland**: issues with tracking workspaces *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`51d2c22`](https://github.com/JakeStanger/ironbar/commit/51d2c2279f50add992def0d58cfaa9890ea3d041) - **images**: incorrectly resolving non-files *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+
+### :recycle: Refactors
+- [`012762e`](https://github.com/JakeStanger/ironbar/commit/012762e10203fb2d58160acdae4dc7ca7689b131) - swap out some code for existing macros *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`9750255`](https://github.com/JakeStanger/ironbar/commit/97502559b30c51e77c1dd9a7d794a88756294c83) - **music**: split config code into separate file *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`15f0857`](https://github.com/JakeStanger/ironbar/commit/15f0857859d5d4a590b60b6b1a4347b4b84a58a1) - replace icon loading with improved general image loading *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+
+### :memo: Documentation Changes
+- [`1ed3220`](https://github.com/JakeStanger/ironbar/commit/1ed3220733c2dcb7c5e5cbf377b3324d3183609e) - update CHANGELOG.md for v0.9.0 [skip ci] *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`90f57d6`](https://github.com/JakeStanger/ironbar/commit/90f57d61b94c50c98a6f55de18c6edf3d18aa3fa) - **music**: remove irrelevant `icon` format token *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`6a39905`](https://github.com/JakeStanger/ironbar/commit/6a39905b4333582fbcda81a66a9b91055333d698) - **compiling**: add missing full stop *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`7b23e61`](https://github.com/JakeStanger/ironbar/commit/7b23e61e7dedf2736a30580b6c1aa84e002c462c) - **wiki**: update screenshots and examples *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+
+
 ## [v0.9.0] - 2023-01-28
 ### :boom: BREAKING CHANGES
 - due to [`fa67d07`](https://github.com/JakeStanger/ironbar/commit/fa67d077b136b109edf6dbaa11a33aebf3e044b4) - mouse event config options *(commit by [@JakeStanger](https://github.com/JakeStanger))*:
@@ -195,3 +233,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [v0.7.0]: https://github.com/JakeStanger/ironbar/compare/v0.6.0...v0.7.0
 [v0.8.0]: https://github.com/JakeStanger/ironbar/compare/v0.7.0...v0.8.0
 [v0.9.0]: https://github.com/JakeStanger/ironbar/compare/v0.8.0...v0.9.0
+[v0.10.0]: https://github.com/JakeStanger/ironbar/compare/v0.9.0...v0.10.0
