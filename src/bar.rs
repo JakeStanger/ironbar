@@ -84,6 +84,7 @@ fn setup_layer_shell(
     gtk_layer_shell::set_monitor(win, monitor);
     gtk_layer_shell::set_layer(win, gtk_layer_shell::Layer::Top);
     gtk_layer_shell::auto_exclusive_zone_enable(win);
+    gtk_layer_shell::set_namespace(win , env!("CARGO_PKG_NAME"));
 
     gtk_layer_shell::set_margin(win, gtk_layer_shell::Edge::Top, 0);
     gtk_layer_shell::set_margin(win, gtk_layer_shell::Edge::Bottom, 0);

@@ -29,6 +29,7 @@ impl Popup {
 
         gtk_layer_shell::init_for_window(&win);
         gtk_layer_shell::set_layer(&win, gtk_layer_shell::Layer::Overlay);
+        gtk_layer_shell::set_namespace(&win , env!("CARGO_PKG_NAME"));
 
         gtk_layer_shell::set_margin(
             &win,
