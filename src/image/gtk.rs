@@ -9,6 +9,8 @@ pub fn new_icon_button(input: &str, icon_theme: &IconTheme, size: i32) -> Button
 
     if ImageProvider::is_definitely_image_input(input) {
         let image = Image::new();
+        image.set_widget_name("image");
+
         match ImageProvider::parse(input, icon_theme, size)
             .and_then(|provider| provider.load_into_image(image.clone()))
         {
@@ -34,6 +36,8 @@ pub fn new_icon_label(input: &str, icon_theme: &IconTheme, size: i32) -> gtk::Bo
 
     if ImageProvider::is_definitely_image_input(input) {
         let image = Image::new();
+        image.set_widget_name("image");
+
         container.add(&image);
 
         if let Err(err) = ImageProvider::parse(input, icon_theme, size)
@@ -43,6 +47,8 @@ pub fn new_icon_label(input: &str, icon_theme: &IconTheme, size: i32) -> gtk::Bo
         }
     } else {
         let label = Label::new(Some(input));
+        label.set_widget_name("label");
+
         container.add(&label);
     }
 
