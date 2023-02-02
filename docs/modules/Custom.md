@@ -41,7 +41,7 @@ For example, the following label would output your system uptime, updated every 
 Uptime: {{30000:uptime -p | cut -d ' ' -f2-}}
 ```
 
-Both polling and watching mode are supported. For more information on script syntax, see [here](script).
+Both polling and watching mode are supported. For more information on script syntax, see [here](scripts).
 
 ### Commands
 
