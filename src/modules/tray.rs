@@ -23,14 +23,21 @@ pub struct TrayModule {
 /// Gets a GTK `Image` component
 /// for the status notifier item's icon.
 fn get_icon(item: &StatusNotifierItem) -> Option<Image> {
-    item.icon_theme_path.as_ref().and_then(|path| {
-        let theme = IconTheme::new();
-        theme.append_search_path(path);
-
-        item.icon_name.as_ref().and_then(|icon_name| {
-            let icon_info = theme.lookup_icon(icon_name, 16, IconLookupFlags::empty());
-            icon_info.map(|icon_info| Image::from_pixbuf(icon_info.load_icon().ok().as_ref()))
+    let theme = item
+        .icon_theme_path
+        .as_ref()
+        .map(|path| {
+            let theme = IconTheme::new();
+            theme.append_search_path(path);
+            theme
         })
+        .unwrap_or_default();
+
+    item.icon_name.as_ref().and_then(|icon_name| {
+        tracing::info!("icon name: {icon_name}");
+        let icon_info = theme.lookup_icon(icon_name, 16, IconLookupFlags::empty());
+        tracing::info!("{icon_info:?}");
+        icon_info.map(|icon_info| Image::from_pixbuf(icon_info.load_icon().ok().as_ref()))
     })
 }
 
