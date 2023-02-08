@@ -31,15 +31,15 @@
         ];
       };
     mkRustToolchain = pkgs: pkgs.rust-bin.stable.latest.default;
-		defaultFeatures = [
-			"http"
-    	"config+all"
-    	"clock"
-    	"music+all"
-    	"sys_info"
-    	"tray"
-    	"workspaces+all"
-		];
+    defaultFeatures = [
+      "http"
+      "config+all"
+      "clock"
+      "music+all"
+      "sys_info"
+      "tray"
+      "workspaces+all"
+    ];
   in {
     overlays.default = final: prev: let
       rust = mkRustToolchain final;
@@ -49,22 +49,23 @@
         rustc = rust;
       };
     in {
-      ironbar = features: rustPlatform.buildRustPackage {
-        pname = "ironbar";
-        version = self.rev or "dirty";
-        src = builtins.path {
-          name = "ironbar";
-          path = prev.lib.cleanSource ./.;
+      ironbar = features:
+        rustPlatform.buildRustPackage {
+          pname = "ironbar";
+          version = self.rev or "dirty";
+          src = builtins.path {
+            name = "ironbar";
+            path = prev.lib.cleanSource ./.;
+          };
+          buildNoDefaultFeatures = true;
+          buildFeatures = features;
+          cargoDeps = rustPlatform.importCargoLock {lockFile = ./Cargo.lock;};
+          cargoLock.lockFile = ./Cargo.lock;
+          nativeBuildInputs = with prev; [pkg-config];
+          buildInputs = with prev; [gtk3 gdk-pixbuf gtk-layer-shell libxkbcommon openssl];
         };
-				buildNoDefaultFeatures = true;
-				buildFeatures = features;
-        cargoDeps = rustPlatform.importCargoLock {lockFile = ./Cargo.lock;};
-        cargoLock.lockFile = ./Cargo.lock;
-        nativeBuildInputs = with prev; [pkg-config];
-        buildInputs = with prev; [gtk3 gdk-pixbuf gtk-layer-shell libxkbcommon openssl];
-      };
     };
-		packageBuilder = genSystems(system: self.packages.${system}.ironbar);
+    packageBuilder = genSystems (system: self.packages.${system}.ironbar);
     packages = genSystems (
       system: let
         pkgs = pkgsFor system;
