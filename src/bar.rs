@@ -1,5 +1,5 @@
 use crate::bridge_channel::BridgeChannel;
-use crate::config::{BarPosition, CommonConfig, ModuleConfig};
+use crate::config::{BarPosition, CommonConfig, MarginConfig, ModuleConfig};
 use crate::dynamic_string::DynamicString;
 use crate::modules::{Module, ModuleInfo, ModuleLocation, ModuleUpdateEvent, WidgetContext};
 use crate::popup::Popup;
@@ -24,7 +24,13 @@ pub fn create_bar(
 ) -> Result<()> {
     let win = ApplicationWindow::builder().application(app).build();
 
-    setup_layer_shell(&win, monitor, config.position, config.anchor_to_edges);
+    setup_layer_shell(
+        &win,
+        monitor,
+        config.position,
+        config.anchor_to_edges,
+        config.margin,
+    );
 
     let orientation = config.position.get_orientation();
 
@@ -79,6 +85,7 @@ fn setup_layer_shell(
     monitor: &Monitor,
     position: BarPosition,
     anchor_to_edges: bool,
+    margin: MarginConfig,
 ) {
     gtk_layer_shell::init_for_window(win);
     gtk_layer_shell::set_monitor(win, monitor);
@@ -86,10 +93,10 @@ fn setup_layer_shell(
     gtk_layer_shell::auto_exclusive_zone_enable(win);
     gtk_layer_shell::set_namespace(win, env!("CARGO_PKG_NAME"));
 
-    gtk_layer_shell::set_margin(win, gtk_layer_shell::Edge::Top, 0);
-    gtk_layer_shell::set_margin(win, gtk_layer_shell::Edge::Bottom, 0);
-    gtk_layer_shell::set_margin(win, gtk_layer_shell::Edge::Left, 0);
-    gtk_layer_shell::set_margin(win, gtk_layer_shell::Edge::Right, 0);
+    gtk_layer_shell::set_margin(win, gtk_layer_shell::Edge::Top, margin.top);
+    gtk_layer_shell::set_margin(win, gtk_layer_shell::Edge::Bottom, margin.bottom);
+    gtk_layer_shell::set_margin(win, gtk_layer_shell::Edge::Left, margin.left);
+    gtk_layer_shell::set_margin(win, gtk_layer_shell::Edge::Right, margin.right);
 
     let bar_orientation = position.get_orientation();
 

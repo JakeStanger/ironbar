@@ -74,14 +74,39 @@ impl Default for BarPosition {
     }
 }
 
+#[derive(Debug, Deserialize, Copy, Clone, PartialEq, Eq)]
+pub struct MarginConfig {
+    #[serde(default)]
+    pub bottom: i32,
+    #[serde(default)]
+    pub left: i32,
+    #[serde(default)]
+    pub right: i32,
+    #[serde(default)]
+    pub top: i32,
+}
+
+impl Default for MarginConfig {
+    fn default() -> Self {
+        MarginConfig {
+            bottom: 0,
+            left: 0,
+            right: 0,
+            top: 0,
+        }
+    }
+}
+
 #[derive(Debug, Deserialize, Clone)]
 pub struct Config {
-    #[serde(default = "default_bar_position")]
+    #[serde(default)]
     pub position: BarPosition,
     #[serde(default = "default_true")]
     pub anchor_to_edges: bool,
     #[serde(default = "default_bar_height")]
     pub height: i32,
+    #[serde(default)]
+    pub margin: MarginConfig,
 
     /// GTK icon theme to use.
     pub icon_theme: Option<String>,
@@ -91,10 +116,6 @@ pub struct Config {
     pub end: Option<Vec<ModuleConfig>>,
 
     pub monitors: Option<HashMap<String, MonitorConfig>>,
-}
-
-const fn default_bar_position() -> BarPosition {
-    BarPosition::Bottom
 }
 
 const fn default_bar_height() -> i32 {

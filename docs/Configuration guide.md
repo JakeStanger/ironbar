@@ -272,6 +272,10 @@ The following table lists each of the top-level bar config options:
 | `position`        | `top` or `bottom` or `left` or `right` | `bottom` | The bar's position on screen.                                                           |
 | `anchor_to_edges` | `boolean`                              | `false`  | Whether to anchor the bar to the edges of the screen. Setting to false centres the bar. |
 | `height`          | `integer`                              | `42`     | The bar's height in pixels.                                                             |
+| `margin.top`      | `integer`                              | `0`      | The margin on the top of the bar                                                        |
+| `margin.bottom`   | `integer`                              | `0`      | The margin on the bottom of the bar                                                     |
+| `margin.left`     | `integer`                              | `0`      | The margin on the left of the bar                                                       |
+| `margin.right`    | `integer`                              | `0`      | The margin on the right of the bar                                                      |
 | `icon_theme`      | `string`                               | `null`   | Name of the GTK icon theme to use. Leave blank to use default.                          |
 | `start`           | `Module[]`                             | `[]`     | Array of left or top modules.                                                           |
 | `center`          | `Module[]`                             | `[]`     | Array of center modules.                                                                |
