@@ -1,4 +1,4 @@
-#[cfg(any(feature = "music", feature = "workspaces"))]
+#[cfg(any(feature = "music", feature = "workspaces", feature = "clipboard"))]
 mod gtk;
 mod provider;
 

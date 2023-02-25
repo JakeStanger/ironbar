@@ -61,6 +61,7 @@ cargo build --release --no-default-features \
 | config+toml         | Enables configuration support for TOML.                                           |
 | config+corn         | Enables configuration support for [Corn](https://github.com/jakestanger.corn).    |
 | **Modules**         |                                                                                   |
+| clipboard           | Enables the `clipboard` module.                                                   |
 | clock               | Enables the `clock` module.                                                       |
 | music+all           | Enables the `music` module with support for all player types.                     |
 | music+mpris         | Enables the `music` module with MPRIS support.                                    |

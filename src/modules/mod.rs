@@ -1,3 +1,5 @@
+#[cfg(feature = "clipboard")]
+pub mod clipboard;
 /// Displays the current date and time.
 ///
 /// A custom date/time format string can be set in the config.
