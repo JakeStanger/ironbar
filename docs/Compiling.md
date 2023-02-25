@@ -9,6 +9,28 @@ cargo build --release
 install target/release/ironbar ~/.local/bin/ironbar
 ```
 
+## Build requirements
+
+To build from source, you must have GTK (>= 3.22) and GTK Layer Shell installed.
+
+### Arch
+
+```shell
+pacman -S gtk3 gtk-layer-shell
+```
+
+### Ubuntu/Debian
+
+```shell
+apt install libgtk-3-dev libgtk-layer-shell-dev
+```
+
+### Fedora
+
+```shell
+dnf install gtk3 gtk-layer-shell
+```
+
 ## Features
 
 By default, all features are enabled for convenience. This can result in a significant compile time.
