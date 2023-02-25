@@ -74,7 +74,7 @@ impl Default for BarPosition {
     }
 }
 
-#[derive(Debug, Deserialize, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Default, Deserialize, Copy, Clone, PartialEq, Eq)]
 pub struct MarginConfig {
     #[serde(default)]
     pub bottom: i32,
@@ -84,17 +84,6 @@ pub struct MarginConfig {
     pub right: i32,
     #[serde(default)]
     pub top: i32,
-}
-
-impl Default for MarginConfig {
-    fn default() -> Self {
-        MarginConfig {
-            bottom: 0,
-            left: 0,
-            right: 0,
-            top: 0,
-        }
-    }
 }
 
 #[derive(Debug, Deserialize, Clone)]

@@ -394,8 +394,6 @@ fn setup_module_common_options(container: EventBox, common: CommonConfig) {
     let scroll_down_script = common.on_scroll_down.map(Script::new_polling);
 
     container.connect_scroll_event(move |_, event| {
-        println!("{:?}", event.direction());
-
         let script = match event.direction() {
             ScrollDirection::Up => scroll_up_script.as_ref(),
             ScrollDirection::Down => scroll_down_script.as_ref(),

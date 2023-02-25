@@ -361,16 +361,19 @@ fn refresh_system_tokens(format_info: &mut HashMap<String, String>, sys: &System
     // no refresh required for these tokens
 
     let load_average = sys.load_average();
-    format_info.insert(String::from("load_average:1"), load_average.one.to_string());
+    format_info.insert(
+        String::from("load_average:1"),
+        format!("{:.2}", load_average.one),
+    );
 
     format_info.insert(
         String::from("load_average:5"),
-        load_average.five.to_string(),
+        format!("{:.2}", load_average.five),
     );
 
     format_info.insert(
         String::from("load_average:15"),
-        load_average.fifteen.to_string(),
+        format!("{:.2}", load_average.fifteen),
     );
 
     let uptime = Duration::from_secs(sys.uptime()).as_secs();

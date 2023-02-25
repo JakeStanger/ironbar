@@ -132,16 +132,16 @@ impl<'a> ImageProvider<'a> {
                 });
             }
         } else {
-            self.load_into_image_sync(image)?;
+            self.load_into_image_sync(&image)?;
         };
 
         #[cfg(not(feature = "http"))]
-        self.load_into_image_sync(image)?;
+        self.load_into_image_sync(&image)?;
 
         Ok(())
     }
 
-    fn load_into_image_sync(&self, image: gtk::Image) -> Result<()> {
+    fn load_into_image_sync(&self, image: &gtk::Image) -> Result<()> {
         let pixbuf = match &self.location {
             ImageLocation::Icon { name, theme } => self.get_from_icon(name, theme),
             ImageLocation::Local(path) => self.get_from_file(path),
