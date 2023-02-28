@@ -1,50 +1,20 @@
 anchor_to_edges: true
-icon_theme: Paper
-position: bottom
-
-start:
-  - bar:
-      - size: 32
-        src: file:///path/to/image.jpg
-        type: image
-    type: custom
-
-  - all_monitors: false
-    name_map:
-      '1': ﭮ
-      '2': icon:firefox
-      '3': 
-      Code: 
-      Games: icon:steam
-    type: workspaces
-
-  - favorites:
-      - firefox
-      - discord
-      - Steam
-    show_icons: true
-    show_names: false
-    type: launcher
-
 end:
   - music_dir: /home/jake/Music
     player_type: mpd
     truncate:
-      length: 100
+      max_length: 100
       mode: end
     type: music
-
   - host: chloe:6600
     player_type: mpd
     truncate: end
     type: music
-
   - cmd: /home/jake/bin/phone-battery
     show_if:
       cmd: /home/jake/bin/phone-connected
       interval: 500
     type: script
-
   - format:
       -  {cpu_percent}% | {temp_c:k10temp_Tccd1}°C
       -  {memory_used} / {memory_total} GB ({memory_percent}%)
@@ -60,7 +30,11 @@ end:
       networks: 3
       temps: 5
     type: sys_info
-
+  - max_items: 3
+    truncate:
+      length: 50
+      mode: end
+    type: clipboard
   - bar:
       - label: 
         name: power-btn
@@ -89,9 +63,23 @@ end:
             type: label
     tooltip: 'Up: {{30000:uptime -p | cut -d '' '' -f2-}}'
     type: custom
-
   - type: clock
-
-
-
+icon_theme: Paper
+position: bottom
+start:
+  - all_monitors: false
+    name_map:
+      '1': ﭮ
+      '2': icon:firefox
+      '3': 
+      Code: 
+      Games: icon:steam
+    type: workspaces
+  - favorites:
+      - firefox
+      - discord
+      - Steam
+    show_icons: true
+    show_names: false
+    type: launcher
 

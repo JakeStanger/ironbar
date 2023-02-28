@@ -8,7 +8,7 @@ player_type = 'mpd'
 type = 'music'
 
 [end.truncate]
-length = 100
+max_length = 100
 mode = 'end'
 
 [[end]]
@@ -43,6 +43,14 @@ disks = 300
 memory = 30
 networks = 3
 temps = 5
+
+[[end]]
+max_items = 3
+type = 'clipboard'
+
+[end.truncate]
+length = 50
+mode = 'end'
 
 [[end]]
 class = 'power-menu'
@@ -86,14 +94,6 @@ type = 'label'
 
 [[end]]
 type = 'clock'
-
-[[start]]
-type = 'custom'
-
-[[start.bar]]
-size = 32
-src = 'file:///path/to/image.jpg'
-type = 'image'
 
 [[start]]
 all_monitors = false

@@ -1,9 +1,8 @@
-use super::toplevel::{Toplevel, ToplevelEvent};
-use super::LazyGlobal;
+use super::handle::{Toplevel, ToplevelEvent};
+use crate::wayland::LazyGlobal;
 use smithay_client_toolkit::environment::{Environment, GlobalHandler};
 use std::cell::RefCell;
-use std::rc;
-use std::rc::Rc;
+use std::rc::{self, Rc};
 use tracing::warn;
 use wayland_client::protocol::wl_registry::WlRegistry;
 use wayland_client::{Attached, DispatchData};
@@ -155,7 +154,7 @@ impl ToplevelHandling for ToplevelHandler {
     }
 }
 
-pub fn listen_for_toplevels<E, F>(env: Environment<E>, f: F) -> ToplevelStatusListener
+pub fn listen_for_toplevels<E, F>(env: &Environment<E>, f: F) -> ToplevelStatusListener
 where
     E: ToplevelHandling,
     F: FnMut(ZwlrForeignToplevelHandleV1, ToplevelEvent, DispatchData) + 'static,

@@ -6,11 +6,22 @@ It uses GTK3 and gtk-layer-shell.
 The bar can be styled to your liking using CSS and hot-loads style changes.
 For information and examples on styling please see the [wiki](https://github.com/JakeStanger/ironbar/wiki).
 
-![Screenshot of fully configured bar with MPD widget open](https://f.jstanger.dev/github/ironbar/bar.png)
+![Screenshot of fully configured bar with MPD widget open](https://f.jstanger.dev/github/ironbar/bar.png?raw)
+
+## Features
+
+- First-class support for Sway and Hyprland, but should (mostly) work on any wlroots compositor.
+- Fully themeable with CSS and hot-loaded styles. 
+- Support for multiple configuration languages.
+- Popups used by widgets to show rich content and controls on click.
+- Out of the box widgets which can be used to create anything from a lightweight to a more traditional desktop experience.
+- Ability to create custom widgets (including popups), run scripts and inject dynamic content. 
 
 ## Installation
 
 ### Cargo
+
+Ensure you have the [build dependencies](https://github.com/JakeStanger/ironbar/wiki/compiling#Build-requirements) installed.
 
 ```sh
 cargo install ironbar
@@ -74,6 +85,8 @@ in case you don't want to compile Ironbar.
 
 ### Source
 
+Ensure you have the [build dependencies](https://github.com/JakeStanger/ironbar/wiki/compiling#Build-requirements) installed.
+
 ```sh
 git clone https://github.com/jakestanger/ironbar.git
 cd ironbar
@@ -83,7 +96,7 @@ install target/release/ironbar ~/.local/bin/ironbar
 ```
 
 By default, all features are enabled. 
-See [here](https://github.com/JakeStanger/ironbar/wiki/compiling) for controlling which features are included.
+See [here](https://github.com/JakeStanger/ironbar/wiki/compiling#features) for controlling which features are included.
 
 [repo](https://github.com/jakestanger/ironbar)
 

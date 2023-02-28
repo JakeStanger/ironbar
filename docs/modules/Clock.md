@@ -69,9 +69,9 @@ end:
 
 ## Styling
 
-| Selector                      | Description                                                                        |
-|-------------------------------|------------------------------------------------------------------------------------|
-| `#clock`                      | Clock widget button                                                                |
-| `#popup-clock`                | Clock popup box                                                                    |
+| Selector                       | Description                                                                        |
+|--------------------------------|------------------------------------------------------------------------------------|
+| `#clock`                       | Clock widget button                                                                |
+| `#popup-clock`                 | Clock popup box                                                                    |
 | `#popup-clock #calendar-clock` | Clock inside the popup                                                             |
 | `#popup-clock #calendar`       | Calendar widget inside the popup. GTK provides some OOTB styling options for this. |

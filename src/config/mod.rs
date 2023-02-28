@@ -1,6 +1,8 @@
 mod r#impl;
 mod truncate;
 
+#[cfg(feature = "clipboard")]
+use crate::modules::clipboard::ClipboardModule;
 #[cfg(feature = "clock")]
 use crate::modules::clock::ClockModule;
 use crate::modules::custom::CustomModule;
@@ -38,19 +40,21 @@ pub struct CommonConfig {
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum ModuleConfig {
     #[cfg(feature = "clock")]
-    Clock(ClockModule),
-    Custom(CustomModule),
-    Focused(FocusedModule),
-    Launcher(LauncherModule),
+    Clipboard(Box<ClipboardModule>),
+    #[cfg(feature = "clock")]
+    Clock(Box<ClockModule>),
+    Custom(Box<CustomModule>),
+    Focused(Box<FocusedModule>),
+    Launcher(Box<LauncherModule>),
     #[cfg(feature = "music")]
-    Music(MusicModule),
-    Script(ScriptModule),
+    Music(Box<MusicModule>),
+    Script(Box<ScriptModule>),
     #[cfg(feature = "sys_info")]
-    SysInfo(SysInfoModule),
+    SysInfo(Box<SysInfoModule>),
     #[cfg(feature = "tray")]
-    Tray(TrayModule),
+    Tray(Box<TrayModule>),
     #[cfg(feature = "workspaces")]
-    Workspaces(WorkspacesModule),
+    Workspaces(Box<WorkspacesModule>),
 }
 
 #[derive(Debug, Clone)]
@@ -74,7 +78,7 @@ impl Default for BarPosition {
     }
 }
 
-#[derive(Debug, Deserialize, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Default, Deserialize, Copy, Clone, PartialEq, Eq)]
 pub struct MarginConfig {
     #[serde(default)]
     pub bottom: i32,
@@ -84,17 +88,6 @@ pub struct MarginConfig {
     pub right: i32,
     #[serde(default)]
     pub top: i32,
-}
-
-impl Default for MarginConfig {
-    fn default() -> Self {
-        MarginConfig {
-            bottom: 0,
-            left: 0,
-            right: 0,
-            top: 0,
-        }
-    }
 }
 
 #[derive(Debug, Deserialize, Clone)]

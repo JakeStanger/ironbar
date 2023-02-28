@@ -193,7 +193,7 @@ fn add_modules(content: &gtk::Box, modules: Vec<ModuleConfig>, info: &ModuleInfo
     macro_rules! add_module {
         ($module:expr, $id:expr) => {{
             let common = $module.common.take().expect("Common config did not exist");
-            let widget = create_module($module, $id, &info, &Arc::clone(&popup))?;
+            let widget = create_module(*$module, $id, &info, &Arc::clone(&popup))?;
 
             let container = wrap_widget(&widget);
             content.add(&container);
@@ -203,6 +203,8 @@ fn add_modules(content: &gtk::Box, modules: Vec<ModuleConfig>, info: &ModuleInfo
 
     for (id, config) in modules.into_iter().enumerate() {
         match config {
+            #[cfg(feature = "clipboard")]
+            ModuleConfig::Clipboard(mut module) => add_module!(module, id),
             #[cfg(feature = "clock")]
             ModuleConfig::Clock(mut module) => add_module!(module, id),
             ModuleConfig::Custom(mut module) => add_module!(module, id),
@@ -289,6 +291,10 @@ fn setup_receiver<TSend>(
 ) where
     TSend: Clone + Send + 'static,
 {
+    // some rare cases can cause the popup to incorrectly calculate its size on first open.
+    // we can fix that by just force re-rendering it on its first open.
+    let mut has_popup_opened = false;
+
     channel.recv(move |ev| {
         match ev {
             ModuleUpdateEvent::Update(update) => {
@@ -306,6 +312,12 @@ fn setup_receiver<TSend>(
                 } else {
                     popup.show_content(id);
                     popup.show(geometry);
+
+                    if !has_popup_opened {
+                        popup.show_content(id);
+                        popup.show(geometry);
+                        has_popup_opened = true;
+                    }
                 }
             }
             ModuleUpdateEvent::OpenPopup(geometry) => {
@@ -315,6 +327,12 @@ fn setup_receiver<TSend>(
                 popup.hide();
                 popup.show_content(id);
                 popup.show(geometry);
+
+                if !has_popup_opened {
+                    popup.show_content(id);
+                    popup.show(geometry);
+                    has_popup_opened = true;
+                }
             }
             ModuleUpdateEvent::ClosePopup => {
                 debug!("Closing popup for {} [#{}]", name, id);
@@ -394,8 +412,6 @@ fn setup_module_common_options(container: EventBox, common: CommonConfig) {
     let scroll_down_script = common.on_scroll_down.map(Script::new_polling);
 
     container.connect_scroll_event(move |_, event| {
-        println!("{:?}", event.direction());
-
         let script = match event.direction() {
             ScrollDirection::Up => scroll_up_script.as_ref(),
             ScrollDirection::Down => scroll_down_script.as_ref(),

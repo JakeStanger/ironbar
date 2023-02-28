@@ -110,9 +110,9 @@ impl Module<gtk::Box> for LauncherModule {
                 let wl = wayland::get_client().await;
                 let open_windows = read_lock!(wl.toplevels);
 
-                let mut items = lock!(items);
-
-                for (_, (window, _)) in open_windows.clone() {
+                let open_windows = open_windows.clone();
+                for (_, (window, _)) in open_windows {
+                    let mut items = lock!(items);
                     let item = items.get_mut(&window.app_id);
                     match item {
                         Some(item) => {
@@ -124,6 +124,7 @@ impl Module<gtk::Box> for LauncherModule {
                     }
                 }
 
+                let items = lock!(items);
                 let items = items.iter();
                 for (_, item) in items {
                     tx.try_send(ModuleUpdateEvent::Update(LauncherUpdate::AddItem(
@@ -281,7 +282,7 @@ impl Module<gtk::Box> for LauncherModule {
                         ItemEvent::FocusItem(app_id) => items
                             .get(&app_id)
                             .and_then(|item| item.windows.first().map(|(_, win)| win.id)),
-                        ItemEvent::FocusWindow(id) => Some(id),
+                        ItemEvent::FocusWindow(id) => Some(id), // FIXME: Broken on wlroots-git
                         ItemEvent::OpenItem(_) => unreachable!(),
                     };
 
@@ -292,6 +293,9 @@ impl Module<gtk::Box> for LauncherModule {
                             handle.activate(seat);
                         };
                     }
+
+                    // roundtrip to immediately send activate event
+                    wl.roundtrip();
                 }
             }
         });

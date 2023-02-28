@@ -1,3 +1,5 @@
+#[cfg(feature = "clipboard")]
+pub mod clipboard;
 #[cfg(feature = "workspaces")]
 pub mod compositor;
 #[cfg(feature = "music")]
