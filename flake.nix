@@ -31,15 +31,15 @@
         ];
       };
     mkRustToolchain = pkgs: pkgs.rust-bin.stable.latest.default;
-    defaultFeatures = [
-      "http"
-      "config+all"
-      "clock"
-      "music+all"
-      "sys_info"
-      "tray"
-      "workspaces+all"
-    ];
+    # defaultFeatures = [
+    #   "http"
+    #   "config+all"
+    #   "clock"
+    #   "music+all"
+    #   "sys_info"
+    #   "tray"
+    #   "workspaces+all"
+    # ];
   in {
     overlays.default = final: prev: let
       rust = mkRustToolchain final;
@@ -57,7 +57,7 @@
             name = "ironbar";
             path = prev.lib.cleanSource ./.;
           };
-          buildNoDefaultFeatures = true;
+          buildNoDefaultFeatures = if features == [] then false else true;
           buildFeatures = features;
           cargoDeps = rustPlatform.importCargoLock {lockFile = ./Cargo.lock;};
           cargoLock.lockFile = ./Cargo.lock;
@@ -72,7 +72,7 @@
       in
         (self.overlays.default pkgs pkgs)
         // {
-          default = self.packages.${system}.ironbar defaultFeatures;
+          default = self.packages.${system}.ironbar [];
         }
     );
     devShells = genSystems (system: let
@@ -100,7 +100,7 @@
       ...
     }: let
       cfg = config.programs.ironbar;
-      defaultIronbarPackage = self.packages.${pkgs.hostPlatform.system}.default defaultFeatures;
+      defaultIronbarPackage = self.packages.${pkgs.hostPlatform.system}.default [];
       jsonFormat = pkgs.formats.json {};
     in {
       options.programs.ironbar = {
