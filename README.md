@@ -59,7 +59,7 @@ Here is an example nix flake that uses Ironbar.
             enable = true;
             config = {};
             style = "";
-						package = inputs.ironbar.packageBuilder ["features"];
+            package = inputs.ironbar.packageBuilder ["feature" "another_feature"];
           };
         }
       ];
