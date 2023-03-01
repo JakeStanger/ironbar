@@ -210,3 +210,31 @@
 .popup-power-menu .power-btn:hover {
     background-color: #1c1c1c;
 }
+
+#clipboard * {
+    font-size: 1.8em;
+}
+
+#popup-clipboard {
+    padding: 1em;
+    color: white;
+}
+
+#popup-clipboard .item {
+    border-bottom: 1px solid #424242;
+}
+
+#popup-clipboard .btn > *:nth-child(2) {
+    padding: 10px;
+}
+
+#popup-clipboard .btn-remove {
+    background-color: #2d2d2d;
+    color: white;
+    font-size: 1.2em;
+    border-left: 1px solid #424242;
+}
+
+#popup-clipboard .btn-remove:hover {
+    color: #fcc;
+}
