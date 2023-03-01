@@ -57,7 +57,10 @@
             name = "ironbar";
             path = prev.lib.cleanSource ./.;
           };
-          buildNoDefaultFeatures = if features == [] then false else true;
+          buildNoDefaultFeatures =
+            if features == []
+            then false
+            else true;
           buildFeatures = features;
           cargoDeps = rustPlatform.importCargoLock {lockFile = ./Cargo.lock;};
           cargoLock.lockFile = ./Cargo.lock;
