@@ -1,7 +1,6 @@
 use crate::script::{OutputStream, Script};
 use crate::{lock, send};
 use gtk::prelude::*;
-use indexmap::IndexMap;
 use std::sync::{Arc, Mutex};
 use tokio::spawn;
 
@@ -60,13 +59,13 @@ impl DynamicString {
             chars.drain(..skip);
         }
 
-        let label_parts = Arc::new(Mutex::new(IndexMap::new()));
+        let label_parts = Arc::new(Mutex::new(Vec::new()));
         let (tx, rx) = glib::MainContext::channel(glib::PRIORITY_DEFAULT);
 
         for (i, segment) in segments.into_iter().enumerate() {
             match segment {
                 DynamicStringSegment::Static(str) => {
-                    lock!(label_parts).insert(i, str);
+                    lock!(label_parts).push(str);
                 }
                 DynamicStringSegment::Dynamic(script) => {
                     let tx = tx.clone();
@@ -78,13 +77,9 @@ impl DynamicString {
                                 if let OutputStream::Stdout(out) = out {
                                     let mut label_parts = lock!(label_parts);
 
-                                    label_parts.insert(i, out);
+                                    let _ = std::mem::replace(&mut label_parts[i], out);
 
-                                    let string = label_parts
-                                        .iter()
-                                        .map(|(_, part)| part.as_str())
-                                        .collect::<String>();
-
+                                    let string = label_parts.join("");
                                     send!(tx, string);
                                 }
                             })
@@ -96,11 +91,7 @@ impl DynamicString {
 
         // initialize
         {
-            let label_parts = lock!(label_parts)
-                .iter()
-                .map(|(_, part)| part.as_str())
-                .collect::<String>();
-
+            let label_parts = lock!(label_parts).join("");
             send!(tx, label_parts);
         }
 
