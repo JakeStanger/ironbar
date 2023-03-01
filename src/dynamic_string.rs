@@ -71,6 +71,9 @@ impl DynamicString {
                     let tx = tx.clone();
                     let label_parts = label_parts.clone();
 
+                    // insert blank value to preserve segment order
+                    lock!(label_parts).push(String::new());
+
                     spawn(async move {
                         script
                             .run(|(out, _)| {
