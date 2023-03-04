@@ -89,7 +89,7 @@ impl<'a> ImageProvider<'a> {
                 Ok(ImageLocation::Local(PathBuf::from(input_name)))
             }
             None => get_desktop_icon_name(input_name).map_or_else(
-                || Err(Report::msg("Unknown image type")),
+                || Err(Report::msg(format!("Unknown image type: '{input}'"))),
                 |input| Self::get_location(&input, theme, size),
             ),
         }
