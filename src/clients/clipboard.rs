@@ -97,8 +97,7 @@ impl ClipboardClient {
             }
 
             let iter = cache.iter();
-            for (id, (item, _)) in iter {
-                println!("Initialising value with id {id}");
+            for (_, (item, _)) in iter {
                 try_send!(tx, ClipboardEvent::Add(item.clone()));
             }
         }

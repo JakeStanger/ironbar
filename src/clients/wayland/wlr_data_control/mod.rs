@@ -246,7 +246,6 @@ fn read_file(mime_type: &MimeType, file: &mut File) -> io::Result<ClipboardItem>
             file.read_to_end(&mut bytes)?;
             let bytes = Bytes::from(&bytes);
 
-            println!("Num bytes: {}", bytes.len());
             ClipboardValue::Image(bytes)
         }
     };
