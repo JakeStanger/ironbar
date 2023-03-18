@@ -6,4 +6,6 @@ pub mod compositor;
 pub mod music;
 #[cfg(feature = "tray")]
 pub mod system_tray;
+#[cfg(feature = "upower")]
+pub mod upower;
 pub mod wayland;
