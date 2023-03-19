@@ -32,6 +32,7 @@ use tokio::task::block_in_place;
 use crate::error::ExitCode;
 use clients::wayland::{self, WaylandClient};
 use tracing::{debug, error, info};
+use universal_config::ConfigLoader;
 
 const GTK_APP_ID: &str = "dev.jstanger.ironbar";
 const VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -57,13 +58,19 @@ async fn main() -> Result<()> {
             |display| display,
         );
 
-        let config = match Config::load() {
+        let config_res = match env::var("IRONBAR_CONFIG") {
+            Ok(path) => ConfigLoader::load(path),
+            Err(_) => ConfigLoader::new("ironbar").find_and_load(),
+        };
+
+        let config = match config_res {
             Ok(config) => config,
             Err(err) => {
                 error!("{:?}", err);
                 exit(ExitCode::Config as i32)
             }
         };
+
         debug!("Loaded config file");
 
         if let Err(err) = create_bars(app, &display, wayland_client, &config) {
