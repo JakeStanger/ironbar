@@ -438,7 +438,7 @@ impl Module<gtk::Box> for LauncherModule {
                             .into_iter()
                             .map(|(_, win)| {
                                 let button = Button::builder()
-                                    .label(&clamp(&win.name))
+                                    .label(clamp(&win.name))
                                     .height_request(40)
                                     .build();
 
@@ -468,7 +468,7 @@ impl Module<gtk::Box> for LauncherModule {
                         if let Some(buttons) = buttons.get_mut(&app_id) {
                             let button = Button::builder()
                                 .height_request(40)
-                                .label(&clamp(&win.name))
+                                .label(clamp(&win.name))
                                 .build();
 
                             {

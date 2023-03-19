@@ -116,7 +116,7 @@ impl Widget {
         let mut builder = Label::builder().use_markup(true);
 
         if let Some(name) = self.name {
-            builder = builder.name(&name);
+            builder = builder.name(name);
         }
 
         let label = builder.build();
@@ -143,7 +143,7 @@ impl Widget {
         let mut builder = Button::builder();
 
         if let Some(name) = self.name {
-            builder = builder.name(&name);
+            builder = builder.name(name);
         }
 
         let button = builder.build();
