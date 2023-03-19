@@ -45,9 +45,9 @@ workspaces = ["futures-util"]
 
 [dependencies]
 # core
-gtk = "0.16.0"
-gtk-layer-shell = "0.5.0"
-glib = "0.16.2"
+gtk = "0.17.0"
+gtk-layer-shell = "0.6.0"
+glib = "0.17.5"
 tokio = { version = "1.21.2", features = ["macros", "rt-multi-thread", "time", "process", "sync", "io-util", "net"] }
 tracing = "0.1.37"
 tracing-subscriber = { version = "0.3.16", features = ["env-filter"] }
