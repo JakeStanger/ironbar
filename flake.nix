@@ -6,9 +6,6 @@
       url = "github:oxalica/rust-overlay";
       inputs.nixpkgs.follows = "nixpkgs";
     };
-    #nci.url = "github:yusdacra/nix-cargo-integration";
-    #nci.inputs.nixpkgs.follows = "nixpkgs";
-    #nci.inputs.rust-overlay.follows = "rust-overlay";
   };
   outputs = {
     self,
@@ -31,15 +28,6 @@
         ];
       };
     mkRustToolchain = pkgs: pkgs.rust-bin.stable.latest.default;
-    # defaultFeatures = [
-    #   "http"
-    #   "config+all"
-    #   "clock"
-    #   "music+all"
-    #   "sys_info"
-    #   "tray"
-    #   "workspaces+all"
-    # ];
   in {
     overlays.default = final: prev: let
       rust = mkRustToolchain final;
@@ -48,34 +36,25 @@
         cargo = rust;
         rustc = rust;
       };
+      props = builtins.fromTOML (builtins.readFile ./Cargo.toml);
+      mkDate = longDate: (lib.concatStringsSep "-" [
+        (builtins.substring 0 4 longDate)
+        (builtins.substring 4 2 longDate)
+        (builtins.substring 6 2 longDate)
+      ]);
     in {
-      ironbar = features:
-        rustPlatform.buildRustPackage {
-          pname = "ironbar";
-          version = self.rev or "dirty";
-          src = builtins.path {
-            name = "ironbar";
-            path = prev.lib.cleanSource ./.;
-          };
-          buildNoDefaultFeatures =
-            if features == []
-            then false
-            else true;
-          buildFeatures = features;
-          cargoDeps = rustPlatform.importCargoLock {lockFile = ./Cargo.lock;};
-          cargoLock.lockFile = ./Cargo.lock;
-          nativeBuildInputs = with prev; [pkg-config];
-          buildInputs = with prev; [gtk3 gdk-pixbuf gtk-layer-shell libxkbcommon openssl];
-        };
+      ironbar = prev.callPackage ./nix/default.nix {
+        version = props.package.version + "+date=" + (mkDate (self.lastModifiedDate or "19700101")) + "_" + (self.shortRev or "dirty");
+        inherit rustPlatform;
+      };
     };
-    packageBuilder = genSystems (system: self.packages.${system}.ironbar);
     packages = genSystems (
       system: let
         pkgs = pkgsFor system;
       in
         (self.overlays.default pkgs pkgs)
         // {
-          default = self.packages.${system}.ironbar [];
+          default = self.packages.${system}.ironbar;
         }
     );
     devShells = genSystems (system: let
@@ -103,7 +82,7 @@
       ...
     }: let
       cfg = config.programs.ironbar;
-      defaultIronbarPackage = self.packages.${pkgs.hostPlatform.system}.default [];
+      defaultIronbarPackage = self.packages.${pkgs.hostPlatform.system}.default;
       jsonFormat = pkgs.formats.json {};
     in {
       options.programs.ironbar = {
@@ -111,49 +90,61 @@
         package = lib.mkOption {
           type = with lib.types; package;
           default = defaultIronbarPackage;
-          description = "The package for ironbar to use";
+          description = "The package for ironbar to use.";
         };
         systemd = lib.mkOption {
           type = lib.types.bool;
           default = pkgs.stdenv.isLinux;
-          description = "Whether to enable to systemd service for ironbar";
+          description = "Whether to enable to systemd service for ironbar.";
         };
         style = lib.mkOption {
           type = lib.types.lines;
           default = "";
-          description = "The stylesheet to apply to ironbar";
+          description = "The stylesheet to apply to ironbar.";
         };
         config = lib.mkOption {
           type = jsonFormat.type;
           default = {};
-          description = "The config to pass to ironbar";
+          description = "The config to pass to ironbar.";
+        };
+        features = lib.mkOption {
+          type = lib.types.listOf lib.types.nonEmptyStr;
+          default = [];
+          description = "The features to be used.";
         };
       };
-      config = lib.mkIf cfg.enable {
-        home.packages = [cfg.package];
-        xdg.configFile = {
-          "ironbar/config.json" = lib.mkIf (cfg.config != "") {
-            source = jsonFormat.generate "ironbar-config" cfg.config;
+      config = let
+        pkg = cfg.package.override {features = cfg.features;};
+      in
+        lib.mkIf cfg.enable {
+          home.packages = [pkg];
+          xdg.configFile = {
+            "ironbar/config.json" = lib.mkIf (cfg.config != "") {
+              source = jsonFormat.generate "ironbar-config" cfg.config;
+            };
+            "ironbar/style.css" = lib.mkIf (cfg.style != "") {
+              text = cfg.style;
+            };
           };
-          "ironbar/style.css" = lib.mkIf (cfg.style != "") {
-            text = cfg.style;
+          systemd.user.services.ironbar = lib.mkIf cfg.systemd {
+            Unit = {
+              Description = "Systemd service for Ironbar";
+              Requires = ["graphical-session.target"];
+            };
+            Service = {
+              Type = "simple";
+              ExecStart = "${pkg}/bin/ironbar";
+            };
+            Install.WantedBy = [
+              (lib.mkIf config.wayland.windowManager.hyprland.systemdIntegration "hyprland-session.target")
+              (lib.mkIf config.wayland.windowManager.sway.systemdIntegration "sway-session.target")
+            ];
           };
         };
-        systemd.user.services.ironbar = lib.mkIf cfg.systemd {
-          Unit = {
-            Description = "Systemd service for Ironbar";
-            Requires = ["graphical-session.target"];
-          };
-          Service = {
-            Type = "simple";
-            ExecStart = "${cfg.package}/bin/ironbar";
-          };
-          Install.WantedBy = [
-            (lib.mkIf config.wayland.windowManager.hyprland.systemdIntegration "hyprland-session.target")
-            (lib.mkIf config.wayland.windowManager.sway.systemdIntegration "sway-session.target")
-          ];
-        };
-      };
     };
+  };
+  nixConfig = {
+    extra-substituters = ["https://jakestanger.cachix.org"];
+    extra-trusted-public-keys = ["jakestanger.cachix.org-1:VWJE7AWNe5/KOEvCQRxoE8UsI2Xs2nHULJ7TEjYm7mM="];
   };
 }
