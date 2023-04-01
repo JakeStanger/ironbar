@@ -67,6 +67,16 @@ let {
 
     $clipboard = { type = "clipboard" max_items = 3 truncate.mode = "end" truncate.length = 50 }
 
+    $volume = {
+        type = "volume"
+        format = "{icon} {volume}%"
+        max_volume = 100
+        icons.volume_high = "󰕾"
+        icons.volume_medium = "󰖀"
+        icons.volume_low = "󰕿"
+        icons.muted = "󰝟"
+    }
+
     $label = { type = "label" label = "random num: {{500:echo FIXME}}" }
 
     // -- begin custom --
@@ -100,7 +110,7 @@ let {
     // -- end custom --
 
     $left = [ $workspaces $launcher $label ]
-    $right = [ $mpd_local $mpd_server $phone_battery $sys_info $clipboard $power_menu $clock ]
+    $right = [ $mpd_local $mpd_server $phone_battery $sys_info $volume $clipboard $power_menu $clock ]
 }
 in {
     anchor_to_edges = true

@@ -10,6 +10,8 @@ pub mod music;
 pub mod system_tray;
 #[cfg(feature = "upower")]
 pub mod upower;
+#[cfg(feature = "volume")]
+pub mod volume;
 pub mod wayland;
 
 /// Singleton wrapper consisting of
@@ -27,6 +29,8 @@ pub struct Clients {
     tray: Option<Arc<system_tray::TrayEventReceiver>>,
     #[cfg(feature = "upower")]
     upower: Option<Arc<zbus::fdo::PropertiesProxy<'static>>>,
+    #[cfg(feature = "volume")]
+    volume: Option<Arc<volume::Client>>,
 }
 
 impl Clients {
@@ -84,6 +88,13 @@ impl Clients {
             .get_or_insert_with(|| {
                 crate::await_sync(async { upower::create_display_proxy().await })
             })
+            .clone()
+    }
+
+    #[cfg(feature = "volume")]
+    pub fn volume(&mut self) -> Arc<volume::Client> {
+        self.volume
+            .get_or_insert_with(volume::create_client)
             .clone()
     }
 }

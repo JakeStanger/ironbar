@@ -392,6 +392,8 @@ fn add_modules(
             ModuleConfig::Tray(mut module) => add_module!(module, id),
             #[cfg(feature = "upower")]
             ModuleConfig::Upower(mut module) => add_module!(module, id),
+            #[cfg(feature = "volume")]
+            ModuleConfig::Volume(mut module) => add_module!(module, id),
             #[cfg(feature = "workspaces")]
             ModuleConfig::Workspaces(mut module) => add_module!(module, id),
         }
