@@ -4,6 +4,43 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.11.0] - 2023-04-01
+### :boom: BREAKING CHANGES
+- due to [`ca4fe42`](https://github.com/JakeStanger/ironbar/commit/ca4fe422f22866748f2cb6239b31170a974d254b) - ability to set fixed length *(commit by [@JakeStanger](https://github.com/JakeStanger))*:
+
+  This changes the behaviour of `truncate.length`. A new property, `truncate.max_length`, has been introduced that uses the old behaviour.
+
+
+### :sparkles: New Features
+- [`d253c4b`](https://github.com/JakeStanger/ironbar/commit/d253c4bd7f306c7b8fef223d1beb7b1f6e77629b) - add configurable margins around bar *(commit by [@ttoino](https://github.com/ttoino))*
+- [`ca4fe42`](https://github.com/JakeStanger/ironbar/commit/ca4fe422f22866748f2cb6239b31170a974d254b) - **truncate**: ability to set fixed length *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`575d6cc`](https://github.com/JakeStanger/ironbar/commit/575d6cc30f9e28079aed8425566048abd3d9e022) - new clipboard manager module *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`9984b63`](https://github.com/JakeStanger/ironbar/commit/9984b638b55adea11ba90412346fbb8220f05682) - **nix**: initial nix feature flags impl *(commit by [@yavko](https://github.com/yavko))*
+- [`b1475a1`](https://github.com/JakeStanger/ironbar/commit/b1475a1affd2f101f1f707ab1a0e8e5509a1d99f) - **nix**: use cargo default features *(commit by [@yavko](https://github.com/yavko))*
+- [`102d247`](https://github.com/JakeStanger/ironbar/commit/102d2478a9d0ecc8be12c5ea6019a5a5411cc6ab) - module hover options *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+
+### :bug: Bug Fixes
+- [`2ac5071`](https://github.com/JakeStanger/ironbar/commit/2ac507144b42a80507f8d2df214889c114c069df) - not setting layer shell namespace *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`7dff3e6`](https://github.com/JakeStanger/ironbar/commit/7dff3e6f8b989132ff0c4406caa72f063dd57c9f) - **image**: widgets missing names *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`54b9b28`](https://github.com/JakeStanger/ironbar/commit/54b9b28c75b2fe300e2bad1436d315da1950953e) - make readme more concise *(commit by [@yavko](https://github.com/yavko))*
+- [`8cbb73b`](https://github.com/JakeStanger/ironbar/commit/8cbb73b75e7aca1aa163406f4583273e6ff4bac2) - **dynamic string**: dynamic sections not respecting ordering *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`d0b7bdb`](https://github.com/JakeStanger/ironbar/commit/d0b7bdbafcc34967dd5b048ea12e6267ba293566) - **nix**: home manager module, and features *(commit by [@yavko](https://github.com/yavko))*
+
+### :recycle: Refactors
+- [`d84139a`](https://github.com/JakeStanger/ironbar/commit/d84139a914f9b35054dc6048715e1ed7e79d7441) - general tidy up *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`7212bbc`](https://github.com/JakeStanger/ironbar/commit/7212bbcf61e097b35a7ab341e19e9daefd2edf95) - **dynamic string**: use vec instead of indexmap *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`ecdd71a`](https://github.com/JakeStanger/ironbar/commit/ecdd71a43d267161f84e3c4a3c22e9454c0f7184) - **config**: use `universal-config` crate. *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`6221f74`](https://github.com/JakeStanger/ironbar/commit/6221f7454a2da2ec8a5a7f84e6fd35a8dc1a1548) - fix new clippy warnings *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+
+### :memo: Documentation Changes
+- [`82875cd`](https://github.com/JakeStanger/ironbar/commit/82875cde687628f3ee3436343068825440128599) - update CHANGELOG.md for v0.10.0 [skip ci] *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`7c36f5c`](https://github.com/JakeStanger/ironbar/commit/7c36f5cb0cf03191c9b03e2455b63829a64e402e) - fix a couple of issues *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`83a4916`](https://github.com/JakeStanger/ironbar/commit/83a49165c42fa793ef1224f93cbc147bc69de894) - **compiling**: add info about build deps *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`5bbe64b`](https://github.com/JakeStanger/ironbar/commit/5bbe64bb86fb2db0921e284a1560db2f6c1a1920) - **clock**: format table *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`2b26eaf`](https://github.com/JakeStanger/ironbar/commit/2b26eaf41036609be4dfc57689ca8d770dcb6b9b) - **clipboard**: fix incorrect setting description *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`0125ce5`](https://github.com/JakeStanger/ironbar/commit/0125ce5916c003d1ea9a141fe5a0f6a54b2778ab) - **examples**: update styles example *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+
+
 ## [v0.10.0] - 2023-02-01
 ### :boom: BREAKING CHANGES
 - due to [`3cf9be8`](https://github.com/JakeStanger/ironbar/commit/3cf9be89fd74face31806165f66b68052b093bab) - global icon theme setting *(commit by [@JakeStanger](https://github.com/JakeStanger))*:
@@ -234,3 +271,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [v0.8.0]: https://github.com/JakeStanger/ironbar/compare/v0.7.0...v0.8.0
 [v0.9.0]: https://github.com/JakeStanger/ironbar/compare/v0.8.0...v0.9.0
 [v0.10.0]: https://github.com/JakeStanger/ironbar/compare/v0.9.0...v0.10.0
+[v0.11.0]: https://github.com/JakeStanger/ironbar/compare/v0.10.0...v0.11.0
