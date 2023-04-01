@@ -1415,7 +1415,7 @@ checksum = "30e22bd8629359895450b59ea7a776c850561b96a3b1d31321c1949d9e6c9146"
 
 [[package]]
 name = "ironbar"
-version = "0.10.0"
+version = "0.11.0"
 dependencies = [
  "async_once",
  "cfg-if",
