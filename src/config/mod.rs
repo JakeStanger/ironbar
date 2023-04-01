@@ -32,6 +32,8 @@ pub struct CommonConfig {
     pub on_click_middle: Option<ScriptInput>,
     pub on_scroll_up: Option<ScriptInput>,
     pub on_scroll_down: Option<ScriptInput>,
+    pub on_mouse_enter: Option<ScriptInput>,
+    pub on_mouse_exit: Option<ScriptInput>,
 
     pub tooltip: Option<String>,
 }

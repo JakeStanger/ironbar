@@ -397,12 +397,7 @@ fn setup_module_common_options(container: EventBox, common: CommonConfig) {
 
         if let Some(script) = script {
             trace!("Running on-click script: {}", event.button());
-
-            match await_sync(async { script.get_output().await }) {
-                Ok((OutputStream::Stderr(out), _)) => error!("{out}"),
-                Err(err) => error!("{err:?}"),
-                _ => {}
-            }
+            run_script(script);
         }
 
         Inhibit(false)
@@ -420,12 +415,27 @@ fn setup_module_common_options(container: EventBox, common: CommonConfig) {
 
         if let Some(script) = script {
             trace!("Running on-scroll script: {}", event.direction());
+            run_script(script);
+        }
 
-            match await_sync(async { script.get_output().await }) {
-                Ok((OutputStream::Stderr(out), _)) => error!("{out}"),
-                Err(err) => error!("{err:?}"),
-                _ => {}
-            }
+        Inhibit(false)
+    });
+
+    let mouse_enter_script = common.on_mouse_enter.map(Script::new_polling);
+    container.connect_enter_notify_event(move |_, _| {
+        if let Some(ref script) = mouse_enter_script {
+            trace!("Running enter script");
+            run_script(script);
+        }
+
+        Inhibit(false)
+    });
+
+    let mouse_exit_script = common.on_mouse_exit.map(Script::new_polling);
+    container.connect_leave_notify_event(move |_, _| {
+        if let Some(ref script) = mouse_exit_script {
+            trace!("Running exit script");
+            run_script(script);
         }
 
         Inhibit(false)
@@ -436,5 +446,13 @@ fn setup_module_common_options(container: EventBox, common: CommonConfig) {
             container.set_tooltip_text(Some(&string));
             Continue(true)
         });
+    }
+}
+
+fn run_script(script: &Script) {
+    match await_sync(async { script.get_output().await }) {
+        Ok((OutputStream::Stderr(out), _)) => error!("{out}"),
+        Err(err) => error!("{err:?}"),
+        _ => {}
     }
 }

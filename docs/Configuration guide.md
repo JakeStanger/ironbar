@@ -296,4 +296,6 @@ For information on the `Script` type, and embedding scripts in strings, see [her
 | `on_click_right`  | `Script [oneshot]` | `null`  | Runs the script when the module is right clicked.                                                                  |
 | `on_scroll_up`    | `Script [oneshot]` | `null`  | Runs the script when the module is scroll up on.                                                                   |
 | `on_scroll_down`  | `Script [oneshot]` | `null`  | Runs the script when the module is scrolled down on.                                                               |
+| `on_mouse_enter`  | `Script [oneshot]` | `null`  | Runs the script when the module is hovered over.                                                                   |
+| `on_mouse_exit`   | `Script [oneshot]` | `null`  | Runs the script when the module is no longer hovered over.                                                         |
 | `tooltip`         | `string`           | `null`  | Shows this text on hover. Supports embedding scripts between `{{double braces}}`.                                  |
