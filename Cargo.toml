@@ -57,13 +57,13 @@ strip-ansi-escapes = "0.1.1"
 color-eyre = "0.6.2"
 serde = { version = "1.0.141", features = ["derive"] }
 indexmap = "1.9.1"
-dirs = "4.0.0"
+dirs = "5.0.0"
 walkdir = "2.3.2"
 notify = { version = "5.0.0", default-features = false }
 wayland-client = "0.29.5"
 wayland-protocols = { version = "0.29.5", features = ["unstable_protocols", "client"] }
 smithay-client-toolkit = { version = "0.16.0", default-features = false, features = ["calloop"] }
-universal-config = { version = "0.2.1", default_features = false }
+universal-config = { version = "0.3.0", default_features = false }
 
 lazy_static = "1.4.0"
 async_once = "0.2.6"
@@ -83,14 +83,14 @@ mpd_client = { version = "1.0.0", optional = true }
 mpris = { version = "2.0.0", optional = true }
 
 # sys_info
-sysinfo = { version = "0.27.0", optional = true }
+sysinfo = { version = "0.28.4", optional = true }
 
 # tray
 stray = { version = "0.1.3", optional = true }
 
 # workspaces
 swayipc-async = { version = "2.0.1", optional = true }
-hyprland = { version = "0.3.0", optional = true }
+hyprland = { version = "0.3.1", optional = true }
 futures-util = { version = "0.3.21", optional = true }
 
 # shared
