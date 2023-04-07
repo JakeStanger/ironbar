@@ -7,6 +7,7 @@ use crate::modules::clipboard::ClipboardModule;
 use crate::modules::clock::ClockModule;
 use crate::modules::custom::CustomModule;
 use crate::modules::focused::FocusedModule;
+use crate::modules::label::LabelModule;
 use crate::modules::launcher::LauncherModule;
 #[cfg(feature = "music")]
 use crate::modules::music::MusicModule;
@@ -47,6 +48,7 @@ pub enum ModuleConfig {
     Clock(Box<ClockModule>),
     Custom(Box<CustomModule>),
     Focused(Box<FocusedModule>),
+    Label(Box<LabelModule>),
     Launcher(Box<LauncherModule>),
     #[cfg(feature = "music")]
     Music(Box<MusicModule>),

@@ -10,6 +10,7 @@ pub mod clipboard;
 pub mod clock;
 pub mod custom;
 pub mod focused;
+pub mod label;
 pub mod launcher;
 #[cfg(feature = "music")]
 pub mod music;

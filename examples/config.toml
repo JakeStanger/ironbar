@@ -116,3 +116,7 @@ favorites = [
     'Steam',
 ]
 
+[[start]]
+label = 'random num: {{500:echo $RANDOM}}'
+type = 'label'
+

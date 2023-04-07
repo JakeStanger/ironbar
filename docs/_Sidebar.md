@@ -21,6 +21,7 @@
 - [Clock](clock)
 - [Custom](custom)
 - [Focused](focused)
+- [Label](label)
 - [Launcher](launcher)
 - [Music](music)
 - [Script](script)
