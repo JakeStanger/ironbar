@@ -19,7 +19,7 @@ impl Popup {
     /// Creates a new popup window.
     /// This includes setting up gtk-layer-shell
     /// and an empty `gtk::Box` container.
-    pub fn new(module_info: &ModuleInfo) -> Self {
+    pub fn new(module_info: &ModuleInfo, gap: i32) -> Self {
         let pos = module_info.bar_position;
         let orientation = pos.get_orientation();
 
@@ -34,22 +34,22 @@ impl Popup {
         gtk_layer_shell::set_margin(
             &win,
             gtk_layer_shell::Edge::Top,
-            if pos == BarPosition::Top { 5 } else { 0 },
+            if pos == BarPosition::Top { gap } else { 0 },
         );
         gtk_layer_shell::set_margin(
             &win,
             gtk_layer_shell::Edge::Bottom,
-            if pos == BarPosition::Bottom { 5 } else { 0 },
+            if pos == BarPosition::Bottom { gap } else { 0 },
         );
         gtk_layer_shell::set_margin(
             &win,
             gtk_layer_shell::Edge::Left,
-            if pos == BarPosition::Left { 5 } else { 0 },
+            if pos == BarPosition::Left { gap } else { 0 },
         );
         gtk_layer_shell::set_margin(
             &win,
             gtk_layer_shell::Edge::Right,
-            if pos == BarPosition::Right { 5 } else { 0 },
+            if pos == BarPosition::Right { gap } else { 0 },
         );
 
         gtk_layer_shell::set_anchor(
