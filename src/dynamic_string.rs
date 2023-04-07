@@ -10,9 +10,12 @@ enum DynamicStringSegment {
     Dynamic(Script),
 }
 
+/// A string with embedded scripts for dynamic content.
 pub struct DynamicString;
 
 impl DynamicString {
+    /// Creates a new dynamic string, based off the input template.
+    /// Runs `f` with the compiled string each time one of the scripts updates.
     pub fn new<F>(input: &str, f: F) -> Self
     where
         F: FnMut(String) -> Continue + 'static,

@@ -82,4 +82,6 @@ start:
     show_icons: true
     show_names: false
     type: launcher
+  - label: 'random num: {{500:echo $RANDOM}}'
+    type: label
 
