@@ -168,17 +168,17 @@ fn load_modules(
 
     if let Some(modules) = config.start {
         let info = info!(ModuleLocation::Left);
-        add_modules(left, modules, &info)?;
+        add_modules(left, modules, &info, config.popup_gap)?;
     }
 
     if let Some(modules) = config.center {
         let info = info!(ModuleLocation::Center);
-        add_modules(center, modules, &info)?;
+        add_modules(center, modules, &info, config.popup_gap)?;
     }
 
     if let Some(modules) = config.end {
         let info = info!(ModuleLocation::Right);
-        add_modules(right, modules, &info)?;
+        add_modules(right, modules, &info, config.popup_gap)?;
     }
 
     Ok(())
@@ -186,8 +186,13 @@ fn load_modules(
 
 /// Adds modules into a provided GTK box,
 /// which should be one of its left, center or right containers.
-fn add_modules(content: &gtk::Box, modules: Vec<ModuleConfig>, info: &ModuleInfo) -> Result<()> {
-    let popup = Popup::new(info);
+fn add_modules(
+    content: &gtk::Box,
+    modules: Vec<ModuleConfig>,
+    info: &ModuleInfo,
+    popup_gap: i32,
+) -> Result<()> {
+    let popup = Popup::new(info, popup_gap);
     let popup = Arc::new(RwLock::new(popup));
 
     macro_rules! add_module {
