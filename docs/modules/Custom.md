@@ -1,7 +1,7 @@
 Allows you to compose custom modules consisting of multiple widgets, including popups. 
 Labels can display dynamic content from scripts, and buttons can interact with the bar or execute commands on click.
 
-![Custom module with a button on the bar, and the popup open. The popup contains a header, shutdown button and restart button.](https://f.jstanger.dev/github/ironbar/custom-power-menu.png)
+![Custom module with a button on the bar, and the popup open. The popup contains a header, shutdown button and restart button.](https://f.jstanger.dev/github/ironbar/custom-power-menu.png?raw)
 
 ## Configuration
 
@@ -10,29 +10,67 @@ Labels can display dynamic content from scripts, and buttons can interact with t
 This module can be quite fiddly to configure as you effectively have to build a tree of widgets by hand.
 It is well worth looking at the examples.
 
-| Name    | Type       | Default | Description                          |
-|---------|------------|---------|--------------------------------------|
-| `class` | `string`   | `null`  | Container class name.                |
-| `bar`   | `Widget[]` | `null`  | List of widgets to add to the bar.   |
-| `popup` | `Widget[]` | `[]`    | List of widgets to add to the popup. |
-
 ### `Widget`
 
-| Name          | Type                                    | Default      | Description                                                               |
-|---------------|-----------------------------------------|--------------|---------------------------------------------------------------------------|
-| `widget_type` | `box` or `label` or `button` or `image` | `null`       | Type of GTK widget to create.                                             |
-| `name`        | `string`                                | `null`       | Widget name.                                                              |
-| `class`       | `string`                                | `null`       | Widget class name.                                                        |
-| `label`       | `string`                                | `null`       | [`label` and `button`] Widget text label. Pango markup supported.         |
-| `on_click`    | `string`                                | `null`       | [`button`] Command to execute. More on this [below](#commands).           |
-| `src`         | `image`                                 | `null`       | [`image`] Image source. See [here](images) for information on images.     |
-| `size`        | `integer`                               | `null`       | [`image`] Width/height of the image. Aspect ratio is preserved.           |
-| `orientation` | `horizontal` or `vertical`              | `horizontal` | [`box`] Whether child widgets should be horizontally or vertically added. |
-| `widgets`     | `Widget[]`                              | `[]`         | [`box`] List of widgets to add to this box.                               |
+There are many widget types, each with their own config options. 
+You can think of these like HTML elements and their attributes.
 
-### Labels
+Every widget has the following options available; `type` is mandatory.
 
-Labels can interpolate text from scripts to dynamically show content. 
+| Name    | Type                                    | Default | Description                   |
+|---------|-----------------------------------------|---------|-------------------------------|
+| `type`  | `box` or `label` or `button` or `image` | `null`  | Type of GTK widget to create. |
+| `name`  | `string`                                | `null`  | Widget name.                  |
+| `class` | `string`                                | `null`  | Widget class name.            |
+
+#### Box
+
+A container to place nested widgets inside.
+
+> Type: `box`
+
+| Name          | Type                                               | Default      | Description                                                       |
+|---------------|----------------------------------------------------|--------------|-------------------------------------------------------------------|
+| `orientation` | `horizontal` or `vertical` (shorthand: `h` or `v`) | `horizontal` | Whether child widgets should be horizontally or vertically added. |
+| `widgets`     | `Widget[]`                                         | `[]`         | List of widgets to add to this box.                               |
+
+#### Label
+
+A text label. Pango markup and embedded scripts are supported.
+
+> Type `label`
+
+| Name    | Type     | Default      | Description                                                         |
+|---------|----------|--------------|---------------------------------------------------------------------|
+| `label` | `string` | `horizontal` | Widget text label. Pango markup and embedded scripts are supported. |
+
+#### Button
+
+A clickable button, which can run a command when clicked.
+
+> Type `button`
+
+| Name       | Type     | Default      | Description                                                         |
+|------------|----------|--------------|---------------------------------------------------------------------|
+| `label`    | `string` | `horizontal` | Widget text label. Pango markup and embedded scripts are supported. |
+| `on_click` | `string` | `null`       | Command to execute. More on this [below](#commands).                |
+
+#### Image
+
+An image or icon from disk or http.
+
+> Type `image`
+
+| Name   | Type      | Default | Description                                                 |
+|--------|-----------|---------|-------------------------------------------------------------|
+| `src`  | `image`   | `null`  | Image source. See [here](images) for information on images. |
+| `size` | `integer` | `null`  | Width/height of the image. Aspect ratio is preserved.       |
+
+### Label Attributes
+
+Any widgets with a `label` attribute support embedded scripts, 
+meaning you can interpolate text from scripts to dynamically show content. 
+
 This can be done by including scripts in `{{double braces}}` using the shorthand script syntax.
 
 For example, the following label would output your system uptime, updated every 30 seconds.
@@ -238,27 +276,32 @@ end:
 
 ```corn
 let {
+    $button = { type = "button" name="power-btn" label = "" on_click = "popup:toggle" }
+
+    $popup = {
+        type = "box"
+        orientation = "vertical"
+        widgets = [
+            { type = "label" name = "header" label = "Power menu" }
+            {
+                type = "box"
+                widgets = [
+                    { type = "button" class="power-btn" label = "<span font-size='40pt'></span>" on_click = "!shutdown now" }
+                    { type = "button" class="power-btn" label = "<span font-size='40pt'></span>" on_click = "!reboot" }
+                ]
+            }
+            { type = "label" name = "uptime" label = "Uptime: {{30000:uptime -p | cut -d ' ' -f2-}}" }
+        ]
+    }
+
     $power_menu = {
         type = "custom"
         class = "power-menu"
 
-        bar = [ { type = "button" name="power-btn" label = "" on_click = "popup:toggle" } ]
+        bar = [ $button ]
+        popup = [ $popup ]
 
-        popup = [ {
-            type = "box"
-            orientation = "vertical"
-            widgets = [
-                { type = "label" name = "header" label = "Power menu" }
-                {
-                    type = "box"
-                    widgets = [
-                        { type = "button" class="power-btn" label = "<span font-size='40pt'></span>" on_click = "!shutdown now" }
-                        { type = "button" class="power-btn" label = "<span font-size='40pt'></span>" on_click = "!reboot" }
-                    ]
-                }
-                { type = "label" name = "uptime" label = "Uptime: {{30000:uptime -p | cut -d ' ' -f2-}}" }
-            ]
-        } ]
+        tooltip = "Up: {{30000:uptime -p | cut -d ' ' -f2-}}"
     }
 } in {
     end = [ $power_menu ]
@@ -269,7 +312,9 @@ let {
 
 ## Styling
 
-Since the widgets are all custom, you can target them using `#name` and `.class`.
+Since the widgets are all custom, you can use the `name` and `class` attributes, then target them using `#name` and `.class`.
+
+The following top-level selector is always available:
 
 | Selector  | Description             |
 |-----------|-------------------------|
