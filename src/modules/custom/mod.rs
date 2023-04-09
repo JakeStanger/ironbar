@@ -2,14 +2,16 @@ mod r#box;
 mod button;
 mod image;
 mod label;
+mod slider;
 
 use self::image::ImageWidget;
 use self::label::LabelWidget;
 use self::r#box::BoxWidget;
+use self::slider::SliderWidget;
 use crate::config::CommonConfig;
 use crate::modules::custom::button::ButtonWidget;
 use crate::modules::{Module, ModuleInfo, ModuleUpdateEvent, ModuleWidget, WidgetContext};
-use crate::popup::ButtonGeometry;
+use crate::popup::WidgetGeometry;
 use crate::script::Script;
 use crate::send_async;
 use color_eyre::{Report, Result};
@@ -48,7 +50,8 @@ pub enum Widget {
     Box(BoxWidget),
     Label(LabelWidget),
     Button(ButtonWidget),
-    Image(ImageWidget)
+    Image(ImageWidget),
+    Slider(SliderWidget),
 }
 
 #[derive(Clone, Copy)]
@@ -72,6 +75,7 @@ impl Widget {
             Widget::Label(widget) => parent.add(&widget.into_widget(context)),
             Widget::Button(widget) => parent.add(&widget.into_widget(context)),
             Widget::Image(widget) => parent.add(&widget.into_widget(context)),
+            Widget::Slider(widget) => parent.add(&widget.into_widget(context)),
         }
     }
 }
@@ -79,7 +83,8 @@ impl Widget {
 #[derive(Debug)]
 pub struct ExecEvent {
     cmd: String,
-    geometry: ButtonGeometry,
+    args: Option<Vec<String>>,
+    geometry: WidgetGeometry,
 }
 
 impl Module<gtk::Box> for CustomModule {
@@ -102,8 +107,10 @@ impl Module<gtk::Box> for CustomModule {
                     let script = Script::from(&event.cmd[1..]);
 
                     debug!("executing command: '{}'", script.cmd);
-                    // TODO: Migrate to use script.run
-                    if let Err(err) = script.get_output().await {
+
+                    let args = event.args.unwrap_or(vec![]);
+
+                    if let Err(err) = script.get_output(Some(&args)).await {
                         error!("{err:?}");
                     }
                 } else if event.cmd == "popup:toggle" {

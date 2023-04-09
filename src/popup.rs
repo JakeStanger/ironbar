@@ -4,7 +4,7 @@ use crate::config::BarPosition;
 use crate::modules::ModuleInfo;
 use gtk::gdk::Monitor;
 use gtk::prelude::*;
-use gtk::{ApplicationWindow, Button, Orientation};
+use gtk::{ApplicationWindow, Orientation};
 use tracing::debug;
 
 #[derive(Debug, Clone)]
@@ -133,7 +133,7 @@ impl Popup {
     }
 
     /// Shows the popup
-    pub fn show(&self, geometry: ButtonGeometry) {
+    pub fn show(&self, geometry: WidgetGeometry) {
         self.window.show();
         self.set_pos(geometry);
     }
@@ -150,7 +150,7 @@ impl Popup {
 
     /// Sets the popup's X/Y position relative to the left or border of the screen
     /// (depending on orientation).
-    fn set_pos(&self, geometry: ButtonGeometry) {
+    fn set_pos(&self, geometry: WidgetGeometry) {
         let orientation = self.pos.get_orientation();
 
         let mon_workarea = self.monitor.workarea();
@@ -190,14 +190,17 @@ impl Popup {
 
     /// Gets the absolute X position of the button
     /// and its width / height (depending on orientation).
-    pub fn button_pos(button: &Button, orientation: Orientation) -> ButtonGeometry {
-        let button_size = if orientation == Orientation::Horizontal {
-            button.allocation().width()
+    pub fn widget_geometry<W>(widget: &W, orientation: Orientation) -> WidgetGeometry
+    where
+        W: IsA<gtk::Widget>,
+    {
+        let widget_size = if orientation == Orientation::Horizontal {
+            widget.allocation().width()
         } else {
-            button.allocation().height()
+            widget.allocation().height()
         };
 
-        let top_level = button.toplevel().expect("Failed to get top-level widget");
+        let top_level = widget.toplevel().expect("Failed to get top-level widget");
 
         let bar_size = if orientation == Orientation::Horizontal {
             top_level.allocation().width()
@@ -205,26 +208,26 @@ impl Popup {
             top_level.allocation().height()
         };
 
-        let (button_x, button_y) = button
+        let (widget_x, widget_y) = widget
             .translate_coordinates(&top_level, 0, 0)
             .unwrap_or((0, 0));
 
-        let button_pos = if orientation == Orientation::Horizontal {
-            button_x
+        let widget_pos = if orientation == Orientation::Horizontal {
+            widget_x
         } else {
-            button_y
+            widget_y
         };
 
-        ButtonGeometry {
-            position: button_pos,
-            size: button_size,
+        WidgetGeometry {
+            position: widget_pos,
+            size: widget_size,
             bar_size,
         }
     }
 }
 
 #[derive(Debug, Copy, Clone)]
-pub struct ButtonGeometry {
+pub struct WidgetGeometry {
     position: i32,
     size: i32,
     bar_size: i32,

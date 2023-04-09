@@ -179,7 +179,7 @@ impl Module<Button> for MusicModule {
             button.connect_clicked(move |button| {
                 try_send!(
                     tx,
-                    ModuleUpdateEvent::TogglePopup(Popup::button_pos(button, orientation,))
+                    ModuleUpdateEvent::TogglePopup(Popup::widget_geometry(button, orientation,))
                 );
             });
         }

@@ -23,7 +23,7 @@ pub mod tray;
 pub mod workspaces;
 
 use crate::config::BarPosition;
-use crate::popup::ButtonGeometry;
+use crate::popup::WidgetGeometry;
 use color_eyre::Result;
 use glib::IsA;
 use gtk::gdk::Monitor;
@@ -50,10 +50,10 @@ pub enum ModuleUpdateEvent<T> {
     /// Sends an update to the module UI
     Update(T),
     /// Toggles the open state of the popup.
-    TogglePopup(ButtonGeometry),
+    TogglePopup(WidgetGeometry),
     /// Force sets the popup open.
     /// Takes the button X position and width.
-    OpenPopup(ButtonGeometry),
+    OpenPopup(WidgetGeometry),
     /// Force sets the popup closed.
     ClosePopup,
 }

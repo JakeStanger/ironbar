@@ -62,7 +62,7 @@ impl Module<Label> for ScriptModule {
         let script: Script = self.into();
 
         spawn(async move {
-            script.run(move |(out, _)| match out {
+            script.run(None, move |out, _| match out {
                OutputStream::Stdout(stdout) => {
                    try_send!(tx, ModuleUpdateEvent::Update(stdout));
                },

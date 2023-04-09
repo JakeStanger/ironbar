@@ -45,7 +45,8 @@ impl CustomWidget for ButtonWidget {
                     tx,
                     ExecEvent {
                         cmd: exec.clone(),
-                        geometry: Popup::button_pos(button, bar_orientation),
+                        args: None,
+                        geometry: Popup::widget_geometry(button, bar_orientation),
                     }
                 );
             });

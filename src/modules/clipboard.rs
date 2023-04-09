@@ -124,7 +124,7 @@ impl Module<Button> for ClipboardModule {
         button.style_context().add_class("btn");
 
         button.connect_clicked(move |button| {
-            let pos = Popup::button_pos(button, position.get_orientation());
+            let pos = Popup::widget_geometry(button, position.get_orientation());
             try_send!(context.tx, ModuleUpdateEvent::TogglePopup(pos));
         });
 

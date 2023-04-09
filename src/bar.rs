@@ -373,7 +373,7 @@ fn setup_module_common_options(container: EventBox, common: CommonConfig) {
             let (tx, rx) = glib::MainContext::channel(glib::PRIORITY_DEFAULT);
             spawn(async move {
                 script
-                    .run(|(_, success)| {
+                    .run(None, |_, success| {
                         send!(tx, success);
                     })
                     .await;
@@ -456,7 +456,7 @@ fn setup_module_common_options(container: EventBox, common: CommonConfig) {
 }
 
 fn run_script(script: &Script) {
-    match await_sync(async { script.get_output().await }) {
+    match await_sync(async { script.get_output(None).await }) {
         Ok((OutputStream::Stderr(out), _)) => error!("{out}"),
         Err(err) => error!("{err:?}"),
         _ => {}

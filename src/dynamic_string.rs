@@ -79,7 +79,7 @@ impl DynamicString {
 
                     spawn(async move {
                         script
-                            .run(|(out, _)| {
+                            .run(None, |out, _| {
                                 if let OutputStream::Stdout(out) = out {
                                     let mut label_parts = lock!(label_parts);
 
