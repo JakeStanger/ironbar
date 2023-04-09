@@ -1,4 +1,4 @@
-use crate::modules::custom::{try_get_orientation, CustomWidget, CustomWidgetContext, ExecEvent};
+use super::{try_get_orientation, CustomWidget, CustomWidgetContext, ExecEvent};
 use crate::popup::Popup;
 use crate::script::{OutputStream, Script, ScriptInput};
 use crate::{send, try_send};

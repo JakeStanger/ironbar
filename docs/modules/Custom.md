@@ -17,11 +17,11 @@ You can think of these like HTML elements and their attributes.
 
 Every widget has the following options available; `type` is mandatory.
 
-| Name    | Type                                                | Default | Description                   |
-|---------|-----------------------------------------------------|---------|-------------------------------|
-| `type`  | `box` or `label` or `button` or `image` or `slider` | `null`  | Type of GTK widget to create. |
-| `name`  | `string`                                            | `null`  | Widget name.                  |
-| `class` | `string`                                            | `null`  | Widget class name.            |
+| Name    | Type                                                              | Default | Description                   |
+|---------|-------------------------------------------------------------------|---------|-------------------------------|
+| `type`  | `box` or `label` or `button` or `image` or `slider` or `progress` | `null`  | Type of GTK widget to create. |
+| `name`  | `string`                                                          | `null`  | Widget name.                  |
+| `class` | `string`                                                          | `null`  | Widget class name.            |
 
 #### Box
 
@@ -86,9 +86,6 @@ If your input program requires an integer, you will need to round it.
 | `max`         | `float`                                            | `100`        | Maximum slider value.                                                        | 
 | `length`      | `integer`                                          | `null`       | Slider length. GTK will automatically size if left unset.                    |
 
-Note that `on_change` will provide the **floating point** value as an argument. 
-If your input program requires an integer, you will need to round it. 
-
 The example slider widget below shows a volume control for MPC, 
 which updates the server when changed, and polls the server for volume changes to keep the slider in sync.
 
@@ -102,6 +99,40 @@ $slider = {
             max = 100
             on_change="!mpc volume ${0%.*}"
             value = "200:mpc volume | cut -d ':' -f2 | cut -d '%' -f1"
+        }
+    ] 
+}
+```
+
+#### Progress
+
+A progress bar.
+
+> Type: `progress`
+
+Note that `value` expects a numeric value **between 0-`max`** as output.
+
+| Name          | Type                                               | Default      | Description                                                                     |
+|---------------|----------------------------------------------------|--------------|---------------------------------------------------------------------------------|
+| `src`         | `image`                                            | `null`       | Image source. See [here](images) for information on images.                     |
+| `size`        | `integer`                                          | `null`       | Width/height of the image. Aspect ratio is preserved.                           |
+| `orientation` | `horizontal` or `vertical` (shorthand: `h` or `v`) | `horizontal` | Orientation of the slider.                                                      |
+| `value`       | `Script`                                           | `null`       | Script to run to get the progress bar value. Output must be a valid percentage. |
+| `max`         | `float`                                            | `100`        | Maximum progress bar value.                                                     | 
+| `length`      | `integer`                                          | `null`       | Slider length. GTK will automatically size if left unset.                       |
+
+The example below shows progress for the current playing song in MPD, 
+and displays the elapsed/length timestamps as a label above:
+
+```corn
+$progress = { 
+    type = "custom" 
+    bar = [
+        {
+            type = "progress"
+            value = "500:mpc | sed -n 2p | awk '{ print $4 }' | grep -Eo '[0-9]+'"
+            label = "{{500:mpc | sed -n 2p | awk '{ print $3 }'}} elapsed"
+            length = 200
         }
     ] 
 }

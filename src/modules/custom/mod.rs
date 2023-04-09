@@ -2,6 +2,7 @@ mod r#box;
 mod button;
 mod image;
 mod label;
+mod progress;
 mod slider;
 
 use self::image::ImageWidget;
@@ -10,6 +11,7 @@ use self::r#box::BoxWidget;
 use self::slider::SliderWidget;
 use crate::config::CommonConfig;
 use crate::modules::custom::button::ButtonWidget;
+use crate::modules::custom::progress::ProgressWidget;
 use crate::modules::{Module, ModuleInfo, ModuleUpdateEvent, ModuleWidget, WidgetContext};
 use crate::popup::WidgetGeometry;
 use crate::script::Script;
@@ -52,6 +54,7 @@ pub enum Widget {
     Button(ButtonWidget),
     Image(ImageWidget),
     Slider(SliderWidget),
+    Progress(ProgressWidget),
 }
 
 #[derive(Clone, Copy)]
@@ -76,6 +79,7 @@ impl Widget {
             Widget::Button(widget) => parent.add(&widget.into_widget(context)),
             Widget::Image(widget) => parent.add(&widget.into_widget(context)),
             Widget::Slider(widget) => parent.add(&widget.into_widget(context)),
+            Widget::Progress(widget) => parent.add(&widget.into_widget(context)),
         }
     }
 }
