@@ -1,6 +1,7 @@
 use super::{CustomWidget, CustomWidgetContext, ExecEvent};
+use crate::dynamic_string::DynamicString;
 use crate::popup::Popup;
-use crate::try_send;
+use crate::{build, try_send};
 use gtk::prelude::*;
 use gtk::{Button, Label};
 use serde::Deserialize;
@@ -17,13 +18,7 @@ impl CustomWidget for ButtonWidget {
     type Widget = Button;
 
     fn into_widget(self, context: CustomWidgetContext) -> Self::Widget {
-        let mut builder = Button::builder();
-
-        if let Some(name) = self.name {
-            builder = builder.name(name);
-        }
-
-        let button = builder.build();
+        let button = build!(self, Self::Widget);
 
         if let Some(text) = self.label {
             let label = Label::new(None);

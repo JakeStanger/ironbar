@@ -1,9 +1,10 @@
 use super::{try_get_orientation, CustomWidget, CustomWidgetContext, ExecEvent};
+use crate::modules::custom::set_length;
 use crate::popup::Popup;
 use crate::script::{OutputStream, Script, ScriptInput};
-use crate::{send, try_send};
+use crate::{build, send, try_send};
 use gtk::prelude::*;
-use gtk::{Orientation, Scale};
+use gtk::Scale;
 use serde::Deserialize;
 use std::cell::Cell;
 use tokio::spawn;
@@ -35,32 +36,19 @@ impl CustomWidget for SliderWidget {
     type Widget = Scale;
 
     fn into_widget(self, context: CustomWidgetContext) -> Self::Widget {
-        let mut builder = Scale::builder();
-
-        if let Some(name) = self.name {
-            builder = builder.name(name);
-        }
+        let scale = build!(self, Self::Widget);
 
         if let Some(orientation) = self.orientation {
-            builder = builder
-                .orientation(try_get_orientation(&orientation).unwrap_or(context.bar_orientation));
+            scale.set_orientation(
+                try_get_orientation(&orientation).unwrap_or(context.bar_orientation),
+            );
         }
 
         if let Some(length) = self.length {
-            builder = match context.bar_orientation {
-                Orientation::Horizontal => builder.width_request(length),
-                Orientation::Vertical => builder.height_request(length),
-                _ => builder,
-            }
+            set_length(&scale, length, context.bar_orientation);
         }
-
-        let scale = builder.build();
 
         scale.set_range(self.min, self.max);
-
-        if let Some(class) = self.class {
-            scale.style_context().add_class(&class);
-        }
 
         if let Some(on_change) = self.on_change {
             let min = self.min;

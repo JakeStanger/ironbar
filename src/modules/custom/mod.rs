@@ -37,15 +37,6 @@ pub struct CustomModule {
     pub common: Option<CommonConfig>,
 }
 
-/// Attempts to parse an `Orientation` from `String`
-fn try_get_orientation(orientation: &str) -> Result<Orientation> {
-    match orientation.to_lowercase().as_str() {
-        "horizontal" | "h" => Ok(Orientation::Horizontal),
-        "vertical" | "v" => Ok(Orientation::Vertical),
-        _ => Err(Report::msg("Invalid orientation string in config")),
-    }
-}
-
 #[derive(Debug, Deserialize, Clone)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum Widget {
@@ -68,6 +59,50 @@ trait CustomWidget {
     type Widget;
 
     fn into_widget(self, context: CustomWidgetContext) -> Self::Widget;
+}
+
+/// Creates a new widget of type `ty`,
+/// setting its name and class based on
+/// the values available on `self`.
+#[macro_export]
+macro_rules! build {
+    ($self:ident, $ty:ty) => {{
+        let mut builder = <$ty>::builder();
+
+        if let Some(name) = &$self.name {
+            builder = builder.name(name);
+        }
+
+        let widget = builder.build();
+
+        if let Some(class) = &$self.class {
+            widget.style_context().add_class(class);
+        }
+
+        widget
+    }};
+}
+
+/// Sets the widget length,
+/// using either a width or height request
+/// based on the bar's orientation.
+pub fn set_length<W: WidgetExt>(widget: &W, length: i32, bar_orientation: Orientation) {
+    match bar_orientation {
+        Orientation::Horizontal => widget.set_width_request(length),
+        Orientation::Vertical => widget.set_height_request(length),
+        _ => {}
+    };
+}
+
+/// Attempts to parse an `Orientation` from `String`.
+/// Will accept `horizontal`, `vertical`, `h` or `v`.
+/// Ignores case.
+fn try_get_orientation(orientation: &str) -> Result<Orientation> {
+    match orientation.to_lowercase().as_str() {
+        "horizontal" | "h" => Ok(Orientation::Horizontal),
+        "vertical" | "v" => Ok(Orientation::Vertical),
+        _ => Err(Report::msg("Invalid orientation string in config")),
+    }
 }
 
 impl Widget {

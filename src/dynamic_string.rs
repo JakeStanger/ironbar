@@ -19,6 +19,15 @@ pub struct DynamicString;
 impl DynamicString {
     /// Creates a new dynamic string, based off the input template.
     /// Runs `f` with the compiled string each time one of the scripts updates.
+    ///
+    /// # Example
+    ///
+    /// ```rs
+    /// DynamicString::new(&text, move |string| {
+    ///     label.set_markup(&string);
+    ///     Continue(true)
+    /// });
+    /// ```
     pub fn new<F>(input: &str, f: F) -> Self
     where
         F: FnMut(String) -> Continue + 'static,

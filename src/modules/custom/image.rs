@@ -1,4 +1,5 @@
 use super::{CustomWidget, CustomWidgetContext};
+use crate::build;
 use crate::image::ImageProvider;
 use gtk::prelude::*;
 use gtk::Image;
@@ -17,13 +18,7 @@ impl CustomWidget for ImageWidget {
     type Widget = Image;
 
     fn into_widget(self, context: CustomWidgetContext) -> Self::Widget {
-        let mut builder = Image::builder();
-
-        if let Some(name) = self.name {
-            builder = builder.name(&name);
-        }
-
-        let gtk_image = builder.build();
+        let gtk_image = build!(self, Self::Widget);
 
         if let Some(src) = self.src {
             let size = self.size.unwrap_or(32);
@@ -32,10 +27,6 @@ impl CustomWidget for ImageWidget {
             {
                 error!("{err:?}");
             }
-        }
-
-        if let Some(class) = self.class {
-            gtk_image.style_context().add_class(&class);
         }
 
         gtk_image

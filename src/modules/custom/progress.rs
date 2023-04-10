@@ -1,9 +1,10 @@
 use super::{try_get_orientation, CustomWidget, CustomWidgetContext};
 use crate::dynamic_string::DynamicString;
+use crate::modules::custom::set_length;
 use crate::script::{OutputStream, Script, ScriptInput};
-use crate::send;
+use crate::{build, send};
 use gtk::prelude::*;
-use gtk::{Orientation, ProgressBar};
+use gtk::ProgressBar;
 use serde::Deserialize;
 use tokio::spawn;
 use tracing::error;
@@ -24,34 +25,20 @@ const fn default_max() -> f64 {
     100.0
 }
 
-// TODO: Reduce duplication with slider, other widgets.
 impl CustomWidget for ProgressWidget {
     type Widget = ProgressBar;
 
     fn into_widget(self, context: CustomWidgetContext) -> Self::Widget {
-        let mut builder = ProgressBar::builder();
-
-        if let Some(name) = self.name {
-            builder = builder.name(name);
-        }
+        let progress = build!(self, Self::Widget);
 
         if let Some(orientation) = self.orientation {
-            builder = builder
-                .orientation(try_get_orientation(&orientation).unwrap_or(context.bar_orientation));
+            progress.set_orientation(
+                try_get_orientation(&orientation).unwrap_or(context.bar_orientation),
+            );
         }
 
         if let Some(length) = self.length {
-            builder = match context.bar_orientation {
-                Orientation::Horizontal => builder.width_request(length),
-                Orientation::Vertical => builder.height_request(length),
-                _ => builder,
-            }
-        }
-
-        let progress = builder.build();
-
-        if let Some(class) = self.class {
-            progress.style_context().add_class(&class);
+            set_length(&progress, length, context.bar_orientation);
         }
 
         if let Some(value) = self.value {
