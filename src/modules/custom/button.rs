@@ -28,12 +28,12 @@ impl CustomWidget for ButtonWidget {
         if let Some(text) = self.label {
             let label = Label::new(None);
             label.set_use_markup(true);
-            label.set_markup(&text);
             button.add(&label);
-        }
 
-        if let Some(class) = self.class {
-            button.style_context().add_class(&class);
+            DynamicString::new(&text, move |string| {
+                label.set_markup(&string);
+                Continue(true)
+            });
         }
 
         if let Some(exec) = self.on_click {
