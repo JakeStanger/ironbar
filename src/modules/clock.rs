@@ -69,7 +69,7 @@ impl Module<Button> for ClockModule {
         button.connect_clicked(move |button| {
             try_send!(
                 context.tx,
-                ModuleUpdateEvent::TogglePopup(Popup::button_pos(button, orientation))
+                ModuleUpdateEvent::TogglePopup(Popup::widget_geometry(button, orientation))
             );
         });
 

@@ -1,7 +1,7 @@
 Allows you to compose custom modules consisting of multiple widgets, including popups. 
 Labels can display dynamic content from scripts, and buttons can interact with the bar or execute commands on click.
 
-![Custom module with a button on the bar, and the popup open. The popup contains a header, shutdown button and restart button.](https://f.jstanger.dev/github/ironbar/custom-power-menu.png)
+![Custom module with a button on the bar, and the popup open. The popup contains a header, shutdown button and restart button.](https://f.jstanger.dev/github/ironbar/custom-power-menu.png?raw)
 
 ## Configuration
 
@@ -10,29 +10,141 @@ Labels can display dynamic content from scripts, and buttons can interact with t
 This module can be quite fiddly to configure as you effectively have to build a tree of widgets by hand.
 It is well worth looking at the examples.
 
-| Name    | Type       | Default | Description                          |
-|---------|------------|---------|--------------------------------------|
-| `class` | `string`   | `null`  | Container class name.                |
-| `bar`   | `Widget[]` | `null`  | List of widgets to add to the bar.   |
-| `popup` | `Widget[]` | `[]`    | List of widgets to add to the popup. |
-
 ### `Widget`
 
-| Name          | Type                                    | Default      | Description                                                               |
-|---------------|-----------------------------------------|--------------|---------------------------------------------------------------------------|
-| `widget_type` | `box` or `label` or `button` or `image` | `null`       | Type of GTK widget to create.                                             |
-| `name`        | `string`                                | `null`       | Widget name.                                                              |
-| `class`       | `string`                                | `null`       | Widget class name.                                                        |
-| `label`       | `string`                                | `null`       | [`label` and `button`] Widget text label. Pango markup supported.         |
-| `on_click`    | `string`                                | `null`       | [`button`] Command to execute. More on this [below](#commands).           |
-| `src`         | `image`                                 | `null`       | [`image`] Image source. See [here](images) for information on images.     |
-| `size`        | `integer`                               | `null`       | [`image`] Width/height of the image. Aspect ratio is preserved.           |
-| `orientation` | `horizontal` or `vertical`              | `horizontal` | [`box`] Whether child widgets should be horizontally or vertically added. |
-| `widgets`     | `Widget[]`                              | `[]`         | [`box`] List of widgets to add to this box.                               |
+There are many widget types, each with their own config options. 
+You can think of these like HTML elements and their attributes.
 
-### Labels
+Every widget has the following options available; `type` is mandatory.
 
-Labels can interpolate text from scripts to dynamically show content. 
+| Name    | Type                                                              | Default | Description                   |
+|---------|-------------------------------------------------------------------|---------|-------------------------------|
+| `type`  | `box` or `label` or `button` or `image` or `slider` or `progress` | `null`  | Type of GTK widget to create. |
+| `name`  | `string`                                                          | `null`  | Widget name.                  |
+| `class` | `string`                                                          | `null`  | Widget class name.            |
+
+#### Box
+
+A container to place nested widgets inside.
+
+> Type: `box`
+
+| Name          | Type                                               | Default      | Description                                                       |
+|---------------|----------------------------------------------------|--------------|-------------------------------------------------------------------|
+| `orientation` | `horizontal` or `vertical` (shorthand: `h` or `v`) | `horizontal` | Whether child widgets should be horizontally or vertically added. |
+| `widgets`     | `Widget[]`                                         | `[]`         | List of widgets to add to this box.                               |
+
+#### Label
+
+A text label. Pango markup and embedded scripts are supported.
+
+> Type `label`
+
+| Name    | Type     | Default      | Description                                                         |
+|---------|----------|--------------|---------------------------------------------------------------------|
+| `label` | `string` | `horizontal` | Widget text label. Pango markup and embedded scripts are supported. |
+
+#### Button
+
+A clickable button, which can run a command when clicked.
+
+> Type `button`
+
+| Name       | Type               | Default      | Description                                                         |
+|------------|--------------------|--------------|---------------------------------------------------------------------|
+| `label`    | `string`           | `horizontal` | Widget text label. Pango markup and embedded scripts are supported. |
+| `on_click` | `string [command]` | `null`       | Command to execute. More on this [below](#commands).                |
+
+#### Image
+
+An image or icon from disk or http.
+
+> Type `image`
+
+| Name   | Type      | Default | Description                                                 |
+|--------|-----------|---------|-------------------------------------------------------------|
+| `src`  | `image`   | `null`  | Image source. See [here](images) for information on images. |
+| `size` | `integer` | `null`  | Width/height of the image. Aspect ratio is preserved.       |
+
+#### Slider
+
+A draggable slider.
+
+> Type: `slider`
+
+Note that `on_change` will provide the **floating point** value as an argument. 
+If your input program requires an integer, you will need to round it.
+
+| Name          | Type                                               | Default      | Description                                                                  |
+|---------------|----------------------------------------------------|--------------|------------------------------------------------------------------------------|
+| `src`         | `image`                                            | `null`       | Image source. See [here](images) for information on images.                  |
+| `size`        | `integer`                                          | `null`       | Width/height of the image. Aspect ratio is preserved.                        |
+| `orientation` | `horizontal` or `vertical` (shorthand: `h` or `v`) | `horizontal` | Orientation of the slider.                                                   |
+| `value`       | `Script`                                           | `null`       | Script to run to get the slider value. Output must be a valid number.        | 
+| `on_change`   | `string [command]`                                 | `null`       | Command to execute when the slider changes. More on this [below](#commands). | 
+| `min`         | `float`                                            | `0`          | Minimum slider value.                                                        | 
+| `max`         | `float`                                            | `100`        | Maximum slider value.                                                        | 
+| `length`      | `integer`                                          | `null`       | Slider length. GTK will automatically size if left unset.                    |
+
+The example slider widget below shows a volume control for MPC, 
+which updates the server when changed, and polls the server for volume changes to keep the slider in sync.
+
+```corn
+$slider = { 
+    type = "custom" 
+    bar = [
+        {
+            type = "slider"
+            length = 100
+            max = 100
+            on_change="!mpc volume ${0%.*}"
+            value = "200:mpc volume | cut -d ':' -f2 | cut -d '%' -f1"
+        }
+    ] 
+}
+```
+
+#### Progress
+
+A progress bar.
+
+> Type: `progress`
+
+Note that `value` expects a numeric value **between 0-`max`** as output.
+
+| Name          | Type                                               | Default      | Description                                                                     |
+|---------------|----------------------------------------------------|--------------|---------------------------------------------------------------------------------|
+| `src`         | `image`                                            | `null`       | Image source. See [here](images) for information on images.                     |
+| `size`        | `integer`                                          | `null`       | Width/height of the image. Aspect ratio is preserved.                           |
+| `orientation` | `horizontal` or `vertical` (shorthand: `h` or `v`) | `horizontal` | Orientation of the slider.                                                      |
+| `value`       | `Script`                                           | `null`       | Script to run to get the progress bar value. Output must be a valid percentage. |
+| `max`         | `float`                                            | `100`        | Maximum progress bar value.                                                     | 
+| `length`      | `integer`                                          | `null`       | Slider length. GTK will automatically size if left unset.                       |
+
+The example below shows progress for the current playing song in MPD, 
+and displays the elapsed/length timestamps as a label above:
+
+```corn
+$progress = { 
+    type = "custom" 
+    bar = [
+        {
+            type = "progress"
+            value = "500:mpc | sed -n 2p | awk '{ print $4 }' | grep -Eo '[0-9]+'"
+            label = "{{500:mpc | sed -n 2p | awk '{ print $3 }'}} elapsed"
+            length = 200
+        }
+    ] 
+}
+```
+
+### Label Attributes
+
+> ℹ This is different to the `label` widget, although applies to it.
+
+Any widgets with a `label` attribute support embedded scripts, 
+meaning you can interpolate text from scripts to dynamically show content. 
+
 This can be done by including scripts in `{{double braces}}` using the shorthand script syntax.
 
 For example, the following label would output your system uptime, updated every 30 seconds.
@@ -51,6 +163,9 @@ as well as any arbitrary shell command.
 To execute shell commands, prefix them with an `!`. 
 For example, if you want to run `~/.local/bin/my-script.sh` on click, 
 you'd set `on_click` to `!~/.local/bin/my-script.sh`.
+
+Some widgets provide a value when they run the command, such as `slider`.
+This is passed as an argument and can be accessed using `$0`.
 
 The following bar commands are supported:
 
@@ -238,27 +353,32 @@ end:
 
 ```corn
 let {
+    $button = { type = "button" name="power-btn" label = "" on_click = "popup:toggle" }
+
+    $popup = {
+        type = "box"
+        orientation = "vertical"
+        widgets = [
+            { type = "label" name = "header" label = "Power menu" }
+            {
+                type = "box"
+                widgets = [
+                    { type = "button" class="power-btn" label = "<span font-size='40pt'></span>" on_click = "!shutdown now" }
+                    { type = "button" class="power-btn" label = "<span font-size='40pt'></span>" on_click = "!reboot" }
+                ]
+            }
+            { type = "label" name = "uptime" label = "Uptime: {{30000:uptime -p | cut -d ' ' -f2-}}" }
+        ]
+    }
+
     $power_menu = {
         type = "custom"
         class = "power-menu"
 
-        bar = [ { type = "button" name="power-btn" label = "" on_click = "popup:toggle" } ]
+        bar = [ $button ]
+        popup = [ $popup ]
 
-        popup = [ {
-            type = "box"
-            orientation = "vertical"
-            widgets = [
-                { type = "label" name = "header" label = "Power menu" }
-                {
-                    type = "box"
-                    widgets = [
-                        { type = "button" class="power-btn" label = "<span font-size='40pt'></span>" on_click = "!shutdown now" }
-                        { type = "button" class="power-btn" label = "<span font-size='40pt'></span>" on_click = "!reboot" }
-                    ]
-                }
-                { type = "label" name = "uptime" label = "Uptime: {{30000:uptime -p | cut -d ' ' -f2-}}" }
-            ]
-        } ]
+        tooltip = "Up: {{30000:uptime -p | cut -d ' ' -f2-}}"
     }
 } in {
     end = [ $power_menu ]
@@ -269,7 +389,9 @@ let {
 
 ## Styling
 
-Since the widgets are all custom, you can target them using `#name` and `.class`.
+Since the widgets are all custom, you can use the `name` and `class` attributes, then target them using `#name` and `.class`.
+
+The following top-level selector is always available:
 
 | Selector  | Description             |
 |-----------|-------------------------|

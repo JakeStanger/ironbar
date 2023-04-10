@@ -180,20 +180,22 @@ impl Script {
         script
     }
 
-    pub async fn run<F>(&self, callback: F)
+    /// Runs the script, passing `args` if provided.
+    /// Runs `f`, passing the output stream and whether the command returned 0.
+    pub async fn run<F>(&self, args: Option<&[String]>, callback: F)
     where
-        F: Fn((OutputStream, bool)),
+        F: Fn(OutputStream, bool),
     {
         loop {
             match self.mode {
-                ScriptMode::Poll => match self.get_output().await {
-                    Ok(output) => callback(output),
+                ScriptMode::Poll => match self.get_output(args).await {
+                    Ok(output) => callback(output.0, output.1),
                     Err(err) => error!("{err:?}"),
                 },
                 ScriptMode::Watch => match self.spawn().await {
                     Ok(mut rx) => {
                         while let Some(msg) = rx.recv().await {
-                            callback((msg, true));
+                            callback(msg, true);
                         }
                     }
                     Err(err) => error!("{err:?}"),
@@ -210,9 +212,15 @@ impl Script {
     /// the `stdout` is returned.
     /// Otherwise, an `Err` variant
     /// containing the `stderr` is returned.
-    pub async fn get_output(&self) -> Result<(OutputStream, bool)> {
+    pub async fn get_output(&self, args: Option<&[String]>) -> Result<(OutputStream, bool)> {
+        let mut args_list = vec!["-c", &self.cmd];
+
+        if let Some(args) = args {
+            args_list.extend(args.iter().map(|s| s.as_str()));
+        }
+
         let output = Command::new("sh")
-            .args(["-c", &self.cmd])
+            .args(&args_list)
             .output()
             .await
             .wrap_err("Failed to get script output")?;
