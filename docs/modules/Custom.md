@@ -61,10 +61,10 @@ An image or icon from disk or http.
 
 > Type `image`
 
-| Name   | Type      | Default | Description                                                 |
-|--------|-----------|---------|-------------------------------------------------------------|
-| `src`  | `image`   | `null`  | Image source. See [here](images) for information on images. |
-| `size` | `integer` | `null`  | Width/height of the image. Aspect ratio is preserved.       |
+| Name   | Type      | Default | Description                                                                                 |
+|--------|-----------|---------|---------------------------------------------------------------------------------------------|
+| `src`  | `image`   | `null`  | Image source. See [here](images) for information on images. Embedded scripts are supported. |
+| `size` | `integer` | `null`  | Width/height of the image. Aspect ratio is preserved.                                       |
 
 #### Slider
 
