@@ -193,7 +193,16 @@ impl<'a> ImageProvider<'a> {
     /// Attempts to get `Bytes` from an HTTP resource asynchronously.
     #[cfg(feature = "http")]
     async fn get_bytes_from_http(url: reqwest::Url) -> Result<glib::Bytes> {
-        let bytes = reqwest::get(url).await?.bytes().await?;
-        Ok(glib::Bytes::from_owned(bytes))
+        let res = reqwest::get(url).await?;
+
+        let status = res.status();
+        if status.is_success() {
+            let bytes = res.bytes().await?;
+            Ok(glib::Bytes::from_owned(bytes))
+        } else {
+            Err(Report::msg(format!(
+                "Received non-success HTTP code ({status})"
+            )))
+        }
     }
 }
