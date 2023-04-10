@@ -130,7 +130,7 @@ $progress = {
     bar = [
         {
             type = "progress"
-            value = "500:mpc | sed -n 2p | awk '{ print $4 }' | grep -Eo '[0-9]+'"
+            value = "500:mpc | sed -n 2p | awk '{ print $4 }' | grep -Eo '[0-9]+' || echo 0"
             label = "{{500:mpc | sed -n 2p | awk '{ print $3 }'}} elapsed"
             length = 200
         }
