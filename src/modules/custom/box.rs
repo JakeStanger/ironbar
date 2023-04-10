@@ -21,7 +21,7 @@ impl CustomWidget for BoxWidget {
         if let Some(orientation) = self.orientation {
             container.set_orientation(
                 try_get_orientation(&orientation).unwrap_or(Orientation::Horizontal),
-            )
+            );
         }
 
         if let Some(widgets) = self.widgets {

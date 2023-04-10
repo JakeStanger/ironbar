@@ -61,10 +61,10 @@ An image or icon from disk or http.
 
 > Type `image`
 
-| Name   | Type      | Default | Description                                                 |
-|--------|-----------|---------|-------------------------------------------------------------|
-| `src`  | `image`   | `null`  | Image source. See [here](images) for information on images. |
-| `size` | `integer` | `null`  | Width/height of the image. Aspect ratio is preserved.       |
+| Name   | Type      | Default | Description                                                                                 |
+|--------|-----------|---------|---------------------------------------------------------------------------------------------|
+| `src`  | `image`   | `null`  | Image source. See [here](images) for information on images. Embedded scripts are supported. |
+| `size` | `integer` | `null`  | Width/height of the image. Aspect ratio is preserved.                                       |
 
 #### Slider
 
@@ -130,7 +130,7 @@ $progress = {
     bar = [
         {
             type = "progress"
-            value = "500:mpc | sed -n 2p | awk '{ print $4 }' | grep -Eo '[0-9]+'"
+            value = "500:mpc | sed -n 2p | awk '{ print $4 }' | grep -Eo '[0-9]+' || echo 0"
             label = "{{500:mpc | sed -n 2p | awk '{ print $3 }'}} elapsed"
             length = 200
         }
