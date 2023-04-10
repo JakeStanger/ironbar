@@ -109,12 +109,12 @@ impl Widget {
     /// Creates this widget and adds it to the parent container
     fn add_to(self, parent: &gtk::Box, context: CustomWidgetContext) {
         match self {
-            Widget::Box(widget) => parent.add(&widget.into_widget(context)),
-            Widget::Label(widget) => parent.add(&widget.into_widget(context)),
-            Widget::Button(widget) => parent.add(&widget.into_widget(context)),
-            Widget::Image(widget) => parent.add(&widget.into_widget(context)),
-            Widget::Slider(widget) => parent.add(&widget.into_widget(context)),
-            Widget::Progress(widget) => parent.add(&widget.into_widget(context)),
+            Self::Box(widget) => parent.add(&widget.into_widget(context)),
+            Self::Label(widget) => parent.add(&widget.into_widget(context)),
+            Self::Button(widget) => parent.add(&widget.into_widget(context)),
+            Self::Image(widget) => parent.add(&widget.into_widget(context)),
+            Self::Slider(widget) => parent.add(&widget.into_widget(context)),
+            Self::Progress(widget) => parent.add(&widget.into_widget(context)),
         }
     }
 }
@@ -147,7 +147,7 @@ impl Module<gtk::Box> for CustomModule {
 
                     debug!("executing command: '{}'", script.cmd);
 
-                    let args = event.args.unwrap_or(vec![]);
+                    let args = event.args.unwrap_or_default();
 
                     if let Err(err) = script.get_output(Some(&args)).await {
                         error!("{err:?}");

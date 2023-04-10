@@ -60,7 +60,7 @@ impl CustomWidget for SliderWidget {
 
             scale.connect_change_value(move |scale, _, val| {
                 // GTK will send values outside min/max range
-                let val = clamp(val, min, max);
+                let val = val.clamp(min, max);
 
                 if val != prev_value.get() {
                     try_send!(
@@ -104,16 +104,5 @@ impl CustomWidget for SliderWidget {
         }
 
         scale
-    }
-}
-
-/// Ensures `num` is between `min` and `max` (inclusive).
-fn clamp(num: f64, min: f64, max: f64) -> f64 {
-    if num < min {
-        min
-    } else if num > max {
-        max
-    } else {
-        num
     }
 }
