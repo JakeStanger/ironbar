@@ -9,7 +9,7 @@ use tokio::process::Command;
 use tokio::sync::mpsc;
 use tokio::time::sleep;
 use tokio::{select, spawn};
-use tracing::{error, warn};
+use tracing::{debug, error, trace, warn};
 
 #[derive(Debug, Deserialize, Clone)]
 #[serde(untagged)]
@@ -219,16 +219,22 @@ impl Script {
             args_list.extend(args.iter().map(|s| s.as_str()));
         }
 
+        debug!("Running sh with args: {args_list:?}");
+
         let output = Command::new("sh")
             .args(&args_list)
             .output()
             .await
             .wrap_err("Failed to get script output")?;
 
+        trace!("Script output with args: {output:?}");
+
         if output.status.success() {
             let stdout = String::from_utf8(output.stdout)
                 .map(|output| output.trim().to_string())
                 .wrap_err("Script stdout not valid UTF-8")?;
+
+            debug!("sending stdout: '{stdout}'");
 
             Ok((OutputStream::Stdout(stdout), true))
         } else {
@@ -236,10 +242,15 @@ impl Script {
                 .map(|output| output.trim().to_string())
                 .wrap_err("Script stderr not valid UTF-8")?;
 
+            debug!("sending stderr: '{stderr}'");
+
             Ok((OutputStream::Stderr(stderr), false))
         }
     }
 
+    /// Spawns a long-running process.
+    /// Returns a `mpsc::Receiver` that sends a message
+    /// every time a new line is written to `stdout` or `stderr`.
     pub async fn spawn(&self) -> Result<mpsc::Receiver<OutputStream>> {
         let mut handle = Command::new("sh")
             .args(["-c", &self.cmd])
@@ -247,6 +258,9 @@ impl Script {
             .stderr(Stdio::piped())
             .stdin(Stdio::null())
             .spawn()?;
+
+        debug!("Spawned a long-running process for '{}'", self.cmd);
+        trace!("Handle: {:?}", handle);
 
         let mut stdout_lines = BufReader::new(
             handle
@@ -271,9 +285,11 @@ impl Script {
                 select! {
                     _ = handle.wait() => break,
                     Ok(Some(line)) = stdout_lines.next_line() => {
+                        debug!("sending stdout line: '{line}'");
                         send_async!(tx, OutputStream::Stdout(line));
                     }
                     Ok(Some(line)) = stderr_lines.next_line() => {
+                        debug!("sending stderr line: '{line}'");
                         send_async!(tx, OutputStream::Stderr(line));
                     }
                 }
