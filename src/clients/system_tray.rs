@@ -10,7 +10,7 @@ use stray::message::{NotifierItemCommand, NotifierItemMessage};
 use stray::StatusNotifierWatcher;
 use tokio::spawn;
 use tokio::sync::{broadcast, mpsc};
-use tracing::error;
+use tracing::{debug, error, trace};
 
 type Tray = BTreeMap<String, (Box<StatusNotifierItem>, Option<TrayMenu>)>;
 
@@ -38,6 +38,8 @@ impl TrayEventReceiver {
 
             spawn(async move {
                 while let Ok(message) = host.recv().await {
+                    trace!("Received message: {message:?} ");
+
                     send!(b_tx, message.clone());
                     let mut tray = lock!(tray);
                     match message {
@@ -46,9 +48,11 @@ impl TrayEventReceiver {
                             item,
                             menu,
                         } => {
+                            debug!("Adding item with address '{address}'");
                             tray.insert(address, (item, menu));
                         }
                         NotifierItemMessage::Remove { address } => {
+                            debug!("Removing item with address '{address}'");
                             tray.remove(&address);
                         }
                     }
