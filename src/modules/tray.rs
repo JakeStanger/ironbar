@@ -3,8 +3,9 @@ use crate::config::CommonConfig;
 use crate::modules::{Module, ModuleInfo, ModuleUpdateEvent, ModuleWidget, WidgetContext};
 use crate::{await_sync, try_send};
 use color_eyre::Result;
+use gtk::gio::{Cancellable, MemoryInputStream};
 use gtk::prelude::*;
-use gtk::{IconLookupFlags, IconTheme, Image, Menu, MenuBar, MenuItem, SeparatorMenuItem};
+use gtk::{gdk_pixbuf, IconLookupFlags, IconTheme, Image, Label, Menu, MenuBar, MenuItem, SeparatorMenuItem};
 use serde::Deserialize;
 use std::collections::HashMap;
 use stray::message::menu::{MenuItem as MenuItemInfo, MenuType};
@@ -147,12 +148,35 @@ impl Module<MenuBar> for TrayModule {
                         address,
                         menu,
                     } => {
+                        let addr = &address;
                         let menu_item = widgets.remove(address.as_str()).unwrap_or_else(|| {
                             let menu_item = MenuItem::new();
                             menu_item.style_context().add_class("item");
+
                             if let Some(image) = get_icon(&item) {
                                 image.set_widget_name(address.as_str());
                                 menu_item.add(&image);
+                            } else if let Some(pixmap) =
+                                item.icon_pixmap.as_ref().and_then(|vec| vec.first())
+                            {
+                                let bytes = glib::Bytes::from(&pixmap.pixels);
+                                let stream = MemoryInputStream::from_bytes(&bytes);
+                                let pixbuf = gdk_pixbuf::Pixbuf::from_stream_at_scale(
+                                    &stream,
+                                    pixmap.width,
+                                    pixmap.height,
+                                    true,
+                                    Some(&Cancellable::new()),
+                                );
+
+                                if let Ok(pixbuf) = pixbuf {
+                                    let image = Image::new();
+                                    image.set_pixbuf(Some(&pixbuf));
+                                    menu_item.add(&image);
+                                }
+                            } else {
+                                let label = Label::new(Some(&item.title.as_ref().unwrap_or(addr)));
+                                menu_item.add(&label);
                             }
                             container.add(&menu_item);
                             menu_item.show_all();
