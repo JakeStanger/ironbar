@@ -2,6 +2,7 @@ use crate::send_async;
 use color_eyre::eyre::WrapErr;
 use color_eyre::{Report, Result};
 use serde::Deserialize;
+use std::cmp::min;
 use std::fmt::{Display, Formatter};
 use std::process::Stdio;
 use tokio::io::{AsyncBufReadExt, BufReader};
@@ -110,7 +111,13 @@ enum ScriptInputToken {
     Mode(ScriptMode),
     Interval(u64),
     Cmd(String),
-    Colon,
+}
+
+#[derive(Debug, Copy, Clone)]
+enum CurrentToken {
+    Mode,
+    Interval,
+    Cmd,
 }
 
 impl From<&str> for Script {
@@ -118,46 +125,53 @@ impl From<&str> for Script {
         let mut script = Self::default();
         let mut tokens = vec![];
 
+        let mut current_state = CurrentToken::Mode;
+
         let mut chars = str.chars().collect::<Vec<_>>();
         while !chars.is_empty() {
             let char = chars[0];
 
-            let (token, skip) = match char {
-                ':' => (ScriptInputToken::Colon, 1),
-                // interval
-                '0'..='9' => {
-                    let interval_str = chars
-                        .iter()
-                        .take_while(|c| c.is_ascii_digit())
-                        .collect::<String>();
+            let parse_res = match current_state {
+                CurrentToken::Mode => {
+                    current_state = CurrentToken::Interval;
 
-                    let interval = interval_str.parse::<u64>().unwrap_or_else(|_| {
-                        warn!("Received invalid interval in script string. Falling back to default `5000ms`.");
-                        5000
-                    });
-                    (ScriptInputToken::Interval(interval), interval_str.len())
+                    if matches!(char, 'p' | 'w') {
+                        let mode_str = chars.iter().take_while(|&c| c != &':').collect::<String>();
+                        let len = mode_str.len();
+
+                        let token = ScriptMode::try_parse(&mode_str).ok();
+                        token.map(|token| (ScriptInputToken::Mode(token), len))
+                    } else {
+                        None
+                    }
                 }
-                // watching or polling
-                'w' | 'p' => {
-                    let mode_str = chars.iter().take_while(|&c| c != &':').collect::<String>();
-                    let len = mode_str.len();
+                CurrentToken::Interval => {
+                    current_state = CurrentToken::Cmd;
 
-                    let token = ScriptMode::try_parse(&mode_str)
-                        .map_or(ScriptInputToken::Cmd(mode_str), |mode| {
-                            ScriptInputToken::Mode(mode)
-                        });
+                    if char.is_ascii_digit() {
+                        let interval_str = chars
+                            .iter()
+                            .take_while(|c| c.is_ascii_digit())
+                            .collect::<String>();
+                        let len = interval_str.len();
 
-                    (token, len)
+                        let token = interval_str.parse::<u64>().ok();
+                        token.map(|token| (ScriptInputToken::Interval(token), len))
+                    } else {
+                        None
+                    }
                 }
-                _ => {
+                CurrentToken::Cmd => {
                     let cmd_str = chars.iter().take_while(|_| true).collect::<String>();
                     let len = cmd_str.len();
-                    (ScriptInputToken::Cmd(cmd_str), len)
+                    Some((ScriptInputToken::Cmd(cmd_str), len))
                 }
             };
 
-            tokens.push(token);
-            chars.drain(..skip);
+            if let Some((token, skip)) = parse_res {
+                tokens.push(token);
+                chars.drain(..min(skip + 1, chars.len())); // skip 1 extra for colon
+            }
         }
 
         for token in tokens {
@@ -165,7 +179,6 @@ impl From<&str> for Script {
                 ScriptInputToken::Mode(mode) => script.mode = mode,
                 ScriptInputToken::Interval(interval) => script.interval = interval,
                 ScriptInputToken::Cmd(cmd) => script.cmd = cmd,
-                ScriptInputToken::Colon => {}
             }
         }
 
@@ -297,6 +310,27 @@ impl Script {
         });
 
         Ok(rx)
+    }
+
+    /// Executes the script in oneshot mode,
+    /// meaning it is not awaited and output cannot be captured.
+    ///
+    /// If the script errors, this is logged.
+    ///
+    /// This has some overhead,
+    /// as the script has to be cloned to the thread.
+    ///
+    pub fn run_as_oneshot(&self, args: Option<&[String]>) {
+        let script = self.clone();
+        let args = args.map(|args| args.to_vec());
+
+        spawn(async move {
+            match script.get_output(args.as_deref()).await {
+                Ok((OutputStream::Stderr(out), _)) => error!("{out}"),
+                Err(err) => error!("{err:?}"),
+                _ => {}
+            }
+        });
     }
 }
 
