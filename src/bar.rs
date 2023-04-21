@@ -6,7 +6,7 @@ use color_eyre::Result;
 use glib::Propagation;
 use gtk::gdk::Monitor;
 use gtk::prelude::*;
-use gtk::{Application, ApplicationWindow, IconTheme, Orientation, Window, WindowType};
+use gtk::{Application, ApplicationWindow, IconTheme, Orientation, Window};
 use gtk_layer_shell::LayerShell;
 use std::rc::Rc;
 use std::time::Duration;
@@ -48,7 +48,6 @@ impl Bar {
     ) -> Self {
         let window = ApplicationWindow::builder()
             .application(app)
-            .type_(WindowType::Toplevel)
             .build();
 
         let name = config
@@ -84,8 +83,8 @@ impl Bar {
 
         window.connect_destroy_event(|_, _| {
             info!("Shutting down");
-            gtk::main_quit();
-            Propagation::Proceed
+            // gtk::main_quit();
+        Propagation::Proceed
         });
 
         Self {
@@ -133,7 +132,7 @@ impl Bar {
         );
 
         if let Some(autohide) = config.autohide {
-            let hotspot_window = Window::new(WindowType::Toplevel);
+            let hotspot_window = Window::new();
             Self::setup_autohide(&self.window, &hotspot_window, autohide);
             self.setup_layer_shell(
                 &hotspot_window,

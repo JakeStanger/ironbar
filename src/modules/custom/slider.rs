@@ -1,6 +1,5 @@
 use glib::Propagation;
 use std::cell::Cell;
-use std::ops::Neg;
 
 use gtk::prelude::*;
 use gtk::Scale;

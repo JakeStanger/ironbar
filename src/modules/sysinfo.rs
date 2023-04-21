@@ -252,7 +252,7 @@ impl Module<gtk::Box> for SysInfoModule {
             label.add_class("item");
             label.set_angle(self.orientation.to_angle());
 
-            container.add(&label);
+            container.append(&label);
             labels.push(label);
         }
 

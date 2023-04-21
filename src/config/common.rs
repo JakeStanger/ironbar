@@ -1,9 +1,9 @@
 use crate::dynamic_value::{dynamic_string, DynamicBool};
 use crate::script::{Script, ScriptInput};
 use glib::Propagation;
-use gtk::gdk::ScrollDirection;
 use gtk::prelude::*;
-use gtk::{EventBox, Justification, Orientation, Revealer, RevealerTransitionType};
+use gtk::{GestureClick, Justification, Orientation, Revealer, RevealerTransitionType, Widget};
+use gtk::gdk::ScrollDirection;
 use serde::Deserialize;
 use tracing::trace;
 
@@ -238,14 +238,16 @@ impl TransitionType {
 
 impl CommonConfig {
     /// Configures the module's container according to the common config options.
-    pub fn install_events(mut self, container: &EventBox, revealer: &Revealer) {
+    pub fn install_events(mut self, container: &gtk::Box, revealer: &Revealer) {
         self.install_show_if(container, revealer);
 
         let left_click_script = self.on_click_left.map(Script::new_polling);
         let middle_click_script = self.on_click_middle.map(Script::new_polling);
         let right_click_script = self.on_click_right.map(Script::new_polling);
 
-        container.connect_button_press_event(move |_, event| {
+        let gesture = GestureClick::new();
+
+        gesture.connect_pressed(move |_, event| {
             let script = match event.button() {
                 1 => left_click_script.as_ref(),
                 2 => middle_click_script.as_ref(),
@@ -257,8 +259,6 @@ impl CommonConfig {
                 trace!("Running on-click script: {}", event.button());
                 script.run_as_oneshot(None);
             }
-
-            Propagation::Proceed
         });
 
         let scroll_up_script = self.on_scroll_up.map(Script::new_polling);
@@ -308,21 +308,21 @@ impl CommonConfig {
         }
     }
 
-    fn install_show_if(&mut self, container: &EventBox, revealer: &Revealer) {
+    fn install_show_if<W: IsA<Widget>>(&mut self, widget: &W, revealer: &Revealer) {
         self.show_if.take().map_or_else(
             || {
-                container.show_all();
+                widget.set_visible(true)
             },
             |show_if| {
-                let container = container.clone();
+                let widget = widget.clone();
 
                 {
                     let revealer = revealer.clone();
-                    let container = container.clone();
+                    let widget = widget.clone();
 
                     show_if.subscribe(move |success| {
                         if success {
-                            container.show_all();
+                            widget.show_all();
                         }
                         revealer.set_reveal_child(success);
                     });
@@ -330,7 +330,7 @@ impl CommonConfig {
 
                 revealer.connect_child_revealed_notify(move |revealer| {
                     if !revealer.reveals_child() {
-                        container.hide();
+                        widget.hide();
                     }
                 });
             },

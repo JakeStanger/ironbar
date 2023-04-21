@@ -4,9 +4,9 @@ use std::sync::Arc;
 
 use color_eyre::Result;
 use glib::IsA;
-use gtk::gdk::{EventMask, Monitor};
+use gtk::gdk::Monitor;
 use gtk::prelude::*;
-use gtk::{Application, Button, EventBox, IconTheme, Orientation, Revealer, Widget};
+use gtk::{Application, Button, IconTheme, Orientation, Revealer, Widget};
 use tokio::sync::{broadcast, mpsc};
 use tracing::debug;
 
@@ -47,8 +47,8 @@ pub mod script;
 pub mod sway;
 #[cfg(feature = "sys_info")]
 pub mod sysinfo;
-#[cfg(feature = "tray")]
-pub mod tray;
+// #[cfg(feature = "tray")]
+// pub mod tray;
 #[cfg(feature = "upower")]
 pub mod upower;
 #[cfg(feature = "volume")]
@@ -555,7 +555,7 @@ pub fn wrap_widget<W: IsA<Widget>>(
     widget: &W,
     common: CommonConfig,
     orientation: Orientation,
-) -> EventBox {
+) -> gtk::Box {
     let transition_type = common
         .transition_type
         .as_ref()
@@ -570,11 +570,11 @@ pub fn wrap_widget<W: IsA<Widget>>(
     revealer.add(widget);
     revealer.set_reveal_child(true);
 
-    let container = EventBox::new();
+    let container = gtk::Box::new(Orientation::Horizontal, 0);
     container.add_class("widget-container");
 
-    container.add_events(EventMask::SCROLL_MASK | EventMask::SMOOTH_SCROLL_MASK);
-    container.add(&revealer);
+    // container.add_events(EventMask::SCROLL_MASK | EventMask::SMOOTH_SCROLL_MASK);
+    container.append(&revealer);
 
     common.install_events(&container, &revealer);
 

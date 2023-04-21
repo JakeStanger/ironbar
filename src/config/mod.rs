@@ -27,8 +27,8 @@ use crate::modules::script::ScriptModule;
 use crate::modules::sway::mode::SwayModeModule;
 #[cfg(feature = "sys_info")]
 use crate::modules::sysinfo::SysInfoModule;
-#[cfg(feature = "tray")]
-use crate::modules::tray::TrayModule;
+// #[cfg(feature = "tray")]
+// use crate::modules::tray::TrayModule;
 #[cfg(feature = "upower")]
 use crate::modules::upower::UpowerModule;
 #[cfg(feature = "volume")]
@@ -75,10 +75,10 @@ pub enum ModuleConfig {
     Script(Box<ScriptModule>),
     #[cfg(feature = "sys_info")]
     SysInfo(Box<SysInfoModule>),
-    #[cfg(feature = "sway")]
+    // #[cfg(feature = "sway")]
     SwayMode(Box<SwayModeModule>),
     #[cfg(feature = "tray")]
-    Tray(Box<TrayModule>),
+    // Tray(Box<TrayModule>),
     #[cfg(feature = "upower")]
     Upower(Box<UpowerModule>),
     #[cfg(feature = "volume")]

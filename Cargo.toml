@@ -91,8 +91,8 @@ schema = ["dep:schemars"]
 
 [dependencies]
 # core
-gtk = "0.18.2"
-gtk-layer-shell = "0.8.2"
+gtk = { package = "gtk4", version = "0.7.3" }
+gtk-layer-shell = { package = "gtk4-layer-shell", version = "0.2.0" }
 glib = "0.18.5"
 tokio = { version = "1.43.0", features = [
   "macros",

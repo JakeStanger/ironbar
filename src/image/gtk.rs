@@ -54,7 +54,7 @@ impl IconLabel {
         image.add_class("icon");
         image.add_class("image");
 
-        container.add(&image);
+        container.append(&image);
         container.add(&label);
 
         if ImageProvider::is_definitely_image_input(input) {

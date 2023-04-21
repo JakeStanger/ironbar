@@ -305,8 +305,6 @@ impl Module<gtk::Box> for CustomModule {
             }
         }
 
-        container.show_all();
-
         Some(container)
     }
 }
