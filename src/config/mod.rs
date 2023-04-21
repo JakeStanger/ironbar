@@ -1,3 +1,4 @@
+mod common;
 mod r#impl;
 mod truncate;
 
@@ -18,26 +19,11 @@ use crate::modules::sysinfo::SysInfoModule;
 use crate::modules::tray::TrayModule;
 #[cfg(feature = "workspaces")]
 use crate::modules::workspaces::WorkspacesModule;
-use crate::script::ScriptInput;
 use serde::Deserialize;
 use std::collections::HashMap;
 
+pub use self::common::CommonConfig;
 pub use self::truncate::{EllipsizeMode, TruncateMode};
-
-#[derive(Debug, Deserialize, Clone)]
-pub struct CommonConfig {
-    pub show_if: Option<ScriptInput>,
-
-    pub on_click_left: Option<ScriptInput>,
-    pub on_click_right: Option<ScriptInput>,
-    pub on_click_middle: Option<ScriptInput>,
-    pub on_scroll_up: Option<ScriptInput>,
-    pub on_scroll_down: Option<ScriptInput>,
-    pub on_mouse_enter: Option<ScriptInput>,
-    pub on_mouse_exit: Option<ScriptInput>,
-
-    pub tooltip: Option<String>,
-}
 
 #[derive(Debug, Deserialize, Clone)]
 #[serde(tag = "type", rename_all = "snake_case")]
