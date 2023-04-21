@@ -22,13 +22,18 @@ pub mod tray;
 #[cfg(feature = "workspaces")]
 pub mod workspaces;
 
-use crate::config::BarPosition;
-use crate::popup::WidgetGeometry;
+use crate::bridge_channel::BridgeChannel;
+use crate::config::{BarPosition, CommonConfig};
+use crate::popup::{Popup, WidgetGeometry};
+use crate::{read_lock, send, write_lock};
 use color_eyre::Result;
 use glib::IsA;
-use gtk::gdk::Monitor;
-use gtk::{Application, IconTheme, Widget};
+use gtk::gdk::{EventMask, Monitor};
+use gtk::prelude::*;
+use gtk::{Application, EventBox, IconTheme, Widget};
+use std::sync::{Arc, RwLock};
 use tokio::sync::mpsc;
+use tracing::debug;
 
 #[derive(Clone)]
 pub enum ModuleLocation {
@@ -104,4 +109,137 @@ where
     {
         None
     }
+}
+
+/// Creates a module and sets it up.
+/// This setup includes widget/popup content and event channels.
+pub fn create_module<TModule, TWidget, TSend, TRec>(
+    module: TModule,
+    id: usize,
+    info: &ModuleInfo,
+    popup: &Arc<RwLock<Popup>>,
+) -> Result<TWidget>
+where
+    TModule: Module<TWidget, SendMessage = TSend, ReceiveMessage = TRec>,
+    TWidget: IsA<Widget>,
+    TSend: Clone + Send + 'static,
+{
+    let (w_tx, w_rx) = glib::MainContext::channel::<TSend>(glib::PRIORITY_DEFAULT);
+    let (p_tx, p_rx) = glib::MainContext::channel::<TSend>(glib::PRIORITY_DEFAULT);
+
+    let channel = BridgeChannel::<ModuleUpdateEvent<TSend>>::new();
+    let (ui_tx, ui_rx) = mpsc::channel::<TRec>(16);
+
+    module.spawn_controller(info, channel.create_sender(), ui_rx)?;
+
+    let context = WidgetContext {
+        id,
+        widget_rx: w_rx,
+        popup_rx: p_rx,
+        tx: channel.create_sender(),
+        controller_tx: ui_tx,
+    };
+
+    let name = TModule::name();
+
+    let module_parts = module.into_widget(context, info)?;
+    module_parts.widget.set_widget_name(name);
+
+    let mut has_popup = false;
+    if let Some(popup_content) = module_parts.popup {
+        register_popup_content(popup, id, popup_content);
+        has_popup = true;
+    }
+
+    setup_receiver(channel, w_tx, p_tx, popup.clone(), name, id, has_popup);
+
+    Ok(module_parts.widget)
+}
+
+/// Registers the popup content with the popup.
+fn register_popup_content(popup: &Arc<RwLock<Popup>>, id: usize, popup_content: gtk::Box) {
+    write_lock!(popup).register_content(id, popup_content);
+}
+
+/// Sets up the bridge channel receiver
+/// to pick up events from the controller, widget or popup.
+///
+/// Handles opening/closing popups
+/// and communicating update messages between controllers and widgets/popups.
+fn setup_receiver<TSend>(
+    channel: BridgeChannel<ModuleUpdateEvent<TSend>>,
+    w_tx: glib::Sender<TSend>,
+    p_tx: glib::Sender<TSend>,
+    popup: Arc<RwLock<Popup>>,
+    name: &'static str,
+    id: usize,
+    has_popup: bool,
+) where
+    TSend: Clone + Send + 'static,
+{
+    // some rare cases can cause the popup to incorrectly calculate its size on first open.
+    // we can fix that by just force re-rendering it on its first open.
+    let mut has_popup_opened = false;
+
+    channel.recv(move |ev| {
+        match ev {
+            ModuleUpdateEvent::Update(update) => {
+                if has_popup {
+                    send!(p_tx, update.clone());
+                }
+
+                send!(w_tx, update);
+            }
+            ModuleUpdateEvent::TogglePopup(geometry) => {
+                debug!("Toggling popup for {} [#{}]", name, id);
+                let popup = read_lock!(popup);
+                if popup.is_visible() {
+                    popup.hide();
+                } else {
+                    popup.show_content(id);
+                    popup.show(geometry);
+
+                    if !has_popup_opened {
+                        popup.show_content(id);
+                        popup.show(geometry);
+                        has_popup_opened = true;
+                    }
+                }
+            }
+            ModuleUpdateEvent::OpenPopup(geometry) => {
+                debug!("Opening popup for {} [#{}]", name, id);
+
+                let popup = read_lock!(popup);
+                popup.hide();
+                popup.show_content(id);
+                popup.show(geometry);
+
+                if !has_popup_opened {
+                    popup.show_content(id);
+                    popup.show(geometry);
+                    has_popup_opened = true;
+                }
+            }
+            ModuleUpdateEvent::ClosePopup => {
+                debug!("Closing popup for {} [#{}]", name, id);
+
+                let popup = read_lock!(popup);
+                popup.hide();
+            }
+        }
+
+        Continue(true)
+    });
+}
+
+/// Takes a widget and adds it into a new `gtk::EventBox`.
+/// The event box container is returned.
+pub fn wrap_widget<W: IsA<Widget>>(widget: &W, common: CommonConfig) -> EventBox {
+    let container = EventBox::new();
+    container.add_events(EventMask::SCROLL_MASK);
+    container.add(widget);
+
+    common.install(&container);
+
+    container
 }

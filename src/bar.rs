@@ -1,18 +1,13 @@
-use crate::bridge_channel::BridgeChannel;
-use crate::config::{BarPosition, CommonConfig, MarginConfig, ModuleConfig};
-use crate::dynamic_string::DynamicString;
-use crate::modules::{Module, ModuleInfo, ModuleLocation, ModuleUpdateEvent, WidgetContext};
+use crate::config::{BarPosition, MarginConfig, ModuleConfig};
+use crate::modules::{create_module, wrap_widget, ModuleInfo, ModuleLocation};
 use crate::popup::Popup;
-use crate::script::{OutputStream, Script};
-use crate::{await_sync, read_lock, send, write_lock, Config};
+use crate::Config;
 use color_eyre::Result;
-use gtk::gdk::{EventMask, Monitor, ScrollDirection};
+use gtk::gdk::Monitor;
 use gtk::prelude::*;
-use gtk::{Application, ApplicationWindow, EventBox, IconTheme, Orientation, Widget};
+use gtk::{Application, ApplicationWindow, IconTheme, Orientation};
 use std::sync::{Arc, RwLock};
-use tokio::spawn;
-use tokio::sync::mpsc;
-use tracing::{debug, error, info, trace};
+use tracing::{debug, info};
 
 /// Creates a new window for a bar,
 /// sets it up and adds its widgets.
@@ -199,10 +194,8 @@ fn add_modules(
         ($module:expr, $id:expr) => {{
             let common = $module.common.take().expect("Common config did not exist");
             let widget = create_module(*$module, $id, &info, &Arc::clone(&popup))?;
-
-            let container = wrap_widget(&widget);
+            let container = wrap_widget(&widget, common);
             content.add(&container);
-            setup_module_common_options(container, common);
         }};
     }
 
@@ -229,236 +222,4 @@ fn add_modules(
     }
 
     Ok(())
-}
-
-/// Creates a module and sets it up.
-/// This setup includes widget/popup content and event channels.
-fn create_module<TModule, TWidget, TSend, TRec>(
-    module: TModule,
-    id: usize,
-    info: &ModuleInfo,
-    popup: &Arc<RwLock<Popup>>,
-) -> Result<TWidget>
-where
-    TModule: Module<TWidget, SendMessage = TSend, ReceiveMessage = TRec>,
-    TWidget: IsA<Widget>,
-    TSend: Clone + Send + 'static,
-{
-    let (w_tx, w_rx) = glib::MainContext::channel::<TSend>(glib::PRIORITY_DEFAULT);
-    let (p_tx, p_rx) = glib::MainContext::channel::<TSend>(glib::PRIORITY_DEFAULT);
-
-    let channel = BridgeChannel::<ModuleUpdateEvent<TSend>>::new();
-    let (ui_tx, ui_rx) = mpsc::channel::<TRec>(16);
-
-    module.spawn_controller(info, channel.create_sender(), ui_rx)?;
-
-    let context = WidgetContext {
-        id,
-        widget_rx: w_rx,
-        popup_rx: p_rx,
-        tx: channel.create_sender(),
-        controller_tx: ui_tx,
-    };
-
-    let name = TModule::name();
-
-    let module_parts = module.into_widget(context, info)?;
-    module_parts.widget.set_widget_name(name);
-
-    let mut has_popup = false;
-    if let Some(popup_content) = module_parts.popup {
-        register_popup_content(popup, id, popup_content);
-        has_popup = true;
-    }
-
-    setup_receiver(channel, w_tx, p_tx, popup.clone(), name, id, has_popup);
-
-    Ok(module_parts.widget)
-}
-
-/// Registers the popup content with the popup.
-fn register_popup_content(popup: &Arc<RwLock<Popup>>, id: usize, popup_content: gtk::Box) {
-    write_lock!(popup).register_content(id, popup_content);
-}
-
-/// Sets up the bridge channel receiver
-/// to pick up events from the controller, widget or popup.
-///
-/// Handles opening/closing popups
-/// and communicating update messages between controllers and widgets/popups.
-fn setup_receiver<TSend>(
-    channel: BridgeChannel<ModuleUpdateEvent<TSend>>,
-    w_tx: glib::Sender<TSend>,
-    p_tx: glib::Sender<TSend>,
-    popup: Arc<RwLock<Popup>>,
-    name: &'static str,
-    id: usize,
-    has_popup: bool,
-) where
-    TSend: Clone + Send + 'static,
-{
-    // some rare cases can cause the popup to incorrectly calculate its size on first open.
-    // we can fix that by just force re-rendering it on its first open.
-    let mut has_popup_opened = false;
-
-    channel.recv(move |ev| {
-        match ev {
-            ModuleUpdateEvent::Update(update) => {
-                if has_popup {
-                    send!(p_tx, update.clone());
-                }
-
-                send!(w_tx, update);
-            }
-            ModuleUpdateEvent::TogglePopup(geometry) => {
-                debug!("Toggling popup for {} [#{}]", name, id);
-                let popup = read_lock!(popup);
-                if popup.is_visible() {
-                    popup.hide();
-                } else {
-                    popup.show_content(id);
-                    popup.show(geometry);
-
-                    if !has_popup_opened {
-                        popup.show_content(id);
-                        popup.show(geometry);
-                        has_popup_opened = true;
-                    }
-                }
-            }
-            ModuleUpdateEvent::OpenPopup(geometry) => {
-                debug!("Opening popup for {} [#{}]", name, id);
-
-                let popup = read_lock!(popup);
-                popup.hide();
-                popup.show_content(id);
-                popup.show(geometry);
-
-                if !has_popup_opened {
-                    popup.show_content(id);
-                    popup.show(geometry);
-                    has_popup_opened = true;
-                }
-            }
-            ModuleUpdateEvent::ClosePopup => {
-                debug!("Closing popup for {} [#{}]", name, id);
-
-                let popup = read_lock!(popup);
-                popup.hide();
-            }
-        }
-
-        Continue(true)
-    });
-}
-
-/// Takes a widget and adds it into a new `gtk::EventBox`.
-/// The event box container is returned.
-fn wrap_widget<W: IsA<Widget>>(widget: &W) -> EventBox {
-    let container = EventBox::new();
-    container.add_events(EventMask::SCROLL_MASK);
-    container.add(widget);
-    container
-}
-
-/// Configures the module's container according to the common config options.
-fn setup_module_common_options(container: EventBox, common: CommonConfig) {
-    common.show_if.map_or_else(
-        || {
-            container.show_all();
-        },
-        |show_if| {
-            let script = Script::new_polling(show_if);
-            let container = container.clone();
-            let (tx, rx) = glib::MainContext::channel(glib::PRIORITY_DEFAULT);
-            spawn(async move {
-                script
-                    .run(None, |_, success| {
-                        send!(tx, success);
-                    })
-                    .await;
-            });
-            rx.attach(None, move |success| {
-                if success {
-                    container.show_all();
-                } else {
-                    container.hide();
-                };
-                Continue(true)
-            });
-        },
-    );
-
-    let left_click_script = common.on_click_left.map(Script::new_polling);
-    let middle_click_script = common.on_click_middle.map(Script::new_polling);
-    let right_click_script = common.on_click_right.map(Script::new_polling);
-
-    container.connect_button_press_event(move |_, event| {
-        let script = match event.button() {
-            1 => left_click_script.as_ref(),
-            2 => middle_click_script.as_ref(),
-            3 => right_click_script.as_ref(),
-            _ => None,
-        };
-
-        if let Some(script) = script {
-            trace!("Running on-click script: {}", event.button());
-            run_script(script);
-        }
-
-        Inhibit(false)
-    });
-
-    let scroll_up_script = common.on_scroll_up.map(Script::new_polling);
-    let scroll_down_script = common.on_scroll_down.map(Script::new_polling);
-
-    container.connect_scroll_event(move |_, event| {
-        let script = match event.direction() {
-            ScrollDirection::Up => scroll_up_script.as_ref(),
-            ScrollDirection::Down => scroll_down_script.as_ref(),
-            _ => None,
-        };
-
-        if let Some(script) = script {
-            trace!("Running on-scroll script: {}", event.direction());
-            run_script(script);
-        }
-
-        Inhibit(false)
-    });
-
-    let mouse_enter_script = common.on_mouse_enter.map(Script::new_polling);
-    container.connect_enter_notify_event(move |_, _| {
-        if let Some(ref script) = mouse_enter_script {
-            trace!("Running enter script");
-            run_script(script);
-        }
-
-        Inhibit(false)
-    });
-
-    let mouse_exit_script = common.on_mouse_exit.map(Script::new_polling);
-    container.connect_leave_notify_event(move |_, _| {
-        if let Some(ref script) = mouse_exit_script {
-            trace!("Running exit script");
-            run_script(script);
-        }
-
-        Inhibit(false)
-    });
-
-    if let Some(tooltip) = common.tooltip {
-        DynamicString::new(&tooltip, move |string| {
-            container.set_tooltip_text(Some(&string));
-            Continue(true)
-        });
-    }
-}
-
-fn run_script(script: &Script) {
-    match await_sync(async { script.get_output(None).await }) {
-        Ok((OutputStream::Stderr(out), _)) => error!("{out}"),
-        Err(err) => error!("{err:?}"),
-        _ => {}
-    }
 }
