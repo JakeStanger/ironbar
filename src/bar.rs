@@ -190,11 +190,13 @@ fn add_modules(
     let popup = Popup::new(info, popup_gap);
     let popup = Arc::new(RwLock::new(popup));
 
+    let orientation = info.bar_position.get_orientation();
+
     macro_rules! add_module {
         ($module:expr, $id:expr) => {{
             let common = $module.common.take().expect("Common config did not exist");
             let widget = create_module(*$module, $id, &info, &Arc::clone(&popup))?;
-            let container = wrap_widget(&widget, common);
+            let container = wrap_widget(&widget, common, orientation);
             content.add(&container);
         }};
     }

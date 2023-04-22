@@ -23,14 +23,14 @@ pub mod tray;
 pub mod workspaces;
 
 use crate::bridge_channel::BridgeChannel;
-use crate::config::{BarPosition, CommonConfig};
+use crate::config::{BarPosition, CommonConfig, TransitionType};
 use crate::popup::{Popup, WidgetGeometry};
 use crate::{read_lock, send, write_lock};
 use color_eyre::Result;
 use glib::IsA;
 use gtk::gdk::{EventMask, Monitor};
 use gtk::prelude::*;
-use gtk::{Application, EventBox, IconTheme, Widget};
+use gtk::{Application, EventBox, IconTheme, Orientation, Revealer, Widget};
 use std::sync::{Arc, RwLock};
 use tokio::sync::mpsc;
 use tracing::debug;
@@ -234,12 +234,30 @@ fn setup_receiver<TSend>(
 
 /// Takes a widget and adds it into a new `gtk::EventBox`.
 /// The event box container is returned.
-pub fn wrap_widget<W: IsA<Widget>>(widget: &W, common: CommonConfig) -> EventBox {
+pub fn wrap_widget<W: IsA<Widget>>(
+    widget: &W,
+    common: CommonConfig,
+    orientation: Orientation,
+) -> EventBox {
+    let revealer = Revealer::builder()
+        .transition_type(
+            common
+                .transition_type
+                .as_ref()
+                .unwrap_or(&TransitionType::SlideStart)
+                .to_revealer_transition_type(orientation),
+        )
+        .transition_duration(common.transition_duration.unwrap_or(250))
+        .build();
+
+    revealer.add(widget);
+    revealer.set_reveal_child(true);
+
     let container = EventBox::new();
     container.add_events(EventMask::SCROLL_MASK);
-    container.add(widget);
+    container.add(&revealer);
 
-    common.install(&container);
+    common.install(&container, &revealer);
 
     container
 }

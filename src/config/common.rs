@@ -3,7 +3,7 @@ use crate::script::{Script, ScriptInput};
 use crate::send;
 use gtk::gdk::ScrollDirection;
 use gtk::prelude::*;
-use gtk::EventBox;
+use gtk::{EventBox, Orientation, Revealer, RevealerTransitionType};
 use serde::Deserialize;
 use tokio::spawn;
 use tracing::trace;
@@ -13,6 +13,8 @@ use tracing::trace;
 #[derive(Debug, Deserialize, Clone)]
 pub struct CommonConfig {
     pub show_if: Option<ScriptInput>,
+    pub transition_type: Option<TransitionType>,
+    pub transition_duration: Option<u32>,
 
     pub on_click_left: Option<ScriptInput>,
     pub on_click_right: Option<ScriptInput>,
@@ -25,10 +27,36 @@ pub struct CommonConfig {
     pub tooltip: Option<String>,
 }
 
+#[derive(Debug, Deserialize, Clone)]
+#[serde(rename_all = "snake_case")]
+pub enum TransitionType {
+    None,
+    Crossfade,
+    SlideStart,
+    SlideEnd,
+}
+
+impl TransitionType {
+    pub fn to_revealer_transition_type(&self, orientation: Orientation) -> RevealerTransitionType {
+        match (self, orientation) {
+            (TransitionType::SlideStart, Orientation::Horizontal) => {
+                RevealerTransitionType::SlideLeft
+            }
+            (TransitionType::SlideStart, Orientation::Vertical) => RevealerTransitionType::SlideUp,
+            (TransitionType::SlideEnd, Orientation::Horizontal) => {
+                RevealerTransitionType::SlideRight
+            }
+            (TransitionType::SlideEnd, Orientation::Vertical) => RevealerTransitionType::SlideDown,
+            (TransitionType::Crossfade, _) => RevealerTransitionType::Crossfade,
+            _ => RevealerTransitionType::None,
+        }
+    }
+}
+
 impl CommonConfig {
     /// Configures the module's container according to the common config options.
-    pub fn install(mut self, container: &EventBox) {
-        self.install_show_if(container);
+    pub fn install(mut self, container: &EventBox, revealer: &Revealer) {
+        self.install_show_if(container, revealer);
 
         let left_click_script = self.on_click_left.map(Script::new_polling);
         let middle_click_script = self.on_click_middle.map(Script::new_polling);
@@ -91,7 +119,7 @@ impl CommonConfig {
         }
     }
 
-    fn install_show_if(&mut self, container: &EventBox) {
+    fn install_show_if(&mut self, container: &EventBox, revealer: &Revealer) {
         self.show_if.take().map_or_else(
             || {
                 container.show_all();
@@ -100,6 +128,7 @@ impl CommonConfig {
                 let script = Script::new_polling(show_if);
                 let container = container.clone();
                 let (tx, rx) = glib::MainContext::channel(glib::PRIORITY_DEFAULT);
+
                 spawn(async move {
                     script
                         .run(None, |_, success| {
@@ -107,13 +136,24 @@ impl CommonConfig {
                         })
                         .await;
                 });
-                rx.attach(None, move |success| {
-                    if success {
-                        container.show_all();
-                    } else {
-                        container.hide();
-                    };
-                    Continue(true)
+
+                {
+                    let revealer = revealer.clone();
+                    let container = container.clone();
+
+                    rx.attach(None, move |success| {
+                        if success {
+                            container.show_all();
+                        }
+                        revealer.set_reveal_child(success);
+                        Continue(true)
+                    });
+                }
+
+                revealer.connect_child_revealed_notify(move |revealer| {
+                    if !revealer.reveals_child() {
+                        container.hide()
+                    }
                 });
             },
         );
