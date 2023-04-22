@@ -3,8 +3,12 @@ use crate::config::CommonConfig;
 use crate::modules::{Module, ModuleInfo, ModuleUpdateEvent, ModuleWidget, WidgetContext};
 use crate::{await_sync, try_send};
 use color_eyre::Result;
+use gtk::gdk_pixbuf::{Colorspace, InterpType};
 use gtk::prelude::*;
-use gtk::{IconLookupFlags, IconTheme, Image, Menu, MenuBar, MenuItem, SeparatorMenuItem};
+use gtk::{
+    gdk_pixbuf, IconLookupFlags, IconTheme, Image, Label, Menu, MenuBar, MenuItem,
+    SeparatorMenuItem,
+};
 use serde::Deserialize;
 use std::collections::HashMap;
 use stray::message::menu::{MenuItem as MenuItemInfo, MenuType};
@@ -20,9 +24,9 @@ pub struct TrayModule {
     pub common: Option<CommonConfig>,
 }
 
-/// Gets a GTK `Image` component
+/// Attempts to get a GTK `Image` component
 /// for the status notifier item's icon.
-fn get_icon(item: &StatusNotifierItem) -> Option<Image> {
+fn get_image_from_icon_name(item: &StatusNotifierItem) -> Option<Image> {
     item.icon_theme_path.as_ref().and_then(|path| {
         let theme = IconTheme::new();
         theme.append_search_path(path);
@@ -32,6 +36,37 @@ fn get_icon(item: &StatusNotifierItem) -> Option<Image> {
             icon_info.map(|icon_info| Image::from_pixbuf(icon_info.load_icon().ok().as_ref()))
         })
     })
+}
+
+/// Attempts to get an image from the item pixmap.
+///
+/// The pixmap is supplied in ARGB32 format,
+/// which has 8 bits per sample and a bit stride of `4*width`.
+fn get_image_from_pixmap(item: &StatusNotifierItem) -> Option<Image> {
+    const BITS_PER_SAMPLE: i32 = 8; //
+
+    let pixmap = item
+        .icon_pixmap
+        .as_ref()
+        .and_then(|pixmap| pixmap.first())?;
+
+    let bytes = glib::Bytes::from(&pixmap.pixels);
+    let row_stride = pixmap.width * 4; //
+
+    let pixbuf = gdk_pixbuf::Pixbuf::from_bytes(
+        &bytes,
+        Colorspace::Rgb,
+        true,
+        BITS_PER_SAMPLE,
+        pixmap.width,
+        pixmap.height,
+        row_stride,
+    );
+
+    let pixbuf = pixbuf
+        .scale_simple(16, 16, InterpType::Bilinear)
+        .unwrap_or(pixbuf);
+    Some(Image::from_pixbuf(Some(&pixbuf)))
 }
 
 /// Recursively gets GTK `MenuItem` components
@@ -147,13 +182,25 @@ impl Module<MenuBar> for TrayModule {
                         address,
                         menu,
                     } => {
+                        let addr = &address;
                         let menu_item = widgets.remove(address.as_str()).unwrap_or_else(|| {
                             let menu_item = MenuItem::new();
                             menu_item.style_context().add_class("item");
-                            if let Some(image) = get_icon(&item) {
-                                image.set_widget_name(address.as_str());
-                                menu_item.add(&image);
-                            }
+
+                            get_image_from_icon_name(&item)
+                                .or_else(|| get_image_from_pixmap(&item))
+                                .map_or_else(
+                                    || {
+                                        let label =
+                                            Label::new(Some(item.title.as_ref().unwrap_or(addr)));
+                                        menu_item.add(&label);
+                                    },
+                                    |image| {
+                                        image.set_widget_name(address.as_str());
+                                        menu_item.add(&image);
+                                    },
+                                );
+
                             container.add(&menu_item);
                             menu_item.show_all();
                             menu_item
