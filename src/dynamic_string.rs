@@ -88,9 +88,13 @@ impl DynamicString {
 
         let mut chars = input.chars().collect::<Vec<_>>();
         while !chars.is_empty() {
-            let char_pair = &chars[..=1];
+            let char_pair = if chars.len() > 1 {
+                Some(&chars[..=1])
+            } else {
+                None
+            };
 
-            let (token, skip) = if let ['{', '{'] = char_pair {
+            let (token, skip) = if let Some(['{', '{']) = char_pair {
                 const SKIP_BRACKETS: usize = 4; // two braces either side
 
                 let str = chars
