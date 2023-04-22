@@ -27,6 +27,8 @@ in MPRIS mode, the widget will listen to all players and automatically detect/di
 | `icons.track`         | `string/image`                        | ``                  | Icon to show next to track title.                                                                                                                     |
 | `icons.album`         | `string/image`                        | ``                  | Icon to show next to album name.                                                                                                                      |
 | `icons.artist`        | `string/image`                        | `ﴁ`                  | Icon to show next to artist name.                                                                                                                     |
+| `icon_size`           | `integer`                             | `32`                 | Size to render icon at (image icons only).                                                                                                            |
+| `cover_image_size`    | `integer`                             | `128`                | Size to render album art image at inside popup.                                                                                                       |
 | `host`                | `string/image`                        | `localhost:6600`     | [MPD Only] TCP or Unix socket for the MPD server.                                                                                                     |
 | `music_dir`           | `string/image`                        | `$HOME/Music`        | [MPD Only] Path to MPD server's music directory on disc. Required for album art.                                                                      |
 

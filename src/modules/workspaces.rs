@@ -41,8 +41,15 @@ pub struct WorkspacesModule {
     #[serde(default)]
     sort: SortOrder,
 
+    #[serde(default = "default_icon_size")]
+    icon_size: i32,
+
     #[serde(flatten)]
     pub common: Option<CommonConfig>,
+}
+
+const fn default_icon_size() -> i32 {
+    32
 }
 
 /// Creates a button from a workspace
@@ -51,11 +58,12 @@ fn create_button(
     focused: bool,
     name_map: &HashMap<String, String>,
     icon_theme: &IconTheme,
+    icon_size: i32,
     tx: &Sender<String>,
 ) -> Button {
     let label = name_map.get(name).map_or(name, String::as_str);
 
-    let button = new_icon_button(label, icon_theme, 32);
+    let button = new_icon_button(label, icon_theme, icon_size);
     button.set_widget_name(name);
 
     let style_context = button.style_context();
@@ -157,6 +165,7 @@ impl Module<gtk::Box> for WorkspacesModule {
             let container = container.clone();
             let output_name = info.output_name.to_string();
             let icon_theme = info.icon_theme.clone();
+            let icon_size = self.icon_size;
 
             // keep track of whether init event has fired previously
             // since it fires for every workspace subscriber
@@ -174,6 +183,7 @@ impl Module<gtk::Box> for WorkspacesModule {
                                         workspace.focused,
                                         &name_map,
                                         &icon_theme,
+                                        icon_size,
                                         &context.controller_tx,
                                     );
                                     container.add(&item);
@@ -209,6 +219,7 @@ impl Module<gtk::Box> for WorkspacesModule {
                                 workspace.focused,
                                 &name_map,
                                 &icon_theme,
+                                icon_size,
                                 &context.controller_tx,
                             );
 
@@ -233,6 +244,7 @@ impl Module<gtk::Box> for WorkspacesModule {
                                     workspace.focused,
                                     &name_map,
                                     &icon_theme,
+                                    icon_size,
                                     &context.controller_tx,
                                 );
 

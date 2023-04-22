@@ -88,6 +88,12 @@ pub struct MusicModule {
     #[serde(default = "default_music_dir")]
     pub(crate) music_dir: PathBuf,
 
+    #[serde(default = "default_icon_size")]
+    pub(crate) icon_size: i32,
+
+    #[serde(default = "default_cover_image_size")]
+    pub(crate) cover_image_size: i32,
+
     // -- Common --
     pub(crate) truncate: Option<TruncateMode>,
 
@@ -137,4 +143,12 @@ fn default_icon_artist() -> String {
 
 fn default_music_dir() -> PathBuf {
     audio_dir().unwrap_or_else(|| home_dir().map(|dir| dir.join("Music")).unwrap_or_default())
+}
+
+const fn default_icon_size() -> i32 {
+    24
+}
+
+const fn default_cover_image_size() -> i32 {
+    128
 }
