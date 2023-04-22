@@ -229,7 +229,7 @@ impl Script {
         let mut args_list = vec!["-c", &self.cmd];
 
         if let Some(args) = args {
-            args_list.extend(args.iter().map(|s| s.as_str()));
+            args_list.extend(args.iter().map(String::as_str));
         }
 
         debug!("Running sh with args: {args_list:?}");
@@ -322,7 +322,7 @@ impl Script {
     ///
     pub fn run_as_oneshot(&self, args: Option<&[String]>) {
         let script = self.clone();
-        let args = args.map(|args| args.to_vec());
+        let args = args.map(<[String]>::to_vec);
 
         spawn(async move {
             match script.get_output(args.as_deref()).await {

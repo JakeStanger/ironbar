@@ -59,8 +59,8 @@ impl ClipboardClient {
                             let iter = senders.iter();
                             for (tx, sender_cache_size) in iter {
                                 if cache_size == *sender_cache_size {
-                                    let mut cache = lock!(cache);
-                                    let removed_id = cache
+                                    // let mut cache = lock!(cache);
+                                    let removed_id = lock!(cache)
                                         .remove_ref_first()
                                         .expect("Clipboard cache unexpectedly empty");
                                     try_send!(tx, ClipboardEvent::Remove(removed_id));
@@ -131,8 +131,7 @@ impl ClipboardClient {
     }
 
     pub fn remove(&self, id: usize) {
-        let mut cache = lock!(self.cache);
-        cache.remove(id);
+        lock!(self.cache).remove(id);
 
         let senders = lock!(self.senders);
         let iter = senders.iter();

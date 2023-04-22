@@ -60,10 +60,10 @@ async fn main() -> Result<()> {
             |display| display,
         );
 
-        let config_res = match env::var("IRONBAR_CONFIG") {
-            Ok(path) => ConfigLoader::load(path),
-            Err(_) => ConfigLoader::new("ironbar").find_and_load(),
-        };
+        let config_res = env::var("IRONBAR_CONFIG").map_or_else(
+            |_| ConfigLoader::new("ironbar").find_and_load(),
+            ConfigLoader::load,
+        );
 
         let config = match config_res {
             Ok(config) => config,
