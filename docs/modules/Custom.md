@@ -15,7 +15,8 @@ It is well worth looking at the examples.
 There are many widget types, each with their own config options. 
 You can think of these like HTML elements and their attributes.
 
-Every widget has the following options available; `type` is mandatory.
+Every widget has the following options available; `type` is mandatory. 
+You can also add common [module-level options](https://github.com/JakeStanger/ironbar/wiki/configuration-guide#32-module-level-options) on a widget.
 
 | Name    | Type                                                              | Default | Description                   |
 |---------|-------------------------------------------------------------------|---------|-------------------------------|
