@@ -143,7 +143,9 @@ impl<'a> ImageProvider<'a> {
 
     fn load_into_image_sync(&self, image: &gtk::Image) -> Result<()> {
         let pixbuf = match &self.location {
-            ImageLocation::Icon { name, theme } => self.get_from_icon(name, theme),
+            ImageLocation::Icon { name, theme } => {
+                self.get_from_icon(name, theme, image.scale_factor())
+            }
             ImageLocation::Local(path) => self.get_from_file(path),
             ImageLocation::Steam(steam_id) => self.get_from_steam_id(steam_id),
             #[cfg(feature = "http")]
@@ -156,11 +158,12 @@ impl<'a> ImageProvider<'a> {
     }
 
     /// Attempts to get a `Pixbuf` from the GTK icon theme.
-    fn get_from_icon(&self, name: &str, theme: &IconTheme) -> Result<Pixbuf> {
-        let pixbuf = match theme.lookup_icon(name, self.size, IconLookupFlags::empty()) {
-            Some(_) => theme.load_icon(name, self.size, IconLookupFlags::FORCE_SIZE),
-            None => Ok(None),
-        }?;
+    fn get_from_icon(&self, name: &str, theme: &IconTheme, scale: i32) -> Result<Pixbuf> {
+        let pixbuf =
+            match theme.lookup_icon_for_scale(name, self.size, scale, IconLookupFlags::empty()) {
+                Some(_) => theme.load_icon(name, self.size, IconLookupFlags::FORCE_SIZE),
+                None => Ok(None),
+            }?;
 
         pixbuf.map_or_else(
             || Err(Report::msg("Icon theme does not contain icon '{name}'")),
