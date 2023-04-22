@@ -31,6 +31,6 @@ rustPlatform.buildRustPackage {
     description = "Customisable gtk-layer-shell wlroots/sway bar written in rust.";
     license = licenses.mit;
     platforms = platforms.linux;
-    mainProgram = "Hyprland";
+    mainProgram = "ironbar";
   };
 }
