@@ -21,6 +21,9 @@ pub struct ClipboardModule {
     #[serde(default = "default_icon")]
     icon: String,
 
+    #[serde(default = "default_icon_size")]
+    icon_size: i32,
+
     #[serde(default = "default_max_items")]
     max_items: usize,
 
@@ -33,6 +36,10 @@ pub struct ClipboardModule {
 
 fn default_icon() -> String {
     String::from("󰨸")
+}
+
+const fn default_icon_size() -> i32 {
+    32
 }
 
 const fn default_max_items() -> usize {
@@ -120,7 +127,7 @@ impl Module<Button> for ClipboardModule {
     ) -> color_eyre::Result<ModuleWidget<Button>> {
         let position = info.bar_position;
 
-        let button = new_icon_button(&self.icon, info.icon_theme, 32);
+        let button = new_icon_button(&self.icon, info.icon_theme, self.icon_size);
         button.style_context().add_class("btn");
 
         button.connect_clicked(move |button| {

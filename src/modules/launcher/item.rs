@@ -136,27 +136,34 @@ pub struct ItemButton {
     pub menu_state: Rc<RwLock<MenuState>>,
 }
 
+#[derive(Clone, Copy)]
+pub struct AppearanceOptions {
+    pub show_names: bool,
+    pub show_icons: bool,
+    pub icon_size: i32,
+}
+
 impl ItemButton {
     pub fn new(
         item: &Item,
-        show_names: bool,
-        show_icons: bool,
-        orientation: Orientation,
+        appearance: AppearanceOptions,
         icon_theme: &IconTheme,
+        orientation: Orientation,
         tx: &Sender<ModuleUpdateEvent<LauncherUpdate>>,
         controller_tx: &Sender<ItemEvent>,
     ) -> Self {
         let mut button = Button::builder();
 
-        if show_names {
+        if appearance.show_names {
             button = button.label(&item.name);
         }
 
         let button = button.build();
 
-        if show_icons {
+        if appearance.show_icons {
             let gtk_image = gtk::Image::new();
-            let image = ImageProvider::parse(&item.app_id.clone(), icon_theme, 32);
+            let image =
+                ImageProvider::parse(&item.app_id.clone(), icon_theme, appearance.icon_size);
             match image {
                 Ok(image) => {
                     button.set_image(Some(&gtk_image));
@@ -217,7 +224,7 @@ impl ItemButton {
 
                     try_send!(
                         tx,
-                        ModuleUpdateEvent::OpenPopup(Popup::widget_geometry(button, orientation,))
+                        ModuleUpdateEvent::OpenPopup(Popup::widget_geometry(button, orientation))
                     );
                 } else {
                     try_send!(tx, ModuleUpdateEvent::ClosePopup);
@@ -232,7 +239,7 @@ impl ItemButton {
         Self {
             button,
             persistent: item.favorite,
-            show_names,
+            show_names: appearance.show_names,
             menu_state,
         }
     }
