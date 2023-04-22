@@ -157,8 +157,8 @@ impl Module<Button> for MusicModule {
         let button_contents = gtk::Box::new(Orientation::Horizontal, 5);
         button.add(&button_contents);
 
-        let icon_play = new_icon_label(&self.icons.play, info.icon_theme, 24);
-        let icon_pause = new_icon_label(&self.icons.pause, info.icon_theme, 24);
+        let icon_play = new_icon_label(&self.icons.play, info.icon_theme, self.icon_size);
+        let icon_pause = new_icon_label(&self.icons.pause, info.icon_theme, self.icon_size);
         let label = Label::new(None);
 
         label.set_angle(info.bar_position.get_angle());
@@ -261,16 +261,16 @@ impl Module<Button> for MusicModule {
 
         let controls_box = gtk::Box::builder().name("controls").build();
 
-        let btn_prev = new_icon_button(&icons.prev, icon_theme, 24);
+        let btn_prev = new_icon_button(&icons.prev, icon_theme, self.icon_size);
         btn_prev.set_widget_name("btn-prev");
 
-        let btn_play = new_icon_button(&icons.play, icon_theme, 24);
+        let btn_play = new_icon_button(&icons.play, icon_theme, self.icon_size);
         btn_play.set_widget_name("btn-play");
 
-        let btn_pause = new_icon_button(&icons.pause, icon_theme, 24);
+        let btn_pause = new_icon_button(&icons.pause, icon_theme, self.icon_size);
         btn_pause.set_widget_name("btn-pause");
 
-        let btn_next = new_icon_button(&icons.next, icon_theme, 24);
+        let btn_next = new_icon_button(&icons.next, icon_theme, self.icon_size);
         btn_next.set_widget_name("btn-next");
 
         controls_box.add(&btn_prev);
@@ -290,7 +290,7 @@ impl Module<Button> for MusicModule {
         volume_slider.set_inverted(true);
         volume_slider.set_widget_name("slider");
 
-        let volume_icon = new_icon_label(&icons.volume, icon_theme, 24);
+        let volume_icon = new_icon_label(&icons.volume, icon_theme, self.icon_size);
         volume_icon.style_context().add_class("icon");
 
         volume_box.pack_start(&volume_slider, true, true, 0);
@@ -330,6 +330,7 @@ impl Module<Button> for MusicModule {
 
         {
             let icon_theme = icon_theme.clone();
+            let image_size = self.cover_image_size;
 
             let mut prev_cover = None;
             rx.attach(None, move |update| {
@@ -338,9 +339,9 @@ impl Module<Button> for MusicModule {
                     let new_cover = update.song.cover_path;
                     if prev_cover != new_cover {
                         prev_cover = new_cover.clone();
-                        let res = match new_cover
-                            .map(|cover_path| ImageProvider::parse(&cover_path, &icon_theme, 128))
-                        {
+                        let res = match new_cover.map(|cover_path| {
+                            ImageProvider::parse(&cover_path, &icon_theme, image_size)
+                        }) {
                             Some(Ok(image)) => image.load_into_image(album_image.clone()),
                             Some(Err(err)) => {
                                 album_image.set_from_pixbuf(None);
@@ -451,7 +452,7 @@ impl IconLabel {
     fn new(icon_input: &str, label: Option<&str>, icon_theme: &IconTheme) -> Self {
         let container = gtk::Box::new(Orientation::Horizontal, 5);
 
-        let icon = new_icon_label(icon_input, icon_theme, 32);
+        let icon = new_icon_label(icon_input, icon_theme, 24);
         let label = Label::new(label);
 
         icon.style_context().add_class("icon");

@@ -11,6 +11,7 @@ Shows all current workspaces. Clicking a workspace changes focus to it.
 | Name           | Type                        | Default        | Description                                                                                                                                                               |
 |----------------|-----------------------------|----------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | `name_map`     | `Map<string, string/image>` | `{}`           | A map of actual workspace names to their display labels/images. Workspaces use their actual name if not present in the map. See [here](images) for information on images. |
+| `icon_size`    | `integer`                   | `32`           | Size to render icon at (image icons only).                                                                                                                                |
 | `all_monitors` | `boolean`                   | `false`        | Whether to display workspaces from all monitors. When `false`, only shows workspaces on the current monitor.                                                              |
 | `sort`         | `added` or `alphanumeric`   | `alphanumeric` | The method used for sorting workspaces. `added` always appends to the end, `alphanumeric` sorts by number/name.                                                           |
 

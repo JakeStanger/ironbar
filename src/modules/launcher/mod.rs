@@ -6,6 +6,7 @@ use self::open_state::OpenState;
 use crate::clients::wayland::{self, ToplevelChange};
 use crate::config::CommonConfig;
 use crate::desktop_file::find_desktop_file;
+use crate::modules::launcher::item::AppearanceOptions;
 use crate::modules::{Module, ModuleInfo, ModuleUpdateEvent, ModuleWidget, WidgetContext};
 use crate::{lock, read_lock, try_send, write_lock};
 use color_eyre::{Help, Report};
@@ -33,8 +34,15 @@ pub struct LauncherModule {
     #[serde(default = "crate::config::default_true")]
     show_icons: bool,
 
+    #[serde(default = "default_icon_size")]
+    icon_size: i32,
+
     #[serde(flatten)]
     pub common: Option<CommonConfig>,
+}
+
+const fn default_icon_size() -> i32 {
+    32
 }
 
 #[derive(Debug, Clone)]
@@ -318,8 +326,13 @@ impl Module<gtk::Box> for LauncherModule {
 
             let controller_tx = context.controller_tx.clone();
 
+            let appearance_options = AppearanceOptions {
+                show_names: self.show_names,
+                show_icons: self.show_icons,
+                icon_size: self.icon_size,
+            };
+
             let show_names = self.show_names;
-            let show_icons = self.show_icons;
             let orientation = info.bar_position.get_orientation();
 
             let mut buttons = IndexMap::<String, ItemButton>::new();
@@ -334,10 +347,9 @@ impl Module<gtk::Box> for LauncherModule {
                         } else {
                             let button = ItemButton::new(
                                 &item,
-                                show_names,
-                                show_icons,
-                                orientation,
+                                appearance_options,
                                 &icon_theme,
+                                orientation,
                                 &context.tx,
                                 &controller_tx,
                             );

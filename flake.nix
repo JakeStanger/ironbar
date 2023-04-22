@@ -57,6 +57,18 @@
           default = self.packages.${system}.ironbar;
         }
     );
+    apps = genSystems (system: let
+      pkgs = pkgsFor system;
+    in {
+      default = {
+        type = "app";
+        program = "${pkgs.ironbar}/bin/ironbar";
+      };
+      ironbar = {
+        type = "app";
+        program = "${pkgs.ironbar}/bin/ironbar";
+      };
+    });
     devShells = genSystems (system: let
       pkgs = pkgsFor system;
       rust = mkRustToolchain pkgs;

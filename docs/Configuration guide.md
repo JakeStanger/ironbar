@@ -289,9 +289,10 @@ For details on available modules and each of their config options, check the sid
 
 For information on the `Script` type, and embedding scripts in strings, see [here](script).
 
+#### Events
+
 | Name              | Type               | Default | Description                                                                                                        |
 |-------------------|--------------------|---------|--------------------------------------------------------------------------------------------------------------------|
-| `show_if`         | `Script [polling]` | `null`  | Polls the script to check its exit code. If exit code is zero, the module is shown. For other codes, it is hidden. |
 | `on_click_left`   | `Script [oneshot]` | `null`  | Runs the script when the module is left clicked.                                                                   |
 | `on_click_middle` | `Script [oneshot]` | `null`  | Runs the script when the module is middle clicked.                                                                 |
 | `on_click_right`  | `Script [oneshot]` | `null`  | Runs the script when the module is right clicked.                                                                  |
@@ -299,4 +300,19 @@ For information on the `Script` type, and embedding scripts in strings, see [her
 | `on_scroll_down`  | `Script [oneshot]` | `null`  | Runs the script when the module is scrolled down on.                                                               |
 | `on_mouse_enter`  | `Script [oneshot]` | `null`  | Runs the script when the module is hovered over.                                                                   |
 | `on_mouse_exit`   | `Script [oneshot]` | `null`  | Runs the script when the module is no longer hovered over.                                                         |
+
+#### Visibility
+
+
+| Name                  | Type                                                  | Default       | Description                                                                                                        |
+|-----------------------|-------------------------------------------------------|---------------|--------------------------------------------------------------------------------------------------------------------|
+| `show_if`             | `Script [polling]`                                    | `null`        | Polls the script to check its exit code. If exit code is zero, the module is shown. For other codes, it is hidden. |
+| `transition_type`     | `slide_start` or `slide_end` or `crossfade` or `none` | `slide_start` | The transition animation to use when showing/hiding the widget.                                                    |
+| `transition_duration` | `Integer`                                             | `250`         | The length of the transition animation to use when showing/hiding the widget.                                      |
+
+#### Other
+
+
+| Name              | Type               | Default | Description                                                                                                        |
+|-------------------|--------------------|---------|--------------------------------------------------------------------------------------------------------------------|
 | `tooltip`         | `string`           | `null`  | Shows this text on hover. Supports embedding scripts between `{{double braces}}`.                                  |

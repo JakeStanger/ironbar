@@ -22,7 +22,7 @@ use crate::modules::workspaces::WorkspacesModule;
 use serde::Deserialize;
 use std::collections::HashMap;
 
-pub use self::common::CommonConfig;
+pub use self::common::{CommonConfig, TransitionType};
 pub use self::truncate::{EllipsizeMode, TruncateMode};
 
 #[derive(Debug, Deserialize, Clone)]
