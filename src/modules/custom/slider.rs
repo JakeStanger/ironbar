@@ -7,6 +7,7 @@ use gtk::prelude::*;
 use gtk::Scale;
 use serde::Deserialize;
 use std::cell::Cell;
+use std::ops::Neg;
 use tokio::spawn;
 use tracing::error;
 
@@ -21,6 +22,7 @@ pub struct SliderWidget {
     min: f64,
     #[serde(default = "default_max")]
     max: f64,
+    step: Option<f64>,
     length: Option<i32>,
 }
 
@@ -53,10 +55,25 @@ impl CustomWidget for SliderWidget {
         if let Some(on_change) = self.on_change {
             let min = self.min;
             let max = self.max;
+            let step = self.step;
             let tx = context.tx.clone();
 
             // GTK will spam the same value over and over
             let prev_value = Cell::new(scale.value());
+
+            scale.connect_scroll_event(move |scale, event| {
+                let value = scale.value();
+                let delta = event.delta().1.neg();
+
+                let delta = match (step, delta.is_sign_positive()) {
+                    (Some(step), true) => step,
+                    (Some(step), false) => -step,
+                    (None, _) => delta,
+                };
+
+                scale.set_value(value + delta);
+                Inhibit(false)
+            });
 
             scale.connect_change_value(move |scale, _, val| {
                 // GTK will send values outside min/max range
