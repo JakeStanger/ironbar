@@ -120,7 +120,11 @@ impl Widget {
     fn add_to(self, parent: &gtk::Box, context: CustomWidgetContext, common: CommonConfig) {
         macro_rules! create {
             ($widget:expr) => {
-                wrap_widget(&$widget.into_widget(context), common)
+                wrap_widget(
+                    &$widget.into_widget(context),
+                    common,
+                    context.bar_orientation,
+                )
             };
         }
 
