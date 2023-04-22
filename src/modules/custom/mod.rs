@@ -12,7 +12,9 @@ use self::slider::SliderWidget;
 use crate::config::CommonConfig;
 use crate::modules::custom::button::ButtonWidget;
 use crate::modules::custom::progress::ProgressWidget;
-use crate::modules::{Module, ModuleInfo, ModuleUpdateEvent, ModuleWidget, WidgetContext};
+use crate::modules::{
+    wrap_widget, Module, ModuleInfo, ModuleUpdateEvent, ModuleWidget, WidgetContext,
+};
 use crate::popup::WidgetGeometry;
 use crate::script::Script;
 use crate::send_async;
@@ -29,12 +31,20 @@ pub struct CustomModule {
     /// Container class name
     class: Option<String>,
     /// Widgets to add to the bar container
-    bar: Vec<Widget>,
+    bar: Vec<WidgetConfig>,
     /// Widgets to add to the popup container
-    popup: Option<Vec<Widget>>,
+    popup: Option<Vec<WidgetConfig>>,
 
     #[serde(flatten)]
     pub common: Option<CommonConfig>,
+}
+
+#[derive(Debug, Deserialize, Clone)]
+pub struct WidgetConfig {
+    #[serde(flatten)]
+    widget: Widget,
+    #[serde(flatten)]
+    common: CommonConfig,
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -107,15 +117,23 @@ fn try_get_orientation(orientation: &str) -> Result<Orientation> {
 
 impl Widget {
     /// Creates this widget and adds it to the parent container
-    fn add_to(self, parent: &gtk::Box, context: CustomWidgetContext) {
-        match self {
-            Self::Box(widget) => parent.add(&widget.into_widget(context)),
-            Self::Label(widget) => parent.add(&widget.into_widget(context)),
-            Self::Button(widget) => parent.add(&widget.into_widget(context)),
-            Self::Image(widget) => parent.add(&widget.into_widget(context)),
-            Self::Slider(widget) => parent.add(&widget.into_widget(context)),
-            Self::Progress(widget) => parent.add(&widget.into_widget(context)),
+    fn add_to(self, parent: &gtk::Box, context: CustomWidgetContext, common: CommonConfig) {
+        macro_rules! create {
+            ($widget:expr) => {
+                wrap_widget(&$widget.into_widget(context), common)
+            };
         }
+
+        let event_box = match self {
+            Self::Box(widget) => create!(widget),
+            Self::Label(widget) => create!(widget),
+            Self::Button(widget) => create!(widget),
+            Self::Image(widget) => create!(widget),
+            Self::Slider(widget) => create!(widget),
+            Self::Progress(widget) => create!(widget),
+        };
+
+        parent.add(&event_box);
     }
 }
 
@@ -186,7 +204,9 @@ impl Module<gtk::Box> for CustomModule {
         };
 
         self.bar.clone().into_iter().for_each(|widget| {
-            widget.add_to(&container, custom_context);
+            widget
+                .widget
+                .add_to(&container, custom_context, widget.common);
         });
 
         let popup = self.into_popup(context.controller_tx, context.popup_rx, info);
@@ -222,7 +242,9 @@ impl Module<gtk::Box> for CustomModule {
             };
 
             for widget in popup {
-                widget.add_to(&container, custom_context);
+                widget
+                    .widget
+                    .add_to(&container, custom_context, widget.common);
             }
         }
 
