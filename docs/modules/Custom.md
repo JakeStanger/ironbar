@@ -87,6 +87,7 @@ If your input program requires an integer, you will need to round it.
 | `max`         | `float`                                            | `100`        | Maximum slider value.                                                                                                           | 
 | `step`        | `float`                                            | -            | The increment to change when scrolling with the mouse wheel. If left blank, will use the default determined by the environment. | 
 | `length`      | `integer`                                          | `null`       | Slider length. GTK will automatically size if left unset.                                                                       |
+| `show_label`  | `boolean`                                          | `true`       | Whether to show the value label above the slider.                                                                               |
 
 The example slider widget below shows a volume control for MPC, 
 which updates the server when changed, and polls the server for volume changes to keep the slider in sync.
