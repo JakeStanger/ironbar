@@ -192,21 +192,27 @@ impl Module<Button> for MusicModule {
                 if let Some(event) = event.take() {
                     label.set_label(&event.display_string);
 
+                    button.show();
+
                     match event.status.state {
-                        PlayerState::Playing => {
+                        PlayerState::Playing if self.show_status_icon => {
                             icon_play.show();
                             icon_pause.hide();
                         }
-                        PlayerState::Paused => {
+                        PlayerState::Paused if self.show_status_icon => {
                             icon_pause.show();
                             icon_play.hide();
                         }
                         PlayerState::Stopped => {
                             button.hide();
                         }
+                        _ => {}
                     }
 
-                    button.show();
+                    if !self.show_status_icon {
+                        icon_pause.hide();
+                        icon_play.hide();
+                    }
                 } else {
                     button.hide();
                     try_send!(tx, ModuleUpdateEvent::ClosePopup);

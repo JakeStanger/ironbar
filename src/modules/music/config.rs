@@ -88,6 +88,9 @@ pub struct MusicModule {
     #[serde(default = "default_music_dir")]
     pub(crate) music_dir: PathBuf,
 
+    #[serde(default = "crate::config::default_true")]
+    pub(crate) show_status_icon: bool,
+
     #[serde(default = "default_icon_size")]
     pub(crate) icon_size: i32,
 
