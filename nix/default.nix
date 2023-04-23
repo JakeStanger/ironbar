@@ -1,16 +1,26 @@
 {
   gtk3,
   gdk-pixbuf,
+  librsvg,
+  webp-pixbuf-loader,
+  gobject-introspection,
+  glib-networking,
+  glib,
+  shared-mime-info,
+  gsettings-desktop-schemas,
+  wrapGAppsHook,
   gtk-layer-shell,
+  gnome,
   libxkbcommon,
   openssl,
   pkg-config,
+  hicolor-icon-theme,
   rustPlatform,
   lib,
   version ? "git",
   features ? [],
 }:
-rustPlatform.buildRustPackage {
+rustPlatform.buildRustPackage rec {
   inherit version;
   pname = "ironbar";
   src = builtins.path {
@@ -24,8 +34,26 @@ rustPlatform.buildRustPackage {
   buildFeatures = features;
   cargoDeps = rustPlatform.importCargoLock {lockFile = ../Cargo.lock;};
   cargoLock.lockFile = ../Cargo.lock;
-  nativeBuildInputs = [pkg-config];
-  buildInputs = [gtk3 gdk-pixbuf gtk-layer-shell libxkbcommon openssl];
+  nativeBuildInputs = [pkg-config wrapGAppsHook gobject-introspection];
+  buildInputs = [gtk3 gdk-pixbuf glib gtk-layer-shell glib-networking shared-mime-info gnome.adwaita-icon-theme hicolor-icon-theme gsettings-desktop-schemas libxkbcommon openssl];
+  propagatedBuildInputs = [
+    gtk3
+  ];
+  preFixup = ''
+    gappsWrapperArgs+=(
+      # Thumbnailers
+      --prefix XDG_DATA_DIRS : "${gdk-pixbuf}/share"
+      --prefix XDG_DATA_DIRS : "${librsvg}/share"
+      --prefix XDG_DATA_DIRS : "${webp-pixbuf-loader}/share"
+      --prefix XDG_DATA_DIRS : "${shared-mime-info}/share"
+    )
+  '';
+  passthru = {
+    updateScript = gnome.updateScript {
+      packageName = pname;
+      attrPath = "gnome.${pname}";
+    };
+  };
   meta = with lib; {
     homepage = "https://github.com/JakeStanger/ironbar";
     description = "Customisable gtk-layer-shell wlroots/sway bar written in rust.";
