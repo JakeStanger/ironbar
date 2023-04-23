@@ -24,6 +24,8 @@ pub struct SliderWidget {
     max: f64,
     step: Option<f64>,
     length: Option<i32>,
+    #[serde(default = "crate::config::default_true")]
+    show_label: bool,
 }
 
 const fn default_min() -> f64 {
@@ -51,6 +53,7 @@ impl CustomWidget for SliderWidget {
         }
 
         scale.set_range(self.min, self.max);
+        scale.set_draw_value(self.show_label);
 
         if let Some(on_change) = self.on_change {
             let min = self.min;
