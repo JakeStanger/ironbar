@@ -29,13 +29,12 @@ pub fn find_desktop_file(app_id: &str) -> Option<PathBuf> {
     for dir in dirs {
         let mut walker = WalkDir::new(dir).max_depth(5).into_iter();
 
-        let entry = walker.find(|entry| match entry {
-            Ok(entry) => {
+        let entry = walker.find(|entry| {
+            entry.as_ref().map_or(false, |entry| {
                 let file_name = entry.file_name().to_string_lossy().to_lowercase();
                 let test_name = format!("{}.desktop", app_id.to_lowercase());
                 file_name == test_name
-            }
-            _ => false,
+            })
         });
 
         if let Some(Ok(entry)) = entry {

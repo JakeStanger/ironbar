@@ -55,7 +55,7 @@ impl DynamicString {
                                 if let OutputStream::Stdout(out) = out {
                                     let mut label_parts = lock!(label_parts);
 
-                                    let _ = std::mem::replace(&mut label_parts[i], out);
+                                    let _: String = std::mem::replace(&mut label_parts[i], out);
 
                                     let string = label_parts.join("");
                                     send!(tx, string);

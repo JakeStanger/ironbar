@@ -37,17 +37,16 @@ pub enum TransitionType {
 }
 
 impl TransitionType {
-    pub fn to_revealer_transition_type(&self, orientation: Orientation) -> RevealerTransitionType {
+    pub const fn to_revealer_transition_type(
+        &self,
+        orientation: Orientation,
+    ) -> RevealerTransitionType {
         match (self, orientation) {
-            (TransitionType::SlideStart, Orientation::Horizontal) => {
-                RevealerTransitionType::SlideLeft
-            }
-            (TransitionType::SlideStart, Orientation::Vertical) => RevealerTransitionType::SlideUp,
-            (TransitionType::SlideEnd, Orientation::Horizontal) => {
-                RevealerTransitionType::SlideRight
-            }
-            (TransitionType::SlideEnd, Orientation::Vertical) => RevealerTransitionType::SlideDown,
-            (TransitionType::Crossfade, _) => RevealerTransitionType::Crossfade,
+            (Self::SlideStart, Orientation::Horizontal) => RevealerTransitionType::SlideLeft,
+            (Self::SlideStart, Orientation::Vertical) => RevealerTransitionType::SlideUp,
+            (Self::SlideEnd, Orientation::Horizontal) => RevealerTransitionType::SlideRight,
+            (Self::SlideEnd, Orientation::Vertical) => RevealerTransitionType::SlideDown,
+            (Self::Crossfade, _) => RevealerTransitionType::Crossfade,
             _ => RevealerTransitionType::None,
         }
     }
@@ -152,7 +151,7 @@ impl CommonConfig {
 
                 revealer.connect_child_revealed_notify(move |revealer| {
                     if !revealer.reveals_child() {
-                        container.hide()
+                        container.hide();
                     }
                 });
             },

@@ -5,6 +5,7 @@ use color_eyre::Result;
 use lazy_static::lazy_static;
 use mpris::{DBusError, Event, Metadata, PlaybackStatus, Player, PlayerFinder};
 use std::collections::HashSet;
+use std::string;
 use std::sync::{Arc, Mutex};
 use std::thread::sleep;
 use std::time::Duration;
@@ -259,7 +260,7 @@ impl From<Metadata> for Track {
                 .and_then(mpris::MetadataValue::as_str_array)
                 .and_then(|arr| arr.first().map(|val| (*val).to_string())),
             track: value.track_number().map(|track| track as u64),
-            cover_path: value.art_url().map(|s| s.to_string()),
+            cover_path: value.art_url().map(string::ToString::to_string),
         }
     }
 }
