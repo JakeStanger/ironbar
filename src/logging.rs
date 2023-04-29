@@ -58,7 +58,7 @@ fn install_tracing() -> Result<WorkerGuard> {
     const DEFAULT_LOG: &str = "info";
     const DEFAULT_FILE_LOG: &str = "warn";
 
-    let fmt_layer = fmt::layer().with_target(true);
+    let fmt_layer = fmt::layer().with_target(true).with_line_number(true);
     let filter_layer =
         EnvFilter::try_from_env("IRONBAR_LOG").or_else(|_| EnvFilter::try_new(DEFAULT_LOG))?;
 
