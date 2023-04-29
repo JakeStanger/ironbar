@@ -19,6 +19,8 @@ pub mod script;
 pub mod sysinfo;
 #[cfg(feature = "tray")]
 pub mod tray;
+#[cfg(feature = "upower")]
+pub mod upower;
 #[cfg(feature = "workspaces")]
 pub mod workspaces;
 
