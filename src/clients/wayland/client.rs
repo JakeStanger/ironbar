@@ -1,79 +1,90 @@
-use super::wlr_foreign_toplevel::{
-    handle::{ToplevelEvent, ToplevelInfo},
-    manager::listen_for_toplevels,
-};
-use super::{DData, Env, ToplevelHandler};
-use crate::{error as err, send};
+use super::wlr_foreign_toplevel::handle::ToplevelHandle;
+use super::wlr_foreign_toplevel::manager::ToplevelManagerState;
+use super::wlr_foreign_toplevel::ToplevelEvent;
+use super::Environment;
+use crate::error::ERR_CHANNEL_RECV;
+use crate::send;
 use cfg_if::cfg_if;
 use color_eyre::Report;
-use indexmap::IndexMap;
-use smithay_client_toolkit::environment::Environment;
-use smithay_client_toolkit::output::{with_output_info, OutputInfo};
+use smithay_client_toolkit::output::{OutputInfo, OutputState};
 use smithay_client_toolkit::reexports::calloop::channel::{channel, Event, Sender};
 use smithay_client_toolkit::reexports::calloop::EventLoop;
-use smithay_client_toolkit::WaylandSource;
+use smithay_client_toolkit::registry::RegistryState;
+use smithay_client_toolkit::seat::SeatState;
 use std::collections::HashMap;
-use std::sync::{Arc, RwLock};
-use tokio::sync::{broadcast, oneshot};
+use std::sync::mpsc;
+use tokio::sync::broadcast;
 use tokio::task::spawn_blocking;
-use tracing::{debug, error};
+use tracing::{debug, error, trace};
+use wayland_client::globals::registry_queue_init;
 use wayland_client::protocol::wl_seat::WlSeat;
-use wayland_client::{ConnectError, Display, EventQueue};
-use wayland_protocols::wlr::unstable::foreign_toplevel::v1::client::{
-    zwlr_foreign_toplevel_handle_v1::ZwlrForeignToplevelHandleV1,
-    zwlr_foreign_toplevel_manager_v1::ZwlrForeignToplevelManagerV1,
-};
+use wayland_client::{Connection, WaylandSource};
 
 cfg_if! {
     if #[cfg(feature = "clipboard")] {
-        use super::{ClipboardItem};
-        use super::wlr_data_control::manager::{listen_to_devices, DataControlDeviceHandler};
-        use crate::{read_lock, write_lock};
-        use tokio::spawn;
+        use super::ClipboardItem;
+        use super::wlr_data_control::manager::DataControlDeviceManagerState;
+        use crate::lock;
+        use std::sync::{Arc, Mutex};
     }
 }
 
 #[derive(Debug)]
 pub enum Request {
+    /// Sends a request for all the outputs.
+    /// These are then sent on the `output` channel.
+    Outputs,
+    /// Sends a request for all the seats.
+    /// These are then sent ont the `seat` channel.
+    Seats,
+    /// Sends a request for all the toplevels.
+    /// These are then sent on the `toplevel_init` channel.
+    Toplevels,
+    /// Sends a request for the current clipboard item.
+    /// This is then sent on the `clipboard_init` channel.
+    #[cfg(feature = "clipboard")]
+    Clipboard,
     /// Copies the value to the clipboard
     #[cfg(feature = "clipboard")]
     CopyToClipboard(Arc<ClipboardItem>),
     /// Forces a dispatch, flushing any currently queued events
-    Refresh,
+    Roundtrip,
 }
 
 pub struct WaylandClient {
-    pub outputs: Vec<OutputInfo>,
-    pub seats: Vec<WlSeat>,
-
-    pub toplevels: Arc<RwLock<IndexMap<usize, (ToplevelInfo, ZwlrForeignToplevelHandleV1)>>>,
+    // External channels
     toplevel_tx: broadcast::Sender<ToplevelEvent>,
     _toplevel_rx: broadcast::Receiver<ToplevelEvent>,
-
     #[cfg(feature = "clipboard")]
     clipboard_tx: broadcast::Sender<Arc<ClipboardItem>>,
     #[cfg(feature = "clipboard")]
-    clipboard: Arc<RwLock<Option<Arc<ClipboardItem>>>>,
+    _clipboard_rx: broadcast::Receiver<Arc<ClipboardItem>>,
+
+    // Internal channels
+    toplevel_init_rx: mpsc::Receiver<HashMap<usize, ToplevelHandle>>,
+    output_rx: mpsc::Receiver<Vec<OutputInfo>>,
+    seat_rx: mpsc::Receiver<Vec<WlSeat>>,
+    #[cfg(feature = "clipboard")]
+    clipboard_init_rx: mpsc::Receiver<Option<Arc<ClipboardItem>>>,
 
     request_tx: Sender<Request>,
 }
 
 impl WaylandClient {
     pub(super) async fn new() -> Self {
-        let (output_tx, output_rx) = oneshot::channel();
-        let (seat_tx, seat_rx) = oneshot::channel();
-
         let (toplevel_tx, toplevel_rx) = broadcast::channel(32);
 
-        let toplevels = Arc::new(RwLock::new(IndexMap::new()));
-        let toplevels2 = toplevels.clone();
+        let (toplevel_init_tx, toplevel_init_rx) = mpsc::channel();
+        #[cfg(feature = "clipboard")]
+        let (clipboard_init_tx, clipboard_init_rx) = mpsc::channel();
+        let (output_tx, output_rx) = mpsc::channel();
+        let (seat_tx, seat_rx) = mpsc::channel();
 
         let toplevel_tx2 = toplevel_tx.clone();
 
         cfg_if! {
             if #[cfg(feature = "clipboard")] {
-                let (clipboard_tx, mut clipboard_rx) = broadcast::channel(32);
-                let clipboard = Arc::new(RwLock::new(None));
+                let (clipboard_tx, clipboard_rx) = broadcast::channel(32);
                 let clipboard_tx2 = clipboard_tx.clone();
             }
         }
@@ -82,85 +93,100 @@ impl WaylandClient {
 
         // `queue` is not `Send` so we need to handle everything inside the task
         spawn_blocking(move || {
-            let toplevels = toplevels2;
             let toplevel_tx = toplevel_tx2;
+            #[cfg(feature = "clipboard")]
+            let clipboard_tx = clipboard_tx2;
 
-            let (env, _display, queue) =
-                Self::new_environment().expect("Failed to connect to Wayland compositor");
+            let conn =
+                Connection::connect_to_env().expect("Failed to connect to Wayland compositor");
+            let (globals, queue) =
+                registry_queue_init(&conn).expect("Failed to retrieve Wayland globals");
 
+            let qh = queue.handle();
             let mut event_loop =
-                EventLoop::<DData>::try_new().expect("Failed to create new event loop");
+                EventLoop::<Environment>::try_new().expect("Failed to create new event loop");
+
             WaylandSource::new(queue)
-                .quick_insert(event_loop.handle())
+                .expect("Failed to create Wayland source from queue")
+                .insert(event_loop.handle())
                 .expect("Failed to insert Wayland event queue into event loop");
 
-            let outputs = Self::get_outputs(&env);
-            send!(output_tx, outputs);
+            let loop_handle = event_loop.handle();
 
-            let seats = env.get_all_seats();
+            // Initialize the registry handling
+            // so other parts of Smithay's client toolkit may bind globals.
+            let registry_state = RegistryState::new(&globals);
 
-            // TODO: Actually handle seats properly
+            let output_delegate = OutputState::new(&globals, &qh);
+            let seat_delegate = SeatState::new(&globals, &qh);
+
             #[cfg(feature = "clipboard")]
-            let default_seat = seats[0].detach();
+            let data_control_device_manager_delegate =
+                DataControlDeviceManagerState::bind(&globals, &qh)
+                    .expect("data device manager is not available");
 
-            send!(
-                seat_tx,
-                seats
-                    .into_iter()
-                    .map(|seat| seat.detach())
-                    .collect::<Vec<WlSeat>>()
-            );
+            let foreign_toplevel_manager_delegate = ToplevelManagerState::bind(&globals, &qh)
+                .expect("foreign toplevel manager is not available");
 
-            let handle = event_loop.handle();
-            handle
-                .insert_source(ev_rx, move |event, _metadata, ddata| {
-                    // let env = &ddata.env;
+            let mut env = Environment {
+                registry_state,
+                output_state: output_delegate,
+                seat_state: seat_delegate,
+                #[cfg(feature = "clipboard")]
+                data_control_device_manager_state: data_control_device_manager_delegate,
+                foreign_toplevel_manager_state: foreign_toplevel_manager_delegate,
+                seats: vec![],
+                handles: HashMap::new(),
+                #[cfg(feature = "clipboard")]
+                clipboard: Arc::new(Mutex::new(None)),
+                toplevel_tx,
+                #[cfg(feature = "clipboard")]
+                clipboard_tx,
+                #[cfg(feature = "clipboard")]
+                data_control_devices: vec![],
+                #[cfg(feature = "clipboard")]
+                selection_offers: vec![],
+                #[cfg(feature = "clipboard")]
+                copy_paste_sources: vec![],
+                loop_handle: event_loop.handle(),
+            };
+
+            loop_handle
+                .insert_source(ev_rx, move |event, _metadata, env| {
+                    trace!("{event:?}");
                     match event {
-                        Event::Msg(Request::Refresh) => debug!("Received refresh event"),
+                        Event::Msg(Request::Roundtrip) => debug!("Received refresh event"),
+                        Event::Msg(Request::Outputs) => {
+                            trace!("Received get outputs request");
+
+                            send!(output_tx, env.output_info());
+                        }
+                        Event::Msg(Request::Seats) => {
+                            trace!("Receive get seats request");
+                            send!(seat_tx, env.seats.clone());
+                        }
+                        Event::Msg(Request::Toplevels) => {
+                            trace!("Receive get toplevels request");
+                            send!(toplevel_init_tx, env.handles.clone());
+                        }
+                        #[cfg(feature = "clipboard")]
+                        Event::Msg(Request::Clipboard) => {
+                            trace!("Receive get clipboard requests");
+                            let clipboard = lock!(env.clipboard).clone();
+                            send!(clipboard_init_tx, clipboard);
+                        }
                         #[cfg(feature = "clipboard")]
                         Event::Msg(Request::CopyToClipboard(value)) => {
-                            super::wlr_data_control::copy_to_clipboard(
-                                &ddata.env,
-                                &default_seat,
-                                &value,
-                            )
-                            .expect("Failed to copy to clipboard");
+                            env.copy_to_clipboard(value, &qh);
                         }
                         Event::Closed => panic!("Channel unexpectedly closed"),
                     }
                 })
                 .expect("Failed to insert channel into event queue");
 
-            let _toplevel_manager = env.require_global::<ZwlrForeignToplevelManagerV1>();
-
-            let _toplevel_listener = listen_for_toplevels(&env, move |handle, event, _ddata| {
-                super::wlr_foreign_toplevel::update_toplevels(
-                    &toplevels,
-                    handle,
-                    event,
-                    &toplevel_tx,
-                );
-            });
-
-            cfg_if! {
-                if #[cfg(feature = "clipboard")] {
-                    let clipboard_tx = clipboard_tx2;
-                    let handle = event_loop.handle();
-
-                    let _offer_listener = listen_to_devices(&env, move |_seat, event, ddata| {
-                        debug!("Received clipboard event");
-                        super::wlr_data_control::receive_offer(event, &handle, clipboard_tx.clone(), ddata);
-                    });
-                }
-            }
-
-            let mut data = DData {
-                env,
-                offer_tokens: HashMap::new(),
-            };
-
             loop {
-                if let Err(err) = event_loop.dispatch(None, &mut data) {
+                trace!("Dispatching event loop");
+                if let Err(err) = event_loop.dispatch(None, &mut env) {
                     error!(
                         "{:?}",
                         Report::new(err).wrap_err("Failed to dispatch pending wayland events")
@@ -169,119 +195,76 @@ impl WaylandClient {
             }
         });
 
-        // keep track of current clipboard item
-        #[cfg(feature = "clipboard")]
-        {
-            let clipboard = clipboard.clone();
-            spawn(async move {
-                while let Ok(item) = clipboard_rx.recv().await {
-                    let mut clipboard = write_lock!(clipboard);
-                    clipboard.replace(item);
-                }
-            });
-        }
-
-        let outputs = output_rx.await.expect(err::ERR_CHANNEL_RECV);
-
-        let seats = seat_rx.await.expect(err::ERR_CHANNEL_RECV);
-
         Self {
-            outputs,
-            seats,
-            #[cfg(feature = "clipboard")]
-            clipboard,
-            toplevels,
             toplevel_tx,
             _toplevel_rx: toplevel_rx,
+            toplevel_init_rx,
+            #[cfg(feature = "clipboard")]
+            clipboard_init_rx,
+            output_rx,
+            seat_rx,
             #[cfg(feature = "clipboard")]
             clipboard_tx,
+            #[cfg(feature = "clipboard")]
+            _clipboard_rx: clipboard_rx,
             request_tx: ev_tx,
         }
     }
 
-    pub fn subscribe_toplevels(&self) -> broadcast::Receiver<ToplevelEvent> {
-        self.toplevel_tx.subscribe()
+    pub fn subscribe_toplevels(
+        &self,
+    ) -> (
+        broadcast::Receiver<ToplevelEvent>,
+        HashMap<usize, ToplevelHandle>,
+    ) {
+        let rx = self.toplevel_tx.subscribe();
+
+        let receiver = &self.toplevel_init_rx;
+        send!(self.request_tx, Request::Toplevels);
+        let data = receiver.recv().expect(ERR_CHANNEL_RECV);
+
+        (rx, data)
     }
 
     #[cfg(feature = "clipboard")]
-    pub fn subscribe_clipboard(&self) -> broadcast::Receiver<Arc<ClipboardItem>> {
-        self.clipboard_tx.subscribe()
+    pub fn subscribe_clipboard(
+        &self,
+    ) -> (
+        broadcast::Receiver<Arc<ClipboardItem>>,
+        Option<Arc<ClipboardItem>>,
+    ) {
+        let rx = self.clipboard_tx.subscribe();
+
+        let receiver = &self.clipboard_init_rx;
+        send!(self.request_tx, Request::Clipboard);
+        let data = receiver.recv().expect(ERR_CHANNEL_RECV);
+
+        (rx, data)
     }
 
+    /// Force a roundtrip on the wayland connection,
+    /// flushing any queued events and immediately receiving any new ones.
     pub fn roundtrip(&self) {
-        send!(self.request_tx, Request::Refresh);
+        trace!("Sending roundtrip request");
+        send!(self.request_tx, Request::Roundtrip);
     }
 
-    #[cfg(feature = "clipboard")]
-    pub fn get_clipboard(&self) -> Option<Arc<ClipboardItem>> {
-        let clipboard = read_lock!(self.clipboard);
-        clipboard.as_ref().cloned()
+    pub fn get_outputs(&self) -> Vec<OutputInfo> {
+        trace!("Sending get outputs request");
+
+        send!(self.request_tx, Request::Outputs);
+        self.output_rx.recv().expect(ERR_CHANNEL_RECV)
+    }
+
+    pub fn get_seats(&self) -> Vec<WlSeat> {
+        trace!("Sending get seats request");
+
+        send!(self.request_tx, Request::Seats);
+        self.seat_rx.recv().expect(ERR_CHANNEL_RECV)
     }
 
     #[cfg(feature = "clipboard")]
     pub fn copy_to_clipboard(&self, item: Arc<ClipboardItem>) {
         send!(self.request_tx, Request::CopyToClipboard(item));
-    }
-
-    fn get_outputs(env: &Environment<Env>) -> Vec<OutputInfo> {
-        let outputs = env.get_all_outputs();
-
-        outputs
-            .iter()
-            .filter_map(|output| with_output_info(output, Clone::clone))
-            .collect()
-    }
-
-    fn new_environment() -> Result<(Environment<Env>, Display, EventQueue), ConnectError> {
-        Display::connect_to_env().and_then(|display| {
-            let mut queue = display.create_event_queue();
-            let ret = {
-                let mut sctk_seats = smithay_client_toolkit::seat::SeatHandler::new();
-                let sctk_data_device_manager =
-                    smithay_client_toolkit::data_device::DataDeviceHandler::init(&mut sctk_seats);
-
-                #[cfg(feature = "clipboard")]
-                let data_control_device = DataControlDeviceHandler::init(&mut sctk_seats);
-
-                let sctk_primary_selection_manager =
-                    smithay_client_toolkit::primary_selection::PrimarySelectionHandler::init(
-                        &mut sctk_seats,
-                    );
-
-                let display = ::smithay_client_toolkit::reexports::client::Proxy::clone(&display);
-                let env = Environment::new(
-                    &display.attach(queue.token()),
-                    &mut queue,
-                    Env {
-                        sctk_compositor: smithay_client_toolkit::environment::SimpleGlobal::new(),
-                        sctk_subcompositor: smithay_client_toolkit::environment::SimpleGlobal::new(
-                        ),
-                        sctk_shm: smithay_client_toolkit::shm::ShmHandler::new(),
-                        sctk_outputs: smithay_client_toolkit::output::OutputHandler::new(),
-                        sctk_seats,
-                        sctk_data_device_manager,
-                        sctk_primary_selection_manager,
-                        toplevel: ToplevelHandler::init(),
-                        #[cfg(feature = "clipboard")]
-                        data_control_device,
-                    },
-                );
-
-                if let Ok(env) = env.as_ref() {
-                    let _psm = env.get_primary_selection_manager();
-                }
-
-                env
-            };
-            match ret {
-                Ok(env) => Ok((env, display, queue)),
-                Err(_e) => display.protocol_error().map_or_else(
-                    || Err(ConnectError::NoCompositorListening),
-                    |perr| {
-                        panic!("[SCTK] A protocol error occured during initial setup: {perr}");
-                    },
-                ),
-            }
-        })
     }
 }

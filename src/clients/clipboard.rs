@@ -6,7 +6,7 @@ use lazy_static::lazy_static;
 use std::sync::{Arc, Mutex};
 use tokio::spawn;
 use tokio::sync::mpsc;
-use tracing::debug;
+use tracing::{debug, trace};
 
 #[derive(Debug)]
 pub enum ClipboardEvent {
@@ -26,6 +26,8 @@ pub struct ClipboardClient {
 
 impl ClipboardClient {
     fn new() -> Self {
+        trace!("Initializing clipboard client");
+
         let senders = Arc::new(Mutex::new(Vec::<(EventSender, usize)>::new()));
 
         let cache = Arc::new(Mutex::new(ClipboardCache::new()));
@@ -35,10 +37,20 @@ impl ClipboardClient {
             let cache = cache.clone();
 
             spawn(async move {
-                let mut rx = {
+                let (mut rx, item) = {
                     let wl = wayland::get_client().await;
                     wl.subscribe_clipboard()
                 };
+
+                if let Some(item) = item {
+                    let senders = lock!(senders);
+                    let iter = senders.iter();
+                    for (tx, _) in iter {
+                        try_send!(tx, ClipboardEvent::Add(item.clone()));
+                    }
+
+                    lock!(cache).insert(item, senders.len());
+                }
 
                 while let Ok(item) = rx.recv().await {
                     debug!("Received clipboard item (ID: {})", item.id);
@@ -59,7 +71,6 @@ impl ClipboardClient {
                             let iter = senders.iter();
                             for (tx, sender_cache_size) in iter {
                                 if cache_size == *sender_cache_size {
-                                    // let mut cache = lock!(cache);
                                     let removed_id = lock!(cache)
                                         .remove_ref_first()
                                         .expect("Clipboard cache unexpectedly empty");
@@ -83,18 +94,11 @@ impl ClipboardClient {
         Self { senders, cache }
     }
 
-    pub async fn subscribe(&self, cache_size: usize) -> mpsc::Receiver<ClipboardEvent> {
+    pub fn subscribe(&self, cache_size: usize) -> mpsc::Receiver<ClipboardEvent> {
         let (tx, rx) = mpsc::channel(16);
 
-        let wl = wayland::get_client().await;
-        wl.roundtrip();
-
         {
-            let mut cache = lock!(self.cache);
-
-            if let Some(item) = wl.get_clipboard() {
-                cache.insert_or_inc_ref(item);
-            }
+            let cache = lock!(self.cache);
 
             let iter = cache.iter();
             for (_, (item, _)) in iter {
@@ -102,10 +106,7 @@ impl ClipboardClient {
             }
         }
 
-        {
-            let mut senders = lock!(self.senders);
-            senders.push((tx, cache_size));
-        }
+        lock!(self.senders).push((tx, cache_size));
 
         rx
     }
@@ -169,13 +170,6 @@ impl ClipboardCache {
         self.cache
             .insert(item.id, (item, ref_count))
             .map(|(item, _)| item)
-    }
-
-    /// Inserts an entry with `ref_count` initial references,
-    /// or increments the `ref_count` by 1 if it already exists.
-    fn insert_or_inc_ref(&mut self, item: Arc<ClipboardItem>) {
-        let mut item = self.cache.entry(item.id).or_insert((item, 0));
-        item.1 += 1;
     }
 
     /// Removes the entry with key `id`.

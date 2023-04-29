@@ -1,54 +1,101 @@
-use smithay_client_toolkit::data_device::WritePipe;
-use std::os::fd::FromRawFd;
-use wayland_client::{Attached, DispatchData};
-use wayland_protocols::wlr::unstable::data_control::v1::client::{
-    zwlr_data_control_manager_v1::ZwlrDataControlManagerV1,
-    zwlr_data_control_source_v1::{Event, ZwlrDataControlSourceV1},
+use super::device::DataControlDevice;
+use super::manager::DataControlDeviceManagerState;
+use smithay_client_toolkit::data_device_manager::WritePipe;
+use wayland_client::{Connection, Dispatch, Proxy, QueueHandle};
+use wayland_protocols_wlr::data_control::v1::client::zwlr_data_control_source_v1::{
+    Event, ZwlrDataControlSourceV1,
 };
 
-fn data_control_source_impl<F>(
-    source: &ZwlrDataControlSourceV1,
-    event: Event,
-    implem: &mut F,
-    ddata: DispatchData,
-) where
-    F: FnMut(String, WritePipe, DispatchData),
-{
-    match event {
-        Event::Send { mime_type, fd } => {
-            let pipe = unsafe { FromRawFd::from_raw_fd(fd) };
-            implem(mime_type, pipe, ddata);
-        }
-        Event::Cancelled => source.destroy(),
-        _ => unreachable!(),
+#[derive(Debug, Default)]
+pub struct DataControlSourceData {}
+
+pub trait DataControlSourceDataExt: Send + Sync {
+    fn data_source_data(&self) -> &DataControlSourceData;
+}
+
+impl DataControlSourceDataExt for DataControlSourceData {
+    fn data_source_data(&self) -> &DataControlSourceData {
+        self
     }
 }
 
-pub struct DataControlSource {
-    pub(crate) source: ZwlrDataControlSourceV1,
+/// Handler trait for `DataSource` events.
+///
+/// The functions defined in this trait are called as `DataSource` events are received from the compositor.
+pub trait DataControlSourceHandler: Sized {
+    /// This may be called multiple times, once for each accepted mime type from the destination, if any.
+    fn accept_mime(
+        &mut self,
+        conn: &Connection,
+        qh: &QueueHandle<Self>,
+        source: &ZwlrDataControlSourceV1,
+        mime: Option<String>,
+    );
+
+    /// The client has requested the data for this source to be sent.
+    /// Send the data, then close the fd.
+    fn send_request(
+        &mut self,
+        conn: &Connection,
+        qh: &QueueHandle<Self>,
+        source: &ZwlrDataControlSourceV1,
+        mime: String,
+        fd: WritePipe,
+    );
+
+    /// The data source is no longer valid
+    /// Cleanup & destroy this resource
+    fn cancelled(
+        &mut self,
+        conn: &Connection,
+        qh: &QueueHandle<Self>,
+        source: &ZwlrDataControlSourceV1,
+    );
 }
 
-impl DataControlSource {
-    pub fn new<F>(
-        manager: &Attached<ZwlrDataControlManagerV1>,
-        mime_types: Vec<String>,
-        mut callback: F,
-    ) -> Self
-    where
-        F: FnMut(String, WritePipe, DispatchData) + 'static,
-    {
-        let source = manager.create_data_source();
-
-        source.quick_assign(move |source, evt, ddata| {
-            data_control_source_impl(&source, evt, &mut callback, ddata);
-        });
-
-        for mime_type in mime_types {
-            source.offer(mime_type);
+impl<D, U> Dispatch<ZwlrDataControlSourceV1, U, D> for DataControlDeviceManagerState
+where
+    D: Dispatch<ZwlrDataControlSourceV1, U> + DataControlSourceHandler,
+    U: DataControlSourceDataExt,
+{
+    fn event(
+        state: &mut D,
+        source: &ZwlrDataControlSourceV1,
+        event: <ZwlrDataControlSourceV1 as Proxy>::Event,
+        _data: &U,
+        conn: &Connection,
+        qh: &QueueHandle<D>,
+    ) {
+        match event {
+            Event::Send { mime_type, fd } => {
+                state.send_request(conn, qh, source, mime_type, fd.into());
+            }
+            Event::Cancelled => {
+                state.cancelled(conn, qh, source);
+            }
+            _ => {}
         }
+    }
+}
 
-        Self {
-            source: source.detach(),
-        }
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub struct CopyPasteSource {
+    pub(crate) inner: ZwlrDataControlSourceV1,
+}
+
+impl CopyPasteSource {
+    /// Set the selection of the provided data device as a response to the event with with provided serial.
+    pub fn set_selection(&self, device: &DataControlDevice) {
+        device.device.set_selection(Some(&self.inner));
+    }
+
+    pub const fn inner(&self) -> &ZwlrDataControlSourceV1 {
+        &self.inner
+    }
+}
+
+impl Drop for CopyPasteSource {
+    fn drop(&mut self) {
+        self.inner.destroy();
     }
 }

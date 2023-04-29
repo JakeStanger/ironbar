@@ -127,7 +127,7 @@ fn create_bars(
     wl: &WaylandClient,
     config: &Config,
 ) -> Result<()> {
-    let outputs = wl.outputs.as_slice();
+    let outputs = wl.get_outputs();
 
     debug!("Received {} outputs from Wayland", outputs.len());
     debug!("Outputs: {:?}", outputs);
@@ -141,7 +141,8 @@ fn create_bars(
         let output = outputs
             .get(i as usize)
             .ok_or_else(|| Report::msg(error::ERR_OUTPUTS))?;
-        let monitor_name = &output.name;
+
+        let Some(monitor_name) = &output.name else { continue };
 
         config.monitors.as_ref().map_or_else(
             || {
