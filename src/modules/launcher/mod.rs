@@ -268,6 +268,8 @@ impl Module<gtk::Box> for LauncherModule {
                         },
                     );
                 } else {
+                    send_async!(tx, ModuleUpdateEvent::ClosePopup);
+
                     let wl = wayland::get_client().await;
                     let items = lock!(items);
 
@@ -444,10 +446,6 @@ impl Module<gtk::Box> for LauncherModule {
                                     let tx = controller_tx.clone();
                                     button.connect_clicked(move |_| {
                                         try_send!(tx, ItemEvent::FocusWindow(win.id));
-
-                                        if let Some(win) = button.window() {
-                                            win.hide();
-                                        }
                                     });
                                 }
 
