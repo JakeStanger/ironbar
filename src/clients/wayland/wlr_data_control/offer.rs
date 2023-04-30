@@ -7,7 +7,7 @@ use smithay_client_toolkit::data_device_manager::ReadPipe;
 use std::ops::DerefMut;
 use std::os::fd::FromRawFd;
 use std::sync::{Arc, Mutex};
-use tracing::warn;
+use tracing::{debug, warn};
 use wayland_client::{Connection, Dispatch, Proxy, QueueHandle};
 use wayland_protocols_wlr::data_control::v1::client::zwlr_data_control_offer_v1::{
     Event, ZwlrDataControlOfferV1,
@@ -149,6 +149,7 @@ where
         let data = data.data_control_offer_data();
 
         if let Event::Offer { mime_type } = event {
+            debug!("Adding new offer with type '{mime_type}'");
             data.push_mime_type(mime_type.clone());
             state.offer(conn, qh, &mut lock!(data.inner).offer, mime_type);
         }

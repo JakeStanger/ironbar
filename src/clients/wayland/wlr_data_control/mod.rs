@@ -10,16 +10,19 @@ use crate::clients::wayland::Environment;
 use crate::{lock, send};
 use device::DataControlDevice;
 use glib::Bytes;
+use nix::fcntl::{fcntl, F_GETPIPE_SZ, F_SETPIPE_SZ};
+use nix::sys::epoll::{epoll_create, epoll_ctl, epoll_wait, EpollEvent, EpollFlags, EpollOp};
 use smithay_client_toolkit::data_device_manager::WritePipe;
 use smithay_client_toolkit::reexports::calloop::RegistrationToken;
+use std::cmp::min;
 use std::fmt::{Debug, Formatter};
 use std::fs::File;
-use std::io;
-use std::io::{Read, Write};
-use std::os::fd::OwnedFd;
+use std::io::{ErrorKind, Read, Write};
+use std::os::fd::{AsRawFd, OwnedFd, RawFd};
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
-use tracing::{debug, error};
+use std::{fs, io};
+use tracing::{debug, error, trace};
 use wayland_client::{Connection, QueueHandle};
 use wayland_protocols_wlr::data_control::v1::client::zwlr_data_control_source_v1::ZwlrDataControlSourceV1;
 
@@ -114,14 +117,14 @@ impl MimeType {
 
 impl Environment {
     pub fn copy_to_clipboard(&mut self, item: Arc<ClipboardItem>, qh: &QueueHandle<Self>) {
-        debug!("Copying item to clipboard");
+        debug!("Copying item to clipboard: {item:?}");
 
         // TODO: Proper device tracking
         let device = self.data_control_devices.first();
         if let Some(device) = device {
             let source = self
                 .data_control_device_manager_state
-                .create_copy_paste_source(qh, [item.mime_type.as_str()]);
+                .create_copy_paste_source(qh, [INTERNAL_MIME_TYPE, item.mime_type.as_str()]);
 
             source.set_selection(&device.device);
             self.copy_paste_sources.push(source);
@@ -265,34 +268,77 @@ impl DataControlSourceHandler for Environment {
         mime: String,
         write_pipe: WritePipe,
     ) {
-        debug!("Handler received source send request event");
+        debug!("Handler received source send request event ({mime})");
 
         if let Some(item) = lock!(self.clipboard).clone() {
             let fd = OwnedFd::from(write_pipe);
-            if let Some(_source) = self
+            if self
                 .copy_paste_sources
                 .iter_mut()
-                .find(|s| s.inner() == source && MimeType::parse(&mime).is_some())
+                .any(|s| s.inner() == source && MimeType::parse(&mime).is_some())
             {
-                let mut file = File::from(fd);
+                trace!("Source found, writing to file");
 
-                // FIXME: Not working for large (buffered) values in xwayland
-                //  Might be something strange going on with byte count?
-                let bytes = match &item.value {
+                let mut bytes = match &item.value {
                     ClipboardValue::Text(text) => text.as_bytes(),
                     ClipboardValue::Image(bytes) => bytes.as_ref(),
                     ClipboardValue::Other => panic!(
                         "{:?}",
-                        io::Error::new(
-                            io::ErrorKind::Other,
-                            "Attempted to copy unsupported mime type",
-                        )
+                        io::Error::new(ErrorKind::Other, "Attempted to copy unsupported mime type",)
                     ),
                 };
 
-                if let Err(err) = file.write_all(bytes) {
-                    error!("{err:?}");
+                let pipe_size = set_pipe_size(fd.as_raw_fd(), bytes.len())
+                    .expect("Failed to increase pipe size");
+                let mut file = File::from(fd.try_clone().expect("Failed to clone fd"));
+
+                trace!("Num bytes: {}", bytes.len());
+
+                let mut events = (0..16).map(|_| EpollEvent::empty()).collect::<Vec<_>>();
+                let mut epoll_event = EpollEvent::new(EpollFlags::EPOLLOUT, 0);
+
+                let epoll_fd = epoll_create().unwrap();
+                epoll_ctl(
+                    epoll_fd,
+                    EpollOp::EpollCtlAdd,
+                    fd.as_raw_fd(),
+                    &mut epoll_event,
+                )
+                .unwrap();
+
+                while !bytes.is_empty() {
+                    let chunk = &bytes[..min(pipe_size as usize, bytes.len())];
+
+                    trace!("Writing {} bytes ({} remain)", chunk.len(), bytes.len());
+
+                    epoll_wait(epoll_fd, &mut events, 100).expect("Failed to wait to epoll");
+
+                    match file.write(chunk) {
+                        Ok(_) => bytes = &bytes[chunk.len()..],
+                        Err(err) => {
+                            error!("{err:?}");
+                            break;
+                        }
+                    }
                 }
+
+                // for chunk in bytes.chunks(pipe_size as usize) {
+                //     trace!("Writing chunk");
+                //     file.write(chunk).expect("Failed to write chunk to buffer");
+                //     file.flush().expect("Failed to flush to file");
+                // }
+
+                // match file.write_vectored(&bytes.chunks(pipe_size as usize).map(IoSlice::new).collect::<Vec<_>>()) {
+                //     Ok(_) => debug!("Copied item"),
+                //     Err(err) => error!("{err:?}"),
+                // }
+
+                // match file.write_all(bytes) {
+                //     Ok(_) => debug!("Copied item"),
+                //     Err(err) => error!("{err:?}"),
+                // }
+            } else {
+                error!("Failed to find source");
             }
         }
     }
@@ -311,4 +357,39 @@ impl DataControlSourceHandler for Environment {
             .map(|pos| self.copy_paste_sources.remove(pos));
         source.destroy();
     }
+}
+
+/// Attempts to increase the fd pipe size to the requested number of bytes.
+/// The kernel will automatically round this up to the nearest page size.
+/// If the requested size is larger than the kernel max (normally 1MB),
+/// it will be clamped at this.
+///
+/// Returns the new size if succeeded
+fn set_pipe_size(fd: RawFd, size: usize) -> io::Result<i32> {
+    // clamp size at kernel max
+    let max_pipe_size = fs::read_to_string("/proc/sys/fs/pipe-max-size")
+        .expect("Failed to find pipe-max-size virtual kernel file")
+        .trim()
+        .parse::<usize>()
+        .expect("Failed to parse pipe-max-size contents");
+
+    let size = min(size, max_pipe_size);
+
+    let curr_size = fcntl(fd, F_GETPIPE_SZ)? as usize;
+
+    trace!("Current pipe size: {curr_size}");
+
+    let new_size = if size > curr_size {
+        trace!("Requesting pipe size increase to (at least): {size}");
+        let res = fcntl(fd, F_SETPIPE_SZ(size as i32))?;
+        trace!("New pipe size: {res}");
+        if res < size as i32 {
+            return Err(io::Error::last_os_error());
+        }
+        res
+    } else {
+        size as i32
+    };
+
+    Ok(new_size)
 }
