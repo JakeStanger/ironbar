@@ -24,10 +24,12 @@ use dirs::config_dir;
 use gtk::gdk::Display;
 use gtk::prelude::*;
 use gtk::Application;
+use std::cell::Cell;
 use std::env;
 use std::future::Future;
 use std::path::PathBuf;
 use std::process::exit;
+use std::rc::Rc;
 use tokio::runtime::Handle;
 use tokio::task::block_in_place;
 
@@ -40,7 +42,7 @@ const GTK_APP_ID: &str = "dev.jstanger.ironbar";
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[tokio::main]
-async fn main() -> Result<()> {
+async fn main() {
     let _guard = logging::install_logging();
 
     info!("Ironbar version {}", VERSION);
@@ -50,7 +52,16 @@ async fn main() -> Result<()> {
 
     let app = Application::builder().application_id(GTK_APP_ID).build();
 
+    let running = Rc::new(Cell::new(false));
+
     app.connect_activate(move |app| {
+        if running.get() {
+            info!("Ironbar already running, returning");
+            return;
+        }
+
+        running.set(true);
+
         let display = Display::default().map_or_else(
             || {
                 let report = Report::msg("Failed to get default GTK display");
@@ -105,7 +116,8 @@ async fn main() -> Result<()> {
     // Some are provided by swaybar_config but not currently supported
     app.run_with_args(&Vec::<&str>::new());
 
-    Ok(())
+    info!("Shutting down");
+    exit(0);
 }
 
 /// Creates each of the bars across each of the (configured) outputs.
