@@ -27,4 +27,5 @@
 - [Script](script)
 - [Sys_Info](sys-info)
 - [Tray](tray)
+- [Upower](upower)
 - [Workspaces](workspaces)
