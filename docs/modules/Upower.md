@@ -76,5 +76,5 @@ end:
 | `#upower #icon`                 | Upower widget battery icon. |
 | `#upower #button`               | Upower widget button.       |
 | `#upower #button #label`        | Upower widget button label. |
-| `#popup-upower`                 | Clock popup box.            |
+| `#popup-upower`                 | Upower popup box.           |
 | `#popup-upower #upower-details` | Label inside the popup.     |
