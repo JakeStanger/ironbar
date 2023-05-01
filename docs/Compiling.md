@@ -68,6 +68,7 @@ cargo build --release --no-default-features \
 | music+mpd           | Enables the `music` module with MPD support.                                      |
 | sys_info            | Enables the `sys_info` module.                                                    |
 | tray                | Enables the `tray` module.                                                        |
+| upower              | Enables the `upower` module.                                                      |
 | workspaces+all      | Enables the `workspaces` module with support for all compositors.                 |
 | workspaces+sway     | Enables the `workspaces` module with support for Sway.                            |
 | workspaces+hyprland | Enables the `workspaces` module with support for Hyprland.                        |
