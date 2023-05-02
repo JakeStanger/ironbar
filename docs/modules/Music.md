@@ -136,6 +136,7 @@ and will be replaced with values from the currently playing track:
 | Selector                            | Description                              |
 |-------------------------------------|------------------------------------------|
 | `#music`                            | Tray widget button                       |
+| `#music #contents`                  | Tray widget button contents box          |
 | `#popup-music`                      | Popup box                                |
 | `#popup-music #album-art`           | Album art image inside popup box         |
 | `#popup-music #title`               | Track title container inside popup box   |

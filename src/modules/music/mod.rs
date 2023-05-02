@@ -154,7 +154,12 @@ impl Module<Button> for MusicModule {
         info: &ModuleInfo,
     ) -> Result<ModuleWidget<Button>> {
         let button = Button::new();
-        let button_contents = gtk::Box::new(Orientation::Horizontal, 5);
+        let button_contents = gtk::Box::builder()
+            .orientation(Orientation::Horizontal)
+            .spacing(5)
+            .name("contents")
+            .build();
+
         button.add(&button_contents);
 
         let icon_play = new_icon_label(&self.icons.play, info.icon_theme, self.icon_size);
