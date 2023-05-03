@@ -20,11 +20,12 @@ default = [
 http = ["dep:reqwest"]
 upower = ["upower_dbus", "zbus", "futures-lite"]
 
-"config+all" = ["config+json", "config+yaml", "config+toml", "config+corn"]
+"config+all" = ["config+json", "config+yaml", "config+toml", "config+corn", "config+ron"]
 "config+json" = ["universal-config/json"]
 "config+yaml" = ["universal-config/yaml"]
 "config+toml" = ["universal-config/toml"]
 "config+corn" = ["universal-config/corn"]
+"config+ron" = ["universal-config/ron"]
 
 clipboard = ["nix"]
 
@@ -64,7 +65,7 @@ notify = { version = "5.0.0", default-features = false }
 wayland-client = "0.29.5"
 wayland-protocols = { version = "0.29.5", features = ["unstable_protocols", "client"] }
 smithay-client-toolkit = { version = "0.16.0", default-features = false, features = ["calloop"] }
-universal-config = { version = "0.3.0", default_features = false }
+universal-config = { version = "0.4.0", default_features = false }
 
 lazy_static = "1.4.0"
 async_once = "0.2.6"
