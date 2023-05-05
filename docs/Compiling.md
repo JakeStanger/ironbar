@@ -12,6 +12,7 @@ install target/release/ironbar ~/.local/bin/ironbar
 ## Build requirements
 
 To build from source, you must have GTK (>= 3.22) and GTK Layer Shell installed.
+You also need rust; only the latest stable version is supported.
 
 ### Arch
 
@@ -22,7 +23,9 @@ pacman -S gtk3 gtk-layer-shell
 ### Ubuntu/Debian
 
 ```shell
-apt install libgtk-3-dev libgtk-layer-shell-dev
+apt install build-essential libgtk-3-dev libgtk-layer-shell-dev
+# for http support
+apt install libssl-dev
 ```
 
 ### Fedora
