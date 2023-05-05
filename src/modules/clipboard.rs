@@ -80,7 +80,7 @@ impl Module<Button> for ClipboardModule {
         spawn(async move {
             let mut rx = {
                 let client = clipboard::get_client();
-                client.subscribe(max_items).await
+                client.subscribe(max_items)
             };
 
             while let Some(event) = rx.recv().await {

@@ -1,8 +1,8 @@
-use crate::clients::wayland::{self, ToplevelChange};
+use crate::clients::wayland::{self, ToplevelEvent};
 use crate::config::{CommonConfig, TruncateMode};
 use crate::image::ImageProvider;
 use crate::modules::{Module, ModuleInfo, ModuleUpdateEvent, ModuleWidget, WidgetContext};
-use crate::{await_sync, read_lock, send_async};
+use crate::{send_async, try_send};
 use color_eyre::Result;
 use glib::Continue;
 use gtk::prelude::*;
@@ -10,7 +10,7 @@ use gtk::Label;
 use serde::Deserialize;
 use tokio::spawn;
 use tokio::sync::mpsc::{Receiver, Sender};
-use tracing::error;
+use tracing::{debug, error};
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct FocusedModule {
@@ -49,38 +49,36 @@ impl Module<gtk::Box> for FocusedModule {
         tx: Sender<ModuleUpdateEvent<Self::SendMessage>>,
         _rx: Receiver<Self::ReceiveMessage>,
     ) -> Result<()> {
-        let focused = await_sync(async {
-            let wl = wayland::get_client().await;
-            let toplevels = read_lock!(wl.toplevels);
-
-            toplevels
-                .iter()
-                .find(|(_, (top, _))| top.active)
-                .map(|(_, (top, _))| top.clone())
-        });
-
-        if let Some(top) = focused {
-            tx.try_send(ModuleUpdateEvent::Update((top.title.clone(), top.app_id)))?;
-        }
-
         spawn(async move {
-            let mut wlrx = {
+            let (mut wlrx, handles) = {
                 let wl = wayland::get_client().await;
                 wl.subscribe_toplevels()
             };
 
-            while let Ok(event) = wlrx.recv().await {
-                let update = match event.change {
-                    ToplevelChange::Focus(focus) => focus,
-                    ToplevelChange::Title(_) => event.toplevel.active,
-                    _ => false,
-                };
+            let focused = handles.values().find_map(|handle| {
+                handle
+                    .info()
+                    .and_then(|info| if info.focused { Some(info) } else { None })
+            });
 
-                if update {
-                    send_async!(
-                        tx,
-                        ModuleUpdateEvent::Update((event.toplevel.title, event.toplevel.app_id))
-                    );
+            if let Some(focused) = focused {
+                try_send!(
+                    tx,
+                    ModuleUpdateEvent::Update((focused.title.clone(), focused.app_id))
+                );
+            };
+
+            while let Ok(event) = wlrx.recv().await {
+                if let ToplevelEvent::Update(handle) = event {
+                    let info = handle.info().unwrap_or_default();
+
+                    if info.focused {
+                        debug!("Changing focus");
+                        send_async!(
+                            tx,
+                            ModuleUpdateEvent::Update((info.title.clone(), info.app_id.clone()))
+                        );
+                    }
                 }
             }
         });

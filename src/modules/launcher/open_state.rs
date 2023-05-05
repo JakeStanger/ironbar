@@ -7,14 +7,15 @@ pub enum OpenState {
     Open { focused: bool },
 }
 
-impl OpenState {
-    /// Creates from `SwayNode`
-    pub const fn from_toplevel(toplevel: &ToplevelInfo) -> Self {
+impl From<&ToplevelInfo> for OpenState {
+    fn from(info: &ToplevelInfo) -> Self {
         Self::Open {
-            focused: toplevel.active,
+            focused: info.focused,
         }
     }
+}
 
+impl OpenState {
     /// Creates open with focused
     pub const fn focused(focused: bool) -> Self {
         Self::Open { focused }

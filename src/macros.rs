@@ -53,9 +53,10 @@ macro_rules! try_send {
 /// ```
 #[macro_export]
 macro_rules! lock {
-    ($mutex:expr) => {
+    ($mutex:expr) => {{
+        tracing::trace!("Locking {}", std::stringify!($mutex));
         $mutex.lock().expect($crate::error::ERR_MUTEX_LOCK)
-    };
+    }};
 }
 
 /// Gets a read lock on a `RwLock`.

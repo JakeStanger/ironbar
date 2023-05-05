@@ -62,9 +62,10 @@ indexmap = "1.9.1"
 dirs = "5.0.0"
 walkdir = "2.3.2"
 notify = { version = "5.0.0", default-features = false }
-wayland-client = "0.29.5"
-wayland-protocols = { version = "0.29.5", features = ["unstable_protocols", "client"] }
-smithay-client-toolkit = { version = "0.16.0", default-features = false, features = ["calloop"] }
+wayland-client = "0.30.0"
+wayland-protocols = { version = "0.30.0", features = ["unstable", "client"] }
+wayland-protocols-wlr = { version = "0.1.0", features = ["client"] }
+smithay-client-toolkit = { version = "0.17.0", default-features = false, features = ["calloop"] }
 universal-config = { version = "0.4.0", default_features = false }
 
 lazy_static = "1.4.0"
@@ -75,7 +76,7 @@ cfg-if = "1.0.0"
 reqwest = { version = "0.11.14", optional = true }
 
 # clipboard
-nix = { version = "0.26.2", optional = true }
+nix = { version = "0.26.2", optional = true, features = ["event"] }
 
 # clock
 chrono = { version = "0.4.19", optional = true }

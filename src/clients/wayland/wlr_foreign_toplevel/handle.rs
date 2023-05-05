@@ -1,13 +1,15 @@
+use super::manager::ToplevelManagerState;
+use crate::lock;
 use std::collections::HashSet;
-use std::sync::{Arc, RwLock};
 use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::{Arc, Mutex};
 use tracing::trace;
-use wayland_client::{DispatchData, Main};
-use wayland_protocols::wlr::unstable::foreign_toplevel::v1::client::zwlr_foreign_toplevel_handle_v1::{Event, ZwlrForeignToplevelHandleV1};
-use crate::write_lock;
-
-const STATE_ACTIVE: u32 = 2;
-const STATE_FULLSCREEN: u32 = 3;
+use wayland_client::protocol::wl_output::WlOutput;
+use wayland_client::protocol::wl_seat::WlSeat;
+use wayland_client::{Connection, Dispatch, Proxy, QueueHandle};
+use wayland_protocols_wlr::foreign_toplevel::v1::client::zwlr_foreign_toplevel_handle_v1::{
+    Event, ZwlrForeignToplevelHandleV1,
+};
 
 static COUNTER: AtomicUsize = AtomicUsize::new(1);
 
@@ -15,138 +17,168 @@ fn get_id() -> usize {
     COUNTER.fetch_add(1, Ordering::Relaxed)
 }
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone)]
+pub struct ToplevelHandle {
+    pub handle: ZwlrForeignToplevelHandleV1,
+}
+
+impl PartialEq for ToplevelHandle {
+    fn eq(&self, other: &Self) -> bool {
+        self.handle == other.handle
+    }
+}
+
+impl ToplevelHandle {
+    pub fn info(&self) -> Option<ToplevelInfo> {
+        trace!("Retrieving handle info");
+
+        let data = self.handle.data::<ToplevelHandleData>()?;
+        data.info()
+    }
+
+    pub fn focus(&self, seat: &WlSeat) {
+        trace!("Activating handle");
+        self.handle.activate(seat);
+    }
+}
+
+#[derive(Debug, Default)]
+pub struct ToplevelHandleData {
+    pub inner: Arc<Mutex<ToplevelHandleDataInner>>,
+}
+
+impl ToplevelHandleData {
+    fn info(&self) -> Option<ToplevelInfo> {
+        lock!(self.inner).current_info.clone()
+    }
+}
+
+#[derive(Debug, Default)]
+pub struct ToplevelHandleDataInner {
+    initial_done: bool,
+    output: Option<WlOutput>,
+
+    current_info: Option<ToplevelInfo>,
+    pending_info: ToplevelInfo,
+}
+
+#[derive(Debug, Clone)]
 pub struct ToplevelInfo {
     pub id: usize,
     pub app_id: String,
     pub title: String,
-    pub active: bool,
     pub fullscreen: bool,
-
-    ready: bool,
+    pub focused: bool,
 }
 
-impl ToplevelInfo {
-    fn new() -> Self {
-        let id = get_id();
+impl Default for ToplevelInfo {
+    fn default() -> Self {
         Self {
-            id,
-            ..Default::default()
+            id: get_id(),
+            app_id: String::new(),
+            title: String::new(),
+            fullscreen: false,
+            focused: false,
         }
     }
 }
 
-pub struct Toplevel;
-
-#[derive(Debug, Clone)]
-pub struct ToplevelEvent {
-    pub toplevel: ToplevelInfo,
-    pub change: ToplevelChange,
+pub trait ToplevelHandleDataExt {
+    fn toplevel_handle_data(&self) -> &ToplevelHandleData;
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum ToplevelChange {
-    New,
-    Close,
-    Title(String),
-    Focus(bool),
-    Fullscreen(bool),
+impl ToplevelHandleDataExt for ToplevelHandleData {
+    fn toplevel_handle_data(&self) -> &ToplevelHandleData {
+        self
+    }
 }
 
-fn toplevel_implem<F>(event: Event, info: &mut ToplevelInfo, implem: &mut F, ddata: DispatchData)
+pub trait ToplevelHandleHandler: Sized {
+    fn new_handle(&mut self, conn: &Connection, qh: &QueueHandle<Self>, handle: ToplevelHandle);
+
+    fn update_handle(&mut self, conn: &Connection, qh: &QueueHandle<Self>, handle: ToplevelHandle);
+
+    fn remove_handle(&mut self, conn: &Connection, qh: &QueueHandle<Self>, handle: ToplevelHandle);
+}
+
+impl<D, U> Dispatch<ZwlrForeignToplevelHandleV1, U, D> for ToplevelManagerState
 where
-    F: FnMut(ToplevelEvent, DispatchData),
+    D: Dispatch<ZwlrForeignToplevelHandleV1, U> + ToplevelHandleHandler,
+    U: ToplevelHandleDataExt,
 {
-    trace!("event: {event:?} (info: {info:?})");
+    fn event(
+        state: &mut D,
+        handle: &ZwlrForeignToplevelHandleV1,
+        event: Event,
+        data: &U,
+        conn: &Connection,
+        qh: &QueueHandle<D>,
+    ) {
+        const STATE_ACTIVE: u32 = 2;
+        const STATE_FULLSCREEN: u32 = 3;
 
-    let change = match event {
-        Event::AppId { app_id } => {
-            info.app_id = app_id;
-            None
-        }
-        Event::Title { title } => {
-            info.title = title.clone();
+        let data = data.toplevel_handle_data();
 
-            if info.ready {
-                Some(ToplevelChange::Title(title))
-            } else {
-                None
+        trace!("Processing handle event: {event:?}");
+
+        match event {
+            Event::Title { title } => {
+                lock!(data.inner).pending_info.title = title;
             }
-        }
-        Event::State { state } => {
-            // state is received as a `Vec<u8>` where every 4 bytes make up a `u32`
-            // the u32 then represents a value in the `State` enum.
-            assert_eq!(state.len() % 4, 0);
+            Event::AppId { app_id } => lock!(data.inner).pending_info.app_id = app_id,
+            Event::State { state } => {
+                // state is received as a `Vec<u8>` where every 4 bytes make up a `u32`
+                // the u32 then represents a value in the `State` enum.
+                assert_eq!(state.len() % 4, 0);
+                let state = (0..state.len() / 4)
+                    .map(|i| {
+                        let slice: [u8; 4] = state[i * 4..i * 4 + 4]
+                            .try_into()
+                            .expect("Received invalid state length");
+                        u32::from_le_bytes(slice)
+                    })
+                    .collect::<HashSet<_>>();
 
-            let state = (0..state.len() / 4)
-                .map(|i| {
-                    let slice: [u8; 4] = state[i * 4..i * 4 + 4]
-                        .try_into()
-                        .expect("Received invalid state length");
-                    u32::from_le_bytes(slice)
-                })
-                .collect::<HashSet<_>>();
-
-            let new_active = state.contains(&STATE_ACTIVE);
-            let new_fullscreen = state.contains(&STATE_FULLSCREEN);
-
-            let change = if info.ready && new_active != info.active {
-                Some(ToplevelChange::Focus(new_active))
-            } else if info.ready && new_fullscreen != info.fullscreen {
-                Some(ToplevelChange::Fullscreen(new_fullscreen))
-            } else {
-                None
-            };
-
-            info.active = new_active;
-            info.fullscreen = new_fullscreen;
-
-            change
-        }
-        Event::Closed => {
-            if info.ready {
-                Some(ToplevelChange::Close)
-            } else {
-                None
+                lock!(data.inner).pending_info.focused = state.contains(&STATE_ACTIVE);
+                lock!(data.inner).pending_info.fullscreen = state.contains(&STATE_FULLSCREEN);
             }
-        }
-        Event::OutputEnter { output: _ }
-        | Event::OutputLeave { output: _ }
-        | Event::Parent { parent: _ } => None,
-        Event::Done => {
-            if info.ready || info.app_id.is_empty() {
-                None
-            } else {
-                info.ready = true;
-                Some(ToplevelChange::New)
+            Event::OutputEnter { output } => lock!(data.inner).output = Some(output),
+            Event::OutputLeave { output: _ } => lock!(data.inner).output = None,
+            Event::Closed => state.remove_handle(
+                conn,
+                qh,
+                ToplevelHandle {
+                    handle: handle.clone(),
+                },
+            ),
+            Event::Done => {
+                {
+                    let pending_info = lock!(data.inner).pending_info.clone();
+                    lock!(data.inner).current_info = Some(pending_info);
+                }
+
+                if !lock!(data.inner).initial_done {
+                    lock!(data.inner).initial_done = true;
+                    state.new_handle(
+                        conn,
+                        qh,
+                        ToplevelHandle {
+                            handle: handle.clone(),
+                        },
+                    );
+                } else {
+                    state.update_handle(
+                        conn,
+                        qh,
+                        ToplevelHandle {
+                            handle: handle.clone(),
+                        },
+                    );
+                }
             }
+            _ => {}
         }
 
-        _ => unreachable!(),
-    };
-
-    if let Some(change) = change {
-        let event = ToplevelEvent {
-            change,
-            toplevel: info.clone(),
-        };
-
-        implem(event, ddata);
-    }
-}
-
-impl Toplevel {
-    pub fn init<F>(handle: &Main<ZwlrForeignToplevelHandleV1>, mut callback: F) -> Self
-    where
-        F: FnMut(ToplevelEvent, DispatchData) + 'static,
-    {
-        let inner = Arc::new(RwLock::new(ToplevelInfo::new()));
-
-        handle.quick_assign(move |_handle, event, ddata| {
-            let mut inner = write_lock!(inner);
-            toplevel_implem(event, &mut inner, &mut callback, ddata);
-        });
-
-        Self
+        trace!("Event processed");
     }
 }

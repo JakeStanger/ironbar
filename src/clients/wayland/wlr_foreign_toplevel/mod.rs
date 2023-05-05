@@ -1,39 +1,84 @@
-use std::sync::RwLock;
-use indexmap::IndexMap;
-use tokio::sync::broadcast::Sender;
-use tracing::trace;
-use super::Env;
-use handle::{ToplevelEvent, ToplevelChange, ToplevelInfo};
-use manager::{ToplevelHandling, ToplevelStatusListener};
-use wayland_client::DispatchData;
-use wayland_protocols::wlr::unstable::foreign_toplevel::v1::client::zwlr_foreign_toplevel_handle_v1::ZwlrForeignToplevelHandleV1;
-use crate::{send, write_lock};
-
 pub mod handle;
 pub mod manager;
 
-impl ToplevelHandling for Env {
-    fn listen<F>(&mut self, f: F) -> ToplevelStatusListener
-    where
-        F: FnMut(ZwlrForeignToplevelHandleV1, ToplevelEvent, DispatchData) + 'static,
-    {
-        self.toplevel.listen(f)
+use self::handle::ToplevelHandleHandler;
+use self::manager::{ToplevelManagerHandler, ToplevelManagerState};
+use crate::clients::wayland::Environment;
+use tracing::{debug, error, trace};
+use wayland_client::{Connection, QueueHandle};
+
+use crate::send;
+pub use handle::{ToplevelHandle, ToplevelInfo};
+
+#[derive(Debug, Clone)]
+pub enum ToplevelEvent {
+    New(ToplevelHandle),
+    Update(ToplevelHandle),
+    Remove(ToplevelHandle),
+}
+
+impl ToplevelManagerHandler for Environment {
+    fn toplevel(
+        &mut self,
+        _conn: &Connection,
+        _qh: &QueueHandle<Self>,
+        _manager: ToplevelManagerState,
+    ) {
+        debug!("Manager received new handle");
     }
 }
 
-pub fn update_toplevels(
-    toplevels: &RwLock<IndexMap<usize, (ToplevelInfo, ZwlrForeignToplevelHandleV1)>>,
-    handle: ZwlrForeignToplevelHandleV1,
-    event: ToplevelEvent,
-    tx: &Sender<ToplevelEvent>,
-) {
-    trace!("Received toplevel event: {:?}", event);
+impl ToplevelHandleHandler for Environment {
+    fn new_handle(&mut self, _conn: &Connection, _qh: &QueueHandle<Self>, handle: ToplevelHandle) {
+        debug!("Handler received new handle");
 
-    if event.change == ToplevelChange::Close {
-        write_lock!(toplevels).remove(&event.toplevel.id);
-    } else {
-        write_lock!(toplevels).insert(event.toplevel.id, (event.toplevel.clone(), handle));
+        match handle.info() {
+            Some(info) => {
+                trace!("Adding new handle: {info:?}");
+                self.handles.insert(info.id, handle.clone());
+                send!(self.toplevel_tx, ToplevelEvent::New(handle));
+            }
+            None => {
+                error!("Handle is missing information!");
+            }
+        }
     }
 
-    send!(tx, event);
+    fn update_handle(
+        &mut self,
+        _conn: &Connection,
+        _qh: &QueueHandle<Self>,
+        handle: ToplevelHandle,
+    ) {
+        debug!("Handler received handle update");
+
+        match handle.info() {
+            Some(info) => {
+                trace!("Updating handle: {info:?}");
+                self.handles.insert(info.id, handle.clone());
+                send!(self.toplevel_tx, ToplevelEvent::Update(handle));
+            }
+            None => {
+                error!("Handle is missing information!");
+            }
+        }
+    }
+
+    fn remove_handle(
+        &mut self,
+        _conn: &Connection,
+        _qh: &QueueHandle<Self>,
+        handle: ToplevelHandle,
+    ) {
+        debug!("Handler received handle close");
+        match handle.info() {
+            Some(info) => {
+                self.handles.remove(&info.id);
+                send!(self.toplevel_tx, ToplevelEvent::Remove(handle));
+            }
+            None => {
+                error!("Handle is missing information!");
+            }
+        }
+    }
 }
