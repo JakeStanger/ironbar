@@ -14,16 +14,11 @@
     border-radius: 0;
 }
 
-box, menubar {
+box, menubar, button {
     background-color: @color_bg;
 }
 
-button {
-    color: @color_text;
-    background-color: @color_bg;
-}
-
-label {
+button, label {
     color: @color_text;
 }
 
@@ -43,12 +38,12 @@ button:hover {
 
 /* -- clipboard -- */
 
-#clipboard {
+.clipboard {
     margin-left: 5px;
     font-size: 1.1em;
 }
 
-#popup-clipboard .item {
+.popup-clipboard .item {
     padding-bottom: 0.3em;
     border-bottom: 1px solid @color_border;
 }
@@ -56,125 +51,125 @@ button:hover {
 
 /* -- clock -- */
 
-#clock {
+.clock {
     font-weight: bold;
     margin-left: 5px;
 }
 
-#calendar-clock {
+.popup-clock .calendar-clock {
     color: @color_text;
     font-size: 2.5em;
     padding-bottom: 0.1em;
 }
 
-#popup-clock #calendar {
+.popup-clock .calendar {
     background-color: @color_bg;
     color: @color_text;
 }
 
-#popup-clock #calendar .header {
+.popup-clock .calendar .header {
     padding-top: 1em;
     border-top: 1px solid @color_border;
     font-size: 1.5em;
 }
 
-#popup-clock #calendar:selected {
+.popup-clock .calendar:selected {
     background-color: @color_border_active;
 }
 
 
 /* -- launcher -- */
 
-#launcher .item {
+.launcher .item {
     margin-right: 4px;
 }
 
-#launcher .item:not(.focused):hover {
+.launcher .item:not(.focused):hover {
     background-color: @color_bg_dark;
 }
 
-#launcher .open {
-    border-bottom: 2px solid @color_text;
+.launcher .open {
+    border-bottom: 1px solid @color_text;
 }
 
-#launcher .focused {
-    border-bottom-color: @color_border_active;
+.launcher .focused {
+    border-bottom: 2px solid @color_border_active;
 }
 
-#launcher .urgent {
+.launcher .urgent {
     border-bottom-color: @color_urgent;
 }
 
-#popup-launcher {
+.popup-launcher {
     padding: 0;
 }
 
-#popup-launcher .popup-item:not(:first-child) {
+.popup-launcher .popup-item:not(:first-child) {
     border-top: 1px solid @color_border;
 }
 
 
 /* -- music -- */
 
-#music:hover * {
+.music:hover * {
     background-color: @color_bg_dark;
 }
 
-#popup-music #album-art {
+.popup-music .album-art {
     margin-right: 1em;
 }
 
-#popup-music #title .icon *, #popup-music #title .label {
+.popup-music .title .icon *, .popup-music .title .label {
     font-size: 1.7em;
 }
 
-#popup-music #controls *:disabled {
+.popup-music .controls *:disabled {
     color: @color_border;
 }
 
-#popup-music #volume scale slider {
+.popup-music .volume scale slider {
     border-radius: 100%;
 }
 
 /* volume icon */
-#popup-music #volume > box:last-child label {
+.popup-music .volume > box:last-child label {
     margin-left: 6px;
 }
 
 
 /* -- script -- */
 
-#script {
+.script {
     padding-left: 10px;
 }
 
 
 /* -- sys_info -- */
 
-#sysinfo {
+.sysinfo {
     margin-left: 10px;
 }
 
-#sysinfo #item {
+.sysinfo .item {
     margin-left: 5px;
 }
 
 
 /* -- tray -- */
 
-#tray {
+.tray {
     margin-left: 10px;
 }
 
 
 /* -- workspaces -- */
 
-#workspaces .item.focused {
+.workspaces .item.focused {
     box-shadow: inset 0 -3px;
     background-color: @color_bg_dark;
 }
 
-#workspaces .item:hover {
+.workspaces .item:hover {
     box-shadow: inset 0 -3px;
 }
 
@@ -185,7 +180,7 @@ button:hover {
     font-size: 1.4em;
     padding-bottom: 0.4em;
     margin-bottom: 0.6em;
-    border-bottom: 1px solid @color_border
+    border-bottom: 1px solid @color_border;
 }
 
 .popup-power-menu .power-btn {
@@ -196,3 +191,4 @@ button:hover {
 .popup-power-menu #buttons > *:nth-child(1) .power-btn {
     margin-right: 1em;
 }
+

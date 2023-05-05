@@ -84,11 +84,13 @@ end:
 
 | Selector                             | Description                                          |
 |--------------------------------------|------------------------------------------------------|
-| `#clipboard`                         | Clipboard widget.                                    |
-| `#clipboard .btn`                    | Clipboard widget button.                             |
-| `#popup-clipboard`                   | Clipboard popup box.                                 |
-| `#popup-clipboard .item`             | Clipboard row item inside the popup.                 |
-| `#popup-clipboard .item .btn`        | Clipboard row item radio button.                     |
-| `#popup-clipboard .item .btn.text`   | Clipboard row item radio button (text values only).  |
-| `#popup-clipboard .item .btn.image`  | Clipboard row item radio button (image values only). |
-| `#popup-clipboard .item .btn-remove` | Clipboard row item remove button.                    |
+| `.clipboard`                         | Clipboard widget.                                    |
+| `.clipboard .btn`                    | Clipboard widget button.                             |
+| `.popup-clipboard`                   | Clipboard popup box.                                 |
+| `.popup-clipboard .item`             | Clipboard row item inside the popup.                 |
+| `.popup-clipboard .item .btn`        | Clipboard row item radio button.                     |
+| `.popup-clipboard .item .btn.text`   | Clipboard row item radio button (text values only).  |
+| `.popup-clipboard .item .btn.image`  | Clipboard row item radio button (image values only). |
+| `.popup-clipboard .item .btn-remove` | Clipboard row item remove button.                    |
+
+For more information on styling, please see the [styling guide](styling-guide).

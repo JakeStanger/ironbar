@@ -392,10 +392,13 @@ let {
 
 ## Styling
 
-Since the widgets are all custom, you can use the `name` and `class` attributes, then target them using `#name` and `.class`.
+Since the widgets are all custom, you can use their `name` and `class` attributes, then target them using `#name` and `.class`.
 
-The following top-level selector is always available:
+The following top-level selectors are always available:
 
-| Selector  | Description             |
-|-----------|-------------------------|
-| `#custom` | Custom widget container |
+| Selector        | Description                    |
+|-----------------|--------------------------------|
+| `.custom`       | Custom widget container.       |
+| `.popup-custom` | Custom widget popup container. |
+
+For more information on styling, please see the [styling guide](styling-guide).

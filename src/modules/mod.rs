@@ -120,7 +120,7 @@ pub fn create_module<TModule, TWidget, TSend, TRec>(
     id: usize,
     info: &ModuleInfo,
     popup: &Arc<RwLock<Popup>>,
-) -> Result<TWidget>
+) -> Result<ModuleWidget<TWidget>>
 where
     TModule: Module<TWidget, SendMessage = TSend, ReceiveMessage = TRec>,
     TWidget: IsA<Widget>,
@@ -145,17 +145,21 @@ where
     let name = TModule::name();
 
     let module_parts = module.into_widget(context, info)?;
-    module_parts.widget.set_widget_name(name);
+    module_parts.widget.style_context().add_class(name);
 
     let mut has_popup = false;
-    if let Some(popup_content) = module_parts.popup {
+    if let Some(popup_content) = module_parts.popup.clone() {
+        popup_content
+            .style_context()
+            .add_class(&format!("popup-{name}"));
+
         register_popup_content(popup, id, popup_content);
         has_popup = true;
     }
 
     setup_receiver(channel, w_tx, p_tx, popup.clone(), name, id, has_popup);
 
-    Ok(module_parts.widget)
+    Ok(module_parts)
 }
 
 /// Registers the popup content with the popup.
@@ -234,6 +238,32 @@ fn setup_receiver<TSend>(
     });
 }
 
+pub fn set_widget_identifiers<TWidget: IsA<Widget>>(
+    widget_parts: &ModuleWidget<TWidget>,
+    common: &CommonConfig,
+) {
+    if let Some(ref name) = common.name {
+        widget_parts.widget.set_widget_name(name);
+
+        if let Some(ref popup) = widget_parts.popup {
+            popup.set_widget_name(&format!("popup-{name}"));
+        }
+    }
+
+    if let Some(ref class) = common.class {
+        // gtk counts classes with spaces as the same class
+        for part in class.split(' ') {
+            widget_parts.widget.style_context().add_class(part);
+        }
+
+        if let Some(ref popup) = widget_parts.popup {
+            for part in class.split(' ') {
+                popup.style_context().add_class(&format!("popup-{part}"));
+            }
+        }
+    }
+}
+
 /// Takes a widget and adds it into a new `gtk::EventBox`.
 /// The event box container is returned.
 pub fn wrap_widget<W: IsA<Widget>>(
@@ -241,14 +271,14 @@ pub fn wrap_widget<W: IsA<Widget>>(
     common: CommonConfig,
     orientation: Orientation,
 ) -> EventBox {
+    let transition_type = common
+        .transition_type
+        .as_ref()
+        .unwrap_or(&TransitionType::SlideStart)
+        .to_revealer_transition_type(orientation);
+
     let revealer = Revealer::builder()
-        .transition_type(
-            common
-                .transition_type
-                .as_ref()
-                .unwrap_or(&TransitionType::SlideStart)
-                .to_revealer_transition_type(orientation),
-        )
+        .transition_type(transition_type)
         .transition_duration(common.transition_duration.unwrap_or(250))
         .build();
 
@@ -259,7 +289,7 @@ pub fn wrap_widget<W: IsA<Widget>>(
     container.add_events(EventMask::SCROLL_MASK);
     container.add(&revealer);
 
-    common.install(&container, &revealer);
+    common.install_events(&container, &revealer);
 
     container
 }

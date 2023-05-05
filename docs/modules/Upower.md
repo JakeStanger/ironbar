@@ -72,9 +72,11 @@ end:
 
 | Selector                        | Description                 |
 |---------------------------------|-----------------------------|
-| `#upower`                       | Upower widget container.    |
-| `#upower #icon`                 | Upower widget battery icon. |
-| `#upower #button`               | Upower widget button.       |
-| `#upower #button #label`        | Upower widget button label. |
-| `#popup-upower`                 | Upower popup box.           |
-| `#popup-upower #upower-details` | Label inside the popup.     |
+| `.upower`                       | Upower widget container.    |
+| `.upower .icon`                 | Upower widget battery icon. |
+| `.upower .button`               | Upower widget button.       |
+| `.upower .button .label`        | Upower widget button label. |
+| `.popup-upower`                 | Upower popup box.           |
+| `.popup-upower .upower-details` | Label inside the popup.     |
+
+For more information on styling, please see the [styling guide](styling-guide).

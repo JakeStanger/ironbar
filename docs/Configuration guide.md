@@ -310,9 +310,12 @@ For information on the `Script` type, and embedding scripts in strings, see [her
 | `transition_type`     | `slide_start` or `slide_end` or `crossfade` or `none` | `slide_start` | The transition animation to use when showing/hiding the widget.                                                    |
 | `transition_duration` | `Integer`                                             | `250`         | The length of the transition animation to use when showing/hiding the widget.                                      |
 
-#### Other
+#### Appearance
 
+| Name      | Type               | Default | Description                                                                       |
+|-----------|--------------------|---------|-----------------------------------------------------------------------------------|
+| `tooltip` | `string`           | `null`  | Shows this text on hover. Supports embedding scripts between `{{double braces}}`. |
+| `name`    | `string`           | `null`  | Sets the unique widget name, allowing you to style it using `#name`.              |
+| `class`   | `string`           | `null`  | Sets one or more CSS classes, allowing you to style it using `.class`.            |
 
-| Name              | Type               | Default | Description                                                                                                        |
-|-------------------|--------------------|---------|--------------------------------------------------------------------------------------------------------------------|
-| `tooltip`         | `string`           | `null`  | Shows this text on hover. Supports embedding scripts between `{{double braces}}`.                                  |
+For more information on styling, please see the [styling guide](styling-guide).

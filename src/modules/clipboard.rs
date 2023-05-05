@@ -154,11 +154,7 @@ impl Module<Button> for ClipboardModule {
     where
         Self: Sized,
     {
-        let container = gtk::Box::builder()
-            .orientation(Orientation::Vertical)
-            .spacing(10)
-            .name("popup-clipboard")
-            .build();
+        let container = gtk::Box::new(Orientation::Vertical, 10);
 
         let entries = gtk::Box::new(Orientation::Vertical, 5);
         container.add(&entries);

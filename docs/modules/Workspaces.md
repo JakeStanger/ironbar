@@ -91,6 +91,8 @@ end:
 
 | Selector                    | Description                          |
 |-----------------------------|--------------------------------------|
-| `#workspaces`               | Workspaces widget box                |
-| `#workspaces .item`         | Workspace button                     |
-| `#workspaces .item.focused` | Workspace button (workspace focused) |
+| `.workspaces`               | Workspaces widget box                |
+| `.workspaces .item`         | Workspace button                     |
+| `.workspaces .item.focused` | Workspace button (workspace focused) |
+
+For more information on styling, please see the [styling guide](styling-guide).

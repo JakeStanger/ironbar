@@ -1,5 +1,7 @@
 use crate::config::{BarPosition, MarginConfig, ModuleConfig};
-use crate::modules::{create_module, wrap_widget, ModuleInfo, ModuleLocation};
+use crate::modules::{
+    create_module, set_widget_identifiers, wrap_widget, ModuleInfo, ModuleLocation,
+};
 use crate::popup::Popup;
 use crate::Config;
 use color_eyre::Result;
@@ -195,8 +197,10 @@ fn add_modules(
     macro_rules! add_module {
         ($module:expr, $id:expr) => {{
             let common = $module.common.take().expect("Common config did not exist");
-            let widget = create_module(*$module, $id, &info, &Arc::clone(&popup))?;
-            let container = wrap_widget(&widget, common, orientation);
+            let widget_parts = create_module(*$module, $id, &info, &Arc::clone(&popup))?;
+            set_widget_identifiers(&widget_parts, &common);
+
+            let container = wrap_widget(&widget_parts.widget, common, orientation);
             content.add(&container);
         }};
     }

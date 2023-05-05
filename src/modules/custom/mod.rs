@@ -28,8 +28,6 @@ use tracing::{debug, error};
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct CustomModule {
-    /// Container class name
-    class: Option<String>,
     /// Widgets to add to the bar container
     bar: Vec<WidgetConfig>,
     /// Widgets to add to the popup container
@@ -197,10 +195,6 @@ impl Module<gtk::Box> for CustomModule {
         let orientation = info.bar_position.get_orientation();
         let container = gtk::Box::builder().orientation(orientation).build();
 
-        if let Some(ref class) = self.class {
-            container.style_context().add_class(class);
-        }
-
         let custom_context = CustomWidgetContext {
             tx: &context.controller_tx,
             bar_orientation: orientation,
@@ -230,13 +224,7 @@ impl Module<gtk::Box> for CustomModule {
     where
         Self: Sized,
     {
-        let container = gtk::Box::builder().name("popup-custom").build();
-
-        if let Some(class) = self.class {
-            container
-                .style_context()
-                .add_class(format!("popup-{class}").as_str());
-        }
+        let container = gtk::Box::new(Orientation::Horizontal, 0);
 
         if let Some(popup) = self.popup {
             let custom_context = CustomWidgetContext {

@@ -1,5 +1,6 @@
 use crate::clients::wayland::{self, ToplevelEvent};
 use crate::config::{CommonConfig, TruncateMode};
+use crate::gtk_helpers::add_class;
 use crate::image::ImageProvider;
 use crate::modules::{Module, ModuleInfo, ModuleUpdateEvent, ModuleWidget, WidgetContext};
 use crate::{send_async, try_send};
@@ -95,8 +96,11 @@ impl Module<gtk::Box> for FocusedModule {
 
         let container = gtk::Box::new(info.bar_position.get_orientation(), 5);
 
-        let icon = gtk::Image::builder().name("icon").build();
-        let label = Label::builder().name("label").build();
+        let icon = gtk::Image::new();
+        add_class(&icon, "icon");
+
+        let label = Label::new(None);
+        add_class(&label, "label");
 
         if let Some(truncate) = self.truncate {
             truncate.truncate_label(&label);

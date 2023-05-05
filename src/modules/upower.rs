@@ -1,5 +1,6 @@
 use crate::clients::upower::get_display_proxy;
 use crate::config::CommonConfig;
+use crate::gtk_helpers::add_class;
 use crate::image::ImageProvider;
 use crate::modules::{Module, ModuleInfo, ModuleUpdateEvent, ModuleWidget, WidgetContext};
 use crate::popup::Popup;
@@ -144,20 +145,20 @@ impl Module<gtk::Box> for UpowerModule {
         info: &ModuleInfo,
     ) -> Result<ModuleWidget<gtk::Box>> {
         let icon_theme = info.icon_theme.clone();
-        let icon = gtk::Image::builder().name("icon").build();
+        let icon = gtk::Image::new();
+        add_class(&icon, "icon");
 
         let label = Label::builder()
             .label(&self.format)
             .use_markup(true)
-            .name("label")
             .build();
+        add_class(&label, "label");
 
-        let container = gtk::Box::builder()
-            .orientation(Orientation::Horizontal)
-            .name("upower")
-            .build();
+        let container = gtk::Box::new(Orientation::Horizontal, 0);
+        add_class(&container, "upower");
 
-        let button = Button::builder().name("button").build();
+        let button = Button::new();
+        add_class(&button, "button");
 
         button.add(&label);
         container.add(&button);
@@ -207,11 +208,10 @@ impl Module<gtk::Box> for UpowerModule {
     {
         let container = gtk::Box::builder()
             .orientation(Orientation::Horizontal)
-            .name("popup-upower")
             .build();
 
-        let label = Label::builder().name("upower-details").build();
-        container.add(&label);
+        let label = Label::new(None);
+        add_class(&label, "upower-details");
 
         rx.attach(None, move |properties| {
             let mut format = String::new();
