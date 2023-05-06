@@ -1,4 +1,5 @@
 use crate::config::CommonConfig;
+use crate::gtk_helpers::add_class;
 use crate::modules::{Module, ModuleInfo, ModuleUpdateEvent, ModuleWidget, WidgetContext};
 use crate::popup::Popup;
 use crate::{send_async, try_send};
@@ -96,20 +97,16 @@ impl Module<Button> for ClockModule {
         rx: glib::Receiver<Self::SendMessage>,
         _info: &ModuleInfo,
     ) -> Option<gtk::Box> {
-        let container = gtk::Box::builder()
-            .orientation(Orientation::Vertical)
-            .name("popup-clock")
-            .build();
+        let container = gtk::Box::new(Orientation::Vertical, 0);
 
-        let clock = Label::builder()
-            .name("calendar-clock")
-            .halign(Align::Center)
-            .build();
+        let clock = Label::builder().halign(Align::Center).build();
+        add_class(&clock, "calendar-clock");
         let format = "%H:%M:%S";
 
         container.add(&clock);
 
-        let calendar = Calendar::builder().name("calendar").build();
+        let calendar = Calendar::new();
+        add_class(&calendar, "calendar");
         container.add(&calendar);
 
         {

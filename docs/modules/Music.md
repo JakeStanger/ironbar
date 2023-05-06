@@ -135,24 +135,26 @@ and will be replaced with values from the currently playing track:
 
 | Selector                            | Description                              |
 |-------------------------------------|------------------------------------------|
-| `#music`                            | Tray widget button                       |
-| `#music #contents`                  | Tray widget button contents box          |
-| `#popup-music`                      | Popup box                                |
-| `#popup-music #album-art`           | Album art image inside popup box         |
-| `#popup-music #title`               | Track title container inside popup box   |
-| `#popup-music #title .icon`         | Track title icon label inside popup box  |
-| `#popup-music #title .label`        | Track title label inside popup box       |
-| `#popup-music #album`               | Track album container inside popup box   |
-| `#popup-music #album .icon`         | Track album icon label inside popup box  |
-| `#popup-music #album .label`        | Track album label inside popup box       |
-| `#popup-music #artist`              | Track artist container inside popup box  |
-| `#popup-music #artist .icon`        | Track artist icon label inside popup box |
-| `#popup-music #artist .label`       | Track artist label inside popup box      |
-| `#popup-music #controls`            | Controls container inside popup box      |
-| `#popup-music #controls #btn-prev`  | Previous button inside popup box         |
-| `#popup-music #controls #btn-play`  | Play button inside popup box             |
-| `#popup-music #controls #btn-pause` | Pause button inside popup box            |
-| `#popup-music #controls #btn-next`  | Next button inside popup box             |
-| `#popup-music #volume`              | Volume container inside popup box        |
-| `#popup-music #volume #slider`      | Volume slider popup box                  |
-| `#popup-music #volume .icon`        | Volume icon label inside popup box       |
+| `.music`                            | Tray widget button                       |
+| `.music .contents`                  | Tray widget button contents box          |
+| `.popup-music`                      | Popup box                                |
+| `.popup-music .album-art`           | Album art image inside popup box         |
+| `.popup-music .title`               | Track title container inside popup box   |
+| `.popup-music .title .icon`         | Track title icon label inside popup box  |
+| `.popup-music .title .label`        | Track title label inside popup box       |
+| `.popup-music .album`               | Track album container inside popup box   |
+| `.popup-music .album .icon`         | Track album icon label inside popup box  |
+| `.popup-music .album .label`        | Track album label inside popup box       |
+| `.popup-music .artist`              | Track artist container inside popup box  |
+| `.popup-music .artist .icon`        | Track artist icon label inside popup box |
+| `.popup-music .artist .label`       | Track artist label inside popup box      |
+| `.popup-music .controls`            | Controls container inside popup box      |
+| `.popup-music .controls .btn-prev`  | Previous button inside popup box         |
+| `.popup-music .controls .btn-play`  | Play button inside popup box             |
+| `.popup-music .controls .btn-pause` | Pause button inside popup box            |
+| `.popup-music .controls .btn-next`  | Next button inside popup box             |
+| `.popup-music .volume`              | Volume container inside popup box        |
+| `.popup-music .volume .slider`      | Volume slider popup box                  |
+| `.popup-music .volume .icon`        | Volume icon label inside popup box       |
+
+For more information on styling, please see the [styling guide](styling-guide).

@@ -60,5 +60,7 @@ end:
 
 | Selector      | Description      |
 |---------------|------------------|
-| `#tray`       | Tray widget box  |
-| `#tray .item` | Tray icon button |
+| `.tray`       | Tray widget box  |
+| `.tray .item` | Tray icon button |
+
+For more information on styling, please see the [styling guide](styling-guide).

@@ -172,5 +172,7 @@ The following tokens can be used in the `format` configuration option:
 
 | Selector         | Description                  |
 |------------------|------------------------------|
-| `#sysinfo`       | Sysinfo widget box           |
-| `#sysinfo #item` | Individual information label |
+| `.sysinfo`       | Sysinfo widget box           |
+| `.sysinfo .item` | Individual information label |
+
+For more information on styling, please see the [styling guide](styling-guide).

@@ -1,4 +1,5 @@
 use super::ImageProvider;
+use crate::gtk_helpers::add_class;
 use gtk::prelude::*;
 use gtk::{Button, IconTheme, Image, Label, Orientation};
 use tracing::error;
@@ -9,7 +10,7 @@ pub fn new_icon_button(input: &str, icon_theme: &IconTheme, size: i32) -> Button
 
     if ImageProvider::is_definitely_image_input(input) {
         let image = Image::new();
-        image.set_widget_name("image");
+        add_class(&image, "image");
 
         match ImageProvider::parse(input, icon_theme, size)
             .and_then(|provider| provider.load_into_image(image.clone()))
@@ -36,7 +37,7 @@ pub fn new_icon_label(input: &str, icon_theme: &IconTheme, size: i32) -> gtk::Bo
 
     if ImageProvider::is_definitely_image_input(input) {
         let image = Image::new();
-        image.set_widget_name("image");
+        add_class(&image, "image");
 
         container.add(&image);
 
@@ -47,7 +48,7 @@ pub fn new_icon_label(input: &str, icon_theme: &IconTheme, size: i32) -> gtk::Bo
         }
     } else {
         let label = Label::new(Some(input));
-        label.set_widget_name("label");
+        add_class(&label, "label");
 
         container.add(&label);
     }

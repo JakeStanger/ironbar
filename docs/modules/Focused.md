@@ -86,8 +86,10 @@ end:
 
 ## Styling
 
-| Selector                 | Description        |
-|--------------------------|--------------------|
-| `#focused`               | Focused widget box |
-| `#focused #icon`         | App icon           |
-| `#focused #label`        | App name           |
+| Selector          | Description        |
+|-------------------|--------------------|
+| `.focused`        | Focused widget box |
+| `.focused .icon`  | App icon           |
+| `.focused .label` | App name           |
+
+For more information on styling, please see the [styling guide](styling-guide).

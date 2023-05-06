@@ -65,6 +65,8 @@ end:
 
 ## Styling
 
-| Selector                       | Description                                                                        |
-|--------------------------------|------------------------------------------------------------------------------------|
-| `#label`                       | Label widget                                                                       |
+| Selector | Description                                                                        |
+|----------|------------------------------------------------------------------------------------|
+| `.label` | Label widget                                                                       |
+
+For more information on styling, please see the [styling guide](styling-guide).

@@ -90,10 +90,12 @@ start:
 
 | Selector                      | Description              |
 |-------------------------------|--------------------------|
-| `#launcher`                   | Launcher widget box      |
-| `#launcher .item`             | App button               |
-| `#launcher .item.open`        | App button (open app)    |
-| `#launcher .item.focused`     | App button (focused app) |
-| `#launcher .item.urgent`      | App button (urgent app)  |
-| `#launcher-popup`             | Popup container          |
-| `#launcher-popup .popup-item` | Window button in popup   |
+| `.launcher`                   | Launcher widget box      |
+| `.launcher .item`             | App button               |
+| `.launcher .item.open`        | App button (open app)    |
+| `.launcher .item.focused`     | App button (focused app) |
+| `.launcher .item.urgent`      | App button (urgent app)  |
+| `.popup-launcher`             | Popup container          |
+| `.popup-launcher .popup-item` | Window button in popup   |
+
+For more information on styling, please see the [styling guide](styling-guide).

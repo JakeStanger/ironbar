@@ -82,6 +82,8 @@ end:
 
 ## Styling
 
-| Selector      | Description         |
-|---------------|---------------------|
-| `#script`     | Script widget label |
+| Selector  | Description         |
+|-----------|---------------------|
+| `.script` | Script widget label |
+
+For more information on styling, please see the [styling guide](styling-guide).

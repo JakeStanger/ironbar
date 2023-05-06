@@ -1,4 +1,5 @@
 use crate::config::CommonConfig;
+use crate::gtk_helpers::add_class;
 use crate::modules::{Module, ModuleInfo, ModuleUpdateEvent, ModuleWidget, WidgetContext};
 use crate::send_async;
 use color_eyre::Result;
@@ -193,12 +194,11 @@ impl Module<gtk::Box> for SysInfoModule {
         let mut labels = Vec::new();
 
         for format in &self.format {
-            let label = Label::builder()
-                .label(format)
-                .use_markup(true)
-                .name("item")
-                .build();
+            let label = Label::builder().label(format).use_markup(true).build();
+
+            add_class(&label, "item");
             label.set_angle(info.bar_position.get_angle());
+
             container.add(&label);
             labels.push(label);
         }

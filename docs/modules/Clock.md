@@ -71,7 +71,9 @@ end:
 
 | Selector                       | Description                                                                        |
 |--------------------------------|------------------------------------------------------------------------------------|
-| `#clock`                       | Clock widget button                                                                |
-| `#popup-clock`                 | Clock popup box                                                                    |
-| `#popup-clock #calendar-clock` | Clock inside the popup                                                             |
-| `#popup-clock #calendar`       | Calendar widget inside the popup. GTK provides some OOTB styling options for this. |
+| `.clock`                       | Clock widget button                                                                |
+| `.popup-clock`                 | Clock popup box                                                                    |
+| `.popup-clock .calendar-clock` | Clock inside the popup                                                             |
+| `.popup-clock .calendar`       | Calendar widget inside the popup. GTK provides some OOTB styling options for this. |
+
+For more information on styling, please see the [styling guide](styling-guide).

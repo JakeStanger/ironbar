@@ -10,8 +10,11 @@ use tracing::trace;
 
 /// Common configuration options
 /// which can be set on every module.
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Default, Deserialize, Clone)]
 pub struct CommonConfig {
+    pub class: Option<String>,
+    pub name: Option<String>,
+
     pub show_if: Option<ScriptInput>,
     pub transition_type: Option<TransitionType>,
     pub transition_duration: Option<u32>,
@@ -54,7 +57,7 @@ impl TransitionType {
 
 impl CommonConfig {
     /// Configures the module's container according to the common config options.
-    pub fn install(mut self, container: &EventBox, revealer: &Revealer) {
+    pub fn install_events(mut self, container: &EventBox, revealer: &Revealer) {
         self.install_show_if(container, revealer);
 
         let left_click_script = self.on_click_left.map(Script::new_polling);

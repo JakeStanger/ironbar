@@ -1,6 +1,7 @@
 mod config;
 
 use crate::clients::music::{self, MusicClient, PlayerState, PlayerUpdate, Status, Track};
+use crate::gtk_helpers::add_class;
 use crate::image::{new_icon_button, new_icon_label, ImageProvider};
 use crate::modules::{Module, ModuleInfo, ModuleUpdateEvent, ModuleWidget, WidgetContext};
 use crate::popup::Popup;
@@ -135,7 +136,7 @@ impl Module<Button> for MusicModule {
                         PlayerCommand::Play => client.play(),
                         PlayerCommand::Pause => client.pause(),
                         PlayerCommand::Next => client.next(),
-                        PlayerCommand::Volume(vol) => client.set_volume_percent(vol), // .unwrap_or_else(|_| error!("Failed to update player volume")),
+                        PlayerCommand::Volume(vol) => client.set_volume_percent(vol),
                     };
 
                     if let Err(err) = res {
@@ -154,11 +155,8 @@ impl Module<Button> for MusicModule {
         info: &ModuleInfo,
     ) -> Result<ModuleWidget<Button>> {
         let button = Button::new();
-        let button_contents = gtk::Box::builder()
-            .orientation(Orientation::Horizontal)
-            .spacing(5)
-            .name("contents")
-            .build();
+        let button_contents = gtk::Box::new(Orientation::Horizontal, 5);
+        add_class(&button_contents, "contents");
 
         button.add(&button_contents);
 
@@ -243,17 +241,13 @@ impl Module<Button> for MusicModule {
     ) -> Option<gtk::Box> {
         let icon_theme = info.icon_theme;
 
-        let container = gtk::Box::builder()
-            .orientation(Orientation::Horizontal)
-            .spacing(10)
-            .name("popup-music")
-            .build();
+        let container = gtk::Box::new(Orientation::Horizontal, 10);
 
         let album_image = gtk::Image::builder()
             .width_request(128)
             .height_request(128)
-            .name("album-art")
             .build();
+        add_class(&album_image, "album-art");
 
         let icons = self.icons;
 
@@ -262,27 +256,28 @@ impl Module<Button> for MusicModule {
         let album_label = IconLabel::new(&icons.album, None, icon_theme);
         let artist_label = IconLabel::new(&icons.artist, None, icon_theme);
 
-        title_label.container.set_widget_name("title");
-        album_label.container.set_widget_name("album");
-        artist_label.container.set_widget_name("artist");
+        add_class(&title_label.container, "title");
+        add_class(&album_label.container, "album");
+        add_class(&artist_label.container, "artist");
 
         info_box.add(&title_label.container);
         info_box.add(&album_label.container);
         info_box.add(&artist_label.container);
 
-        let controls_box = gtk::Box::builder().name("controls").build();
+        let controls_box = gtk::Box::new(Orientation::Horizontal, 0);
+        add_class(&controls_box, "controls");
 
         let btn_prev = new_icon_button(&icons.prev, icon_theme, self.icon_size);
-        btn_prev.set_widget_name("btn-prev");
+        add_class(&btn_prev, "btn-prev");
 
         let btn_play = new_icon_button(&icons.play, icon_theme, self.icon_size);
-        btn_play.set_widget_name("btn-play");
+        add_class(&btn_play, "btn-play");
 
         let btn_pause = new_icon_button(&icons.pause, icon_theme, self.icon_size);
-        btn_pause.set_widget_name("btn-pause");
+        add_class(&btn_pause, "btn-pause");
 
         let btn_next = new_icon_button(&icons.next, icon_theme, self.icon_size);
-        btn_next.set_widget_name("btn-next");
+        add_class(&btn_next, "btn-next");
 
         controls_box.add(&btn_prev);
         controls_box.add(&btn_play);
@@ -291,18 +286,15 @@ impl Module<Button> for MusicModule {
 
         info_box.add(&controls_box);
 
-        let volume_box = gtk::Box::builder()
-            .orientation(Orientation::Vertical)
-            .spacing(5)
-            .name("volume")
-            .build();
+        let volume_box = gtk::Box::new(Orientation::Vertical, 5);
+        add_class(&volume_box, "volume");
 
         let volume_slider = Scale::with_range(Orientation::Vertical, 0.0, 100.0, 5.0);
         volume_slider.set_inverted(true);
-        volume_slider.set_widget_name("slider");
+        add_class(&volume_slider, "slider");
 
         let volume_icon = new_icon_label(&icons.volume, icon_theme, self.icon_size);
-        volume_icon.style_context().add_class("icon");
+        add_class(&volume_icon, "icon");
 
         volume_box.pack_start(&volume_slider, true, true, 0);
         volume_box.pack_end(&volume_icon, false, false, 0);
@@ -466,8 +458,8 @@ impl IconLabel {
         let icon = new_icon_label(icon_input, icon_theme, 24);
         let label = Label::new(label);
 
-        icon.style_context().add_class("icon");
-        label.style_context().add_class("label");
+        add_class(&icon, "icon");
+        add_class(&label, "label");
 
         container.add(&icon);
         container.add(&label);

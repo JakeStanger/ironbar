@@ -413,10 +413,7 @@ impl Module<gtk::Box> for LauncherModule {
     ) -> Option<gtk::Box> {
         const MAX_WIDTH: i32 = 250;
 
-        let container = gtk::Box::builder()
-            .orientation(Orientation::Vertical)
-            .name("popup-launcher")
-            .build();
+        let container = gtk::Box::new(Orientation::Vertical, 0);
 
         // we need some content to force the container to have a size
         let placeholder = Button::with_label("PLACEHOLDER");

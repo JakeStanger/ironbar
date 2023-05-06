@@ -7,6 +7,7 @@ mod config;
 mod desktop_file;
 mod dynamic_string;
 mod error;
+mod gtk_helpers;
 mod image;
 mod logging;
 mod macros;
