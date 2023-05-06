@@ -4,6 +4,70 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.12.0] - 2023-05-06
+### :boom: BREAKING CHANGES
+- due to [`dea6641`](https://github.com/JakeStanger/ironbar/commit/dea66415c2e11e34ba44d016aaa6cfb4ef7b9f9b) - module-level `name` and `class` options *(commit by [@JakeStanger](https://github.com/JakeStanger))*:
+
+  To allow for the `name` property, any widgets that were previously targeted by name should be targeted by class instead. This affects **all modules and all popups**, as well as several widgets inside modules. **This will break a lot of rules in your stylesheet**. To attempt to mitigate the damage, a migration script can be found [here](https://raw.githubusercontent.com/JakeStanger/ironbar/master/scripts/migrate-styles.sh) that should get you most of the way.
+
+
+### :sparkles: New Features
+- [`6c62286`](https://github.com/JakeStanger/ironbar/commit/6c622864b388548eaaa595f41993606cc151d585) - new label module *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`cac064f`](https://github.com/JakeStanger/ironbar/commit/cac064f4795e9f418cc0820f04944f91121c426a) - ability to configure popup gap *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`dfe1964`](https://github.com/JakeStanger/ironbar/commit/dfe1964abf9ca54beb38cad0bcf02bd9fb0b5c4d) - **custom**: slider widget *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`72b14b6`](https://github.com/JakeStanger/ironbar/commit/72b14b6c4ed3dccfe7b4b23b220ab0a87ec79aa2) - **custom**: progress bar widget. *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`a9d1233`](https://github.com/JakeStanger/ironbar/commit/a9d12339097cbe0fef1628460ef538319a048223) - **custom**: support dynamic strings on buttons *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`3d308ab`](https://github.com/JakeStanger/ironbar/commit/3d308ab572a39ada2501ddc1b822e50e1f8a8363) - **custom**: support dynamic string in image source *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`4a09b70`](https://github.com/JakeStanger/ironbar/commit/4a09b70854dad33bf890a3fe766f854d9195e786) - **custom**: support common options in widgets *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`83f44fd`](https://github.com/JakeStanger/ironbar/commit/83f44fd92fe74b45fcdfc242fb90fc932dd2b00b) - wrap modules in a revealer to support animated show/hide *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`1fa0c0e`](https://github.com/JakeStanger/ironbar/commit/1fa0c0e9774c302727d414f5aef999ab71a7acb8) - **custom**: support mouse wheel on slider *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`2da28b9`](https://github.com/JakeStanger/ironbar/commit/2da28b9bf5790adfc46c58b6f6d5fdd13cc17195) - ability to configure image icon sizes *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`033d0f7`](https://github.com/JakeStanger/ironbar/commit/033d0f7e6e450b3f2d62d9a75210d52611cf346d) - **custom**: option to toggle slider label *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`76e2b7b`](https://github.com/JakeStanger/ironbar/commit/76e2b7ba3e788f273039d74635881ddb96264258) - **music**: option to hide status icon on widget *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`ad3c171`](https://github.com/JakeStanger/ironbar/commit/ad3c171ecacaebf10408c2583ed7361ed029075e) - implement upower module *(commit by [@p00f](https://github.com/p00f))*
+- [`2a155b9`](https://github.com/JakeStanger/ironbar/commit/2a155b9aa8a3634908512d9b83680925962d478f) - **music**: add css selector for button contents *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`c1ea5fa`](https://github.com/JakeStanger/ironbar/commit/c1ea5fad7ec308895f0454b6de05a3177563626c) - **logging**: include line numbers *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`dea6641`](https://github.com/JakeStanger/ironbar/commit/dea66415c2e11e34ba44d016aaa6cfb4ef7b9f9b) - module-level `name` and `class` options *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+
+### :bug: Bug Fixes
+- [`9109453`](https://github.com/JakeStanger/ironbar/commit/910945306c3261190a16300da2ed28efb945a6ac) - **dynamic string**: parser issue related to incorrectly matching braces *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`7355db7`](https://github.com/JakeStanger/ironbar/commit/7355db74ec9118c2cb46899534a3adac8d7165d9) - **image**: http provider not handling non-success codes *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`a87d8d5`](https://github.com/JakeStanger/ironbar/commit/a87d8d5c3071a1d8ab149deae17d261ae97368ea) - **tray**: icons sometimes not showing *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`15a9d8d`](https://github.com/JakeStanger/ironbar/commit/15a9d8d42c9319a7062e6a90086e0c1c3323f5d8) - **script**: parser incorrectly handling colons *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`68bc823`](https://github.com/JakeStanger/ironbar/commit/68bc8230ddf3352cc0de9f8cc770632744c22747) - **tray**: icons sometimes not showing *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`b038e76`](https://github.com/JakeStanger/ironbar/commit/b038e7671af4bfa41060adf724deb8c6151fac1f) - **tray**: icons sometimes not showing *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`7926bb0`](https://github.com/JakeStanger/ironbar/commit/7926bb07eb181edaf6da2f11a7dc00f8be2240eb) - **nix**: Fix `nix run` support *(commit by [@yavko](https://github.com/yavko))*
+- [`2c88c99`](https://github.com/JakeStanger/ironbar/commit/2c88c99cb605d312e2d76d620f502c7e7cd8866e) - **dynamic string**: crash when last segment is static and a single char *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`338f5a0`](https://github.com/JakeStanger/ironbar/commit/338f5a0e1b58dc9b52caee61d6a9748cf13153c5) - **nix**: Attempt to fix image blurriness *(commit by [@yavko](https://github.com/yavko))*
+- [`db0868a`](https://github.com/JakeStanger/ironbar/commit/db0868a3fc0734daa61067e377018c692599ebff) - **image**: not scaling icons for hidpi *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`14b6c1a`](https://github.com/JakeStanger/ironbar/commit/14b6c1a69f28836ed9e3b74eeb97a42ea60ffc27) - bars duplicate when starting second instance *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`98aaaa0`](https://github.com/JakeStanger/ironbar/commit/98aaaa0d1407681b3d790c933c4972b8122f8007) - fallback to default icon theme for notifier items *(commit by [@oknozor](https://github.com/oknozor))*
+- [`735f5cc`](https://github.com/JakeStanger/ironbar/commit/735f5cc9f1518c256785d42f3d21ed5c68b11711) - **launcher**: crash when focusing window *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`e1abadc`](https://github.com/JakeStanger/ironbar/commit/e1abadcf39a2d39078e75179a167e9277ee5e550) - **clipboard**: copying large images filling write pipe *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+
+### :recycle: Refactors
+- [`2ab06f0`](https://github.com/JakeStanger/ironbar/commit/2ab06f044ec300628d6648852d395889b6752b76) - **custom**: split into enum with separate file per widget *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`3613aef`](https://github.com/JakeStanger/ironbar/commit/3613aef5c5a4051b5a44e33342c0eaaab3d4a690) - **custom**: reduce a lot of repeated code *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`c214f65`](https://github.com/JakeStanger/ironbar/commit/c214f65ecb86a0da6559025203701661924f65bb) - fix strict clippy warnings *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`27d11de`](https://github.com/JakeStanger/ironbar/commit/27d11de6616c410422d7abd579d09b3abc02f43a) - **config**: split common code into separate file *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`6fd69d6`](https://github.com/JakeStanger/ironbar/commit/6fd69d657c6224bc47c9b3cb5affcf74b63a6aa6) - move module creation code to module module *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`e63509a`](https://github.com/JakeStanger/ironbar/commit/e63509a3a7673ea41b4c937089a1cf6d2362fed3) - fix a few new clippy warnings *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`7f46cb4`](https://github.com/JakeStanger/ironbar/commit/7f46cb49767bd722be8d42999a9ba69887efcd40) - **wayland**: update to 0.30.0 *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`38da59c`](https://github.com/JakeStanger/ironbar/commit/38da59cd419fa0023d0ea0b435b11f0f9dea3f15) - fix a few pedantic clippy warnings *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+
+### :memo: Documentation Changes
+- [`1b0287b`](https://github.com/JakeStanger/ironbar/commit/1b0287becc161e5addd8a8fed8bd9e8c437cd242) - update CHANGELOG.md for v0.11.0 [skip ci] *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`e928b30`](https://github.com/JakeStanger/ironbar/commit/e928b30f9927aa7c895c0d9855ee3ef09e559dc7) - **custom**: rewrite widget options to be clearer *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`138b5b3`](https://github.com/JakeStanger/ironbar/commit/138b5b39038a005d17069830a04b88d52730bed5) - **custom**: fix potential error in progress example *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`07df51c`](https://github.com/JakeStanger/ironbar/commit/07df51c2497977a31b2f5ef5bc7d051e0bd88564) - include readme in rust docs *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`dd7c9f3`](https://github.com/JakeStanger/ironbar/commit/dd7c9f30db6e4e1ede4d57255122b359636b8f58) - add transition module-level options *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`610c352`](https://github.com/JakeStanger/ironbar/commit/610c3528af98b8c6b02af7ce5c07190776522c3a) - add missing link to upower page *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`ea9f7ca`](https://github.com/JakeStanger/ironbar/commit/ea9f7caaf7a35eebd603ce2854672d5af2901018) - add missing `upower` feature flag *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`618b7ef`](https://github.com/JakeStanger/ironbar/commit/618b7ef5520de6f3796b66e42422a36c5a191ab0) - improve example css *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`139bc5d`](https://github.com/JakeStanger/ironbar/commit/139bc5d23f7f887b7b65d50adc21fa6679ea291e) - **compiling**: improve requirements list *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`cf32870`](https://github.com/JakeStanger/ironbar/commit/cf32870f8a380c305a436593950c3da524a2296f) - **compiling**: add ron feature flag *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+
+
 ## [v0.11.0] - 2023-04-01
 ### :boom: BREAKING CHANGES
 - due to [`ca4fe42`](https://github.com/JakeStanger/ironbar/commit/ca4fe422f22866748f2cb6239b31170a974d254b) - ability to set fixed length *(commit by [@JakeStanger](https://github.com/JakeStanger))*:
@@ -272,3 +336,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [v0.9.0]: https://github.com/JakeStanger/ironbar/compare/v0.8.0...v0.9.0
 [v0.10.0]: https://github.com/JakeStanger/ironbar/compare/v0.9.0...v0.10.0
 [v0.11.0]: https://github.com/JakeStanger/ironbar/compare/v0.10.0...v0.11.0
+[v0.12.0]: https://github.com/JakeStanger/ironbar/compare/v0.11.0...v0.12.0
