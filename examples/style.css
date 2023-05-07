@@ -16,6 +16,7 @@
 
 box, menubar, button {
     background-color: @color_bg;
+    background-image: none;
 }
 
 button, label {
