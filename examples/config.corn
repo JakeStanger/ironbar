@@ -15,7 +15,7 @@ let {
 
     $launcher = {
         type = "launcher"
-        favorites = ["firefox" "discord" "Steam"]
+        favorites = ["firefox" "discord" "steam"]
         show_names = false
         show_icons = true
     }

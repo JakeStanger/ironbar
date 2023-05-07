@@ -113,7 +113,7 @@ type = 'launcher'
 favorites = [
     'firefox',
     'discord',
-    'Steam',
+    'steam',
 ]
 
 [[start]]
