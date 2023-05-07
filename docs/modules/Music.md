@@ -30,8 +30,8 @@ in MPRIS mode, the widget will listen to all players and automatically detect/di
 | `show_status_icon`    | `boolean`                             | `true`               | Whether to show the play/pause icon on the widget.                                                                                                    |
 | `icon_size`           | `integer`                             | `32`                 | Size to render icon at (image icons only).                                                                                                            |
 | `cover_image_size`    | `integer`                             | `128`                | Size to render album art image at inside popup.                                                                                                       |
-| `host`                | `string/image`                        | `localhost:6600`     | [MPD Only] TCP or Unix socket for the MPD server.                                                                                                     |
-| `music_dir`           | `string/image`                        | `$HOME/Music`        | [MPD Only] Path to MPD server's music directory on disc. Required for album art.                                                                      |
+| `host`                | `string`                              | `localhost:6600`     | [MPD Only] TCP or Unix socket for the MPD server.                                                                                                     |
+| `music_dir`           | `string`                              | `$HOME/Music`        | [MPD Only] Path to MPD server's music directory on disc. Required for album art.                                                                      |
 
 See [here](images) for information on images.
 
