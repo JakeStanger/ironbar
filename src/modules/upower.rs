@@ -212,28 +212,35 @@ impl Module<gtk::Box> for UpowerModule {
 
         let label = Label::new(None);
         add_class(&label, "upower-details");
+        container.add(&label);
 
         rx.attach(None, move |properties| {
-            let mut format = String::new();
             let state = u32_to_battery_state(properties.state);
-            match state {
+            let format = match state {
                 Ok(BatteryState::Charging | BatteryState::PendingCharge) => {
                     let ttf = properties.time_to_full;
                     if ttf > 0 {
-                        format = format!("Full in {}", seconds_to_string(ttf));
+                        format!("Full in {}", seconds_to_string(ttf))
+                    } else {
+                        String::new()
                     }
                 }
                 Ok(BatteryState::Discharging | BatteryState::PendingDischarge) => {
                     let tte = properties.time_to_empty;
                     if tte > 0 {
-                        format = format!("Empty in {}", seconds_to_string(tte));
+                        format!("Empty in {}", seconds_to_string(tte))
+                    } else {
+                        String::new()
                     }
                 }
-                Err(state) => error!("Invalid battery state: {state}"),
-                _ => {}
-            }
-            label.set_markup(&format);
+                Err(state) => {
+                    error!("Invalid battery state: {state}");
+                    String::new()
+                }
+                _ => String::new(),
+            };
 
+            label.set_markup(&format);
             Continue(true)
         });
 
