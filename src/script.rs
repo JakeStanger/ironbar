@@ -234,7 +234,7 @@ impl Script {
 
         debug!("Running sh with args: {args_list:?}");
 
-        let output = Command::new("sh")
+        let output = Command::new("/bin/sh")
             .args(&args_list)
             .output()
             .await
@@ -265,7 +265,7 @@ impl Script {
     /// Returns a `mpsc::Receiver` that sends a message
     /// every time a new line is written to `stdout` or `stderr`.
     pub async fn spawn(&self) -> Result<mpsc::Receiver<OutputStream>> {
-        let mut handle = Command::new("sh")
+        let mut handle = Command::new("/bin/sh")
             .args(["-c", &self.cmd])
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
