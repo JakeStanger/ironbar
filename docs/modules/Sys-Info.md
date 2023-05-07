@@ -168,6 +168,8 @@ The following tokens can be used in the `format` configuration option:
 | `{load_average:15}`      | 15-minute load average.                                                            |
 | `{uptime}`               | System uptime formatted as `HH:mm`.                                                |
 
+For Intel CPUs, you can typically use `coretemp-Package-id-0` for the temperature sensor. For AMD, you can use `k10temp_Tccd1`.
+
 ## Styling
 
 | Selector         | Description                  |
