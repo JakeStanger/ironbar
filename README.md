@@ -1,25 +1,65 @@
-# Ironbar
+<h1 align="center" >--- Ironbar ---</h1> 
 
-Ironbar is a customisable and feature-rich bar for wlroots compositors, written in Rust.
-It uses GTK3 and gtk-layer-shell.
+<div align="center">
+    <a href="https://github.com/JakeStanger/ironbar/releases">
+        <img src="https://img.shields.io/crates/v/ironbar?label=version&style=for-the-badge" alt="Current version" />
+    </a>
+    <a href="https://github.com/JakeStanger/ironbar/actions/workflows/build.yml">
+    <img src="https://img.shields.io/github/actions/workflow/status/jakestanger/ironbar/build.yml?style=for-the-badge" alt="Build status" />
+    </a>
+    <a href="https://github.com/JakeStanger/ironbar/issues">
+        <img src="https://img.shields.io/github/issues/jakestanger/ironbar?style=for-the-badge" alt="Open issues" />
+    </a>
+    <a href="https://github.com/JakeStanger/ironbar/blob/master/LICENSE">
+        <img src="https://img.shields.io/github/license/jakestanger/ironbar?style=for-the-badge" alt="License" />
+    </a>
+    <a href="https://crates.io/crates/ironbar">
+        <img src="https://img.shields.io/crates/d/ironbar?label=crates.io%20downloads&style=for-the-badge" alt="Crates.io downloads" />
+    </a>
+</div>
 
-The bar can be styled to your liking using CSS and hot-loads style changes.
-For information and examples on styling please see the [wiki](https://github.com/JakeStanger/ironbar/wiki).
+---
+
+<div align="center">
+A customisable and feature-rich GTK bar for wlroots compositors, written in Rust.
+
+Ironbar is designed to support anything from a lightweight bar to a full desktop panel with ease.
+
+---
+
+## Getting Started
+
+[Wiki](https://github.com/JakeStanger/ironbar/wiki)
+|
+[Configuration Guide](https://github.com/JakeStanger/ironbar/wiki/configuration-guide)
+|
+[Style Guide](https://github.com/JakeStanger/ironbar/wiki/styling-guide)
+
+
+---
 
 ![Screenshot of fully configured bar with MPD widget open](https://f.jstanger.dev/github/ironbar/bar.png?raw)
 
+✨ Looking for a starting point, or want to show off? Head to [Show and tell](https://github.com/JakeStanger/ironbar/discussions/categories/show-and-tell) ✨
+
+</div>
+
+---
+
 ## Features
 
-- First-class support for Sway and Hyprland, but should (mostly) work on any wlroots compositor.
-- Fully themeable with CSS and hot-loaded styles. 
-- Support for multiple configuration languages.
-- Popups used by widgets to show rich content and controls on click.
-- Out of the box widgets which can be used to create anything from a lightweight to a more traditional desktop experience.
-- Ability to create custom widgets (including popups), run scripts and inject dynamic content. 
+- First-class support for Sway and Hyprland
+- Fully themeable with hot-loaded CSS
+- Popups to show rich content
+- Ability to create custom widgets, run scripts and embed dynamic content
+- Easy to configure anything from a single bar across all monitors, to multiple different unique bars per monitor 
+- Support for multiple config languages
 
 ## Installation
 
 ### Cargo
+
+[crate](https://crates.io/crates/ironbar)
 
 Ensure you have the [build dependencies](https://github.com/JakeStanger/ironbar/wiki/compiling#Build-requirements) installed.
 
@@ -27,23 +67,20 @@ Ensure you have the [build dependencies](https://github.com/JakeStanger/ironbar/
 cargo install ironbar
 ```
 
-[crate](https://crates.io/crates/ironbar)
-
 ### Arch Linux
+
+[aur package](https://aur.archlinux.org/packages/ironbar-git)
 
 ```sh
 yay -S ironbar-git
 ```
 
-[aur package](https://aur.archlinux.org/packages/ironbar-git)
-
 ### Nix Flake
 
-A flake is included with the repo which can be used with home-manager.
+A flake is included with the repo which can be used with Home Manager.
 
-#### Example
-
-Here is an example nix flake that uses Ironbar.
+<details>
+<summary>Example usage</summary>
 
 ```nix
 {
@@ -80,12 +117,13 @@ Here is an example nix flake that uses Ironbar.
 }
 ```
 
-#### Binary Caching
+</details>
 
-There is a Cachix cache available at `https://app.cachix.org/cache/jakestanger`
-in case you don't want to compile Ironbar.
+There is a Cachix cache available at `https://app.cachix.org/cache/jakestanger`.
 
 ### Source
+
+[repo](https://github.com/jakestanger/ironbar)
 
 Ensure you have the [build dependencies](https://github.com/JakeStanger/ironbar/wiki/compiling#Build-requirements) installed.
 
@@ -100,53 +138,36 @@ install target/release/ironbar ~/.local/bin/ironbar
 By default, all features are enabled. 
 See [here](https://github.com/JakeStanger/ironbar/wiki/compiling#features) for controlling which features are included.
 
-[repo](https://github.com/jakestanger/ironbar)
-
 ## Running
 
-All of the above installation methods provide a binary called `ironbar`.
+Once installed, you will need to create a config and optionally a stylesheet in `.config/ironbar`.
+See the [Configuration Guide](https://github.com/JakeStanger/ironbar/wiki/configuration-guide) and [Style Guide](https://github.com/JakeStanger/ironbar/wiki/styling-guide) for full details.
 
-You can set the `IRONBAR_LOG` or `IRONBAR_FILE_LOG` environment variables to 
-`error`, `warn`, `info`, `debug` or `trace` to configure the log output level.
+Ironbar can be launched using the `ironbar` binary.
+
+Log verbosity can be changed using `IRONBAR_LOG` or `IRONBAR_FILE_LOG`. You can use any of `error`, `warn`, `info`, `debug` or `trace`.
+
 These default to `IRONBAR_LOG=info` and `IRONBAR_FILE_LOG=error`.
+
 File output can be found at `~/.local/share/ironbar/error.log`.
 
-## Configuration
+## Status
 
-Ironbar gives a lot of flexibility when configuring, including multiple file formats
-and options for scaling complexity: you can use a single config across all monitors,
-or configure different/multiple bars per monitor.
+Ironbar is an **alpha** project. 
+It is unfinished and subject to constant breaking changes, and will continue that way until the foundation is rock solid.
 
-A full configuration guide can be found [here](https://github.com/JakeStanger/ironbar/wiki/configuration-guide).
+If you would like to take the risk and help shape development, any bug reports, feature requests and discussion is welcome.
 
-## Styling
+I use Ironbar on my daily driver, so development is active. Features aim to be stable and well documented before being merged.
 
-To get started, create a stylesheet at `.config/ironbar/style.css`. Changes will be hot-reloaded every time you save the
-file.
-
-A full styling guide can be found [here](https://github.com/JakeStanger/ironbar/wiki/styling-guide).
-
-## Project Status
-
-This project is in alpha, but should be usable.
-Everything that is implemented works and should be documented.
-Proper error handling is in place so things should either fail gracefully with detail, or not fail at all.
-
-There is currently room for lots more modules, and lots more configuration options for the existing modules.
-The current configuration schema is not set in stone and breaking changes could come along at any point;
-until the project matures I am more interested in ease of use than backwards compatibility.
-
-A few bugs do exist, and I am sure there are plenty more to be found.
-
-The project will be *actively developed* as I am using it on my daily driver.
-Bugs will be fixed, features will be added, code will be refactored.
 
 ## Contribution Guidelines
 
-Please check [here](https://github.com/JakeStanger/ironbar/blob/master/CONTRIBUTING.md).
+All are welcome, but I ask a few basic things to help make things easier. Please check [here](https://github.com/JakeStanger/ironbar/blob/master/CONTRIBUTING.md) for details.
 
 ## Acknowledgements
 
 - [Waybar](https://github.com/Alexays/Waybar) - A lot of the initial inspiration, and a pretty great bar.
 - [Rustbar](https://github.com/zeroeightysix/rustbar) - Served as a good demo for writing a basic GTK bar in Rust
 - [Smithay Client Toolkit](https://github.com/Smithay/client-toolkit) - Essential in being able to communicate to Wayland
+- [gtk-layer-shell](https://github.com/wmww/gtk-layer-shell) - Ironbar and many other projects would be impossible without this
