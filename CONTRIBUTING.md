@@ -4,7 +4,8 @@ I welcome contributions of any kind with open arms. That said, please do stick t
   - Fix any `cargo clippy` warnings, using at least the default configuration.
   - Make sure your code is formatted using `cargo fmt`.
   - Keep any documentation up to date.
-  - I won't enforce it, but preferably stick to [conventional commit](https://www.conventionalcommits.org/en/v1.0.0/) messages.
+  - Please use [conventional commit](https://www.conventionalcommits.org/en/v1.0.0/) messages.
+    This ensures your contributions are automatically included in the changelog.
 
 
 - For PRs:
