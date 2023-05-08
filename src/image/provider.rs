@@ -1,6 +1,8 @@
 use crate::desktop_file::get_desktop_icon_name;
 use cfg_if::cfg_if;
 use color_eyre::{Help, Report, Result};
+use gtk::cairo::Surface;
+use gtk::gdk::ffi::gdk_cairo_surface_create_from_pixbuf;
 use gtk::gdk_pixbuf::Pixbuf;
 use gtk::prelude::*;
 use gtk::{IconLookupFlags, IconTheme};
@@ -115,17 +117,24 @@ impl<'a> ImageProvider<'a> {
                 let size = self.size;
                 rx.attach(None, move |bytes| {
                     let stream = MemoryInputStream::from_bytes(&bytes);
+
+                    let scale = image.scale_factor();
+                    let scaled_size = size * scale;
+
                     let pixbuf = Pixbuf::from_stream_at_scale(
                         &stream,
-                        size,
-                        size,
+                        scaled_size,
+                        scaled_size,
                         true,
                         Some(&Cancellable::new()),
                     );
 
-                    match pixbuf {
-                        Ok(pixbuf) => image.set_pixbuf(Some(&pixbuf)),
+                    // Different error types makes this a bit awkward
+                    match pixbuf.map(|pixbuf| Self::create_and_load_surface(&pixbuf, &image, scale))
+                    {
+                        Ok(Err(err)) => error!("{err:?}"),
                         Err(err) => error!("{err:?}"),
+                        _ => {}
                     }
 
                     Continue(false)
@@ -141,18 +150,35 @@ impl<'a> ImageProvider<'a> {
         Ok(())
     }
 
+    /// Attempts to synchronously fetch an image from location
+    /// and load into into the image.
     fn load_into_image_sync(&self, image: &gtk::Image) -> Result<()> {
+        let scale = image.scale_factor();
+
         let pixbuf = match &self.location {
-            ImageLocation::Icon { name, theme } => {
-                self.get_from_icon(name, theme, image.scale_factor())
-            }
-            ImageLocation::Local(path) => self.get_from_file(path),
-            ImageLocation::Steam(steam_id) => self.get_from_steam_id(steam_id),
+            ImageLocation::Icon { name, theme } => self.get_from_icon(name, theme, scale),
+            ImageLocation::Local(path) => self.get_from_file(path, scale),
+            ImageLocation::Steam(steam_id) => self.get_from_steam_id(steam_id, scale),
             #[cfg(feature = "http")]
             _ => unreachable!(), // handled above
         }?;
 
-        image.set_pixbuf(Some(&pixbuf));
+        Self::create_and_load_surface(&pixbuf, image, scale)
+    }
+
+    /// Attempts to create a Cairo surface from the provided `Pixbuf`,
+    /// using the provided scaling factor.
+    /// The surface is then loaded into the provided image.
+    ///
+    /// This is necessary for HiDPI since `Pixbuf`s are always treated as scale factor 1.
+    fn create_and_load_surface(pixbuf: &Pixbuf, image: &gtk::Image, scale: i32) -> Result<()> {
+        let surface = unsafe {
+            let ptr =
+                gdk_cairo_surface_create_from_pixbuf(pixbuf.as_ptr(), scale, std::ptr::null_mut());
+            Surface::from_raw_full(ptr)
+        }?;
+
+        image.set_from_surface(Some(&surface));
 
         Ok(())
     }
@@ -161,7 +187,7 @@ impl<'a> ImageProvider<'a> {
     fn get_from_icon(&self, name: &str, theme: &IconTheme, scale: i32) -> Result<Pixbuf> {
         let pixbuf =
             match theme.lookup_icon_for_scale(name, self.size, scale, IconLookupFlags::empty()) {
-                Some(_) => theme.load_icon(name, self.size, IconLookupFlags::FORCE_SIZE),
+                Some(_) => theme.load_icon(name, self.size * scale, IconLookupFlags::FORCE_SIZE),
                 None => Ok(None),
             }?;
 
@@ -172,14 +198,15 @@ impl<'a> ImageProvider<'a> {
     }
 
     /// Attempts to get a `Pixbuf` from a local file.
-    fn get_from_file(&self, path: &Path) -> Result<Pixbuf> {
-        let pixbuf = Pixbuf::from_file_at_scale(path, self.size, self.size, true)?;
+    fn get_from_file(&self, path: &Path, scale: i32) -> Result<Pixbuf> {
+        let scaled_size = self.size * scale;
+        let pixbuf = Pixbuf::from_file_at_scale(path, scaled_size, scaled_size, true)?;
         Ok(pixbuf)
     }
 
     /// Attempts to get a `Pixbuf` from a local file,
     /// using the Steam game ID to look it up.
-    fn get_from_steam_id(&self, steam_id: &str) -> Result<Pixbuf> {
+    fn get_from_steam_id(&self, steam_id: &str, scale: i32) -> Result<Pixbuf> {
         // TODO: Can we load this from icon theme with app id `steam_icon_{}`?
         let path = dirs::data_dir().map_or_else(
             || Err(Report::msg("Missing XDG data dir")),
@@ -190,7 +217,7 @@ impl<'a> ImageProvider<'a> {
             },
         )?;
 
-        self.get_from_file(&path)
+        self.get_from_file(&path, scale)
     }
 
     /// Attempts to get `Bytes` from an HTTP resource asynchronously.
