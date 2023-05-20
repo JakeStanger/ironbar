@@ -163,19 +163,23 @@ fn load_modules(
         };
     }
 
+    // popup ignores module location so can bodge this for now
+    let popup = Popup::new(&info!(ModuleLocation::Left), config.popup_gap);
+    let popup = Arc::new(RwLock::new(popup));
+
     if let Some(modules) = config.start {
         let info = info!(ModuleLocation::Left);
-        add_modules(left, modules, &info, config.popup_gap)?;
+        add_modules(left, modules, &info, &popup)?;
     }
 
     if let Some(modules) = config.center {
         let info = info!(ModuleLocation::Center);
-        add_modules(center, modules, &info, config.popup_gap)?;
+        add_modules(center, modules, &info, &popup)?;
     }
 
     if let Some(modules) = config.end {
         let info = info!(ModuleLocation::Right);
-        add_modules(right, modules, &info, config.popup_gap)?;
+        add_modules(right, modules, &info, &popup)?;
     }
 
     Ok(())
@@ -187,11 +191,8 @@ fn add_modules(
     content: &gtk::Box,
     modules: Vec<ModuleConfig>,
     info: &ModuleInfo,
-    popup_gap: i32,
+    popup: &Arc<RwLock<Popup>>,
 ) -> Result<()> {
-    let popup = Popup::new(info, popup_gap);
-    let popup = Arc::new(RwLock::new(popup));
-
     let orientation = info.bar_position.get_orientation();
 
     macro_rules! add_module {
