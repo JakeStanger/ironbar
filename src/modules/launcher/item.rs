@@ -192,16 +192,13 @@ impl ItemButton {
             let gtk_image = gtk::Image::new();
             let image =
                 ImageProvider::parse(&item.app_id.clone(), icon_theme, appearance.icon_size);
-            match image {
-                Ok(image) => {
-                    button.set_image(Some(&gtk_image));
-                    button.set_always_show_image(true);
+            if let Some(image) = image {
+                button.set_image(Some(&gtk_image));
+                button.set_always_show_image(true);
 
-                    if let Err(err) = image.load_into_image(gtk_image) {
-                        error!("{err:?}");
-                    }
+                if let Err(err) = image.load_into_image(gtk_image) {
+                    error!("{err:?}");
                 }
-                Err(err) => error!("{err:?}"),
             };
         }
 

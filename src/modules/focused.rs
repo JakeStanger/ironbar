@@ -11,7 +11,7 @@ use gtk::Label;
 use serde::Deserialize;
 use tokio::spawn;
 use tokio::sync::mpsc::{Receiver, Sender};
-use tracing::{debug, error};
+use tracing::debug;
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct FocusedModule {
@@ -113,11 +113,8 @@ impl Module<gtk::Box> for FocusedModule {
             let icon_theme = icon_theme.clone();
             context.widget_rx.attach(None, move |(name, id)| {
                 if self.show_icon {
-                    if let Err(err) = ImageProvider::parse(&id, &icon_theme, self.icon_size)
-                        .and_then(|image| image.load_into_image(icon.clone()))
-                    {
-                        error!("{err:?}");
-                    }
+                    ImageProvider::parse(&id, &icon_theme, self.icon_size)
+                        .map(|image| image.load_into_image(icon.clone()));
                 }
 
                 if self.show_title {

@@ -2,7 +2,6 @@ use super::ImageProvider;
 use crate::gtk_helpers::add_class;
 use gtk::prelude::*;
 use gtk::{Button, IconTheme, Image, Label, Orientation};
-use tracing::error;
 
 #[cfg(any(feature = "music", feature = "workspaces", feature = "clipboard"))]
 pub fn new_icon_button(input: &str, icon_theme: &IconTheme, size: i32) -> Button {
@@ -13,14 +12,13 @@ pub fn new_icon_button(input: &str, icon_theme: &IconTheme, size: i32) -> Button
         add_class(&image, "image");
 
         match ImageProvider::parse(input, icon_theme, size)
-            .and_then(|provider| provider.load_into_image(image.clone()))
+            .map(|provider| provider.load_into_image(image.clone()))
         {
-            Ok(_) => {
+            Some(_) => {
                 button.set_image(Some(&image));
                 button.set_always_show_image(true);
             }
-            Err(err) => {
-                error!("{err:?}");
+            None => {
                 button.set_label(input);
             }
         }
@@ -41,11 +39,8 @@ pub fn new_icon_label(input: &str, icon_theme: &IconTheme, size: i32) -> gtk::Bo
 
         container.add(&image);
 
-        if let Err(err) = ImageProvider::parse(input, icon_theme, size)
-            .and_then(|provider| provider.load_into_image(image))
-        {
-            error!("{err:?}");
-        }
+        ImageProvider::parse(input, icon_theme, size)
+            .map(|provider| provider.load_into_image(image));
     } else {
         let label = Label::new(Some(input));
         add_class(&label, "label");

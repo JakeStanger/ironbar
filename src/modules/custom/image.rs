@@ -5,7 +5,6 @@ use crate::image::ImageProvider;
 use gtk::prelude::*;
 use gtk::Image;
 use serde::Deserialize;
-use tracing::error;
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct ImageWidget {
@@ -31,12 +30,8 @@ impl CustomWidget for ImageWidget {
             let icon_theme = context.icon_theme.clone();
 
             DynamicString::new(&self.src, move |src| {
-                let res = ImageProvider::parse(&src, &icon_theme, self.size)
-                    .and_then(|image| image.load_into_image(gtk_image.clone()));
-
-                if let Err(err) = res {
-                    error!("{err:?}");
-                }
+                ImageProvider::parse(&src, &icon_theme, self.size)
+                    .map(|image| image.load_into_image(gtk_image.clone()));
 
                 Continue(true)
             });
