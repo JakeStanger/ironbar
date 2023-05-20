@@ -180,11 +180,8 @@ impl Module<gtk::Box> for UpowerModule {
             .attach(None, move |properties: UpowerProperties| {
                 let format = format.replace("{percentage}", &properties.percentage.to_string());
                 let icon_name = String::from("icon:") + &properties.icon_name;
-                if let Err(err) = ImageProvider::parse(&icon_name, &icon_theme, 32)
-                    .and_then(|provider| provider.load_into_image(icon.clone()))
-                {
-                    error!("{err:?}");
-                }
+                ImageProvider::parse(&icon_name, &icon_theme, 32)
+                    .map(|provider| provider.load_into_image(icon.clone()));
                 label.set_markup(format.as_ref());
                 Continue(true)
             });

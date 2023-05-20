@@ -342,19 +342,15 @@ impl Module<Button> for MusicModule {
                     let new_cover = update.song.cover_path;
                     if prev_cover != new_cover {
                         prev_cover = new_cover.clone();
-                        let res = match new_cover.map(|cover_path| {
+                        let res = if let Some(image) = new_cover.and_then(|cover_path| {
                             ImageProvider::parse(&cover_path, &icon_theme, image_size)
                         }) {
-                            Some(Ok(image)) => image.load_into_image(album_image.clone()),
-                            Some(Err(err)) => {
-                                album_image.set_from_pixbuf(None);
-                                Err(err)
-                            }
-                            None => {
-                                album_image.set_from_pixbuf(None);
-                                Ok(())
-                            }
+                            image.load_into_image(album_image.clone())
+                        } else {
+                            album_image.set_from_pixbuf(None);
+                            Ok(())
                         };
+
                         if let Err(err) = res {
                             error!("{err:?}");
                         }

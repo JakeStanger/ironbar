@@ -7,6 +7,7 @@ use gtk::gdk_pixbuf::Pixbuf;
 use gtk::prelude::*;
 use gtk::{IconLookupFlags, IconTheme};
 use std::path::{Path, PathBuf};
+use tracing::warn;
 
 cfg_if!(
     if #[cfg(feature = "http")] {
@@ -40,9 +41,9 @@ impl<'a> ImageProvider<'a> {
     ///
     /// Note this checks that icons exist in theme, or files exist on disk
     /// but no other check is performed.
-    pub fn parse(input: &str, theme: &'a IconTheme, size: i32) -> Result<Self> {
+    pub fn parse(input: &str, theme: &'a IconTheme, size: i32) -> Option<Self> {
         let location = Self::get_location(input, theme, size)?;
-        Ok(Self { location, size })
+        Some(Self { location, size })
     }
 
     /// Returns true if the input starts with a prefix
@@ -56,44 +57,56 @@ impl<'a> ImageProvider<'a> {
             || input.starts_with("https://")
     }
 
-    fn get_location(input: &str, theme: &'a IconTheme, size: i32) -> Result<ImageLocation<'a>> {
+    fn get_location(input: &str, theme: &'a IconTheme, size: i32) -> Option<ImageLocation<'a>> {
         let (input_type, input_name) = input
             .split_once(':')
             .map_or((None, input), |(t, n)| (Some(t), n));
 
         match input_type {
-            Some(input_type) if input_type == "icon" => Ok(ImageLocation::Icon {
+            Some(input_type) if input_type == "icon" => Some(ImageLocation::Icon {
                 name: input_name.to_string(),
                 theme,
             }),
-            Some(input_type) if input_type == "file" => Ok(ImageLocation::Local(PathBuf::from(
+            Some(input_type) if input_type == "file" => Some(ImageLocation::Local(PathBuf::from(
                 input_name[2..].to_string(),
             ))),
             #[cfg(feature = "http")]
             Some(input_type) if input_type == "http" || input_type == "https" => {
-                Ok(ImageLocation::Remote(input.parse()?))
+                input.parse().ok().map(ImageLocation::Remote)
             }
-            None if input.starts_with("steam_app_") => Ok(ImageLocation::Steam(
+            None if input.starts_with("steam_app_") => Some(ImageLocation::Steam(
                 input_name.chars().skip("steam_app_".len()).collect(),
             )),
             None if theme
                 .lookup_icon(input, size, IconLookupFlags::empty())
                 .is_some() =>
             {
-                Ok(ImageLocation::Icon {
+                Some(ImageLocation::Icon {
                     name: input_name.to_string(),
                     theme,
                 })
             }
-            Some(input_type) => Err(Report::msg(format!("Unsupported image type: {input_type}"))
-                .note("You may need to recompile with support if available")),
-            None if PathBuf::from(input_name).is_file() => {
-                Ok(ImageLocation::Local(PathBuf::from(input_name)))
+            Some(input_type) => {
+                warn!(
+                    "{:?}",
+                    Report::msg(format!("Unsupported image type: {input_type}"))
+                        .note("You may need to recompile with support if available")
+                );
+                None
             }
-            None => get_desktop_icon_name(input_name).map_or_else(
-                || Err(Report::msg(format!("Unknown image type: '{input}'"))),
-                |input| Self::get_location(&input, theme, size),
-            ),
+            None if PathBuf::from(input_name).is_file() => {
+                Some(ImageLocation::Local(PathBuf::from(input_name)))
+            }
+            None => {
+                if let Some(location) = get_desktop_icon_name(input_name)
+                    .map(|input| Self::get_location(&input, theme, size))
+                {
+                    location
+                } else {
+                    warn!("Failed to find image: {input}");
+                    None
+                }
+            }
         }
     }
 
