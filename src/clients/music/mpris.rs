@@ -231,6 +231,16 @@ impl MusicClient for Client {
             if let Err(err) = Self::send_update(&player, &self.tx) {
                 error!("{err:?}");
             }
+        } else {
+            let status = Status {
+                playlist_position: 0,
+                playlist_length: 0,
+                state: PlayerState::Stopped,
+                elapsed: None,
+                duration: None,
+                volume_percent: 0,
+            };
+            send!(self.tx, PlayerUpdate::Update(Box::new(None), status));
         }
 
         rx
