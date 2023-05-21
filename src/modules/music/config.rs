@@ -121,27 +121,27 @@ fn default_icon_pause() -> String {
 }
 
 fn default_icon_prev() -> String {
-    String::from("\u{f9ad}")
+    String::from("󰒮")
 }
 
 fn default_icon_next() -> String {
-    String::from("\u{f9ac}")
+    String::from("󰒭")
 }
 
 fn default_icon_volume() -> String {
-    String::from("墳")
+    String::from("󰕾")
 }
 
 fn default_icon_track() -> String {
-    String::from("\u{f886}")
+    String::from("󰎈")
 }
 
 fn default_icon_album() -> String {
-    String::from("\u{f524}")
+    String::from("󰀥")
 }
 
 fn default_icon_artist() -> String {
-    String::from("\u{fd01}")
+    String::from("󰠃")
 }
 
 fn default_music_dir() -> PathBuf {
