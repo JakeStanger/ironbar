@@ -41,7 +41,7 @@ pub struct UpowerProperties {
     time_to_empty: i64,
 }
 
-impl Module<gtk::Box> for UpowerModule {
+impl Module<gtk::Button> for UpowerModule {
     type SendMessage = UpowerProperties;
     type ReceiveMessage = ();
 
@@ -143,7 +143,7 @@ impl Module<gtk::Box> for UpowerModule {
         self,
         context: WidgetContext<Self::SendMessage, Self::ReceiveMessage>,
         info: &ModuleInfo,
-    ) -> Result<ModuleWidget<gtk::Box>> {
+    ) -> Result<ModuleWidget<Button>> {
         let icon_theme = info.icon_theme.clone();
         let icon = gtk::Image::new();
         add_class(&icon, "icon");
@@ -154,15 +154,15 @@ impl Module<gtk::Box> for UpowerModule {
             .build();
         add_class(&label, "label");
 
-        let container = gtk::Box::new(Orientation::Horizontal, 0);
-        add_class(&container, "upower");
+        let container = gtk::Box::new(Orientation::Horizontal, 5);
+        add_class(&container, "contents");
 
         let button = Button::new();
         add_class(&button, "button");
 
-        button.add(&label);
-        container.add(&button);
         container.add(&icon);
+        container.add(&label);
+        button.add(&container);
 
         let orientation = info.bar_position.get_orientation();
         button.connect_clicked(move |button| {
@@ -189,7 +189,7 @@ impl Module<gtk::Box> for UpowerModule {
         let popup = self.into_popup(context.controller_tx, context.popup_rx, info);
 
         Ok(ModuleWidget {
-            widget: container,
+            widget: button,
             popup,
         })
     }
