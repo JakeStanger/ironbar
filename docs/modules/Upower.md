@@ -70,13 +70,14 @@ end:
 
 ## Styling
 
-| Selector                        | Description                 |
-|---------------------------------|-----------------------------|
-| `.upower`                       | Upower widget container.    |
-| `.upower .icon`                 | Upower widget battery icon. |
-| `.upower .button`               | Upower widget button.       |
-| `.upower .button .label`        | Upower widget button label. |
-| `.popup-upower`                 | Upower popup box.           |
-| `.popup-upower .upower-details` | Label inside the popup.     |
+| Selector                        | Description                    |
+|---------------------------------|--------------------------------|
+| `.upower`                       | Upower widget container.       |
+| `.upower .button`               | Upower widget button.          |
+| `.upower .button .contents`     | Upower widget button contents. |
+| `.upower .button .icon`         | Upower widget battery icon.    |
+| `.upower .button .label`        | Upower widget button label.    |
+| `.popup-upower`                 | Upower popup box.              |
+| `.popup-upower .upower-details` | Label inside the popup.        |
 
 For more information on styling, please see the [styling guide](styling-guide).
