@@ -59,7 +59,7 @@ strip-ansi-escapes = "0.1.1"
 color-eyre = "0.6.2"
 serde = { version = "1.0.141", features = ["derive"] }
 indexmap = "1.9.1"
-dirs = "5.0.0"
+dirs = "5.0.1"
 walkdir = "2.3.2"
 notify = { version = "5.0.0", default-features = false }
 wayland-client = "0.30.0"
