@@ -3,6 +3,7 @@ use crate::modules::{
     create_module, set_widget_identifiers, wrap_widget, ModuleInfo, ModuleLocation,
 };
 use crate::popup::Popup;
+use crate::unique_id::get_unique_usize;
 use crate::Config;
 use color_eyre::Result;
 use gtk::gdk::Monitor;
@@ -206,7 +207,8 @@ fn add_modules(
         }};
     }
 
-    for (id, config) in modules.into_iter().enumerate() {
+    for config in modules.into_iter() {
+        let id = get_unique_usize();
         match config {
             #[cfg(feature = "clipboard")]
             ModuleConfig::Clipboard(mut module) => add_module!(module, id),

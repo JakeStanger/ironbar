@@ -15,6 +15,7 @@ mod modules;
 mod popup;
 mod script;
 mod style;
+mod unique_id;
 
 use crate::bar::create_bar;
 use crate::config::{Config, MonitorConfig};

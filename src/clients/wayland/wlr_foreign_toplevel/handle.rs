@@ -1,7 +1,7 @@
 use super::manager::ToplevelManagerState;
 use crate::lock;
+use crate::unique_id::get_unique_usize;
 use std::collections::HashSet;
-use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
 use tracing::trace;
 use wayland_client::protocol::wl_output::WlOutput;
@@ -10,12 +10,6 @@ use wayland_client::{Connection, Dispatch, Proxy, QueueHandle};
 use wayland_protocols_wlr::foreign_toplevel::v1::client::zwlr_foreign_toplevel_handle_v1::{
     Event, ZwlrForeignToplevelHandleV1,
 };
-
-static COUNTER: AtomicUsize = AtomicUsize::new(1);
-
-fn get_id() -> usize {
-    COUNTER.fetch_add(1, Ordering::Relaxed)
-}
 
 #[derive(Debug, Clone)]
 pub struct ToplevelHandle {
@@ -74,7 +68,7 @@ pub struct ToplevelInfo {
 impl Default for ToplevelInfo {
     fn default() -> Self {
         Self {
-            id: get_id(),
+            id: get_unique_usize(),
             app_id: String::new(),
             title: String::new(),
             fullscreen: false,

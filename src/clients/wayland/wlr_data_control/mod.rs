@@ -7,6 +7,7 @@ use self::device::{DataControlDeviceDataExt, DataControlDeviceHandler};
 use self::offer::{DataControlDeviceOffer, DataControlOfferHandler, SelectionOffer};
 use self::source::DataControlSourceHandler;
 use crate::clients::wayland::Environment;
+use crate::unique_id::get_unique_usize;
 use crate::{lock, send};
 use device::DataControlDevice;
 use glib::Bytes;
@@ -19,20 +20,13 @@ use std::fmt::{Debug, Formatter};
 use std::fs::File;
 use std::io::{ErrorKind, Read, Write};
 use std::os::fd::{AsRawFd, OwnedFd, RawFd};
-use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 use std::{fs, io};
 use tracing::{debug, error, trace};
 use wayland_client::{Connection, QueueHandle};
 use wayland_protocols_wlr::data_control::v1::client::zwlr_data_control_source_v1::ZwlrDataControlSourceV1;
 
-static COUNTER: AtomicUsize = AtomicUsize::new(1);
-
 const INTERNAL_MIME_TYPE: &str = "x-ironbar-internal";
-
-fn get_id() -> usize {
-    COUNTER.fetch_add(1, Ordering::Relaxed)
-}
 
 pub struct SelectionOfferItem {
     offer: SelectionOffer,
@@ -151,7 +145,7 @@ impl Environment {
         };
 
         Ok(ClipboardItem {
-            id: get_id(),
+            id: get_unique_usize(),
             value,
             mime_type: mime_type.value.clone(),
         })
