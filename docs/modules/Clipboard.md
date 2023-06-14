@@ -86,6 +86,9 @@ end:
 |--------------------------------------|------------------------------------------------------|
 | `.clipboard`                         | Clipboard widget.                                    |
 | `.clipboard .btn`                    | Clipboard widget button.                             |
+| `.clipboard .btn .icon`              | Clipboard widget button icon (any type).             |
+| `.clipboard .btn .text-icon`         | Clipboard widget button icon (textual only).         |
+| `.clipboard .btn .image`             | Clipboard widget button icon (image only).           |
 | `.popup-clipboard`                   | Clipboard popup box.                                 |
 | `.popup-clipboard .item`             | Clipboard row item inside the popup.                 |
 | `.popup-clipboard .item .btn`        | Clipboard row item radio button.                     |

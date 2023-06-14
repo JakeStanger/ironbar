@@ -454,7 +454,7 @@ impl IconLabel {
         let icon = new_icon_label(icon_input, icon_theme, 24);
         let label = Label::new(label);
 
-        add_class(&icon, "icon");
+        add_class(&icon, "icon-box");
         add_class(&label, "label");
 
         container.add(&icon);
