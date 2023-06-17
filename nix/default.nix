@@ -32,8 +32,11 @@ rustPlatform.buildRustPackage rec {
     then false
     else true;
   buildFeatures = features;
-  cargoDeps = rustPlatform.importCargoLock {lockFile = ../Cargo.lock;};
+  cargoDeps = rustPlatform.importCargoLock {
+    lockFile = ../Cargo.lock;
+  };
   cargoLock.lockFile = ../Cargo.lock;
+  cargoLock.outputHashes."stray-0.1.3" = "sha256-7mvsWZFmPWti9AiX67h6ZlWiVVRZRWIxq3pVaviOUtc=";
   nativeBuildInputs = [pkg-config wrapGAppsHook gobject-introspection];
   buildInputs = [gtk3 gdk-pixbuf glib gtk-layer-shell glib-networking shared-mime-info gnome.adwaita-icon-theme hicolor-icon-theme gsettings-desktop-schemas libxkbcommon openssl];
   propagatedBuildInputs = [

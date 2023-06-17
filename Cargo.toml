@@ -103,3 +103,6 @@ futures-util = { version = "0.3.21", optional = true }
 
 # shared
 regex = { version = "1.8.4", default-features = false, features = ["std"], optional = true } # music, sys_info
+
+[patch.crates-io]
+stray = { git = "https://github.com/jakestanger/stray", branch = "fix/connection-errors" }

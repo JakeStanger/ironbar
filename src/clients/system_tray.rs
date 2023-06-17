@@ -1,3 +1,4 @@
+use crate::unique_id::get_unique_usize;
 use crate::{lock, send};
 use async_once::AsyncOnce;
 use color_eyre::Report;
@@ -11,7 +12,6 @@ use stray::StatusNotifierWatcher;
 use tokio::spawn;
 use tokio::sync::{broadcast, mpsc};
 use tracing::{debug, error, trace};
-use crate::unique_id::get_unique_usize;
 
 type Tray = BTreeMap<String, (Box<StatusNotifierItem>, Option<TrayMenu>)>;
 
