@@ -1,3 +1,4 @@
+use crate::unique_id::get_unique_usize;
 use crate::{lock, send};
 use async_once::AsyncOnce;
 use color_eyre::Report;
@@ -24,11 +25,13 @@ pub struct TrayEventReceiver {
 
 impl TrayEventReceiver {
     async fn new() -> stray::error::Result<Self> {
+        let id = format!("ironbar-{}", get_unique_usize());
+
         let (tx, rx) = mpsc::channel(16);
         let (b_tx, b_rx) = broadcast::channel(16);
 
         let tray = StatusNotifierWatcher::new(rx).await?;
-        let mut host = tray.create_notifier_host("ironbar").await?;
+        let mut host = tray.create_notifier_host(&id).await?;
 
         let tray = Arc::new(Mutex::new(BTreeMap::new()));
 
