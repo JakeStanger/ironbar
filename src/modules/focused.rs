@@ -115,8 +115,12 @@ impl Module<gtk::Box> for FocusedModule {
             let icon_theme = icon_theme.clone();
             context.widget_rx.attach(None, move |(name, id)| {
                 if self.show_icon {
-                    ImageProvider::parse(&id, &icon_theme, self.icon_size)
-                        .map(|image| image.load_into_image(icon.clone()));
+                    match ImageProvider::parse(&id, &icon_theme, self.icon_size)
+                        .map(|image| image.load_into_image(icon.clone()))
+                    {
+                        Some(Ok(_)) => icon.show(),
+                        _ => icon.hide(),
+                    }
                 }
 
                 if self.show_title {
