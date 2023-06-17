@@ -97,7 +97,10 @@ impl Module<gtk::Box> for FocusedModule {
         let container = gtk::Box::new(info.bar_position.get_orientation(), 5);
 
         let icon = gtk::Image::new();
-        add_class(&icon, "icon");
+        if self.show_icon {
+            add_class(&icon, "icon");
+            container.add(&icon);
+        }
 
         let label = Label::new(None);
         add_class(&label, "label");
@@ -106,7 +109,6 @@ impl Module<gtk::Box> for FocusedModule {
             truncate.truncate_label(&label);
         }
 
-        container.add(&icon);
         container.add(&label);
 
         {
