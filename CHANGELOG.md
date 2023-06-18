@@ -4,6 +4,41 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.12.1] - 2023-06-18
+### :boom: BREAKING CHANGES
+- due to [`e11177f`](https://github.com/JakeStanger/ironbar/commit/e11177fea3095560057278d71cebca01bed295d6) - add sensible class names for icon labels *(commit by [@JakeStanger](https://github.com/JakeStanger))*:
+
+  Where both textual and image icons are supported, CSS classes have changed to better reflect their targets. `.icon` has changed to `.icon-box` and `.icon` now targets the underlying element. `.label` has been changed to `.icon.text-icon`. This affects icons on the **music**, **workspaces**, and **clipboard** modules.
+
+
+### :bug: Bug Fixes
+- [`31a57ae`](https://github.com/JakeStanger/ironbar/commit/31a57ae637fa5918f163c8b191916867395912f3) - scripts don't work while running ironbar under a systemd service *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`f82f897`](https://github.com/JakeStanger/ironbar/commit/f82f897982e87906e2c9156d4115013bc8e99763) - **upower**: popup always empty *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`9012fee`](https://github.com/JakeStanger/ironbar/commit/9012feee4f9b60b2c22a956de732847892331222) - **image**: still blurry on hidpi *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`0e65f93`](https://github.com/JakeStanger/ironbar/commit/0e65f93a230cb5ab010b43962fd2e829945c291b) - excess popup windows *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`87ca399`](https://github.com/JakeStanger/ironbar/commit/87ca399220e5d48eefe2f295d1dba1b9452c4472) - poor error handling for missing images *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`22b630a`](https://github.com/JakeStanger/ironbar/commit/22b630a10b9836531a8b03eb904e6f9fcf839fe6) - broken nerd font icons *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`48d6af0`](https://github.com/JakeStanger/ironbar/commit/48d6af0281f460d3ed3745a2ffb2b61848430ecb) - **music**: showing when no mpris player found *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`b9740cb`](https://github.com/JakeStanger/ironbar/commit/b9740cba8f2fa9dfa18a57345027283610f6487e) - upower icon too large *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`a6b6866`](https://github.com/JakeStanger/ironbar/commit/a6b686624b750863aa1c26ca4f1688dfa8c81a61) - **upower**: icon outside button *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`a5ecb36`](https://github.com/JakeStanger/ironbar/commit/a5ecb363fdb2eb3ab543ad56c55c186414500469) - popups occasionally getting jumbled with multiple bars *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`e11177f`](https://github.com/JakeStanger/ironbar/commit/e11177fea3095560057278d71cebca01bed295d6) - add sensible class names for icon labels *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`ac34c05`](https://github.com/JakeStanger/ironbar/commit/ac34c05d2ecb07fd871ed03ef6ee545dc2e6743d) - **focused**: empty icon rendered when `show_icon = false` *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`de3aa5d`](https://github.com/JakeStanger/ironbar/commit/de3aa5d7b10e0bf6d5ff3a39b009ff53a3316a5e) - **focused**: previous icon does not clear if new icon fails to load *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`de98cf3`](https://github.com/JakeStanger/ironbar/commit/de98cf3daee816a0ff72d1f6ba6bc0e15ec53fca) - **tray**: (maybe?) sometimes bus name is taken *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`103a224`](https://github.com/JakeStanger/ironbar/commit/103a224355e8f700904a2b8fbc87cd7be4f64566) - **launcher**: crash when focusing newly opened window in popup *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+
+### :memo: Documentation Changes
+- [`d116a51`](https://github.com/JakeStanger/ironbar/commit/d116a510830be59f4ebaba4fe06f9f4489da7ebc) - update CHANGELOG.md for v0.12.0 [skip ci] *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`327e345`](https://github.com/JakeStanger/ironbar/commit/327e345630a5a89a6f7e464d873c16666d929c0f) - **examples**: fix css button styles *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`13d3923`](https://github.com/JakeStanger/ironbar/commit/13d39235ad032623745baecb6911057ec057ff11) - **examples**: fix casing of steam in launcher favourites *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`cdeafbd`](https://github.com/JakeStanger/ironbar/commit/cdeafbdc7245d37120e3e8338b6f933a39d4e428) - **sys info**: add typical temperature sensors for intel/amd cpus *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`ff315ff`](https://github.com/JakeStanger/ironbar/commit/ff315ff5dbd545d8b72b6aa10087c940cb8a5eee) - **music**: fix incorrect type for `host`/`music_dir` options *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`bd144e8`](https://github.com/JakeStanger/ironbar/commit/bd144e87a8f6668c877d42697ebbedbe5a374c3d) - **readme**: make prettier *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`242b70e`](https://github.com/JakeStanger/ironbar/commit/242b70ed3988b85455b0dbbcb3243b31f89d2ee1) - **contributing**: enforce conventional commits *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`96d36c4`](https://github.com/JakeStanger/ironbar/commit/96d36c43d43ba2f9e9d9441ae01c0743cc56f627) - add missing icon/image selectors *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+
+
 ## [v0.12.0] - 2023-05-06
 ### :boom: BREAKING CHANGES
 - due to [`dea6641`](https://github.com/JakeStanger/ironbar/commit/dea66415c2e11e34ba44d016aaa6cfb4ef7b9f9b) - module-level `name` and `class` options *(commit by [@JakeStanger](https://github.com/JakeStanger))*:
@@ -337,3 +372,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [v0.10.0]: https://github.com/JakeStanger/ironbar/compare/v0.9.0...v0.10.0
 [v0.11.0]: https://github.com/JakeStanger/ironbar/compare/v0.10.0...v0.11.0
 [v0.12.0]: https://github.com/JakeStanger/ironbar/compare/v0.11.0...v0.12.0
+[v0.12.1]: https://github.com/JakeStanger/ironbar/compare/v0.12.0...v0.12.1
