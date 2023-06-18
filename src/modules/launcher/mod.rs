@@ -468,10 +468,6 @@ impl Module<gtk::Box> for LauncherModule {
                                 let tx = controller_tx.clone();
                                 button.connect_clicked(move |button| {
                                     try_send!(tx, ItemEvent::FocusWindow(win.id));
-
-                                    if let Some(win) = button.window() {
-                                        win.hide();
-                                    }
                                 });
                             }
 
