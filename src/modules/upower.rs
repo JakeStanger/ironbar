@@ -24,12 +24,19 @@ pub struct UpowerModule {
     #[serde(default = "default_format")]
     format: String,
 
+    #[serde(default = "default_icon_size")]
+    icon_size: i32,
+
     #[serde(flatten)]
     pub common: Option<CommonConfig>,
 }
 
 fn default_format() -> String {
     String::from("{percentage}%")
+}
+
+const fn default_icon_size() -> i32 {
+    24
 }
 
 #[derive(Clone, Debug)]
@@ -180,7 +187,7 @@ impl Module<gtk::Button> for UpowerModule {
             .attach(None, move |properties: UpowerProperties| {
                 let format = format.replace("{percentage}", &properties.percentage.to_string());
                 let icon_name = String::from("icon:") + &properties.icon_name;
-                ImageProvider::parse(&icon_name, &icon_theme, 24)
+                ImageProvider::parse(&icon_name, &icon_theme, self.icon_size)
                     .map(|provider| provider.load_into_image(icon.clone()));
                 label.set_markup(format.as_ref());
                 Continue(true)
