@@ -4,9 +4,12 @@ version = "0.12.1"
 edition = "2021"
 license = "MIT"
 description = "Customisable GTK Layer Shell wlroots/sway bar"
+repository = "https://github.com/jakestanger/ironbar"
 
 [features]
 default = [
+    "cli",
+    "ipc",
     "http",
     "config+all",
     "clipboard",
@@ -17,8 +20,11 @@ default = [
     "upower",
     "workspaces+all"
 ]
+
+cli = ["dep:clap", "ipc"]
+ipc = ["dep:serde_json"]
+
 http = ["dep:reqwest"]
-upower = ["upower_dbus", "zbus", "futures-lite"]
 
 "config+all" = ["config+json", "config+yaml", "config+toml", "config+corn", "config+ron"]
 "config+json" = ["universal-config/json"]
@@ -39,6 +45,8 @@ music = ["regex"]
 sys_info = ["sysinfo", "regex"]
 
 tray = ["stray"]
+
+upower = ["upower_dbus", "zbus", "futures-lite"]
 
 workspaces = ["futures-util"]
 "workspaces+all" = ["workspaces", "workspaces+sway", "workspaces+hyprland"]
@@ -67,10 +75,17 @@ wayland-protocols = { version = "0.30.0", features = ["unstable", "client"] }
 wayland-protocols-wlr = { version = "0.1.0", features = ["client"] }
 smithay-client-toolkit = { version = "0.17.0", default-features = false, features = ["calloop"] }
 universal-config = { version = "0.4.0", default_features = false }
+ctrlc = "3.4.0"
 
 lazy_static = "1.4.0"
 async_once = "0.2.6"
 cfg-if = "1.0.0"
+
+# cli
+clap = { version = "4.2.7", optional = true, features = ["derive"] }
+
+# ipc
+serde_json = { version = "1.0.96", optional = true }
 
 # http
 reqwest = { version = "0.11.18", optional = true }

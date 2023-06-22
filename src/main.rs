@@ -2,6 +2,8 @@
 
 mod bar;
 mod bridge_channel;
+#[cfg(feature = "cli")]
+mod cli;
 mod clients;
 mod config;
 mod desktop_file;
@@ -9,6 +11,8 @@ mod dynamic_string;
 mod error;
 mod gtk_helpers;
 mod image;
+#[cfg(feature = "ipc")]
+mod ipc;
 mod logging;
 mod macros;
 mod modules;
@@ -20,6 +24,9 @@ mod unique_id;
 use crate::bar::create_bar;
 use crate::config::{Config, MonitorConfig};
 use crate::style::load_css;
+use cfg_if::cfg_if;
+#[cfg(feature = "cli")]
+use clap::Parser;
 use color_eyre::eyre::Result;
 use color_eyre::Report;
 use dirs::config_dir;
@@ -32,8 +39,9 @@ use std::future::Future;
 use std::path::PathBuf;
 use std::process::exit;
 use std::rc::Rc;
+use std::sync::mpsc;
 use tokio::runtime::Handle;
-use tokio::task::block_in_place;
+use tokio::task::{block_in_place, spawn_blocking};
 
 use crate::error::ExitCode;
 use clients::wayland::{self, WaylandClient};
@@ -47,6 +55,32 @@ const VERSION: &str = env!("CARGO_PKG_VERSION");
 async fn main() {
     let _guard = logging::install_logging();
 
+    cfg_if! {
+        if #[cfg(feature = "cli")] {
+            run_with_args().await
+        } else {
+            start_ironbar().await
+        }
+    }
+}
+
+#[cfg(feature = "cli")]
+async fn run_with_args() {
+    let args = cli::Args::parse();
+
+    match args.command {
+        Some(command) => {
+            let ipc = ipc::Ipc::new();
+            match ipc.send(command).await {
+                Ok(res) => cli::handle_response(res),
+                Err(err) => error!("{err:?}"),
+            };
+        }
+        None => start_ironbar().await,
+    }
+}
+
+async fn start_ironbar() {
     info!("Ironbar version {}", VERSION);
     info!("Starting application");
 
@@ -63,6 +97,13 @@ async fn main() {
         }
 
         running.set(true);
+
+        cfg_if! {
+            if #[cfg(feature = "ipc")] {
+                let ipc = ipc::Ipc::new();
+                ipc.start();
+            }
+        }
 
         let display = Display::default().map_or_else(
             || {
@@ -112,14 +153,27 @@ async fn main() {
         if style_path.exists() {
             load_css(style_path);
         }
+
+        let (tx, rx) = mpsc::channel();
+
+        spawn_blocking(move || {
+            rx.recv().expect("to receive from channel");
+
+            info!("Shutting down");
+
+            #[cfg(feature = "ipc")]
+            ipc.shutdown();
+
+            exit(0);
+        });
+
+        ctrlc::set_handler(move || tx.send(()).expect("Could not send signal on channel."))
+            .expect("Error setting Ctrl-C handler");
     });
 
     // Ignore CLI args
     // Some are provided by swaybar_config but not currently supported
     app.run_with_args(&Vec::<&str>::new());
-
-    info!("Shutting down");
-    exit(0);
 }
 
 /// Creates each of the bars across each of the (configured) outputs.
