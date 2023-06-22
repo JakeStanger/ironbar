@@ -1,5 +1,5 @@
 use super::{try_get_orientation, CustomWidget, CustomWidgetContext};
-use crate::dynamic_string::DynamicString;
+use crate::dynamic_value::dynamic_string;
 use crate::modules::custom::set_length;
 use crate::script::{OutputStream, Script, ScriptInput};
 use crate::{build, send};
@@ -69,7 +69,7 @@ impl CustomWidget for ProgressWidget {
             let progress = progress.clone();
             progress.set_show_text(true);
 
-            DynamicString::new(&text, move |string| {
+            dynamic_string(&text, move |string| {
                 progress.set_text(Some(&string));
                 Continue(true)
             });

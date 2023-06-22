@@ -1,6 +1,6 @@
 use super::{CustomWidget, CustomWidgetContext};
 use crate::build;
-use crate::dynamic_string::DynamicString;
+use crate::dynamic_value::dynamic_string;
 use gtk::prelude::*;
 use gtk::Label;
 use serde::Deserialize;
@@ -22,7 +22,7 @@ impl CustomWidget for LabelWidget {
 
         {
             let label = label.clone();
-            DynamicString::new(&self.label, move |string| {
+            dynamic_string(&self.label, move |string| {
                 label.set_markup(&string);
                 Continue(true)
             });

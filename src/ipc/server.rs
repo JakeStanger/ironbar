@@ -106,6 +106,22 @@ impl Ipc {
             Command::Inspect => {
                 gtk::Window::set_interactive_debugging(true);
                 Response::Ok
+            },
+            Command::Set { key, value } => {
+                let variable_manager = get_variable_manager();
+                let mut variable_manager = write_lock!(variable_manager);
+                match variable_manager.set(key, value) {
+                    Ok(_) => Response::Ok,
+                    Err(err) => Response::error(&format!("{err}")),
+                }
+            }
+            Command::Get { key } => {
+                let variable_manager = get_variable_manager();
+                let value = read_lock!(variable_manager).get(&key);
+                match value {
+                    Some(value) => Response::OkValue { value },
+                    None => Response::error("Variable not found"),
+                }
             }
             Command::Ping => Response::Ok,
         }

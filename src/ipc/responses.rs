@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 #[serde(tag = "type")]
 pub enum Response {
     Ok,
+    OkValue { value: String },
     Err { message: Option<String> },
 }
 

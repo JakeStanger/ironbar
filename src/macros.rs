@@ -1,7 +1,7 @@
 /// Sends a message on an asynchronous `Sender` using `send()`
 /// Panics if the message cannot be sent.
 ///
-/// Usage:
+/// # Usage:
 ///
 /// ```rs
 /// send_async!(tx, "my message");
@@ -16,7 +16,7 @@ macro_rules! send_async {
 /// Sends a message on an synchronous `Sender` using `send()`
 /// Panics if the message cannot be sent.
 ///
-/// Usage:
+/// # Usage:
 ///
 /// ```rs
 /// send!(tx, "my message");
@@ -31,7 +31,7 @@ macro_rules! send {
 /// Sends a message on an synchronous `Sender` using `try_send()`
 /// Panics if the message cannot be sent.
 ///
-/// Usage:
+/// # Usage:
 ///
 /// ```rs
 /// try_send!(tx, "my message");
@@ -46,7 +46,7 @@ macro_rules! try_send {
 /// Locks a `Mutex`.
 /// Panics if the `Mutex` cannot be locked.
 ///
-/// Usage:
+/// # Usage:
 ///
 /// ```rs
 /// let mut val = lock!(my_mutex);
@@ -62,7 +62,7 @@ macro_rules! lock {
 /// Gets a read lock on a `RwLock`.
 /// Panics if the `RwLock` cannot be locked.
 ///
-/// Usage:
+/// # Usage:
 ///
 /// ```rs
 /// let val = read_lock!(my_rwlock);
@@ -77,7 +77,7 @@ macro_rules! read_lock {
 /// Gets a write lock on a `RwLock`.
 /// Panics if the `RwLock` cannot be locked.
 ///
-/// Usage:
+/// # Usage:
 ///
 /// ```rs
 /// let mut val = write_lock!(my_rwlock);
@@ -86,5 +86,35 @@ macro_rules! read_lock {
 macro_rules! write_lock {
     ($rwlock:expr) => {
         $rwlock.write().expect($crate::error::ERR_WRITE_LOCK)
+    };
+}
+
+/// Wraps `val` in a new `Arc<Mutex<T>>`.
+///
+/// # Usage:
+///
+/// ```rs
+/// let val = arc_mut!(MyService::new());
+/// ```
+///
+#[macro_export]
+macro_rules! arc_mut {
+    ($val:expr) => {
+        std::sync::Arc::new(std::Sync::Mutex::new($val))
+    };
+}
+
+/// Wraps `val` in a new `Arc<RwLock<T>>`.
+///
+/// # Usage:
+///
+/// ```rs
+/// let val = arc_rw!(MyService::new());
+/// ```
+///
+#[macro_export]
+macro_rules! arc_rw {
+    ($val:expr) => {
+        std::sync::Arc::new(std::sync::RwLock::new($val))
     };
 }

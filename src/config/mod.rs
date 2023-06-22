@@ -100,6 +100,8 @@ pub struct Config {
     /// GTK icon theme to use.
     pub icon_theme: Option<String>,
 
+    pub ironvar_defaults: Option<HashMap<Box<str>, String>>,
+
     pub start: Option<Vec<ModuleConfig>>,
     pub center: Option<Vec<ModuleConfig>>,
     pub end: Option<Vec<ModuleConfig>>,

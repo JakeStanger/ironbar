@@ -7,12 +7,14 @@ mod cli;
 mod clients;
 mod config;
 mod desktop_file;
-mod dynamic_string;
+mod dynamic_value;
 mod error;
 mod gtk_helpers;
 mod image;
 #[cfg(feature = "ipc")]
 mod ipc;
+#[cfg(feature = "ipc")]
+mod ironvar;
 mod logging;
 mod macros;
 mod modules;
@@ -119,7 +121,7 @@ async fn start_ironbar() {
             ConfigLoader::load,
         );
 
-        let config = match config_res {
+        let mut config: Config = match config_res {
             Ok(config) => config,
             Err(err) => {
                 error!("{:?}", err);
@@ -128,6 +130,16 @@ async fn start_ironbar() {
         };
 
         debug!("Loaded config file");
+
+        #[cfg(feature = "ipc")]
+        if let Some(ironvars) = config.ironvar_defaults.take() {
+            let variable_manager = ironvar::get_variable_manager();
+            for (k, v) in ironvars {
+                if write_lock!(variable_manager).set(k.clone(), v).is_err() {
+                    tracing::warn!("Ignoring invalid ironvar: '{k}'");
+                }
+            }
+        }
 
         if let Err(err) = create_bars(app, &display, wayland_client, &config) {
             error!("{:?}", err);
