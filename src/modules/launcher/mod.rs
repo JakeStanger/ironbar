@@ -466,7 +466,7 @@ impl Module<gtk::Box> for LauncherModule {
 
                             {
                                 let tx = controller_tx.clone();
-                                button.connect_clicked(move |button| {
+                                button.connect_clicked(move |_button| {
                                     try_send!(tx, ItemEvent::FocusWindow(win.id));
                                 });
                             }
