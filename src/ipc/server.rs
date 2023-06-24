@@ -2,6 +2,7 @@ use super::Ipc;
 use crate::bridge_channel::BridgeChannel;
 use crate::ipc::{Command, Response};
 use crate::ironvar::get_variable_manager;
+use crate::style::load_css;
 use crate::{read_lock, send_async, try_send, write_lock};
 use color_eyre::{Report, Result};
 use glib::Continue;
@@ -106,7 +107,7 @@ impl Ipc {
             Command::Inspect => {
                 gtk::Window::set_interactive_debugging(true);
                 Response::Ok
-            },
+            }
             Command::Set { key, value } => {
                 let variable_manager = get_variable_manager();
                 let mut variable_manager = write_lock!(variable_manager);
@@ -121,6 +122,14 @@ impl Ipc {
                 match value {
                     Some(value) => Response::OkValue { value },
                     None => Response::error("Variable not found"),
+                }
+            }
+            Command::LoadCss { path } => {
+                if path.exists() {
+                    load_css(path);
+                    Response::Ok
+                } else {
+                    Response::error("File not found")
                 }
             }
             Command::Ping => Response::Ok,

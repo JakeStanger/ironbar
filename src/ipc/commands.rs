@@ -27,4 +27,11 @@ pub enum Command {
         /// Variable key.
         key: Box<str>,
     },
+
+    /// Load an additional CSS stylesheet.
+    /// The sheet is automatically hot-reloaded.
+    LoadCss {
+        /// The path to the sheet.
+        path: PathBuf,
+    },
 }
