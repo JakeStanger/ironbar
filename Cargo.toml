@@ -61,7 +61,7 @@ serde = { version = "1.0.164", features = ["derive"] }
 indexmap = "1.9.1"
 dirs = "5.0.1"
 walkdir = "2.3.2"
-notify = { version = "6.0.0", default-features = false }
+notify = { version = "6.0.1", default-features = false }
 wayland-client = "0.30.2"
 wayland-protocols = { version = "0.30.0", features = ["unstable", "client"] }
 wayland-protocols-wlr = { version = "0.1.0", features = ["client"] }
