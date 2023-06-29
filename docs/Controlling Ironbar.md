@@ -86,8 +86,6 @@ Responds with `ok`.
 
 ### `load_css`
 
-### `get`
-
 Loads an additional CSS stylesheet, with hot-reloading enabled.
 
 Responds with `ok` if the stylesheet exists, otherwise `error`.
