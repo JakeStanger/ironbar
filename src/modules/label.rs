@@ -1,5 +1,5 @@
 use crate::config::CommonConfig;
-use crate::dynamic_string::DynamicString;
+use crate::dynamic_value::dynamic_string;
 use crate::modules::{Module, ModuleInfo, ModuleUpdateEvent, ModuleWidget, WidgetContext};
 use crate::try_send;
 use color_eyre::Result;
@@ -31,7 +31,7 @@ impl Module<Label> for LabelModule {
         tx: mpsc::Sender<ModuleUpdateEvent<Self::SendMessage>>,
         _rx: mpsc::Receiver<Self::ReceiveMessage>,
     ) -> Result<()> {
-        DynamicString::new(&self.label, move |string| {
+        dynamic_string(&self.label, move |string| {
             try_send!(tx, ModuleUpdateEvent::Update(string));
             Continue(true)
         });

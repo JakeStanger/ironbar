@@ -2,9 +2,15 @@
 
 - [Compiling from source](compiling)
 - [Configuration guide](configuration-guide)
-  - [Scripts](scripts)
   - [Images](images)
 - [Styling guide](styling-guide)
+
+# Dynamic content
+
+- [Controlling Ironbar](controlling-ironbar)
+- [Dynamic values](dynamic-values)
+- [Scripts](scripts)
+- [Ironvars](ironvars)
 
 # Examples
 

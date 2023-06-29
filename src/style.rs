@@ -1,6 +1,7 @@
 use crate::send;
 use color_eyre::{Help, Report};
 use glib::Continue;
+use gtk::ffi::GTK_STYLE_PROVIDER_PRIORITY_USER;
 use gtk::prelude::CssProviderExt;
 use gtk::{gdk, gio, CssProvider, StyleContext};
 use notify::event::{DataChange, ModifyKind};
@@ -29,7 +30,11 @@ pub fn load_css(style_path: PathBuf) {
     };
 
     let screen = gdk::Screen::default().expect("Failed to get default GTK screen");
-    StyleContext::add_provider_for_screen(&screen, &provider, 800);
+    StyleContext::add_provider_for_screen(
+        &screen,
+        &provider,
+        GTK_STYLE_PROVIDER_PRIORITY_USER as u32,
+    );
 
     let (tx, rx) = glib::MainContext::channel(glib::PRIORITY_DEFAULT);
 

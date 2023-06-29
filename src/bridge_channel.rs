@@ -2,7 +2,7 @@ use crate::send;
 use tokio::spawn;
 use tokio::sync::mpsc;
 
-/// MPSC async -> sync channel.
+/// MPSC async -> GTK sync channel.
 /// The sender uses `tokio::sync::mpsc`
 /// while the receiver uses `glib::MainContext::channel`.
 ///

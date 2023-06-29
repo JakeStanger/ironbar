@@ -1,11 +1,9 @@
-use crate::dynamic_string::DynamicString;
+use crate::dynamic_value::{dynamic_string, DynamicBool};
 use crate::script::{Script, ScriptInput};
-use crate::send;
 use gtk::gdk::ScrollDirection;
 use gtk::prelude::*;
 use gtk::{EventBox, Orientation, Revealer, RevealerTransitionType};
 use serde::Deserialize;
-use tokio::spawn;
 use tracing::trace;
 
 /// Common configuration options
@@ -15,7 +13,7 @@ pub struct CommonConfig {
     pub class: Option<String>,
     pub name: Option<String>,
 
-    pub show_if: Option<ScriptInput>,
+    pub show_if: Option<DynamicBool>,
     pub transition_type: Option<TransitionType>,
     pub transition_duration: Option<u32>,
 
@@ -114,7 +112,7 @@ impl CommonConfig {
 
         if let Some(tooltip) = self.tooltip {
             let container = container.clone();
-            DynamicString::new(&tooltip, move |string| {
+            dynamic_string(&tooltip, move |string| {
                 container.set_tooltip_text(Some(&string));
                 Continue(true)
             });
@@ -127,23 +125,13 @@ impl CommonConfig {
                 container.show_all();
             },
             |show_if| {
-                let script = Script::new_polling(show_if);
                 let container = container.clone();
-                let (tx, rx) = glib::MainContext::channel(glib::PRIORITY_DEFAULT);
-
-                spawn(async move {
-                    script
-                        .run(None, |_, success| {
-                            send!(tx, success);
-                        })
-                        .await;
-                });
 
                 {
                     let revealer = revealer.clone();
                     let container = container.clone();
 
-                    rx.attach(None, move |success| {
+                    show_if.subscribe(move |success| {
                         if success {
                             container.show_all();
                         }

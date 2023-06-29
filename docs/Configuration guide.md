@@ -267,20 +267,21 @@ Check [here](config) for an example config file for a fully configured bar in ea
 
 The following table lists each of the top-level bar config options:
 
-| Name              | Type                                   | Default  | Description                                                                             |
-|-------------------|----------------------------------------|----------|-----------------------------------------------------------------------------------------|
-| `position`        | `top` or `bottom` or `left` or `right` | `bottom` | The bar's position on screen.                                                           |
-| `anchor_to_edges` | `boolean`                              | `false`  | Whether to anchor the bar to the edges of the screen. Setting to false centres the bar. |
-| `height`          | `integer`                              | `42`     | The bar's height in pixels.                                                             |
-| `popup_gap`       | `integer`                              | `5`      | The gap between the bar and popup window.                                               |
-| `margin.top`      | `integer`                              | `0`      | The margin on the top of the bar                                                        |
-| `margin.bottom`   | `integer`                              | `0`      | The margin on the bottom of the bar                                                     |
-| `margin.left`     | `integer`                              | `0`      | The margin on the left of the bar                                                       |
-| `margin.right`    | `integer`                              | `0`      | The margin on the right of the bar                                                      |
-| `icon_theme`      | `string`                               | `null`   | Name of the GTK icon theme to use. Leave blank to use default.                          |
-| `start`           | `Module[]`                             | `[]`     | Array of left or top modules.                                                           |
-| `center`          | `Module[]`                             | `[]`     | Array of center modules.                                                                |
-| `end`             | `Module[]`                             | `[]`     | Array of right or bottom modules.                                                       |
+| Name               | Type                                   | Default   | Description                                                                             |
+|--------------------|----------------------------------------|-----------|-----------------------------------------------------------------------------------------|
+| `position`         | `top` or `bottom` or `left` or `right` | `bottom`  | The bar's position on screen.                                                           |
+| `anchor_to_edges`  | `boolean`                              | `false`   | Whether to anchor the bar to the edges of the screen. Setting to false centres the bar. |
+| `height`           | `integer`                              | `42`      | The bar's height in pixels.                                                             |
+| `popup_gap`        | `integer`                              | `5`       | The gap between the bar and popup window.                                               |
+| `margin.top`       | `integer`                              | `0`       | The margin on the top of the bar                                                        |
+| `margin.bottom`    | `integer`                              | `0`       | The margin on the bottom of the bar                                                     |
+| `margin.left`      | `integer`                              | `0`       | The margin on the left of the bar                                                       |
+| `margin.right`     | `integer`                              | `0`       | The margin on the right of the bar                                                      |
+| `icon_theme`       | `string`                               | `null`    | Name of the GTK icon theme to use. Leave blank to use default.                          |
+| `ironvar_defaults` | `Map<string, string>`                  | `{}`      | Map of [ironvar](ironvars) keys against their default values.                           |
+| `start`            | `Module[]`                             | `[]`      | Array of left or top modules.                                                           |
+| `center`           | `Module[]`                             | `[]`      | Array of center modules.                                                                |
+| `end`              | `Module[]`                             | `[]`      | Array of right or bottom modules.                                                       |
 
 ### 3.2 Module-level options
 
@@ -306,9 +307,9 @@ For information on the `Script` type, and embedding scripts in strings, see [her
 
 | Name                  | Type                                                  | Default       | Description                                                                                                        |
 |-----------------------|-------------------------------------------------------|---------------|--------------------------------------------------------------------------------------------------------------------|
-| `show_if`             | `Script [polling]`                                    | `null`        | Polls the script to check its exit code. If exit code is zero, the module is shown. For other codes, it is hidden. |
+| `show_if`             | [Dynamic Boolean](dynamic-values#dynamic-boolean)     | `null`        | Polls the script to check its exit code. If exit code is zero, the module is shown. For other codes, it is hidden. |
 | `transition_type`     | `slide_start` or `slide_end` or `crossfade` or `none` | `slide_start` | The transition animation to use when showing/hiding the widget.                                                    |
-| `transition_duration` | `Integer`                                             | `250`         | The length of the transition animation to use when showing/hiding the widget.                                      |
+| `transition_duration` | `integer`                                             | `250`         | The length of the transition animation to use when showing/hiding the widget.                                      |
 
 #### Appearance
 

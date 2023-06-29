@@ -1,6 +1,6 @@
 use super::{CustomWidget, CustomWidgetContext};
 use crate::build;
-use crate::dynamic_string::DynamicString;
+use crate::dynamic_value::dynamic_string;
 use crate::image::ImageProvider;
 use gtk::prelude::*;
 use gtk::Image;
@@ -29,7 +29,7 @@ impl CustomWidget for ImageWidget {
             let gtk_image = gtk_image.clone();
             let icon_theme = context.icon_theme.clone();
 
-            DynamicString::new(&self.src, move |src| {
+            dynamic_string(&self.src, move |src| {
                 ImageProvider::parse(&src, &icon_theme, self.size)
                     .map(|image| image.load_into_image(gtk_image.clone()));
 

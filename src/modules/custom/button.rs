@@ -1,5 +1,5 @@
 use super::{CustomWidget, CustomWidgetContext, ExecEvent};
-use crate::dynamic_string::DynamicString;
+use crate::dynamic_value::dynamic_string;
 use crate::popup::Popup;
 use crate::{build, try_send};
 use gtk::prelude::*;
@@ -25,7 +25,7 @@ impl CustomWidget for ButtonWidget {
             label.set_use_markup(true);
             button.add(&label);
 
-            DynamicString::new(&text, move |string| {
+            dynamic_string(&text, move |string| {
                 label.set_markup(&string);
                 Continue(true)
             });
