@@ -7,15 +7,15 @@ Displays the title and/or icon of the currently focused window.
 
 > Type: `focused`
 
-| Name                  | Type                                  | Default | Description                                                                                                                                           |
-|-----------------------|---------------------------------------|---------|-------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `show_icon`           | `boolean`                             | `true`  | Whether to show the app's icon                                                                                                                        |
-| `show_title`          | `boolean`                             | `true`  | Whether to show the app's title                                                                                                                       |
-| `icon_size`           | `integer`                             | `32`    | Size of icon in pixels                                                                                                                                |
-| `truncate`            | `start` or `middle` or `end` or `Map` | `null`  | The location of the ellipses and where to truncate text from. Leave null to avoid truncating. Use the long-hand `Map` version if specifying a length. |
-| `truncate.mode`       | `start` or `middle` or `end`          | `null`  | The location of the ellipses and where to truncate text from. Leave null to avoid truncating.                                                         |
-| `truncate.length`     | `integer`                             | `null`  | The fixed width (in chars) of the widget. Leave blank to let GTK automatically handle.                                                                |
-| `truncate.max_length` | `integer`                             | `null`  | The maximum number of characters before truncating. Leave blank to let GTK automatically handle.                                                      |
+| Name                  | Type                                        | Default | Description                                                                                                                                           |
+|-----------------------|---------------------------------------------|---------|-------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `show_icon`           | `boolean`                                   | `true`  | Whether to show the app's icon.                                                                                                                       |
+| `show_title`          | `boolean`                                   | `true`  | Whether to show the app's title.                                                                                                                      |
+| `icon_size`           | `integer`                                   | `32`    | Size of icon in pixels.                                                                                                                               |
+| `truncate`            | `'start'` or `'middle'` or `'end'` or `Map` | `null`  | The location of the ellipses and where to truncate text from. Leave null to avoid truncating. Use the long-hand `Map` version if specifying a length. |
+| `truncate.mode`       | `'start'` or `'middle'` or `'end'`          | `null`  | The location of the ellipses and where to truncate text from. Leave null to avoid truncating.                                                         |
+| `truncate.length`     | `integer`                                   | `null`  | The fixed width (in chars) of the widget. Leave blank to let GTK automatically handle.                                                                |
+| `truncate.max_length` | `integer`                                   | `null`  | The maximum number of characters before truncating. Leave blank to let GTK automatically handle.                                                      |
 
 <details>
 <summary>JSON</summary>

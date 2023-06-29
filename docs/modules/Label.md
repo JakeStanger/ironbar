@@ -1,12 +1,15 @@
-Displays custom text, with the ability to embed [scripts](https://github.com/JakeStanger/ironbar/wiki/scripts#embedding).
+Displays custom text, with markup support.
+
+If you only intend to run a single script, prefer the [script](script) module.
+For more advanced use-cases, use [custom](custom).
 
 ## Configuration
 
 > Type: `label`
 
-| Name    | Type     | Default | Description                             |
-|---------|----------|---------|-----------------------------------------|
-| `label` | `string` | `null`  | Text, optionally with embedded scripts. |
+| Name    | Type                                            | Default | Description            |
+|---------|-------------------------------------------------|---------|------------------------|
+| `label` | [Dynamic String](dynamic-values#dynamic-string) | `null`  | Text to show on label. |
 
 <details>
 <summary>JSON</summary>

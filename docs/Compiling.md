@@ -58,6 +58,8 @@ cargo build --release --no-default-features \
 |---------------------|-----------------------------------------------------------------------------------|
 | **Core**            |                                                                                   |
 | http                | Enables HTTP features. Currently this includes the ability to load remote images. |
+| ipc                 | Enables the IPC server.                                                           |
+| cli                 | Enables the CLI. Will also enable `ipc`.                                          |
 | config+all          | Enables support for all configuration languages.                                  |
 | config+json         | Enables configuration support for JSON.                                           |
 | config+yaml         | Enables configuration support for YAML.                                           |
