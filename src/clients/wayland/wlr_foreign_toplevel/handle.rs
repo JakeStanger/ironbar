@@ -151,9 +151,8 @@ where
                     lock!(data.inner).current_info = Some(pending_info);
                 }
 
-                if !lock!(data.inner).initial_done {
-                    lock!(data.inner).initial_done = true;
-                    state.new_handle(
+                if lock!(data.inner).initial_done {
+                    state.update_handle(
                         conn,
                         qh,
                         ToplevelHandle {
@@ -161,7 +160,8 @@ where
                         },
                     );
                 } else {
-                    state.update_handle(
+                    lock!(data.inner).initial_done = true;
+                    state.new_handle(
                         conn,
                         qh,
                         ToplevelHandle {

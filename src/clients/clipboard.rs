@@ -38,7 +38,8 @@ impl ClipboardClient {
 
             spawn(async move {
                 let (mut rx, item) = {
-                    let wl = wayland::get_client().await;
+                    let wl = wayland::get_client();
+                    let wl = lock!(wl);
                     wl.subscribe_clipboard()
                 };
 
@@ -111,7 +112,7 @@ impl ClipboardClient {
         rx
     }
 
-    pub async fn copy(&self, id: usize) {
+    pub fn copy(&self, id: usize) {
         debug!("Copying item with id {id}");
 
         let item = {
@@ -120,7 +121,8 @@ impl ClipboardClient {
         };
 
         if let Some(item) = item {
-            let wl = wayland::get_client().await;
+            let wl = wayland::get_client();
+            let wl = lock!(wl);
             wl.copy_to_clipboard(item);
         }
 

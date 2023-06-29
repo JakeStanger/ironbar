@@ -31,7 +31,7 @@ impl TrayEventReceiver {
         let (b_tx, b_rx) = broadcast::channel(16);
 
         let tray = StatusNotifierWatcher::new(rx).await?;
-        let mut host = tray.create_notifier_host(&id).await?;
+        let mut host = Box::pin(tray.create_notifier_host(&id)).await?;
 
         let tray = Arc::new(Mutex::new(BTreeMap::new()));
 
@@ -106,7 +106,7 @@ lazy_static! {
         let value = loop {
             retries += 1;
 
-            let tray = TrayEventReceiver::new().await;
+            let tray = Box::pin(TrayEventReceiver::new()).await;
 
             match tray {
                 Ok(tray) => break Some(tray),

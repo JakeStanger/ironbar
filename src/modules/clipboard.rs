@@ -111,7 +111,7 @@ impl Module<Button> for ClipboardModule {
             while let Some(event) = rx.recv().await {
                 let client = clipboard::get_client();
                 match event {
-                    UIEvent::Copy(id) => client.copy(id).await,
+                    UIEvent::Copy(id) => client.copy(id),
                     UIEvent::Remove(id) => client.remove(id),
                 }
             }

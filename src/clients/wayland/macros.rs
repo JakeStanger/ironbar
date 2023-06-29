@@ -1,6 +1,6 @@
 /// It is necessary to store macros in a separate file due to a compilation error.
 /// I believe this stems from the feature flags.
-/// Related issue: https://github.com/rust-lang/rust/issues/81066
+/// Related issue: <https://github.com/rust-lang/rust/issues/81066>
 
 // --- Data Control Device --- \\
 

@@ -207,7 +207,7 @@ fn add_modules(
         }};
     }
 
-    for config in modules.into_iter() {
+    for config in modules {
         let id = get_unique_usize();
         match config {
             #[cfg(feature = "clipboard")]

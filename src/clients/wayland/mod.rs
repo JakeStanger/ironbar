@@ -7,7 +7,6 @@ mod wlr_foreign_toplevel;
 
 use self::wlr_foreign_toplevel::manager::ToplevelManagerState;
 use crate::{delegate_foreign_toplevel_handle, delegate_foreign_toplevel_manager};
-use async_once::AsyncOnce;
 use cfg_if::cfg_if;
 use lazy_static::lazy_static;
 use smithay_client_toolkit::output::OutputState;
@@ -18,6 +17,7 @@ use smithay_client_toolkit::{
     delegate_output, delegate_registry, delegate_seat, registry_handlers,
 };
 use std::collections::HashMap;
+use std::sync::{Arc, Mutex};
 use tokio::sync::broadcast;
 use wayland_client::protocol::wl_seat::WlSeat;
 
@@ -33,7 +33,6 @@ cfg_if! {
         use self::wlr_data_control::manager::DataControlDeviceManagerState;
         use self::wlr_data_control::source::CopyPasteSource;
         use self::wlr_data_control::SelectionOfferItem;
-        use std::sync::{Arc, Mutex};
 
         pub use wlr_data_control::{ClipboardItem, ClipboardValue};
 
@@ -106,10 +105,9 @@ impl ProvidesRegistryState for Environment {
 }
 
 lazy_static! {
-    static ref CLIENT: AsyncOnce<WaylandClient> =
-        AsyncOnce::new(async { WaylandClient::new().await });
+    static ref CLIENT: Arc<Mutex<WaylandClient>> = Arc::new(Mutex::new(WaylandClient::new()));
 }
 
-pub async fn get_client() -> &'static WaylandClient {
-    CLIENT.get().await
+pub fn get_client() -> Arc<Mutex<WaylandClient>> {
+    CLIENT.clone()
 }

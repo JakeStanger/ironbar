@@ -3,7 +3,7 @@ use crate::config::{CommonConfig, TruncateMode};
 use crate::gtk_helpers::add_class;
 use crate::image::ImageProvider;
 use crate::modules::{Module, ModuleInfo, ModuleUpdateEvent, ModuleWidget, WidgetContext};
-use crate::{send_async, try_send};
+use crate::{lock, send_async, try_send};
 use color_eyre::Result;
 use glib::Continue;
 use gtk::prelude::*;
@@ -52,7 +52,8 @@ impl Module<gtk::Box> for FocusedModule {
     ) -> Result<()> {
         spawn(async move {
             let (mut wlrx, handles) = {
-                let wl = wayland::get_client().await;
+                let wl = wayland::get_client();
+                let wl = lock!(wl);
                 wl.subscribe_toplevels()
             };
 

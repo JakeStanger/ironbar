@@ -117,7 +117,8 @@ impl Module<gtk::Box> for LauncherModule {
             let tx = tx2;
 
             let (mut wlrx, handles) = {
-                let wl = wayland::get_client().await;
+                let wl = wayland::get_client();
+                let wl = lock!(wl);
                 wl.subscribe_toplevels()
             };
 
@@ -270,7 +271,7 @@ impl Module<gtk::Box> for LauncherModule {
                 } else {
                     send_async!(tx, ModuleUpdateEvent::ClosePopup);
 
-                    let wl = wayland::get_client().await;
+                    let wl = wayland::get_client();
                     let items = lock!(items);
 
                     let id = match event {
@@ -291,13 +292,16 @@ impl Module<gtk::Box> for LauncherModule {
                         {
                             debug!("Focusing window {id}: {}", window.name);
 
-                            let seat = wl.get_seats().pop().expect("Failed to get Wayland seat");
+                            let seat = lock!(wl)
+                                .get_seats()
+                                .pop()
+                                .expect("Failed to get Wayland seat");
                             window.focus(&seat);
                         }
                     }
 
                     // roundtrip to immediately send activate event
-                    wl.roundtrip();
+                    lock!(wl).roundtrip();
                 }
             }
         });

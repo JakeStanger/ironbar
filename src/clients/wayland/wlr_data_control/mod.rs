@@ -291,14 +291,14 @@ impl DataControlSourceHandler for Environment {
                 let mut events = (0..16).map(|_| EpollEvent::empty()).collect::<Vec<_>>();
                 let mut epoll_event = EpollEvent::new(EpollFlags::EPOLLOUT, 0);
 
-                let epoll_fd = epoll_create().unwrap();
+                let epoll_fd = epoll_create().expect("to get valid file descriptor");
                 epoll_ctl(
                     epoll_fd,
                     EpollOp::EpollCtlAdd,
                     fd.as_raw_fd(),
                     &mut epoll_event,
                 )
-                .unwrap();
+                .expect("to send valid epoll operation");
 
                 while !bytes.is_empty() {
                     let chunk = &bytes[..min(pipe_size as usize, bytes.len())];

@@ -46,7 +46,7 @@ use tokio::runtime::Handle;
 use tokio::task::{block_in_place, spawn_blocking};
 
 use crate::error::ExitCode;
-use clients::wayland::{self, WaylandClient};
+use clients::wayland;
 use tracing::{debug, error, info};
 use universal_config::ConfigLoader;
 
@@ -59,9 +59,9 @@ async fn main() {
 
     cfg_if! {
         if #[cfg(feature = "cli")] {
-            run_with_args().await
+            run_with_args().await;
         } else {
-            start_ironbar().await
+            start_ironbar().await;
         }
     }
 }
@@ -78,15 +78,13 @@ async fn run_with_args() {
                 Err(err) => error!("{err:?}"),
             };
         }
-        None => start_ironbar().await,
+        None => start_ironbar(),
     }
 }
 
-async fn start_ironbar() {
+fn start_ironbar() {
     info!("Ironbar version {}", VERSION);
     info!("Starting application");
-
-    let wayland_client = wayland::get_client().await;
 
     let app = Application::builder().application_id(GTK_APP_ID).build();
 
@@ -141,7 +139,7 @@ async fn start_ironbar() {
             }
         }
 
-        if let Err(err) = create_bars(app, &display, wayland_client, &config) {
+        if let Err(err) = create_bars(app, &display, &config) {
             error!("{:?}", err);
             exit(ExitCode::CreateBars as i32);
         }
@@ -189,13 +187,9 @@ async fn start_ironbar() {
 }
 
 /// Creates each of the bars across each of the (configured) outputs.
-fn create_bars(
-    app: &Application,
-    display: &Display,
-    wl: &WaylandClient,
-    config: &Config,
-) -> Result<()> {
-    let outputs = wl.get_outputs();
+fn create_bars(app: &Application, display: &Display, config: &Config) -> Result<()> {
+    let wl = wayland::get_client();
+    let outputs = lock!(wl).get_outputs();
 
     debug!("Received {} outputs from Wayland", outputs.len());
     debug!("Outputs: {:?}", outputs);

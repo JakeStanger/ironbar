@@ -71,7 +71,7 @@ pub struct WaylandClient {
 }
 
 impl WaylandClient {
-    pub(super) async fn new() -> Self {
+    pub(super) fn new() -> Self {
         let (toplevel_tx, toplevel_rx) = broadcast::channel(32);
 
         let (toplevel_init_tx, toplevel_init_rx) = mpsc::channel();

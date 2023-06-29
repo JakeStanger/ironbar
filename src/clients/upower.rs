@@ -6,7 +6,7 @@ use zbus::fdo::PropertiesProxy;
 
 lazy_static! {
     static ref DISPLAY_PROXY: AsyncOnce<Arc<PropertiesProxy<'static>>> = AsyncOnce::new(async {
-        let dbus = zbus::Connection::system()
+        let dbus = Box::pin(zbus::Connection::system())
             .await
             .expect("failed to create connection to system bus");
 
