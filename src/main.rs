@@ -61,7 +61,7 @@ async fn main() {
         if #[cfg(feature = "cli")] {
             run_with_args().await;
         } else {
-            start_ironbar().await;
+            start_ironbar();
         }
     }
 }
