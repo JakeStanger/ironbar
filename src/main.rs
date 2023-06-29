@@ -87,6 +87,7 @@ fn start_ironbar() {
     info!("Starting application");
 
     let app = Application::builder().application_id(GTK_APP_ID).build();
+    let _ = wayland::get_client(); // force-init
 
     let running = Rc::new(Cell::new(false));
 
