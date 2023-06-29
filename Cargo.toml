@@ -26,7 +26,13 @@ ipc = ["dep:serde_json"]
 
 http = ["dep:reqwest"]
 
-"config+all" = ["config+json", "config+yaml", "config+toml", "config+corn", "config+ron"]
+"config+all" = [
+  "config+json",
+  "config+yaml",
+  "config+toml",
+  "config+corn",
+  "config+ron",
+]
 "config+json" = ["universal-config/json"]
 "config+yaml" = ["universal-config/yaml"]
 "config+toml" = ["universal-config/toml"]
@@ -58,7 +64,15 @@ workspaces = ["futures-util"]
 gtk = "0.17.0"
 gtk-layer-shell = "0.6.0"
 glib = "0.17.10"
-tokio = { version = "1.28.2", features = ["macros", "rt-multi-thread", "time", "process", "sync", "io-util", "net"] }
+tokio = { version = "1.28.2", features = [
+  "macros",
+  "rt-multi-thread",
+  "time",
+  "process",
+  "sync",
+  "io-util",
+  "net",
+] }
 tracing = "0.1.37"
 tracing-subscriber = { version = "0.3.17", features = ["env-filter"] }
 tracing-error = "0.2.0"
@@ -73,7 +87,9 @@ notify = { version = "6.0.1", default-features = false }
 wayland-client = "0.30.2"
 wayland-protocols = { version = "0.30.0", features = ["unstable", "client"] }
 wayland-protocols-wlr = { version = "0.1.0", features = ["client"] }
-smithay-client-toolkit = { version = "0.17.0", default-features = false, features = ["calloop"] }
+smithay-client-toolkit = { version = "0.17.0", default-features = false, features = [
+  "calloop",
+] }
 universal-config = { version = "0.4.0", default_features = false }
 ctrlc = "3.4.0"
 
@@ -117,7 +133,9 @@ hyprland = { version = "=0.3.1", optional = true }
 futures-util = { version = "0.3.21", optional = true }
 
 # shared
-regex = { version = "1.8.4", default-features = false, features = ["std"], optional = true } # music, sys_info
+regex = { version = "1.8.4", default-features = false, features = [
+  "std",
+], optional = true } # music, sys_info
 
 [patch.crates-io]
 stray = { git = "https://github.com/jakestanger/stray", branch = "fix/connection-errors" }
