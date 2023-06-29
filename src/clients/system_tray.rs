@@ -1,5 +1,5 @@
 use crate::unique_id::get_unique_usize;
-use crate::{lock, send};
+use crate::{arc_mut, lock, send};
 use async_once::AsyncOnce;
 use color_eyre::Report;
 use lazy_static::lazy_static;
@@ -33,7 +33,7 @@ impl TrayEventReceiver {
         let tray = StatusNotifierWatcher::new(rx).await?;
         let mut host = Box::pin(tray.create_notifier_host(&id)).await?;
 
-        let tray = Arc::new(Mutex::new(BTreeMap::new()));
+        let tray = arc_mut!(BTreeMap::new());
 
         {
             let b_tx = b_tx.clone();

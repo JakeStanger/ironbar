@@ -1,5 +1,5 @@
 use super::{Workspace, WorkspaceClient, WorkspaceUpdate};
-use crate::{lock, send};
+use crate::{arc_mut, lock, send};
 use color_eyre::Result;
 use hyprland::data::{Workspace as HWorkspace, Workspaces};
 use hyprland::dispatch::{Dispatch, DispatchType, WorkspaceIdentifierWithSpecial};
@@ -7,7 +7,6 @@ use hyprland::event_listener::EventListenerMutable as EventListener;
 use hyprland::prelude::*;
 use hyprland::shared::WorkspaceType;
 use lazy_static::lazy_static;
-use std::sync::{Arc, Mutex};
 use tokio::sync::broadcast::{channel, Receiver, Sender};
 use tokio::task::spawn_blocking;
 use tracing::{debug, error, info};
@@ -36,11 +35,11 @@ impl EventClient {
             let mut event_listener = EventListener::new();
 
             // we need a lock to ensure events don't run at the same time
-            let lock = Arc::new(Mutex::new(()));
+            let lock = arc_mut!(());
 
             // cache the active workspace since Hyprland doesn't give us the prev active
             let active = Self::get_active_workspace().expect("Failed to get active workspace");
-            let active = Arc::new(Mutex::new(Some(active)));
+            let active = arc_mut!(Some(active));
 
             {
                 let tx = tx.clone();

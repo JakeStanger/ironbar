@@ -6,7 +6,7 @@ mod wl_seat;
 mod wlr_foreign_toplevel;
 
 use self::wlr_foreign_toplevel::manager::ToplevelManagerState;
-use crate::{delegate_foreign_toplevel_handle, delegate_foreign_toplevel_manager};
+use crate::{arc_mut, delegate_foreign_toplevel_handle, delegate_foreign_toplevel_manager};
 use cfg_if::cfg_if;
 use lazy_static::lazy_static;
 use smithay_client_toolkit::output::OutputState;
@@ -105,7 +105,7 @@ impl ProvidesRegistryState for Environment {
 }
 
 lazy_static! {
-    static ref CLIENT: Arc<Mutex<WaylandClient>> = Arc::new(Mutex::new(WaylandClient::new()));
+    static ref CLIENT: Arc<Mutex<WaylandClient>> = arc_mut!(WaylandClient::new());
 }
 
 pub fn get_client() -> Arc<Mutex<WaylandClient>> {

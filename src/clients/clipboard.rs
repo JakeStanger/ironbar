@@ -1,5 +1,5 @@
 use super::wayland::{self, ClipboardItem};
-use crate::{lock, try_send};
+use crate::{arc_mut, lock, try_send};
 use indexmap::map::Iter;
 use indexmap::IndexMap;
 use lazy_static::lazy_static;
@@ -28,9 +28,9 @@ impl ClipboardClient {
     fn new() -> Self {
         trace!("Initializing clipboard client");
 
-        let senders = Arc::new(Mutex::new(Vec::<(EventSender, usize)>::new()));
+        let senders = arc_mut!(Vec::<(EventSender, usize)>::new());
 
-        let cache = Arc::new(Mutex::new(ClipboardCache::new()));
+        let cache = arc_mut!(ClipboardCache::new());
 
         {
             let senders = senders.clone();

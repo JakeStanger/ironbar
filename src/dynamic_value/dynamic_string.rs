@@ -1,9 +1,8 @@
 #[cfg(feature = "ipc")]
 use crate::ironvar::get_variable_manager;
 use crate::script::{OutputStream, Script};
-use crate::{lock, send};
+use crate::{arc_mut, lock, send};
 use gtk::prelude::*;
-use std::sync::{Arc, Mutex};
 use tokio::spawn;
 
 /// A segment of a dynamic string,
@@ -34,7 +33,7 @@ where
 {
     let tokens = parse_input(input);
 
-    let label_parts = Arc::new(Mutex::new(Vec::new()));
+    let label_parts = arc_mut!(vec![]);
     let (tx, rx) = glib::MainContext::channel(glib::PRIORITY_DEFAULT);
 
     for (i, segment) in tokens.into_iter().enumerate() {

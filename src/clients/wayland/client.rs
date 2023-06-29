@@ -25,7 +25,7 @@ cfg_if! {
         use super::ClipboardItem;
         use super::wlr_data_control::manager::DataControlDeviceManagerState;
         use crate::lock;
-        use std::sync::{Arc, Mutex};
+        use std::sync::Arc;
     }
 }
 
@@ -138,7 +138,7 @@ impl WaylandClient {
                 seats: vec![],
                 handles: HashMap::new(),
                 #[cfg(feature = "clipboard")]
-                clipboard: Arc::new(Mutex::new(None)),
+                clipboard: crate::arc_mut!(None),
                 toplevel_tx,
                 #[cfg(feature = "clipboard")]
                 clipboard_tx,

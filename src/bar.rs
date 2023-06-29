@@ -4,7 +4,7 @@ use crate::modules::{
 };
 use crate::popup::Popup;
 use crate::unique_id::get_unique_usize;
-use crate::Config;
+use crate::{arc_rw, Config};
 use color_eyre::Result;
 use gtk::gdk::Monitor;
 use gtk::prelude::*;
@@ -166,7 +166,7 @@ fn load_modules(
 
     // popup ignores module location so can bodge this for now
     let popup = Popup::new(&info!(ModuleLocation::Left), config.popup_gap);
-    let popup = Arc::new(RwLock::new(popup));
+    let popup = arc_rw!(popup);
 
     if let Some(modules) = config.start {
         let info = info!(ModuleLocation::Left);

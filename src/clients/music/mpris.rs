@@ -1,6 +1,6 @@
 use super::{MusicClient, PlayerUpdate, Status, Track};
 use crate::clients::music::PlayerState;
-use crate::{lock, send};
+use crate::{arc_mut, lock, send};
 use color_eyre::Result;
 use lazy_static::lazy_static;
 use mpris::{DBusError, Event, Metadata, PlaybackStatus, Player, PlayerFinder};
@@ -27,10 +27,10 @@ impl Client {
     fn new() -> Self {
         let (tx, rx) = channel(32);
 
-        let current_player = Arc::new(Mutex::new(None));
+        let current_player = arc_mut!(None);
 
         {
-            let players_list = Arc::new(Mutex::new(HashSet::new()));
+            let players_list = arc_mut!(HashSet::new());
             let current_player = current_player.clone();
             let tx = tx.clone();
 

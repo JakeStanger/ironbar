@@ -8,7 +8,7 @@ use crate::config::CommonConfig;
 use crate::desktop_file::find_desktop_file;
 use crate::modules::launcher::item::AppearanceOptions;
 use crate::modules::{Module, ModuleInfo, ModuleUpdateEvent, ModuleWidget, WidgetContext};
-use crate::{lock, send_async, try_send, write_lock};
+use crate::{arc_mut, lock, send_async, try_send, write_lock};
 use color_eyre::{Help, Report};
 use glib::Continue;
 use gtk::prelude::*;
@@ -16,7 +16,7 @@ use gtk::{Button, Orientation};
 use indexmap::IndexMap;
 use serde::Deserialize;
 use std::process::{Command, Stdio};
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 use tokio::spawn;
 use tokio::sync::mpsc::{Receiver, Sender};
 use tracing::{debug, error, trace};
@@ -108,7 +108,7 @@ impl Module<gtk::Box> for LauncherModule {
                     .collect::<IndexMap<_, _>>()
             });
 
-        let items = Arc::new(Mutex::new(items));
+        let items = arc_mut!(items);
 
         let items2 = Arc::clone(&items);
         let tx2 = tx.clone();

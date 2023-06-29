@@ -100,7 +100,7 @@ macro_rules! write_lock {
 #[macro_export]
 macro_rules! arc_mut {
     ($val:expr) => {
-        std::sync::Arc::new(std::Sync::Mutex::new($val))
+        std::sync::Arc::new(std::sync::Mutex::new($val))
     };
 }
 
