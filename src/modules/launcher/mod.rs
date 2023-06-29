@@ -274,10 +274,14 @@ impl Module<gtk::Box> for LauncherModule {
                     let items = lock!(items);
 
                     let id = match event {
-                        ItemEvent::FocusItem(app_id) => items
-                            .get(&app_id)
-                            .and_then(|item| item.windows.first().map(|(_, win)| win.id)),
-                        ItemEvent::FocusWindow(id) => Some(id), // FIXME: Broken on wlroots-git
+                        ItemEvent::FocusItem(app_id) => items.get(&app_id).and_then(|item| {
+                            item.windows
+                                .iter()
+                                .find(|(_, win)| !win.open_state.is_focused())
+                                .or_else(|| item.windows.first())
+                                .map(|(_, win)| win.id)
+                        }),
+                        ItemEvent::FocusWindow(id) => Some(id),
                         ItemEvent::OpenItem(_) => unreachable!(),
                     };
 
@@ -285,6 +289,8 @@ impl Module<gtk::Box> for LauncherModule {
                         if let Some(window) =
                             items.iter().find_map(|(_, item)| item.windows.get(&id))
                         {
+                            debug!("Focusing window {id}: {}", window.name);
+
                             let seat = wl.get_seats().pop().expect("Failed to get Wayland seat");
                             window.focus(&seat);
                         }
