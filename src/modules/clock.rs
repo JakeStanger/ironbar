@@ -23,12 +23,19 @@ pub struct ClockModule {
     #[serde(default = "default_format")]
     format: String,
 
+    #[serde(default = "default_popup_format")]
+    format_popup: String,
+
     #[serde(flatten)]
     pub common: Option<CommonConfig>,
 }
 
 fn default_format() -> String {
     String::from("%d/%m/%Y %H:%M")
+}
+
+fn default_popup_format() -> String {
+    String::from("%H:%M:%S")
 }
 
 impl Module<Button> for ClockModule {
@@ -75,13 +82,12 @@ impl Module<Button> for ClockModule {
         });
 
         let format = self.format.clone();
-        {
-            context.widget_rx.attach(None, move |date| {
-                let date_string = format!("{}", date.format(&format));
-                label.set_label(&date_string);
-                Continue(true)
-            });
-        }
+
+        context.widget_rx.attach(None, move |date| {
+            let date_string = format!("{}", date.format(&format));
+            label.set_label(&date_string);
+            Continue(true)
+        });
 
         let popup = self.into_popup(context.controller_tx, context.popup_rx, info);
 
@@ -101,7 +107,6 @@ impl Module<Button> for ClockModule {
 
         let clock = Label::builder().halign(Align::Center).build();
         add_class(&clock, "calendar-clock");
-        let format = "%H:%M:%S";
 
         container.add(&clock);
 
@@ -109,13 +114,12 @@ impl Module<Button> for ClockModule {
         add_class(&calendar, "calendar");
         container.add(&calendar);
 
-        {
-            rx.attach(None, move |date| {
-                let date_string = format!("{}", date.format(format));
-                clock.set_label(&date_string);
-                Continue(true)
-            });
-        }
+        let format = self.format_popup;
+        rx.attach(None, move |date| {
+            let date_string = format!("{}", date.format(&format));
+            clock.set_label(&date_string);
+            Continue(true)
+        });
 
         container.show_all();
 
