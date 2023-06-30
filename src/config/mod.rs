@@ -30,7 +30,7 @@ pub use self::truncate::{EllipsizeMode, TruncateMode};
 #[derive(Debug, Deserialize, Clone)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum ModuleConfig {
-    #[cfg(feature = "clock")]
+    #[cfg(feature = "clipboard")]
     Clipboard(Box<ClipboardModule>),
     #[cfg(feature = "clock")]
     Clock(Box<ClockModule>),
