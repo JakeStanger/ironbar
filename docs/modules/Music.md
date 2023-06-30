@@ -128,8 +128,6 @@ and will be replaced with values from the currently playing track:
 | `{track}`    | Track number                         |
 | `{disc}`     | Disc number                          |
 | `{genre}`    | Genre                                |
-| `{duration}` | Duration in `mm:ss`                  |
-| `{elapsed}`  | Time elapsed in `mm:ss`              |
 
 ## Styling
 
@@ -166,7 +164,10 @@ and will be replaced with values from the currently playing track:
 | `.popup-music .controls .btn-pause`         | Pause button inside popup box                         |
 | `.popup-music .controls .btn-next`          | Next button inside popup box                          |
 | `.popup-music .volume`                      | Volume container inside popup box                     |
-| `.popup-music .volume .slider`              | Volume slider popup box                               |
-| `.popup-music .volume .icon`                | Volume icon label inside popup box                    |
+| `.popup-music .volume .slider`              | Slider inside volume container                        |
+| `.popup-music .volume .icon`                | Icon inside volume container                          |
+| `.popup-music .progress`                    | Progress (seek) bar container                         |
+| `.popup-music .progress .slider`            | Slider inside progress container                      |
+| `.popup-music .progress .label`             | Duration label inside progress container              |
 
 For more information on styling, please see the [styling guide](styling-guide).

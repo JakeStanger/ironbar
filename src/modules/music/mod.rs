@@ -1,17 +1,20 @@
 mod config;
 
-use crate::clients::music::{self, MusicClient, PlayerState, PlayerUpdate, Status, Track};
+use crate::clients::music::{
+    self, MusicClient, PlayerState, PlayerUpdate, ProgressTick, Status, Track,
+};
 use crate::gtk_helpers::add_class;
 use crate::image::{new_icon_button, new_icon_label, ImageProvider};
 use crate::modules::{Module, ModuleInfo, ModuleUpdateEvent, ModuleWidget, WidgetContext};
 use crate::popup::Popup;
 use crate::{send_async, try_send};
 use color_eyre::Result;
-use glib::Continue;
+use glib::{Continue, PropertySet};
 use gtk::prelude::*;
 use gtk::{Button, IconTheme, Label, Orientation, Scale};
 use regex::Regex;
 use std::path::PathBuf;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::spawn;
@@ -28,6 +31,7 @@ pub enum PlayerCommand {
     Pause,
     Next,
     Volume(u8),
+    Seek(Duration),
 }
 
 /// Formats a duration given in seconds
@@ -45,6 +49,12 @@ fn get_tokens(re: &Regex, format_string: &str) -> Vec<String> {
     re.captures_iter(format_string)
         .map(|caps| caps[1].to_string())
         .collect::<Vec<_>>()
+}
+
+#[derive(Clone, Debug)]
+pub enum ControllerEvent {
+    Update(Option<SongUpdate>),
+    UpdateProgress(ProgressTick),
 }
 
 #[derive(Clone, Debug)]
@@ -67,7 +77,7 @@ async fn get_client(
 }
 
 impl Module<Button> for MusicModule {
-    type SendMessage = Option<SongUpdate>;
+    type SendMessage = ControllerEvent;
     type ReceiveMessage = PlayerCommand;
 
     fn name() -> &'static str {
@@ -103,7 +113,7 @@ impl Module<Button> for MusicModule {
                             PlayerUpdate::Update(track, status) => match *track {
                                 Some(track) => {
                                     let display_string =
-                                        replace_tokens(format.as_str(), &tokens, &track, &status);
+                                        replace_tokens(format.as_str(), &tokens, &track);
 
                                     let update = SongUpdate {
                                         song: track,
@@ -111,10 +121,24 @@ impl Module<Button> for MusicModule {
                                         display_string,
                                     };
 
-                                    send_async!(tx, ModuleUpdateEvent::Update(Some(update)));
+                                    send_async!(
+                                        tx,
+                                        ModuleUpdateEvent::Update(ControllerEvent::Update(Some(
+                                            update
+                                        )))
+                                    );
                                 }
-                                None => send_async!(tx, ModuleUpdateEvent::Update(None)),
+                                None => send_async!(
+                                    tx,
+                                    ModuleUpdateEvent::Update(ControllerEvent::Update(None))
+                                ),
                             },
+                            PlayerUpdate::ProgressTick(progress_tick) => send_async!(
+                                tx,
+                                ModuleUpdateEvent::Update(ControllerEvent::UpdateProgress(
+                                    progress_tick
+                                ))
+                            ),
                             PlayerUpdate::Disconnect => break,
                         }
                     }
@@ -137,6 +161,7 @@ impl Module<Button> for MusicModule {
                         PlayerCommand::Pause => client.pause(),
                         PlayerCommand::Next => client.next(),
                         PlayerCommand::Volume(vol) => client.set_volume_percent(vol),
+                        PlayerCommand::Seek(duration) => client.seek(duration),
                     };
 
                     if let Err(err) = res {
@@ -191,7 +216,9 @@ impl Module<Button> for MusicModule {
             let button = button.clone();
             let tx = context.tx.clone();
 
-            context.widget_rx.attach(None, move |mut event| {
+            context.widget_rx.attach(None, move |event| {
+                let ControllerEvent::Update(mut event) = event else { return Continue(true) };
+
                 if let Some(event) = event.take() {
                     label.set_label(&event.display_string);
 
@@ -241,7 +268,8 @@ impl Module<Button> for MusicModule {
     ) -> Option<gtk::Box> {
         let icon_theme = info.icon_theme;
 
-        let container = gtk::Box::new(Orientation::Horizontal, 10);
+        let container = gtk::Box::new(Orientation::Vertical, 10);
+        let main_container = gtk::Box::new(Orientation::Horizontal, 10);
 
         let album_image = gtk::Image::builder()
             .width_request(128)
@@ -299,9 +327,10 @@ impl Module<Button> for MusicModule {
         volume_box.pack_start(&volume_slider, true, true, 0);
         volume_box.pack_end(&volume_icon, false, false, 0);
 
-        container.add(&album_image);
-        container.add(&info_box);
-        container.add(&volume_box);
+        main_container.add(&album_image);
+        main_container.add(&info_box);
+        main_container.add(&volume_box);
+        container.add(&main_container);
 
         let tx_prev = tx.clone();
         btn_prev.connect_clicked(move |_| {
@@ -323,11 +352,48 @@ impl Module<Button> for MusicModule {
             try_send!(tx_next, PlayerCommand::Next);
         });
 
-        let tx_vol = tx;
+        let tx_vol = tx.clone();
         volume_slider.connect_change_value(move |_, _, val| {
             try_send!(tx_vol, PlayerCommand::Volume(val as u8));
             Inhibit(false)
         });
+
+        let progress_box = gtk::Box::new(Orientation::Horizontal, 5);
+        add_class(&progress_box, "progress");
+
+        let progress_label = Label::new(None);
+        add_class(&progress_label, "label");
+
+        let progress = Scale::builder()
+            .orientation(Orientation::Horizontal)
+            .draw_value(false)
+            .hexpand(true)
+            .build();
+        add_class(&progress, "slider");
+
+        progress_box.add(&progress);
+        progress_box.add(&progress_label);
+        container.add(&progress_box);
+
+        let drag_lock = Arc::new(AtomicBool::new(false));
+        {
+            let drag_lock = drag_lock.clone();
+            progress.connect_button_press_event(move |_, _| {
+                drag_lock.set(true);
+                Inhibit(false)
+            });
+        }
+
+        {
+            let drag_lock = drag_lock.clone();
+            progress.connect_button_release_event(move |scale, _| {
+                let value = scale.value();
+                try_send!(tx, PlayerCommand::Seek(Duration::from_secs_f64(value)));
+
+                drag_lock.set(false);
+                Inhibit(false)
+            });
+        }
 
         container.show_all();
 
@@ -336,68 +402,89 @@ impl Module<Button> for MusicModule {
             let image_size = self.cover_image_size;
 
             let mut prev_cover = None;
-            rx.attach(None, move |update| {
-                if let Some(update) = update {
-                    // only update art when album changes
-                    let new_cover = update.song.cover_path;
-                    if prev_cover != new_cover {
-                        prev_cover = new_cover.clone();
-                        let res = if let Some(image) = new_cover.and_then(|cover_path| {
-                            ImageProvider::parse(&cover_path, &icon_theme, image_size)
-                        }) {
-                            image.load_into_image(album_image.clone())
+            rx.attach(None, move |event| {
+                match event {
+                    ControllerEvent::Update(Some(update)) => {
+                        // only update art when album changes
+                        let new_cover = update.song.cover_path;
+                        if prev_cover != new_cover {
+                            prev_cover = new_cover.clone();
+                            let res = if let Some(image) = new_cover.and_then(|cover_path| {
+                                ImageProvider::parse(&cover_path, &icon_theme, image_size)
+                            }) {
+                                image.load_into_image(album_image.clone())
+                            } else {
+                                album_image.set_from_pixbuf(None);
+                                Ok(())
+                            };
+
+                            if let Err(err) = res {
+                                error!("{err:?}");
+                            }
+                        }
+
+                        update_popup_metadata_label(update.song.title, &title_label);
+                        update_popup_metadata_label(update.song.album, &album_label);
+                        update_popup_metadata_label(update.song.artist, &artist_label);
+
+                        match update.status.state {
+                            PlayerState::Stopped => {
+                                btn_pause.hide();
+                                btn_play.show();
+                                btn_play.set_sensitive(false);
+                            }
+                            PlayerState::Playing => {
+                                btn_play.set_sensitive(false);
+                                btn_play.hide();
+
+                                btn_pause.set_sensitive(true);
+                                btn_pause.show();
+                            }
+                            PlayerState::Paused => {
+                                btn_pause.set_sensitive(false);
+                                btn_pause.hide();
+
+                                btn_play.set_sensitive(true);
+                                btn_play.show();
+                            }
+                        }
+
+                        let enable_prev = update.status.playlist_position > 0;
+
+                        let enable_next =
+                            update.status.playlist_position < update.status.playlist_length;
+
+                        btn_prev.set_sensitive(enable_prev);
+                        btn_next.set_sensitive(enable_next);
+
+                        if let Some(volume) = update.status.volume_percent {
+                            volume_slider.set_value(volume as f64);
+                            volume_box.show();
                         } else {
-                            album_image.set_from_pixbuf(None);
-                            Ok(())
-                        };
-
-                        if let Err(err) = res {
-                            error!("{err:?}");
+                            volume_box.hide();
                         }
                     }
+                    ControllerEvent::UpdateProgress(progress_tick)
+                        if !drag_lock.load(Ordering::Relaxed) =>
+                    {
+                        if let (Some(elapsed), Some(duration)) =
+                            (progress_tick.elapsed, progress_tick.duration)
+                        {
+                            progress_label.set_label(&format!(
+                                "{}/{}",
+                                format_time(elapsed),
+                                format_time(duration)
+                            ));
 
-                    title_label
-                        .label
-                        .set_text(&update.song.title.unwrap_or_default());
-                    album_label
-                        .label
-                        .set_text(&update.song.album.unwrap_or_default());
-                    artist_label
-                        .label
-                        .set_text(&update.song.artist.unwrap_or_default());
-
-                    match update.status.state {
-                        PlayerState::Stopped => {
-                            btn_pause.hide();
-                            btn_play.show();
-                            btn_play.set_sensitive(false);
-                        }
-                        PlayerState::Playing => {
-                            btn_play.set_sensitive(false);
-                            btn_play.hide();
-
-                            btn_pause.set_sensitive(true);
-                            btn_pause.show();
-                        }
-                        PlayerState::Paused => {
-                            btn_pause.set_sensitive(false);
-                            btn_pause.hide();
-
-                            btn_play.set_sensitive(true);
-                            btn_play.show();
+                            progress.set_value(elapsed.as_secs_f64());
+                            progress.set_range(0.0, duration.as_secs_f64());
+                            progress_box.show_all();
+                        } else {
+                            progress_box.hide();
                         }
                     }
-
-                    let enable_prev = update.status.playlist_position > 0;
-
-                    let enable_next =
-                        update.status.playlist_position < update.status.playlist_length;
-
-                    btn_prev.set_sensitive(enable_prev);
-                    btn_next.set_sensitive(enable_next);
-
-                    volume_slider.set_value(update.status.volume_percent as f64);
-                }
+                    _ => {}
+                };
 
                 Continue(true)
             });
@@ -407,17 +494,24 @@ impl Module<Button> for MusicModule {
     }
 }
 
+fn update_popup_metadata_label(text: Option<String>, label: &IconLabel) {
+    match text {
+        Some(value) => {
+            label.label.set_text(&value);
+            label.container.show_all();
+        }
+        None => {
+            label.container.hide();
+        }
+    }
+}
+
 /// Replaces each of the formatting tokens in the formatting string
 /// with actual data pulled from the music player
-fn replace_tokens(
-    format_string: &str,
-    tokens: &Vec<String>,
-    song: &Track,
-    status: &Status,
-) -> String {
+fn replace_tokens(format_string: &str, tokens: &Vec<String>, song: &Track) -> String {
     let mut compiled_string = format_string.to_string();
     for token in tokens {
-        let value = get_token_value(song, status, token);
+        let value = get_token_value(song, token);
         compiled_string = compiled_string.replace(format!("{{{token}}}").as_str(), value.as_str());
     }
     compiled_string
@@ -425,7 +519,7 @@ fn replace_tokens(
 
 /// Converts a string format token value
 /// into its respective value.
-fn get_token_value(song: &Track, status: &Status, token: &str) -> String {
+fn get_token_value(song: &Track, token: &str) -> String {
     match token {
         "title" => song.title.clone(),
         "album" => song.album.clone(),
@@ -434,8 +528,6 @@ fn get_token_value(song: &Track, status: &Status, token: &str) -> String {
         "disc" => song.disc.map(|x| x.to_string()),
         "genre" => song.genre.clone(),
         "track" => song.track.map(|x| x.to_string()),
-        "duration" => status.duration.map(format_time),
-        "elapsed" => status.elapsed.map(format_time),
         _ => Some(token.to_string()),
     }
     .unwrap_or_default()

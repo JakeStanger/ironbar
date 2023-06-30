@@ -1,9 +1,11 @@
-use super::{MusicClient, Status, Track};
-use crate::await_sync;
-use crate::clients::music::{PlayerState, PlayerUpdate};
+use super::{
+    MusicClient, PlayerState, PlayerUpdate, ProgressTick, Status, Track, TICK_INTERVAL_MS,
+};
+use crate::{await_sync, send};
 use color_eyre::Result;
 use lazy_static::lazy_static;
 use mpd_client::client::{Connection, ConnectionEvent, Subsystem};
+use mpd_client::commands::SeekMode;
 use mpd_client::protocol::MpdProtocolError;
 use mpd_client::responses::{PlayState, Song};
 use mpd_client::tag::Tag;
@@ -16,7 +18,7 @@ use std::sync::Arc;
 use std::time::Duration;
 use tokio::net::{TcpStream, UnixStream};
 use tokio::spawn;
-use tokio::sync::broadcast::{channel, error::SendError, Receiver, Sender};
+use tokio::sync::broadcast;
 use tokio::sync::Mutex;
 use tokio::time::sleep;
 use tracing::{debug, error, info};
@@ -29,8 +31,8 @@ lazy_static! {
 pub struct MpdClient {
     client: Client,
     music_dir: PathBuf,
-    tx: Sender<PlayerUpdate>,
-    _rx: Receiver<PlayerUpdate>,
+    tx: broadcast::Sender<PlayerUpdate>,
+    _rx: broadcast::Receiver<PlayerUpdate>,
 }
 
 #[derive(Debug)]
@@ -57,7 +59,7 @@ impl MpdClient {
         let (client, mut state_changes) =
             wait_for_connection(host, Duration::from_secs(5), None).await?;
 
-        let (tx, rx) = channel(16);
+        let (tx, rx) = broadcast::channel(16);
 
         {
             let music_dir = music_dir.clone();
@@ -78,7 +80,19 @@ impl MpdClient {
                     }
                 }
 
-                Ok::<(), SendError<(Option<Track>, Status)>>(())
+                Ok::<(), broadcast::error::SendError<(Option<Track>, Status)>>(())
+            });
+        }
+
+        {
+            let client = client.clone();
+            let tx = tx.clone();
+
+            spawn(async move {
+                loop {
+                    Self::send_tick_update(&client, &tx).await;
+                    sleep(Duration::from_millis(TICK_INTERVAL_MS)).await;
+                }
             });
         }
 
@@ -92,9 +106,9 @@ impl MpdClient {
 
     async fn send_update(
         client: &Client,
-        tx: &Sender<PlayerUpdate>,
+        tx: &broadcast::Sender<PlayerUpdate>,
         music_dir: &Path,
-    ) -> Result<(), SendError<PlayerUpdate>> {
+    ) -> Result<(), broadcast::error::SendError<PlayerUpdate>> {
         let current_song = client.command(commands::CurrentSong).await;
         let status = client.command(commands::Status).await;
 
@@ -102,17 +116,33 @@ impl MpdClient {
             let track = current_song.map(|s| Self::convert_song(&s.song, music_dir));
             let status = Status::from(status);
 
-            tx.send(PlayerUpdate::Update(Box::new(track), status))?;
+            let update = PlayerUpdate::Update(Box::new(track), status);
+            send!(tx, update);
         }
 
         Ok(())
+    }
+
+    async fn send_tick_update(client: &Client, tx: &broadcast::Sender<PlayerUpdate>) {
+        let status = client.command(commands::Status).await;
+
+        if let Ok(status) = status {
+            if status.state == PlayState::Playing {
+                let update = PlayerUpdate::ProgressTick(ProgressTick {
+                    duration: status.duration,
+                    elapsed: status.elapsed,
+                });
+
+                send!(tx, update);
+            }
+        }
     }
 
     fn is_connected(&self) -> bool {
         !self.client.is_connection_closed()
     }
 
-    fn send_disconnect_update(&self) -> Result<(), SendError<PlayerUpdate>> {
+    fn send_disconnect_update(&self) -> Result<(), broadcast::error::SendError<PlayerUpdate>> {
         info!("Connection to MPD server lost");
         self.tx.send(PlayerUpdate::Disconnect)?;
         Ok(())
@@ -182,7 +212,12 @@ impl MusicClient for MpdClient {
         Ok(())
     }
 
-    fn subscribe_change(&self) -> Receiver<PlayerUpdate> {
+    fn seek(&self, duration: Duration) -> Result<()> {
+        async_command!(self.client, commands::Seek(SeekMode::Absolute(duration)));
+        Ok(())
+    }
+
+    fn subscribe_change(&self) -> broadcast::Receiver<PlayerUpdate> {
         let rx = self.tx.subscribe();
         await_sync(async {
             Self::send_update(&self.client, &self.tx, &self.music_dir)
@@ -291,9 +326,7 @@ impl From<mpd_client::responses::Status> for Status {
     fn from(status: mpd_client::responses::Status) -> Self {
         Self {
             state: PlayerState::from(status.state),
-            volume_percent: status.volume,
-            duration: status.duration,
-            elapsed: status.elapsed,
+            volume_percent: Some(status.volume),
             playlist_position: status.current_song.map_or(0, |(pos, _)| pos.0 as u32),
             playlist_length: status.playlist_length as u32,
         }

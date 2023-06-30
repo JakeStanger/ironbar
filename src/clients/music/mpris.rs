@@ -1,15 +1,15 @@
-use super::{MusicClient, PlayerUpdate, Status, Track};
-use crate::clients::music::PlayerState;
+use super::{MusicClient, PlayerState, PlayerUpdate, Status, Track, TICK_INTERVAL_MS};
+use crate::clients::music::ProgressTick;
 use crate::{arc_mut, lock, send};
 use color_eyre::Result;
 use lazy_static::lazy_static;
 use mpris::{DBusError, Event, Metadata, PlaybackStatus, Player, PlayerFinder};
 use std::collections::HashSet;
-use std::string;
 use std::sync::{Arc, Mutex};
 use std::thread::sleep;
 use std::time::Duration;
-use tokio::sync::broadcast::{channel, Receiver, Sender};
+use std::{cmp, string};
+use tokio::sync::broadcast;
 use tokio::task::spawn_blocking;
 use tracing::{debug, error, trace};
 
@@ -19,13 +19,13 @@ lazy_static! {
 
 pub struct Client {
     current_player: Arc<Mutex<Option<String>>>,
-    tx: Sender<PlayerUpdate>,
-    _rx: Receiver<PlayerUpdate>,
+    tx: broadcast::Sender<PlayerUpdate>,
+    _rx: broadcast::Receiver<PlayerUpdate>,
 }
 
 impl Client {
     fn new() -> Self {
-        let (tx, rx) = channel(32);
+        let (tx, rx) = broadcast::channel(32);
 
         let current_player = arc_mut!(None);
 
@@ -84,6 +84,20 @@ impl Client {
             });
         }
 
+        {
+            let current_player = current_player.clone();
+            let tx = tx.clone();
+
+            spawn_blocking(move || {
+                let player_finder = PlayerFinder::new().expect("to get new player finder");
+
+                loop {
+                    Self::send_tick_update(&player_finder, &current_player, &tx);
+                    sleep(Duration::from_millis(TICK_INTERVAL_MS));
+                }
+            });
+        }
+
         Self {
             current_player,
             tx,
@@ -95,7 +109,7 @@ impl Client {
         player_id: String,
         players: Arc<Mutex<HashSet<String>>>,
         current_player: Arc<Mutex<Option<String>>>,
-        tx: Sender<PlayerUpdate>,
+        tx: broadcast::Sender<PlayerUpdate>,
     ) {
         spawn_blocking(move || {
             let player_finder = PlayerFinder::new()?;
@@ -138,7 +152,7 @@ impl Client {
         });
     }
 
-    fn send_update(player: &Player, tx: &Sender<PlayerUpdate>) -> Result<()> {
+    fn send_update(player: &Player, tx: &broadcast::Sender<PlayerUpdate>) -> Result<()> {
         debug!("Sending update using '{}'", player.identity());
 
         let metadata = player.get_metadata()?;
@@ -148,10 +162,7 @@ impl Client {
 
         let track_list = player.get_track_list();
 
-        let volume_percent = player
-            .get_volume()
-            .map(|vol| (vol * 100.0) as u8)
-            .unwrap_or(0);
+        let volume_percent = player.get_volume().map(|vol| (vol * 100.0) as u8).ok();
 
         let status = Status {
             // MRPIS doesn't seem to provide playlist info reliably,
@@ -159,8 +170,6 @@ impl Client {
             playlist_position: 1,
             playlist_length: track_list.map(|list| list.len() as u32).unwrap_or(u32::MAX),
             state: PlayerState::from(playback_status),
-            elapsed: player.get_position().ok(),
-            duration: metadata.length(),
             volume_percent,
         };
 
@@ -180,6 +189,26 @@ impl Client {
             let player_finder = PlayerFinder::new().expect("Failed to connect to D-Bus");
             player_finder.find_by_name(player_name).ok()
         })
+    }
+
+    fn send_tick_update(
+        player_finder: &PlayerFinder,
+        current_player: &Mutex<Option<String>>,
+        tx: &broadcast::Sender<PlayerUpdate>,
+    ) {
+        if let Some(player) = lock!(current_player)
+            .as_ref()
+            .and_then(|name| player_finder.find_by_name(name).ok())
+        {
+            if let Ok(metadata) = player.get_metadata() {
+                let update = PlayerUpdate::ProgressTick(ProgressTick {
+                    elapsed: player.get_position().ok(),
+                    duration: metadata.length(),
+                });
+
+                send!(tx, update);
+            }
+        }
     }
 }
 
@@ -223,7 +252,23 @@ impl MusicClient for Client {
         Ok(())
     }
 
-    fn subscribe_change(&self) -> Receiver<PlayerUpdate> {
+    fn seek(&self, duration: Duration) -> Result<()> {
+        if let Some(player) = Self::get_player(self) {
+            let pos = player.get_position().unwrap_or_default();
+
+            let duration = duration.as_micros() as i64;
+            let position = pos.as_micros() as i64;
+
+            let seek = cmp::max(duration, 0) - position;
+
+            player.seek(seek)?;
+        } else {
+            error!("Could not find player");
+        }
+        Ok(())
+    }
+
+    fn subscribe_change(&self) -> broadcast::Receiver<PlayerUpdate> {
         debug!("Creating new subscription");
         let rx = self.tx.subscribe();
 
@@ -236,9 +281,7 @@ impl MusicClient for Client {
                 playlist_position: 0,
                 playlist_length: 0,
                 state: PlayerState::Stopped,
-                elapsed: None,
-                duration: None,
-                volume_percent: 0,
+                volume_percent: None,
             };
             send!(self.tx, PlayerUpdate::Update(Box::new(None), status));
         }
@@ -257,9 +300,18 @@ impl From<Metadata> for Track {
         const KEY_GENRE: &str = "xesam:genre";
 
         Self {
-            title: value.title().map(std::string::ToString::to_string),
-            album: value.album_name().map(std::string::ToString::to_string),
-            artist: value.artists().map(|artists| artists.join(", ")),
+            title: value
+                .title()
+                .map(std::string::ToString::to_string)
+                .and_then(replace_empty_none),
+            album: value
+                .album_name()
+                .map(std::string::ToString::to_string)
+                .and_then(replace_empty_none),
+            artist: value
+                .artists()
+                .map(|artists| artists.join(", "))
+                .and_then(replace_empty_none),
             date: value
                 .get(KEY_DATE)
                 .and_then(mpris::MetadataValue::as_string)
@@ -282,5 +334,13 @@ impl From<PlaybackStatus> for PlayerState {
             PlaybackStatus::Paused => Self::Paused,
             PlaybackStatus::Stopped => Self::Stopped,
         }
+    }
+}
+
+fn replace_empty_none(string: String) -> Option<String> {
+    if string.is_empty() {
+        None
+    } else {
+        Some(string)
     }
 }
