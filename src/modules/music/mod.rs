@@ -423,15 +423,9 @@ impl Module<Button> for MusicModule {
                             }
                         }
 
-                    title_label
-                        .label
-                        .set_text(&update.song.title.unwrap_or_default());
-                    album_label
-                        .label
-                        .set_text(&update.song.album.unwrap_or_default());
-                    artist_label
-                        .label
-                        .set_text(&update.song.artist.unwrap_or_default());
+                        update_popup_metadata_label(update.song.title, &title_label);
+                        update_popup_metadata_label(update.song.album, &album_label);
+                        update_popup_metadata_label(update.song.artist, &artist_label);
 
                         match update.status.state {
                             PlayerState::Stopped => {
@@ -497,6 +491,18 @@ impl Module<Button> for MusicModule {
         }
 
         Some(container)
+    }
+}
+
+fn update_popup_metadata_label(text: Option<String>, label: &IconLabel) {
+    match text {
+        Some(value) => {
+            label.label.set_text(&value);
+            label.container.show_all();
+        }
+        None => {
+            label.container.hide();
+        }
     }
 }
 

@@ -162,10 +162,7 @@ impl Client {
 
         let track_list = player.get_track_list();
 
-        let volume_percent = player
-            .get_volume()
-            .map(|vol| (vol * 100.0) as u8)
-            .unwrap_or(0);
+        let volume_percent = player.get_volume().map(|vol| (vol * 100.0) as u8).ok();
 
         let status = Status {
             // MRPIS doesn't seem to provide playlist info reliably,
@@ -284,9 +281,7 @@ impl MusicClient for Client {
                 playlist_position: 0,
                 playlist_length: 0,
                 state: PlayerState::Stopped,
-                elapsed: None,
-                duration: None,
-                volume_percent: 0,
+                volume_percent: None,
             };
             send!(self.tx, PlayerUpdate::Update(Box::new(None), status));
         }
@@ -305,9 +300,18 @@ impl From<Metadata> for Track {
         const KEY_GENRE: &str = "xesam:genre";
 
         Self {
-            title: value.title().map(std::string::ToString::to_string),
-            album: value.album_name().map(std::string::ToString::to_string),
-            artist: value.artists().map(|artists| artists.join(", ")),
+            title: value
+                .title()
+                .map(std::string::ToString::to_string)
+                .and_then(replace_empty_none),
+            album: value
+                .album_name()
+                .map(std::string::ToString::to_string)
+                .and_then(replace_empty_none),
+            artist: value
+                .artists()
+                .map(|artists| artists.join(", "))
+                .and_then(replace_empty_none),
             date: value
                 .get(KEY_DATE)
                 .and_then(mpris::MetadataValue::as_string)
@@ -330,5 +334,13 @@ impl From<PlaybackStatus> for PlayerState {
             PlaybackStatus::Paused => Self::Paused,
             PlaybackStatus::Stopped => Self::Stopped,
         }
+    }
+}
+
+fn replace_empty_none(string: String) -> Option<String> {
+    if string.is_empty() {
+        None
+    } else {
+        Some(string)
     }
 }
