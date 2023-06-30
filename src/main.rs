@@ -102,50 +102,11 @@ fn start_ironbar() {
         cfg_if! {
             if #[cfg(feature = "ipc")] {
                 let ipc = ipc::Ipc::new();
-                ipc.start();
+                ipc.start(app);
             }
         }
 
-        let display = Display::default().map_or_else(
-            || {
-                let report = Report::msg("Failed to get default GTK display");
-                error!("{:?}", report);
-                exit(ExitCode::GtkDisplay as i32)
-            },
-            |display| display,
-        );
-
-        let config_res = env::var("IRONBAR_CONFIG").map_or_else(
-            |_| ConfigLoader::new("ironbar").find_and_load(),
-            ConfigLoader::load,
-        );
-
-        let mut config: Config = match config_res {
-            Ok(config) => config,
-            Err(err) => {
-                error!("{:?}", err);
-                exit(ExitCode::Config as i32)
-            }
-        };
-
-        debug!("Loaded config file");
-
-        #[cfg(feature = "ipc")]
-        if let Some(ironvars) = config.ironvar_defaults.take() {
-            let variable_manager = ironvar::get_variable_manager();
-            for (k, v) in ironvars {
-                if write_lock!(variable_manager).set(k.clone(), v).is_err() {
-                    tracing::warn!("Ignoring invalid ironvar: '{k}'");
-                }
-            }
-        }
-
-        if let Err(err) = create_bars(app, &display, &config) {
-            error!("{:?}", err);
-            exit(ExitCode::CreateBars as i32);
-        }
-
-        debug!("Created bars");
+        load_interface(app);
 
         let style_path = env::var("IRONBAR_CSS").ok().map_or_else(
             || {
@@ -185,6 +146,50 @@ fn start_ironbar() {
     // Ignore CLI args
     // Some are provided by swaybar_config but not currently supported
     app.run_with_args(&Vec::<&str>::new());
+}
+
+/// Loads the Ironbar config and interface.
+pub fn load_interface(app: &Application) {
+    let display = Display::default().map_or_else(
+        || {
+            let report = Report::msg("Failed to get default GTK display");
+            error!("{:?}", report);
+            exit(ExitCode::GtkDisplay as i32)
+        },
+        |display| display,
+    );
+
+    let config_res = env::var("IRONBAR_CONFIG").map_or_else(
+        |_| ConfigLoader::new("ironbar").find_and_load(),
+        ConfigLoader::load,
+    );
+
+    let mut config: Config = match config_res {
+        Ok(config) => config,
+        Err(err) => {
+            error!("{:?}", err);
+            exit(ExitCode::Config as i32)
+        }
+    };
+
+    debug!("Loaded config file");
+
+    #[cfg(feature = "ipc")]
+    if let Some(ironvars) = config.ironvar_defaults.take() {
+        let variable_manager = ironvar::get_variable_manager();
+        for (k, v) in ironvars {
+            if write_lock!(variable_manager).set(k.clone(), v).is_err() {
+                tracing::warn!("Ignoring invalid ironvar: '{k}'");
+            }
+        }
+    }
+
+    if let Err(err) = create_bars(app, &display, &config) {
+        error!("{:?}", err);
+        exit(ExitCode::CreateBars as i32);
+    }
+
+    debug!("Created bars");
 }
 
 /// Creates each of the bars across each of the (configured) outputs.
