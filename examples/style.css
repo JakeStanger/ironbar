@@ -120,7 +120,11 @@ button:hover {
     margin-right: 1em;
 }
 
-.popup-music .title .icon *, .popup-music .title .label {
+.popup-music .icon-box {
+    margin-right: 0.4em;
+}
+
+.popup-music .title .icon, .popup-music .title .label {
     font-size: 1.7em;
 }
 
@@ -128,15 +132,17 @@ button:hover {
     color: @color_border;
 }
 
-.popup-music .volume scale slider {
+.popup-music .volume .slider slider {
     border-radius: 100%;
 }
 
-/* volume icon */
-.popup-music .volume > box:last-child label {
-    margin-left: 6px;
+.popup-music .volume .icon {
+    margin-left: 4px;
 }
 
+.popup-music .progress .slider slider {
+    border-radius: 100%;
+}
 
 /* -- script -- */
 
