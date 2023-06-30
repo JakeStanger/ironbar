@@ -57,6 +57,20 @@ Responds with `ok`.
 }
 ```
 
+### `reload`
+
+Restarts the bars, reloading the config in the process.
+
+The IPC server and main GTK application are untouched.
+
+Responds with `ok`.
+
+```json
+{
+  "type": "reload"
+}
+```
+
 ### `get`
 
 Gets an [ironvar](ironvars) value.

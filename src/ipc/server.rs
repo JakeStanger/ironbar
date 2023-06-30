@@ -6,19 +6,20 @@ use crate::style::load_css;
 use crate::{read_lock, send_async, try_send, write_lock};
 use color_eyre::{Report, Result};
 use glib::Continue;
+use gtk::prelude::*;
+use gtk::Application;
 use std::fs;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::{UnixListener, UnixStream};
 use tokio::spawn;
-use tokio::sync::mpsc;
-use tokio::sync::mpsc::{Receiver, Sender};
+use tokio::sync::mpsc::{self, Receiver, Sender};
 use tracing::{debug, error, info, warn};
 
 impl Ipc {
     /// Starts the IPC server on its socket.
     ///
     /// Once started, the server will begin accepting connections.
-    pub fn start(&self) {
+    pub fn start(&self, application: &Application) {
         let bridge = BridgeChannel::<Command>::new();
         let cmd_tx = bridge.create_sender();
         let (res_tx, mut res_rx) = mpsc::channel(32);
@@ -61,8 +62,9 @@ impl Ipc {
             }
         });
 
+        let application = application.clone();
         bridge.recv(move |command| {
-            let res = Self::handle_command(command);
+            let res = Self::handle_command(command, &application);
             try_send!(res_tx, res);
             Continue(true)
         });
@@ -102,10 +104,21 @@ impl Ipc {
     /// Takes an input command, runs it and returns with the appropriate response.
     ///
     /// This runs on the main thread, allowing commands to interact with GTK.
-    fn handle_command(command: Command) -> Response {
+    fn handle_command(command: Command, application: &Application) -> Response {
         match command {
             Command::Inspect => {
                 gtk::Window::set_interactive_debugging(true);
+                Response::Ok
+            }
+            Command::Reload => {
+                info!("Closing existing bars");
+                let windows = application.windows();
+                for window in windows {
+                    window.close();
+                }
+
+                crate::load_interface(application);
+
                 Response::Ok
             }
             Command::Set { key, value } => {

@@ -11,12 +11,15 @@ pub enum Command {
     /// Open the GTK inspector
     Inspect,
 
+    /// Reload the config
+    Reload,
+
     /// Set an `ironvar` value.
     /// This creates it if it does not already exist, and updates it if it does.
     /// Any references to this variable are automatically and immediately updated.
     /// Keys and values can be any valid UTF-8 string.
     Set {
-        /// Variable key. Can be any valid UTF-8 string.
+        /// Variable key. Can be any alphanumeric ASCII string.
         key: Box<str>,
         /// Variable value. Can be any valid UTF-8 string.
         value: String,
