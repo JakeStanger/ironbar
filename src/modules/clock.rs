@@ -3,12 +3,13 @@ use crate::gtk_helpers::add_class;
 use crate::modules::{Module, ModuleInfo, ModuleUpdateEvent, ModuleWidget, WidgetContext};
 use crate::popup::Popup;
 use crate::{send_async, try_send};
-use chrono::{DateTime, Local};
+use chrono::{DateTime, Local, Locale};
 use color_eyre::Result;
 use glib::Continue;
 use gtk::prelude::*;
 use gtk::{Align, Button, Calendar, Label, Orientation};
 use serde::Deserialize;
+use std::env;
 use tokio::spawn;
 use tokio::sync::mpsc;
 use tokio::time::sleep;
@@ -26,6 +27,9 @@ pub struct ClockModule {
     #[serde(default = "default_popup_format")]
     format_popup: String,
 
+    #[serde(default = "default_locale")]
+    locale: String,
+
     #[serde(flatten)]
     pub common: Option<CommonConfig>,
 }
@@ -36,6 +40,20 @@ fn default_format() -> String {
 
 fn default_popup_format() -> String {
     String::from("%H:%M:%S")
+}
+
+fn default_locale() -> String {
+    env::var("LC_TIME")
+        .or_else(|_| env::var("LANG"))
+        .map(strip_tail)
+        .unwrap_or_else(|_| "POSIX".to_string())
+}
+
+fn strip_tail(string: String) -> String {
+    string
+        .split_once('.')
+        .map(|(head, _)| head.to_string())
+        .unwrap_or(string)
 }
 
 impl Module<Button> for ClockModule {
@@ -82,9 +100,10 @@ impl Module<Button> for ClockModule {
         });
 
         let format = self.format.clone();
+        let locale = Locale::try_from(self.locale.as_str()).unwrap_or(Locale::POSIX);
 
         context.widget_rx.attach(None, move |date| {
-            let date_string = format!("{}", date.format(&format));
+            let date_string = format!("{}", date.format_localized(&format, locale));
             label.set_label(&date_string);
             Continue(true)
         });
@@ -115,8 +134,10 @@ impl Module<Button> for ClockModule {
         container.add(&calendar);
 
         let format = self.format_popup;
+        let locale = Locale::try_from(self.locale.as_str()).unwrap_or(Locale::POSIX);
+
         rx.attach(None, move |date| {
-            let date_string = format!("{}", date.format(&format));
+            let date_string = format!("{}", date.format_localized(&format, locale));
             clock.set_label(&date_string);
             Continue(true)
         });
