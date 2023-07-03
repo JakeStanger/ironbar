@@ -8,10 +8,11 @@ Clicking on the widget opens a popup with the time and a calendar.
 
 > Type: `clock`
 
-| Name           | Type     | Default          | Description                                             |
-|----------------|----------|------------------|---------------------------------------------------------|
-| `format`       | `string` | `%d/%m/%Y %H:%M` | Date/time format string.                                |
-| `format_popup` | `string` | `%H:%M:%S`       | Date/time format string to display in the popup header. |
+| Name           | Type     | Default                            | Description                                                                         |
+|----------------|----------|------------------------------------|-------------------------------------------------------------------------------------|
+| `format`       | `string` | `%d/%m/%Y %H:%M`                   | Date/time format string.                                                            |
+| `format_popup` | `string` | `%H:%M:%S`                         | Date/time format string to display in the popup header.                             |
+| `locale`       | `string` | `$LC_TIME` or `$LANG` or `'POSIX'` | Locale to use (eg `en_GB`). Defaults to the system language (reading from env var). |
 
 > Detail on available tokens can be found here: <https://docs.rs/chrono/latest/chrono/format/strftime/index.html>
 
