@@ -47,7 +47,7 @@ use tokio::task::{block_in_place, spawn_blocking};
 
 use crate::error::ExitCode;
 use clients::wayland;
-use tracing::{debug, error, info};
+use tracing::{debug, error, info, warn};
 use universal_config::ConfigLoader;
 
 const GTK_APP_ID: &str = "dev.jstanger.ironbar";
@@ -159,18 +159,19 @@ pub fn load_interface(app: &Application) {
         |display| display,
     );
 
-    let config_res = env::var("IRONBAR_CONFIG").map_or_else(
-        |_| ConfigLoader::new("ironbar").find_and_load(),
-        ConfigLoader::load,
-    );
+    let mut config = env::var("IRONBAR_CONFIG")
+        .map_or_else(
+            |_| ConfigLoader::new("ironbar").find_and_load(),
+            ConfigLoader::load,
+        )
+        .unwrap_or_else(|err| {
+            error!("Failed to load config: {}", err);
+            warn!("Falling back to the default config");
+            info!("If this is your first time using Ironbar, you should create a config in ~/.config/ironbar/");
+            info!("More info here: https://github.com/JakeStanger/ironbar/wiki/configuration-guide");
 
-    let mut config: Config = match config_res {
-        Ok(config) => config,
-        Err(err) => {
-            error!("{:?}", err);
-            exit(ExitCode::Config as i32)
-        }
-    };
+            Config::default()
+        });
 
     debug!("Loaded config file");
 

@@ -17,6 +17,15 @@ pub struct LabelModule {
     pub common: Option<CommonConfig>,
 }
 
+impl LabelModule {
+    pub(crate) fn new(label: String) -> Self {
+        Self {
+            label,
+            common: Some(CommonConfig::default()),
+        }
+    }
+}
+
 impl Module<Label> for LabelModule {
     type SendMessage = String;
     type ReceiveMessage = ();

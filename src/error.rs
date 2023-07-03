@@ -2,7 +2,6 @@
 pub enum ExitCode {
     GtkDisplay = 1,
     CreateBars = 2,
-    Config = 3,
 }
 
 pub const ERR_OUTPUTS: &str = "GTK and Wayland are reporting a different set of outputs - this is a severe bug and should never happen";
