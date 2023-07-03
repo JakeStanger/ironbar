@@ -1,5 +1,6 @@
 use lazy_static::lazy_static;
 use std::collections::{HashMap, HashSet};
+use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
@@ -26,6 +27,14 @@ fn find_application_dirs() -> Vec<PathBuf> {
         PathBuf::from("/usr/share/applications"), // system installed apps
         PathBuf::from("/var/lib/flatpak/exports/share/applications"), // flatpak apps
     ];
+
+    let xdg_dirs = env::var_os("XDG_DATA_DIRS");
+    if let Some(xdg_dirs) = xdg_dirs {
+        for mut xdg_dir in env::split_paths(&xdg_dirs).map(PathBuf::from) {
+            xdg_dir.push("applications");
+            dirs.push(xdg_dir);
+        }
+    }
 
     let user_dir = dirs::data_local_dir(); // user installed apps
     if let Some(mut user_dir) = user_dir {
