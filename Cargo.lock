@@ -19,10 +19,11 @@ checksum = "f26201604c87b1e01bd3d98f8d5d9a8fcbb815e8cedb41ffccbeb4bf593a35fe"
 
 [[package]]
 name = "ahash"
-version = "0.7.6"
+version = "0.8.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fcb51a0695d8f838b1ee009b3fbf66bda078cd64590202a864a8f3e8c4315c47"
+checksum = "2c99f64d1e06488f620f932677e24bc6e2897582980441ae90a671415bd7ec2f"
 dependencies = [
+ "cfg-if",
  "getrandom",
  "once_cell",
  "version_check",
@@ -1820,9 +1821,9 @@ dependencies = [
 
 [[package]]
 name = "mpd_client"
-version = "1.1.0"
+version = "1.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "09acf3ba374ec87b03c0ca60f648dc3f7d045d4b8a4254553217f9098fef9039"
+checksum = "404d259536e210a3a7b0a2278fe11bb51e4da6eeed680aa86dea56e4da94d771"
 dependencies = [
  "bytes",
  "mpd_protocol",
@@ -1832,9 +1833,9 @@ dependencies = [
 
 [[package]]
 name = "mpd_protocol"
-version = "1.0.0"
+version = "1.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "afcc158275b88361fed416b6efe013286b8fe0c8929bbd569504e5992f638693"
+checksum = "ad01bc4af0a4cb256a49c8cf6dc7e20ce90fafc994dda919eaaa03885bb91e3a"
 dependencies = [
  "ahash",
  "bytes",
@@ -2973,11 +2974,12 @@ checksum = "1f3ccbac311fea05f86f61904b462b55fb3df8837a366dfc601a0161d0532f20"
 
 [[package]]
 name = "tokio"
-version = "1.28.2"
+version = "1.29.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "94d7b1cfd2aa4011f2de74c2c4c63665e27a71006b0a192dcd2710272e73dfa2"
+checksum = "532826ff75199d5833b9d2c5fe410f29235e25704ee5f0ef599fb51c21f4a4da"
 dependencies = [
  "autocfg",
+ "backtrace",
  "bytes",
  "libc",
  "mio",
