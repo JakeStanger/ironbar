@@ -98,7 +98,7 @@ async_once = "0.2.6"
 cfg-if = "1.0.0"
 
 # cli
-clap = { version = "4.2.7", optional = true, features = ["derive"] }
+clap = { version = "4.3.10", optional = true, features = ["derive"] }
 
 # ipc
 serde_json = { version = "1.0.96", optional = true }
