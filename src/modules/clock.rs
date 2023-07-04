@@ -34,6 +34,17 @@ pub struct ClockModule {
     pub common: Option<CommonConfig>,
 }
 
+impl Default for ClockModule {
+    fn default() -> Self {
+        ClockModule {
+            format: default_format(),
+            format_popup: default_popup_format(),
+            locale: default_locale(),
+            common: Some(CommonConfig::default()),
+        }
+    }
+}
+
 fn default_format() -> String {
     String::from("%d/%m/%Y %H:%M")
 }

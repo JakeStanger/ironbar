@@ -32,6 +32,18 @@ pub struct FocusedModule {
     pub common: Option<CommonConfig>,
 }
 
+impl Default for FocusedModule {
+    fn default() -> Self {
+        Self {
+            show_icon: crate::config::default_true(),
+            show_title: crate::config::default_true(),
+            icon_size: default_icon_size(),
+            truncate: None,
+            common: Some(CommonConfig::default()),
+        }
+    }
+}
+
 const fn default_icon_size() -> i32 {
     32
 }

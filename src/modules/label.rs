@@ -17,6 +17,15 @@ pub struct LabelModule {
     pub common: Option<CommonConfig>,
 }
 
+impl LabelModule {
+    pub(crate) fn new(label: String) -> Self {
+        Self {
+            label,
+            common: Some(CommonConfig::default()),
+        }
+    }
+}
+
 impl Module<Label> for LabelModule {
     type SendMessage = String;
     type ReceiveMessage = ();
@@ -45,11 +54,12 @@ impl Module<Label> for LabelModule {
         _info: &ModuleInfo,
     ) -> Result<ModuleWidget<Label>> {
         let label = Label::new(None);
+        label.set_use_markup(true);
 
         {
             let label = label.clone();
             context.widget_rx.attach(None, move |string| {
-                label.set_label(&string);
+                label.set_markup(&string);
                 Continue(true)
             });
         }

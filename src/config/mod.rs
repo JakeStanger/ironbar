@@ -21,6 +21,7 @@ use crate::modules::tray::TrayModule;
 use crate::modules::upower::UpowerModule;
 #[cfg(feature = "workspaces")]
 use crate::modules::workspaces::WorkspacesModule;
+use cfg_if::cfg_if;
 use serde::Deserialize;
 use std::collections::HashMap;
 
@@ -107,6 +108,35 @@ pub struct Config {
     pub end: Option<Vec<ModuleConfig>>,
 
     pub monitors: Option<HashMap<String, MonitorConfig>>,
+}
+
+impl Default for Config {
+    fn default() -> Self {
+        cfg_if! {
+            if #[cfg(feature = "clock")] {
+                let end = Some(vec![ModuleConfig::Clock(Box::default())]);
+            }
+            else {
+                let end = None;
+            }
+        }
+
+        Self {
+            position: Default::default(),
+            height: default_bar_height(),
+            margin: Default::default(),
+            popup_gap: default_popup_gap(),
+            icon_theme: None,
+            ironvar_defaults: None,
+            start: Some(vec![ModuleConfig::Label(
+                LabelModule::new("ℹ️ Using default config".to_string()).into(),
+            )]),
+            center: Some(vec![ModuleConfig::Focused(Box::default())]),
+            end,
+            anchor_to_edges: default_true(),
+            monitors: None,
+        }
+    }
 }
 
 const fn default_bar_height() -> i32 {
