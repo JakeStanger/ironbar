@@ -65,33 +65,40 @@ pub fn find_desktop_file(app_id: &str) -> Option<PathBuf> {
     // this is necessary to invalidate the cache
     let files = find_desktop_files();
 
-    if let Some(path) = find_desktop_file_by_filename(app_id, &files) {
-        return Some(path);
-    }
-
-    find_desktop_file_by_filedata(app_id, &files)
+    find_desktop_file_by_filename(app_id, &files)
+        .or_else(|| find_desktop_file_by_filedata(app_id, &files))
 }
 
 /// Finds the correct desktop file using a simple condition check
 fn find_desktop_file_by_filename(app_id: &str, files: &[PathBuf]) -> Option<PathBuf> {
-    let app_id = app_id.to_lowercase();
-
-    files
+    let with_names = files
         .iter()
-        .find(|file| {
-            let file_name: String = file
-                .file_name()
-                .expect("file name doesn't end with ...")
-                .to_string_lossy()
-                .to_lowercase();
-
-            file_name.contains(&app_id)
-                || app_id
-                    .split(&[' ', ':', '@', '.', '_'][..])
-                    .any(|part| file_name.contains(part)) // this will attempt to find flatpak apps that are like this
-                                                          // `com.company.app` or `com.app.something`
+        .map(|f| {
+            (
+                f,
+                f.file_stem()
+                    .unwrap_or_default()
+                    .to_string_lossy()
+                    .to_lowercase(),
+            )
         })
-        .map(ToOwned::to_owned)
+        .collect::<Vec<_>>();
+
+    with_names
+        .iter()
+        // first pass - check for exact match
+        .find(|(_, name)| name.eq_ignore_ascii_case(app_id))
+        // second pass - check for substring
+        .or_else(|| {
+            with_names.iter().find(|(_, name)| {
+                // this will attempt to find flatpak apps that are in the format
+                // `com.company.app` or `com.app.something`
+                app_id
+                    .split(&[' ', ':', '@', '.', '_'][..])
+                    .any(|part| name.contains(part))
+            })
+        })
+        .map(|(file, _)| file.into())
 }
 
 /// Finds the correct desktop file using the keys in `DESKTOP_FILES_LOOK_OUT_KEYS`
@@ -99,7 +106,7 @@ fn find_desktop_file_by_filedata(app_id: &str, files: &[PathBuf]) -> Option<Path
     let app_id = &app_id.to_lowercase();
     let mut desktop_files_cache = lock!(DESKTOP_FILES);
 
-    files
+    let files = files
         .iter()
         .filter_map(|file| {
             let Some(parsed_desktop_file) = parse_desktop_file(file) else { return None };
@@ -107,13 +114,41 @@ fn find_desktop_file_by_filedata(app_id: &str, files: &[PathBuf]) -> Option<Path
             desktop_files_cache.insert(file.clone(), parsed_desktop_file.clone());
             Some((file.clone(), parsed_desktop_file))
         })
+        .collect::<Vec<_>>();
+
+    let file = files
+        .iter()
+        // first pass - check name key for exact match
         .find(|(_, desktop_file)| {
             desktop_file
-                .values()
-                .flatten()
-                .any(|value| value.to_lowercase().contains(app_id))
+                .get("Name")
+                .map(|names| names.iter().any(|name| name.eq_ignore_ascii_case(app_id)))
+                .unwrap_or_default()
         })
-        .map(|(path, _)| path)
+        // second pass - check name key for substring
+        .or_else(|| {
+            files.iter().find(|(_, desktop_file)| {
+                desktop_file
+                    .get("Name")
+                    .map(|names| {
+                        names
+                            .iter()
+                            .any(|name| name.to_lowercase().contains(app_id))
+                    })
+                    .unwrap_or_default()
+            })
+        })
+        // third pass - check all keys for substring
+        .or_else(|| {
+            files.iter().find(|(_, desktop_file)| {
+                desktop_file
+                    .values()
+                    .flatten()
+                    .any(|value| value.to_lowercase().contains(app_id))
+            })
+        });
+
+    file.map(|(path, _)| path).cloned()
 }
 
 /// Parses a desktop file into a hashmap of keys/vector(values).
