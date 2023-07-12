@@ -97,6 +97,7 @@ pub struct Config {
     pub margin: MarginConfig,
     #[serde(default = "default_popup_gap")]
     pub popup_gap: i32,
+    pub name: Option<String>,
 
     /// GTK icon theme to use.
     pub icon_theme: Option<String>,
@@ -125,6 +126,7 @@ impl Default for Config {
             position: Default::default(),
             height: default_bar_height(),
             margin: Default::default(),
+            name: None,
             popup_gap: default_popup_gap(),
             icon_theme: None,
             ironvar_defaults: None,
