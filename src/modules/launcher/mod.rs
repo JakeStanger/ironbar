@@ -381,8 +381,12 @@ impl Module<gtk::Box> for LauncherModule {
                             }
                         }
                     }
-                    LauncherUpdate::RemoveWindow(app_id, _) => {
+                    LauncherUpdate::RemoveWindow(app_id, win_id) => {
+                        debug!("Removing window {win_id} with id {app_id}");
+
                         if let Some(button) = buttons.get(&app_id) {
+                            button.set_focused(false);
+
                             let mut menu_state = write_lock!(button.menu_state);
                             menu_state.num_windows -= 1;
                         }
