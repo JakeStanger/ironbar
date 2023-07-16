@@ -31,6 +31,12 @@ Commands and responses are sent as JSON objects, denoted by their `type` key.
 The message buffer is currently limited to `1024` bytes. 
 Particularly large messages will be truncated or cause an error.
 
+The full spec can be found below.
+
+## Libraries
+
+- [Luajit](https://github.com/A-Cloud-Ninja/ironbar-ipc-luajit) - Maintained by [@A-Cloud-Ninja](https://github.com/A-Cloud-Ninja)
+
 ## Commands
 
 ### `ping`
