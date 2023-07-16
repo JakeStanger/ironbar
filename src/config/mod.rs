@@ -123,9 +123,9 @@ impl Default for Config {
         }
 
         Self {
-            position: Default::default(),
+            position: BarPosition::default(),
             height: default_bar_height(),
-            margin: Default::default(),
+            margin: MarginConfig::default(),
             name: None,
             popup_gap: default_popup_gap(),
             icon_theme: None,

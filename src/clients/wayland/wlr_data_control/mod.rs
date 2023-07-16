@@ -315,22 +315,6 @@ impl DataControlSourceHandler for Environment {
                         }
                     }
                 }
-
-                // for chunk in bytes.chunks(pipe_size as usize) {
-                //     trace!("Writing chunk");
-                //     file.write(chunk).expect("Failed to write chunk to buffer");
-                //     file.flush().expect("Failed to flush to file");
-                // }
-
-                // match file.write_vectored(&bytes.chunks(pipe_size as usize).map(IoSlice::new).collect::<Vec<_>>()) {
-                //     Ok(_) => debug!("Copied item"),
-                //     Err(err) => error!("{err:?}"),
-                // }
-
-                // match file.write_all(bytes) {
-                //     Ok(_) => debug!("Copied item"),
-                //     Err(err) => error!("{err:?}"),
-                // }
             } else {
                 error!("Failed to find source");
             }
@@ -375,11 +359,14 @@ fn set_pipe_size(fd: RawFd, size: usize) -> io::Result<i32> {
 
     let new_size = if size > curr_size {
         trace!("Requesting pipe size increase to (at least): {size}");
+
         let res = fcntl(fd, F_SETPIPE_SZ(size as i32))?;
         trace!("New pipe size: {res}");
+
         if res < size as i32 {
             return Err(io::Error::last_os_error());
         }
+
         res
     } else {
         size as i32

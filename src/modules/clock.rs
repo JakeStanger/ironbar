@@ -59,8 +59,7 @@ fn default_popup_format() -> String {
 fn default_locale() -> String {
     env::var("LC_TIME")
         .or_else(|_| env::var("LANG"))
-        .map(strip_tail)
-        .unwrap_or_else(|_| "POSIX".to_string())
+        .map_or_else(|_| "POSIX".to_string(), strip_tail)
 }
 
 fn strip_tail(string: String) -> String {

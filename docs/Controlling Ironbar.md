@@ -148,7 +148,7 @@ Responds with `ok` if the popup exists, otherwise `error`.
 ```json
 {
   "type": "toggle_popup",
-  "bar_name": "DP-2-13",
+  "bar_name": "bar-123",
   "name": "clock"
 }
 ```
@@ -163,7 +163,7 @@ Responds with `ok` if the popup exists, otherwise `error`.
 ```json
 {
   "type": "open_popup",
-  "bar_name": "DP-2-13",
+  "bar_name": "bar-123",
   "name": "clock"
 }
 ```
@@ -176,8 +176,8 @@ Responds with `ok` if the popup exists, otherwise `error`.
 
 ```json
 {
-  "type": "toggle_popup",
-  "bar_name": "DP-2-13"
+  "type": "close_popup",
+  "bar_name": "bar-123"
 }
 ```
 
