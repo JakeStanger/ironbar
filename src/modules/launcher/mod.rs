@@ -165,6 +165,7 @@ impl Module<gtk::Box> for LauncherModule {
                             match item {
                                 None => {
                                     let item: Item = handle.try_into()?;
+
                                     items.insert(info.app_id.clone(), item.clone());
 
                                     ItemOrWindow::Item(item)
@@ -358,9 +359,10 @@ impl Module<gtk::Box> for LauncherModule {
                             buttons.insert(item.app_id, button);
                         }
                     }
-                    LauncherUpdate::AddWindow(app_id, _) => {
+                    LauncherUpdate::AddWindow(app_id, win) => {
                         if let Some(button) = buttons.get(&app_id) {
                             button.set_open(true);
+                            button.set_focused(win.open_state.is_focused());
 
                             let mut menu_state = write_lock!(button.menu_state);
                             menu_state.num_windows += 1;
