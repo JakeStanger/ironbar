@@ -1,6 +1,6 @@
 use crate::config::CommonConfig;
 use crate::dynamic_value::dynamic_string;
-use crate::modules::{Module, ModuleInfo, ModuleUpdateEvent, ModuleWidget, WidgetContext};
+use crate::modules::{Module, ModuleInfo, ModuleParts, ModuleUpdateEvent, WidgetContext};
 use crate::try_send;
 use color_eyre::Result;
 use glib::Continue;
@@ -52,7 +52,7 @@ impl Module<Label> for LabelModule {
         self,
         context: WidgetContext<Self::SendMessage, Self::ReceiveMessage>,
         _info: &ModuleInfo,
-    ) -> Result<ModuleWidget<Label>> {
+    ) -> Result<ModuleParts<Label>> {
         let label = Label::new(None);
         label.set_use_markup(true);
 
@@ -64,7 +64,7 @@ impl Module<Label> for LabelModule {
             });
         }
 
-        Ok(ModuleWidget {
+        Ok(ModuleParts {
             widget: label,
             popup: None,
         })

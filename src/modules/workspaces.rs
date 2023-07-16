@@ -1,7 +1,7 @@
 use crate::clients::compositor::{Compositor, WorkspaceUpdate};
 use crate::config::CommonConfig;
 use crate::image::new_icon_button;
-use crate::modules::{Module, ModuleInfo, ModuleUpdateEvent, ModuleWidget, WidgetContext};
+use crate::modules::{Module, ModuleInfo, ModuleParts, ModuleUpdateEvent, WidgetContext};
 use crate::{send_async, try_send};
 use color_eyre::{Report, Result};
 use gtk::prelude::*;
@@ -154,7 +154,7 @@ impl Module<gtk::Box> for WorkspacesModule {
         self,
         context: WidgetContext<Self::SendMessage, Self::ReceiveMessage>,
         info: &ModuleInfo,
-    ) -> Result<ModuleWidget<gtk::Box>> {
+    ) -> Result<ModuleParts<gtk::Box>> {
         let container = gtk::Box::new(info.bar_position.get_orientation(), 0);
 
         let name_map = self.name_map.unwrap_or_default();
@@ -277,7 +277,7 @@ impl Module<gtk::Box> for WorkspacesModule {
             });
         }
 
-        Ok(ModuleWidget {
+        Ok(ModuleParts {
             widget: container,
             popup: None,
         })

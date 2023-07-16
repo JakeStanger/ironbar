@@ -1,6 +1,7 @@
+use std::path::PathBuf;
+
 use clap::Subcommand;
 use serde::{Deserialize, Serialize};
-use std::path::PathBuf;
 
 #[derive(Subcommand, Debug, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
@@ -50,6 +51,29 @@ pub enum Command {
     /// Get the visibility of the bar with the given name.
     GetVisible {
         /// Bar name to target.
+        bar_name: String,
+    },
+
+    /// Toggle a popup open/closed.
+    /// If opening this popup, and a different popup on the same bar is already open, the other is closed.
+    TogglePopup {
+        /// The name of the monitor the bar is located on.
+        bar_name: String,
+        /// The name of the widget.
+        name: String,
+    },
+
+    /// Open a popup, regardless of current state.
+    OpenPopup {
+        /// The name of the monitor the bar is located on.
+        bar_name: String,
+        /// The name of the widget.
+        name: String,
+    },
+
+    /// Close a popup, regardless of current state.
+    ClosePopup {
+        /// The name of the monitor the bar is located on.
         bar_name: String,
     },
 }

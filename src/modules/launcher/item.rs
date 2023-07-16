@@ -1,9 +1,9 @@
 use super::open_state::OpenState;
 use crate::clients::wayland::ToplevelHandle;
+use crate::gtk_helpers::IronbarGtkExt;
 use crate::image::ImageProvider;
 use crate::modules::launcher::{ItemEvent, LauncherUpdate};
 use crate::modules::ModuleUpdateEvent;
-use crate::popup::Popup;
 use crate::{read_lock, try_send};
 use color_eyre::{Report, Result};
 use gtk::prelude::*;
@@ -249,7 +249,7 @@ impl ItemButton {
 
                     try_send!(
                         tx,
-                        ModuleUpdateEvent::OpenPopup(Popup::widget_geometry(button, orientation))
+                        ModuleUpdateEvent::OpenPopupAt(button.geometry(orientation))
                     );
                 } else {
                     try_send!(tx, ModuleUpdateEvent::ClosePopup);

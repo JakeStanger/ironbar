@@ -1,28 +1,32 @@
-mod config;
+use std::path::PathBuf;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
+use std::time::Duration;
 
-use crate::clients::music::{
-    self, MusicClient, PlayerState, PlayerUpdate, ProgressTick, Status, Track,
-};
-use crate::gtk_helpers::add_class;
-use crate::image::{new_icon_button, new_icon_label, ImageProvider};
-use crate::modules::{Module, ModuleInfo, ModuleUpdateEvent, ModuleWidget, WidgetContext};
-use crate::popup::Popup;
-use crate::{send_async, try_send};
 use color_eyre::Result;
 use glib::{Continue, PropertySet};
 use gtk::prelude::*;
 use gtk::{Button, IconTheme, Label, Orientation, Scale};
 use regex::Regex;
-use std::path::PathBuf;
-use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::Arc;
-use std::time::Duration;
 use tokio::spawn;
 use tokio::sync::mpsc::{Receiver, Sender};
 use tracing::error;
 
+use crate::clients::music::{
+    self, MusicClient, PlayerState, PlayerUpdate, ProgressTick, Status, Track,
+};
+use crate::gtk_helpers::IronbarGtkExt;
+use crate::image::{new_icon_button, new_icon_label, ImageProvider};
+use crate::modules::PopupButton;
+use crate::modules::{
+    Module, ModuleInfo, ModuleParts, ModulePopup, ModuleUpdateEvent, WidgetContext,
+};
+use crate::{send_async, try_send};
+
 pub use self::config::MusicModule;
 use self::config::PlayerType;
+
+mod config;
 
 #[derive(Debug)]
 pub enum PlayerCommand {
@@ -178,10 +182,10 @@ impl Module<Button> for MusicModule {
         self,
         context: WidgetContext<Self::SendMessage, Self::ReceiveMessage>,
         info: &ModuleInfo,
-    ) -> Result<ModuleWidget<Button>> {
+    ) -> Result<ModuleParts<Button>> {
         let button = Button::new();
         let button_contents = gtk::Box::new(Orientation::Horizontal, 5);
-        add_class(&button_contents, "contents");
+        button_contents.add_class("contents");
 
         button.add(&button_contents);
 
@@ -199,16 +203,11 @@ impl Module<Button> for MusicModule {
         button_contents.add(&icon_play);
         button_contents.add(&label);
 
-        let orientation = info.bar_position.get_orientation();
-
         {
             let tx = context.tx.clone();
 
             button.connect_clicked(move |button| {
-                try_send!(
-                    tx,
-                    ModuleUpdateEvent::TogglePopup(Popup::widget_geometry(button, orientation,))
-                );
+                try_send!(tx, ModuleUpdateEvent::TogglePopup(button.popup_id()));
             });
         }
 
@@ -252,12 +251,11 @@ impl Module<Button> for MusicModule {
             });
         };
 
-        let popup = self.into_popup(context.controller_tx, context.popup_rx, info);
+        let popup = self
+            .into_popup(context.controller_tx, context.popup_rx, info)
+            .into_popup_parts(vec![&button]);
 
-        Ok(ModuleWidget {
-            widget: button,
-            popup,
-        })
+        Ok(ModuleParts::new(button, popup))
     }
 
     fn into_popup(
@@ -275,7 +273,7 @@ impl Module<Button> for MusicModule {
             .width_request(128)
             .height_request(128)
             .build();
-        add_class(&album_image, "album-art");
+        album_image.add_class("album-art");
 
         let icons = self.icons;
 
@@ -284,28 +282,28 @@ impl Module<Button> for MusicModule {
         let album_label = IconLabel::new(&icons.album, None, icon_theme);
         let artist_label = IconLabel::new(&icons.artist, None, icon_theme);
 
-        add_class(&title_label.container, "title");
-        add_class(&album_label.container, "album");
-        add_class(&artist_label.container, "artist");
+        title_label.container.add_class("title");
+        album_label.container.add_class("album");
+        artist_label.container.add_class("artist");
 
         info_box.add(&title_label.container);
         info_box.add(&album_label.container);
         info_box.add(&artist_label.container);
 
         let controls_box = gtk::Box::new(Orientation::Horizontal, 0);
-        add_class(&controls_box, "controls");
+        controls_box.add_class("controls");
 
         let btn_prev = new_icon_button(&icons.prev, icon_theme, self.icon_size);
-        add_class(&btn_prev, "btn-prev");
+        btn_prev.add_class("btn-prev");
 
         let btn_play = new_icon_button(&icons.play, icon_theme, self.icon_size);
-        add_class(&btn_play, "btn-play");
+        btn_play.add_class("btn-play");
 
         let btn_pause = new_icon_button(&icons.pause, icon_theme, self.icon_size);
-        add_class(&btn_pause, "btn-pause");
+        btn_pause.add_class("btn-pause");
 
         let btn_next = new_icon_button(&icons.next, icon_theme, self.icon_size);
-        add_class(&btn_next, "btn-next");
+        btn_next.add_class("btn-next");
 
         controls_box.add(&btn_prev);
         controls_box.add(&btn_play);
@@ -315,14 +313,14 @@ impl Module<Button> for MusicModule {
         info_box.add(&controls_box);
 
         let volume_box = gtk::Box::new(Orientation::Vertical, 5);
-        add_class(&volume_box, "volume");
+        volume_box.add_class("volume");
 
         let volume_slider = Scale::with_range(Orientation::Vertical, 0.0, 100.0, 5.0);
         volume_slider.set_inverted(true);
-        add_class(&volume_slider, "slider");
+        volume_slider.add_class("slider");
 
         let volume_icon = new_icon_label(&icons.volume, icon_theme, self.icon_size);
-        add_class(&volume_icon, "icon");
+        volume_icon.add_class("icon");
 
         volume_box.pack_start(&volume_slider, true, true, 0);
         volume_box.pack_end(&volume_icon, false, false, 0);
@@ -359,17 +357,17 @@ impl Module<Button> for MusicModule {
         });
 
         let progress_box = gtk::Box::new(Orientation::Horizontal, 5);
-        add_class(&progress_box, "progress");
+        progress_box.add_class("progress");
 
         let progress_label = Label::new(None);
-        add_class(&progress_label, "label");
+        progress_label.add_class("label");
 
         let progress = Scale::builder()
             .orientation(Orientation::Horizontal)
             .draw_value(false)
             .hexpand(true)
             .build();
-        add_class(&progress, "slider");
+        progress.add_class("slider");
 
         progress_box.add(&progress);
         progress_box.add(&progress_label);
@@ -546,8 +544,8 @@ impl IconLabel {
         let icon = new_icon_label(icon_input, icon_theme, 24);
         let label = Label::new(label);
 
-        add_class(&icon, "icon-box");
-        add_class(&label, "label");
+        icon.add_class("icon-box");
+        label.add_class("label");
 
         container.add(&icon);
         container.add(&label);

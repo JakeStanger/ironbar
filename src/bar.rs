@@ -4,11 +4,13 @@ use crate::modules::{
 };
 use crate::popup::Popup;
 use crate::unique_id::get_unique_usize;
-use crate::{arc_rw, Config};
+use crate::{arc_rw, Config, GlobalState};
 use color_eyre::Result;
 use gtk::gdk::Monitor;
 use gtk::prelude::*;
 use gtk::{Application, ApplicationWindow, IconTheme, Orientation};
+use std::cell::RefCell;
+use std::rc::Rc;
 use std::sync::{Arc, RwLock};
 use tracing::{debug, info};
 
@@ -19,6 +21,7 @@ pub fn create_bar(
     monitor: &Monitor,
     monitor_name: &str,
     config: Config,
+    global_state: &Rc<RefCell<GlobalState>>,
 ) -> Result<()> {
     let win = ApplicationWindow::builder().application(app).build();
     let bar_name = config
@@ -62,7 +65,12 @@ pub fn create_bar(
     content.set_center_widget(Some(&center));
     content.pack_end(&end, false, false, 0);
 
-    load_modules(&start, &center, &end, app, config, monitor, monitor_name)?;
+    let load_result = load_modules(&start, &center, &end, app, config, monitor, monitor_name)?;
+    global_state
+        .borrow_mut()
+        .popups_mut()
+        .insert(bar_name.into(), load_result.popup);
+
     win.add(&content);
 
     win.connect_destroy_event(|_, _| {
@@ -143,6 +151,11 @@ fn create_container(name: &str, orientation: Orientation) -> gtk::Box {
     container
 }
 
+#[derive(Debug)]
+struct BarLoadResult {
+    popup: Arc<RwLock<Popup>>,
+}
+
 /// Loads the configured modules onto a bar.
 fn load_modules(
     left: &gtk::Box,
@@ -152,7 +165,7 @@ fn load_modules(
     config: Config,
     monitor: &Monitor,
     output_name: &str,
-) -> Result<()> {
+) -> Result<BarLoadResult> {
     let icon_theme = IconTheme::new();
     if let Some(ref theme) = config.icon_theme {
         icon_theme.set_custom_theme(Some(theme));
@@ -190,7 +203,9 @@ fn load_modules(
         add_modules(right, modules, &info, &popup)?;
     }
 
-    Ok(())
+    let result = BarLoadResult { popup };
+
+    Ok(result)
 }
 
 /// Adds modules into a provided GTK box,
@@ -205,8 +220,14 @@ fn add_modules(
 
     macro_rules! add_module {
         ($module:expr, $id:expr) => {{
-            let common = $module.common.take().expect("Common config did not exist");
-            let widget_parts = create_module(*$module, $id, &info, &Arc::clone(&popup))?;
+            let common = $module.common.take().expect("common config to exist");
+            let widget_parts = create_module(
+                *$module,
+                $id,
+                common.name.clone(),
+                &info,
+                &Arc::clone(&popup),
+            )?;
             set_widget_identifiers(&widget_parts, &common);
 
             let container = wrap_widget(&widget_parts.widget, common, orientation);

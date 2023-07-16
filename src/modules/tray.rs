@@ -1,6 +1,6 @@
 use crate::clients::system_tray::get_tray_event_client;
 use crate::config::CommonConfig;
-use crate::modules::{Module, ModuleInfo, ModuleUpdateEvent, ModuleWidget, WidgetContext};
+use crate::modules::{Module, ModuleInfo, ModuleParts, ModuleUpdateEvent, WidgetContext};
 use crate::{await_sync, try_send};
 use color_eyre::Result;
 use gtk::gdk_pixbuf::{Colorspace, InterpType};
@@ -172,7 +172,7 @@ impl Module<MenuBar> for TrayModule {
         self,
         context: WidgetContext<Self::SendMessage, Self::ReceiveMessage>,
         _info: &ModuleInfo,
-    ) -> Result<ModuleWidget<MenuBar>> {
+    ) -> Result<ModuleParts<MenuBar>> {
         let container = MenuBar::new();
 
         {
@@ -238,7 +238,7 @@ impl Module<MenuBar> for TrayModule {
             });
         };
 
-        Ok(ModuleWidget {
+        Ok(ModuleParts {
             widget: container,
             popup: None,
         })

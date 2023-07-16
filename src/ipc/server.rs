@@ -1,19 +1,26 @@
-use super::Ipc;
-use crate::bridge_channel::BridgeChannel;
-use crate::ipc::{Command, Response};
-use crate::ironvar::get_variable_manager;
-use crate::style::load_css;
-use crate::{read_lock, send_async, try_send, write_lock};
+use std::cell::RefCell;
+use std::fs;
+use std::path::Path;
+use std::rc::Rc;
+
 use color_eyre::{Report, Result};
 use glib::Continue;
 use gtk::prelude::*;
 use gtk::Application;
-use std::fs;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::{UnixListener, UnixStream};
 use tokio::spawn;
 use tokio::sync::mpsc::{self, Receiver, Sender};
 use tracing::{debug, error, info, warn};
+
+use crate::bridge_channel::BridgeChannel;
+use crate::ipc::{Command, Response};
+use crate::ironvar::get_variable_manager;
+use crate::modules::PopupButton;
+use crate::style::load_css;
+use crate::{read_lock, send_async, try_send, write_lock, GlobalState};
+
+use super::Ipc;
 
 impl Ipc {
     /// Starts the IPC server on its socket.
@@ -29,7 +36,7 @@ impl Ipc {
         if path.exists() {
             warn!("Socket already exists. Did Ironbar exit abruptly?");
             warn!("Attempting IPC shutdown to allow binding to address");
-            self.shutdown();
+            Self::shutdown(&path);
         }
 
         spawn(async move {
@@ -63,8 +70,9 @@ impl Ipc {
         });
 
         let application = application.clone();
+        let global_state = self.global_state.clone();
         bridge.recv(move |command| {
-            let res = Self::handle_command(command, &application);
+            let res = Self::handle_command(command, &application, &global_state);
             try_send!(res_tx, res);
             Continue(true)
         });
@@ -104,7 +112,11 @@ impl Ipc {
     /// Takes an input command, runs it and returns with the appropriate response.
     ///
     /// This runs on the main thread, allowing commands to interact with GTK.
-    fn handle_command(command: Command, application: &Application) -> Response {
+    fn handle_command(
+        command: Command,
+        application: &Application,
+        global_state: &Rc<RefCell<GlobalState>>,
+    ) -> Response {
         match command {
             Command::Inspect => {
                 gtk::Window::set_interactive_debugging(true);
@@ -117,7 +129,7 @@ impl Ipc {
                     window.close();
                 }
 
-                crate::load_interface(application);
+                crate::load_interface(application, global_state);
 
                 Response::Ok
             }
@@ -143,6 +155,71 @@ impl Ipc {
                     Response::Ok
                 } else {
                     Response::error("File not found")
+                }
+            }
+            Command::TogglePopup { bar_name, name } => {
+                let global_state = global_state.borrow();
+                let response = global_state.with_popup_mut(&bar_name, |mut popup| {
+                    let current_widget = popup.current_widget();
+                    popup.hide();
+
+                    let data = popup
+                        .cache
+                        .iter()
+                        .find(|(_, (module_name, _))| module_name == &name)
+                        .map(|module| (module, module.1 .1.buttons.first()));
+
+                    match data {
+                        Some(((&id, _), Some(button))) if current_widget != Some(id) => {
+                            let button_id = button.popup_id();
+                            popup.show(id, button_id);
+
+                            Response::Ok
+                        }
+                        Some((_, None)) => Response::error("Module has no popup functionality"),
+                        Some(_) => Response::Ok,
+                        None => Response::error("Invalid module name"),
+                    }
+                });
+
+                response.unwrap_or_else(|| Response::error("Invalid monitor name"))
+            }
+            Command::OpenPopup { bar_name, name } => {
+                let global_state = global_state.borrow();
+                let response = global_state.with_popup_mut(&bar_name, |mut popup| {
+                    // only one popup per bar, so hide if open for another widget
+                    popup.hide();
+
+                    let data = popup
+                        .cache
+                        .iter()
+                        .find(|(_, (module_name, _))| module_name == &name)
+                        .map(|module| (module, module.1 .1.buttons.first()));
+
+                    match data {
+                        Some(((&id, _), Some(button))) => {
+                            let button_id = button.popup_id();
+                            popup.show(id, button_id);
+
+                            Response::Ok
+                        }
+                        Some((_, None)) => Response::error("Module has no popup functionality"),
+                        None => Response::error("Invalid module name"),
+                    }
+                });
+
+                response.unwrap_or_else(|| Response::error("Invalid monitor name"))
+            }
+            Command::ClosePopup { bar_name } => {
+                let global_state = global_state.borrow();
+                let popup_found = global_state
+                    .with_popup_mut(&bar_name, |mut popup| popup.hide())
+                    .is_some();
+
+                if popup_found {
+                    Response::Ok
+                } else {
+                    Response::error("Invalid monitor name")
                 }
             }
             Command::Ping => Response::Ok,
@@ -178,7 +255,9 @@ impl Ipc {
 
     /// Shuts down the IPC server,
     /// removing the socket file in the process.
-    pub fn shutdown(&self) {
-        fs::remove_file(&self.path).ok();
+    ///
+    /// Note this is static as the `Ipc` struct is not `Send`.
+    pub fn shutdown<P: AsRef<Path>>(path: P) {
+        fs::remove_file(&path).ok();
     }
 }

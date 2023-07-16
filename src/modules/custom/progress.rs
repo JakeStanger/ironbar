@@ -1,13 +1,15 @@
-use super::{try_get_orientation, CustomWidget, CustomWidgetContext};
-use crate::dynamic_value::dynamic_string;
-use crate::modules::custom::set_length;
-use crate::script::{OutputStream, Script, ScriptInput};
-use crate::{build, send};
 use gtk::prelude::*;
 use gtk::ProgressBar;
 use serde::Deserialize;
 use tokio::spawn;
 use tracing::error;
+
+use crate::dynamic_value::dynamic_string;
+use crate::modules::custom::set_length;
+use crate::script::{OutputStream, Script, ScriptInput};
+use crate::{build, send};
+
+use super::{try_get_orientation, CustomWidget, CustomWidgetContext};
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct ProgressWidget {

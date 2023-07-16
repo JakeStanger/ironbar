@@ -1,10 +1,3 @@
-use crate::clients::upower::get_display_proxy;
-use crate::config::CommonConfig;
-use crate::gtk_helpers::add_class;
-use crate::image::ImageProvider;
-use crate::modules::{Module, ModuleInfo, ModuleUpdateEvent, ModuleWidget, WidgetContext};
-use crate::popup::Popup;
-use crate::{await_sync, error, send_async, try_send};
 use color_eyre::Result;
 use futures_lite::stream::StreamExt;
 use gtk::{prelude::*, Button};
@@ -14,6 +7,16 @@ use tokio::spawn;
 use tokio::sync::mpsc::{Receiver, Sender};
 use upower_dbus::BatteryState;
 use zbus;
+
+use crate::clients::upower::get_display_proxy;
+use crate::config::CommonConfig;
+use crate::gtk_helpers::IronbarGtkExt;
+use crate::image::ImageProvider;
+use crate::modules::PopupButton;
+use crate::modules::{
+    Module, ModuleInfo, ModuleParts, ModulePopup, ModuleUpdateEvent, WidgetContext,
+};
+use crate::{await_sync, error, send_async, try_send};
 
 const DAY: i64 = 24 * 60 * 60;
 const HOUR: i64 = 60 * 60;
@@ -150,32 +153,31 @@ impl Module<gtk::Button> for UpowerModule {
         self,
         context: WidgetContext<Self::SendMessage, Self::ReceiveMessage>,
         info: &ModuleInfo,
-    ) -> Result<ModuleWidget<Button>> {
+    ) -> Result<ModuleParts<Button>> {
         let icon_theme = info.icon_theme.clone();
         let icon = gtk::Image::new();
-        add_class(&icon, "icon");
+        icon.add_class("icon");
 
         let label = Label::builder()
             .label(&self.format)
             .use_markup(true)
             .build();
-        add_class(&label, "label");
+        label.add_class("label");
 
         let container = gtk::Box::new(Orientation::Horizontal, 5);
-        add_class(&container, "contents");
+        container.add_class("contents");
 
         let button = Button::new();
-        add_class(&button, "button");
+        button.add_class("button");
 
         container.add(&icon);
         container.add(&label);
         button.add(&container);
 
-        let orientation = info.bar_position.get_orientation();
         button.connect_clicked(move |button| {
             try_send!(
                 context.tx,
-                ModuleUpdateEvent::TogglePopup(Popup::widget_geometry(button, orientation))
+                ModuleUpdateEvent::TogglePopup(button.popup_id())
             );
         });
 
@@ -193,12 +195,11 @@ impl Module<gtk::Button> for UpowerModule {
                 Continue(true)
             });
 
-        let popup = self.into_popup(context.controller_tx, context.popup_rx, info);
+        let popup = self
+            .into_popup(context.controller_tx, context.popup_rx, info)
+            .into_popup_parts(vec![&button]);
 
-        Ok(ModuleWidget {
-            widget: button,
-            popup,
-        })
+        Ok(ModuleParts::new(button, popup))
     }
 
     fn into_popup(
@@ -215,7 +216,7 @@ impl Module<gtk::Button> for UpowerModule {
             .build();
 
         let label = Label::new(None);
-        add_class(&label, "upower-details");
+        label.add_class("upower-details");
         container.add(&label);
 
         rx.attach(None, move |properties| {

@@ -27,7 +27,7 @@ impl CustomWidget for BoxWidget {
 
         if let Some(widgets) = self.widgets {
             for widget in widgets {
-                widget.widget.add_to(&container, context, widget.common);
+                widget.widget.add_to(&container, &context, widget.common);
             }
         }
 

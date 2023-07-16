@@ -1,18 +1,21 @@
-use crate::config::CommonConfig;
-use crate::gtk_helpers::add_class;
-use crate::modules::{Module, ModuleInfo, ModuleUpdateEvent, ModuleWidget, WidgetContext};
-use crate::popup::Popup;
-use crate::{send_async, try_send};
+use std::env;
+
 use chrono::{DateTime, Local, Locale};
 use color_eyre::Result;
 use glib::Continue;
 use gtk::prelude::*;
 use gtk::{Align, Button, Calendar, Label, Orientation};
 use serde::Deserialize;
-use std::env;
 use tokio::spawn;
 use tokio::sync::mpsc;
 use tokio::time::sleep;
+
+use crate::config::CommonConfig;
+use crate::gtk_helpers::IronbarGtkExt;
+use crate::modules::{
+    Module, ModuleInfo, ModuleParts, ModulePopup, ModuleUpdateEvent, PopupButton, WidgetContext,
+};
+use crate::{send_async, try_send};
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct ClockModule {
@@ -96,17 +99,16 @@ impl Module<Button> for ClockModule {
         self,
         context: WidgetContext<Self::SendMessage, Self::ReceiveMessage>,
         info: &ModuleInfo,
-    ) -> Result<ModuleWidget<Button>> {
+    ) -> Result<ModuleParts<Button>> {
         let button = Button::new();
         let label = Label::new(None);
         label.set_angle(info.bar_position.get_angle());
         button.add(&label);
 
-        let orientation = info.bar_position.get_orientation();
         button.connect_clicked(move |button| {
             try_send!(
                 context.tx,
-                ModuleUpdateEvent::TogglePopup(Popup::widget_geometry(button, orientation))
+                ModuleUpdateEvent::TogglePopup(button.popup_id())
             );
         });
 
@@ -119,12 +121,11 @@ impl Module<Button> for ClockModule {
             Continue(true)
         });
 
-        let popup = self.into_popup(context.controller_tx, context.popup_rx, info);
+        let popup = self
+            .into_popup(context.controller_tx, context.popup_rx, info)
+            .into_popup_parts(vec![&button]);
 
-        Ok(ModuleWidget {
-            widget: button,
-            popup,
-        })
+        Ok(ModuleParts::new(button, popup))
     }
 
     fn into_popup(
@@ -136,12 +137,12 @@ impl Module<Button> for ClockModule {
         let container = gtk::Box::new(Orientation::Vertical, 0);
 
         let clock = Label::builder().halign(Align::Center).build();
-        add_class(&clock, "calendar-clock");
+        clock.add_class("calendar-clock");
 
         container.add(&clock);
 
         let calendar = Calendar::new();
-        add_class(&calendar, "calendar");
+        calendar.add_class("calendar");
         container.add(&calendar);
 
         let format = self.format_popup;

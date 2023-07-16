@@ -1,3 +1,19 @@
+use std::sync::{Arc, RwLock};
+
+use color_eyre::Result;
+use glib::IsA;
+use gtk::gdk::{EventMask, Monitor};
+use gtk::prelude::*;
+use gtk::{Application, Button, EventBox, IconTheme, Orientation, Revealer, Widget};
+use tokio::sync::mpsc;
+use tracing::debug;
+
+use crate::bridge_channel::BridgeChannel;
+use crate::config::{BarPosition, CommonConfig, TransitionType};
+use crate::gtk_helpers::{IronbarGtkExt, WidgetGeometry};
+use crate::popup::Popup;
+use crate::{send, write_lock};
+
 #[cfg(feature = "clipboard")]
 pub mod clipboard;
 /// Displays the current date and time.
@@ -24,19 +40,6 @@ pub mod upower;
 #[cfg(feature = "workspaces")]
 pub mod workspaces;
 
-use crate::bridge_channel::BridgeChannel;
-use crate::config::{BarPosition, CommonConfig, TransitionType};
-use crate::popup::{Popup, WidgetGeometry};
-use crate::{read_lock, send, write_lock};
-use color_eyre::Result;
-use glib::IsA;
-use gtk::gdk::{EventMask, Monitor};
-use gtk::prelude::*;
-use gtk::{Application, EventBox, IconTheme, Orientation, Revealer, Widget};
-use std::sync::{Arc, RwLock};
-use tokio::sync::mpsc;
-use tracing::debug;
-
 #[derive(Clone)]
 pub enum ModuleLocation {
     Left,
@@ -54,13 +57,15 @@ pub struct ModuleInfo<'a> {
 
 #[derive(Debug)]
 pub enum ModuleUpdateEvent<T> {
-    /// Sends an update to the module UI
+    /// Sends an update to the module UI.
     Update(T),
     /// Toggles the open state of the popup.
-    TogglePopup(WidgetGeometry),
+    /// Takes the button ID.
+    TogglePopup(usize),
     /// Force sets the popup open.
-    /// Takes the button X position and width.
-    OpenPopup(WidgetGeometry),
+    /// Takes the button ID.
+    OpenPopup(usize),
+    OpenPopupAt(WidgetGeometry),
     /// Force sets the popup closed.
     ClosePopup,
 }
@@ -73,9 +78,55 @@ pub struct WidgetContext<TSend, TReceive> {
     pub popup_rx: glib::Receiver<TSend>,
 }
 
-pub struct ModuleWidget<W: IsA<Widget>> {
+pub struct ModuleParts<W: IsA<Widget>> {
     pub widget: W,
-    pub popup: Option<gtk::Box>,
+    pub popup: Option<ModulePopupParts>,
+}
+
+impl<W: IsA<Widget>> ModuleParts<W> {
+    fn new(widget: W, popup: Option<ModulePopupParts>) -> Self {
+        Self { widget, popup }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct ModulePopupParts {
+    /// The popup container, with all its contents
+    pub container: gtk::Box,
+    /// An array of buttons which can be used for opening the popup.
+    /// For most modules, this will only be a single button.
+    /// For some advanced modules, such as `Launcher`, this is all item buttons.
+    pub buttons: Vec<Button>,
+}
+
+pub trait ModulePopup {
+    fn into_popup_parts(self, buttons: Vec<&Button>) -> Option<ModulePopupParts>;
+    fn into_popup_parts_owned(self, buttons: Vec<Button>) -> Option<ModulePopupParts>;
+}
+
+impl ModulePopup for Option<gtk::Box> {
+    fn into_popup_parts(self, buttons: Vec<&Button>) -> Option<ModulePopupParts> {
+        self.into_popup_parts_owned(buttons.into_iter().cloned().collect())
+    }
+
+    fn into_popup_parts_owned(self, buttons: Vec<Button>) -> Option<ModulePopupParts> {
+        self.map(|container| ModulePopupParts { container, buttons })
+    }
+}
+
+pub trait PopupButton {
+    fn popup_id(&self) -> usize;
+}
+
+impl PopupButton for Button {
+    /// Gets the popup ID associated with this button.
+    /// This should only be called on buttons which are known to be associated with popups.
+    ///
+    /// # Panics
+    /// Will panic if an ID has not been set.
+    fn popup_id(&self) -> usize {
+        *self.get_tag("popup-id").expect("data to exist")
+    }
 }
 
 pub trait Module<W>
@@ -98,7 +149,7 @@ where
         self,
         context: WidgetContext<Self::SendMessage, Self::ReceiveMessage>,
         info: &ModuleInfo,
-    ) -> Result<ModuleWidget<W>>;
+    ) -> Result<ModuleParts<W>>;
 
     fn into_popup(
         self,
@@ -118,9 +169,10 @@ where
 pub fn create_module<TModule, TWidget, TSend, TRec>(
     module: TModule,
     id: usize,
+    name: Option<String>,
     info: &ModuleInfo,
     popup: &Arc<RwLock<Popup>>,
-) -> Result<ModuleWidget<TWidget>>
+) -> Result<ModuleParts<TWidget>>
 where
     TModule: Module<TWidget, SendMessage = TSend, ReceiveMessage = TRec>,
     TWidget: IsA<Widget>,
@@ -142,29 +194,45 @@ where
         controller_tx: ui_tx,
     };
 
-    let name = TModule::name();
+    let module_name = TModule::name();
+    let instance_name = name.unwrap_or_else(|| module_name.to_string());
 
     let module_parts = module.into_widget(context, info)?;
-    module_parts.widget.style_context().add_class(name);
+    module_parts.widget.style_context().add_class(module_name);
 
-    let mut has_popup = false;
-    if let Some(popup_content) = module_parts.popup.clone() {
+    let has_popup = if let Some(popup_content) = module_parts.popup.clone() {
         popup_content
+            .container
             .style_context()
-            .add_class(&format!("popup-{name}"));
+            .add_class(&format!("popup-{module_name}"));
 
-        register_popup_content(popup, id, popup_content);
-        has_popup = true;
-    }
+        register_popup_content(popup, id, instance_name, popup_content);
+        true
+    } else {
+        false
+    };
 
-    setup_receiver(channel, w_tx, p_tx, popup.clone(), name, id, has_popup);
+    setup_receiver(
+        channel,
+        w_tx,
+        p_tx,
+        popup.clone(),
+        module_name,
+        id,
+        has_popup,
+    );
 
     Ok(module_parts)
 }
 
 /// Registers the popup content with the popup.
-fn register_popup_content(popup: &Arc<RwLock<Popup>>, id: usize, popup_content: gtk::Box) {
-    write_lock!(popup).register_content(id, popup_content);
+fn register_popup_content(
+    popup: &Arc<RwLock<Popup>>,
+    id: usize,
+    name: String,
+    popup_content: ModulePopupParts,
+) {
+    write_lock!(popup).register_content(id, name, popup_content);
 }
 
 /// Sets up the bridge channel receiver
@@ -196,40 +264,51 @@ fn setup_receiver<TSend>(
 
                 send!(w_tx, update);
             }
-            ModuleUpdateEvent::TogglePopup(geometry) => {
+            ModuleUpdateEvent::TogglePopup(button_id) => {
                 debug!("Toggling popup for {} [#{}]", name, id);
-                let popup = read_lock!(popup);
+                let mut popup = write_lock!(popup);
                 if popup.is_visible() {
                     popup.hide();
                 } else {
-                    popup.show_content(id);
-                    popup.show(geometry);
+                    popup.show(id, button_id);
 
+                    // force re-render on initial open to try and fix size issue
                     if !has_popup_opened {
-                        popup.show_content(id);
-                        popup.show(geometry);
+                        popup.show(id, button_id);
                         has_popup_opened = true;
                     }
                 }
             }
-            ModuleUpdateEvent::OpenPopup(geometry) => {
+            ModuleUpdateEvent::OpenPopup(button_id) => {
                 debug!("Opening popup for {} [#{}]", name, id);
 
-                let popup = read_lock!(popup);
+                let mut popup = write_lock!(popup);
                 popup.hide();
-                popup.show_content(id);
-                popup.show(geometry);
+                popup.show(id, button_id);
 
+                // force re-render on initial open to try and fix size issue
                 if !has_popup_opened {
-                    popup.show_content(id);
-                    popup.show(geometry);
+                    popup.show(id, button_id);
+                    has_popup_opened = true;
+                }
+            }
+            ModuleUpdateEvent::OpenPopupAt(geometry) => {
+                debug!("Opening popup for {} [#{}]", name, id);
+
+                let mut popup = write_lock!(popup);
+                popup.hide();
+                popup.show_at(id, geometry);
+
+                // force re-render on initial open to try and fix size issue
+                if !has_popup_opened {
+                    popup.show_at(id, geometry);
                     has_popup_opened = true;
                 }
             }
             ModuleUpdateEvent::ClosePopup => {
                 debug!("Closing popup for {} [#{}]", name, id);
 
-                let popup = read_lock!(popup);
+                let mut popup = write_lock!(popup);
                 popup.hide();
             }
         }
@@ -239,14 +318,14 @@ fn setup_receiver<TSend>(
 }
 
 pub fn set_widget_identifiers<TWidget: IsA<Widget>>(
-    widget_parts: &ModuleWidget<TWidget>,
+    widget_parts: &ModuleParts<TWidget>,
     common: &CommonConfig,
 ) {
     if let Some(ref name) = common.name {
         widget_parts.widget.set_widget_name(name);
 
         if let Some(ref popup) = widget_parts.popup {
-            popup.set_widget_name(&format!("popup-{name}"));
+            popup.container.set_widget_name(&format!("popup-{name}"));
         }
     }
 
@@ -258,7 +337,10 @@ pub fn set_widget_identifiers<TWidget: IsA<Widget>>(
 
         if let Some(ref popup) = widget_parts.popup {
             for part in class.split(' ') {
-                popup.style_context().add_class(&format!("popup-{part}"));
+                popup
+                    .container
+                    .style_context()
+                    .add_class(&format!("popup-{part}"));
             }
         }
     }
