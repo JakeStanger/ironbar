@@ -21,6 +21,13 @@ pub fn create_bar(
     config: Config,
 ) -> Result<()> {
     let win = ApplicationWindow::builder().application(app).build();
+    let bar_name = config
+        .name
+        .clone()
+        .unwrap_or_else(|| format!("bar-{}", get_unique_usize()));
+
+    win.set_widget_name(&bar_name);
+    info!("Creating bar {}", bar_name);
 
     setup_layer_shell(
         &win,

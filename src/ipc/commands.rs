@@ -37,4 +37,18 @@ pub enum Command {
         /// The path to the sheet.
         path: PathBuf,
     },
+
+    /// Set the visibility of the bar with the given name.
+    SetVisible {
+        ///Bar name to target.
+        bar_name: String,
+        /// The visibility status.
+        visible: bool,
+    },
+
+    /// Get the visibility of the bar with the given name.
+    GetVisible {
+        /// Bar name to target.
+        bar_name: String,
+    },
 }

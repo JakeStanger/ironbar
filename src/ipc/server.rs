@@ -146,6 +146,33 @@ impl Ipc {
                 }
             }
             Command::Ping => Response::Ok,
+            Command::SetVisible { bar_name, visible } => {
+                let windows = application.windows();
+                let found = windows
+                    .iter()
+                    .find(|window| window.widget_name() == bar_name);
+
+                if let Some(window) = found {
+                    window.set_visible(visible);
+                    Response::Ok
+                } else {
+                    Response::error("Bar not found")
+                }
+            }
+            Command::GetVisible { bar_name } => {
+                let windows = application.windows();
+                let found = windows
+                    .iter()
+                    .find(|window| window.widget_name() == bar_name);
+
+                if let Some(window) = found {
+                    Response::OkValue {
+                        value: window.is_visible().to_string(),
+                    }
+                } else {
+                    Response::error("Bar not found")
+                }
+            }
         }
     }
 

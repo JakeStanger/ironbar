@@ -111,6 +111,33 @@ Responds with `ok` if the stylesheet exists, otherwise `error`.
 }
 ```
 
+### `set_visible`
+
+Sets a bar's visibility.
+
+Responds with `ok` if the bar exists, otherwise `error`.
+
+```json
+{
+  "type": "set_visible",
+  "bar_name": "bar-123",
+  "visible": true
+}
+```
+
+### `get_visible`
+
+Gets a bar's visibility.
+
+Responds with `ok_value` and the visibility (`true`/`false`) if the bar exists, otherwise `error`.
+
+```json
+{
+  "type": "get_visible",
+  "bar_name": "bar-123"
+}
+```
+
 ## Responses
 
 ### `ok`
