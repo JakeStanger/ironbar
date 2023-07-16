@@ -13,15 +13,16 @@ use crate::config::CommonConfig;
 use crate::modules::custom::button::ButtonWidget;
 use crate::modules::custom::progress::ProgressWidget;
 use crate::modules::{
-    wrap_widget, Module, ModuleInfo, ModuleUpdateEvent, ModuleWidget, WidgetContext,
+    wrap_widget, Module, ModuleInfo, ModuleParts, ModulePopup, ModuleUpdateEvent, WidgetContext,
 };
-use crate::popup::WidgetGeometry;
 use crate::script::Script;
 use crate::send_async;
 use color_eyre::{Report, Result};
 use gtk::prelude::*;
-use gtk::{IconTheme, Orientation};
+use gtk::{Button, IconTheme, Orientation};
 use serde::Deserialize;
+use std::cell::RefCell;
+use std::rc::Rc;
 use tokio::spawn;
 use tokio::sync::mpsc::{Receiver, Sender};
 use tracing::{debug, error};
@@ -56,11 +57,12 @@ pub enum Widget {
     Progress(ProgressWidget),
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone)]
 struct CustomWidgetContext<'a> {
     tx: &'a Sender<ExecEvent>,
     bar_orientation: Orientation,
     icon_theme: &'a IconTheme,
+    popup_buttons: Rc<RefCell<Vec<Button>>>,
 }
 
 trait CustomWidget {
@@ -115,11 +117,11 @@ fn try_get_orientation(orientation: &str) -> Result<Orientation> {
 
 impl Widget {
     /// Creates this widget and adds it to the parent container
-    fn add_to(self, parent: &gtk::Box, context: CustomWidgetContext, common: CommonConfig) {
+    fn add_to(self, parent: &gtk::Box, context: &CustomWidgetContext, common: CommonConfig) {
         macro_rules! create {
             ($widget:expr) => {
                 wrap_widget(
-                    &$widget.into_widget(context),
+                    &$widget.into_widget(context.clone()),
                     common,
                     context.bar_orientation,
                 )
@@ -143,7 +145,7 @@ impl Widget {
 pub struct ExecEvent {
     cmd: String,
     args: Option<Vec<String>>,
-    geometry: WidgetGeometry,
+    id: usize,
 }
 
 impl Module<gtk::Box> for CustomModule {
@@ -173,9 +175,9 @@ impl Module<gtk::Box> for CustomModule {
                         error!("{err:?}");
                     }
                 } else if event.cmd == "popup:toggle" {
-                    send_async!(tx, ModuleUpdateEvent::TogglePopup(event.geometry));
+                    send_async!(tx, ModuleUpdateEvent::TogglePopup(event.id));
                 } else if event.cmd == "popup:open" {
-                    send_async!(tx, ModuleUpdateEvent::OpenPopup(event.geometry));
+                    send_async!(tx, ModuleUpdateEvent::OpenPopup(event.id));
                 } else if event.cmd == "popup:close" {
                     send_async!(tx, ModuleUpdateEvent::ClosePopup);
                 } else {
@@ -191,25 +193,30 @@ impl Module<gtk::Box> for CustomModule {
         self,
         context: WidgetContext<Self::SendMessage, Self::ReceiveMessage>,
         info: &ModuleInfo,
-    ) -> Result<ModuleWidget<gtk::Box>> {
+    ) -> Result<ModuleParts<gtk::Box>> {
         let orientation = info.bar_position.get_orientation();
         let container = gtk::Box::builder().orientation(orientation).build();
+
+        let popup_buttons = Rc::new(RefCell::new(Vec::new()));
 
         let custom_context = CustomWidgetContext {
             tx: &context.controller_tx,
             bar_orientation: orientation,
             icon_theme: info.icon_theme,
+            popup_buttons: popup_buttons.clone(),
         };
 
         self.bar.clone().into_iter().for_each(|widget| {
             widget
                 .widget
-                .add_to(&container, custom_context, widget.common);
+                .add_to(&container, &custom_context, widget.common);
         });
 
-        let popup = self.into_popup(context.controller_tx, context.popup_rx, info);
+        let popup = self
+            .into_popup(context.controller_tx, context.popup_rx, info)
+            .into_popup_parts_owned(popup_buttons.take());
 
-        Ok(ModuleWidget {
+        Ok(ModuleParts {
             widget: container,
             popup,
         })
@@ -231,12 +238,13 @@ impl Module<gtk::Box> for CustomModule {
                 tx: &tx,
                 bar_orientation: info.bar_position.get_orientation(),
                 icon_theme: info.icon_theme,
+                popup_buttons: Rc::new(RefCell::new(vec![])),
             };
 
             for widget in popup {
                 widget
                     .widget
-                    .add_to(&container, custom_context, widget.common);
+                    .add_to(&container, &custom_context, widget.common);
             }
         }
 

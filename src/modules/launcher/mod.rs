@@ -7,7 +7,9 @@ use crate::clients::wayland::{self, ToplevelEvent};
 use crate::config::CommonConfig;
 use crate::desktop_file::find_desktop_file;
 use crate::modules::launcher::item::AppearanceOptions;
-use crate::modules::{Module, ModuleInfo, ModuleUpdateEvent, ModuleWidget, WidgetContext};
+use crate::modules::{
+    Module, ModuleInfo, ModuleParts, ModulePopup, ModuleUpdateEvent, WidgetContext,
+};
 use crate::{arc_mut, lock, send_async, try_send, write_lock};
 use color_eyre::{Help, Report};
 use glib::Continue;
@@ -313,7 +315,7 @@ impl Module<gtk::Box> for LauncherModule {
         self,
         context: WidgetContext<Self::SendMessage, Self::ReceiveMessage>,
         info: &ModuleInfo,
-    ) -> crate::Result<ModuleWidget<gtk::Box>> {
+    ) -> crate::Result<ModuleParts<gtk::Box>> {
         let icon_theme = info.icon_theme;
 
         let container = gtk::Box::new(info.bar_position.get_orientation(), 0);
@@ -408,8 +410,11 @@ impl Module<gtk::Box> for LauncherModule {
             });
         }
 
-        let popup = self.into_popup(context.controller_tx, context.popup_rx, info);
-        Ok(ModuleWidget {
+        let popup = self
+            .into_popup(context.controller_tx, context.popup_rx, info)
+            .into_popup_parts(vec![]); // since item buttons are dynamic, they pass their geometry directly
+
+        Ok(ModuleParts {
             widget: container,
             popup,
         })

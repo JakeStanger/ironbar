@@ -2,8 +2,9 @@ use crate::clients::clipboard::{self, ClipboardEvent};
 use crate::clients::wayland::{ClipboardItem, ClipboardValue};
 use crate::config::{CommonConfig, TruncateMode};
 use crate::image::new_icon_button;
-use crate::modules::{Module, ModuleInfo, ModuleUpdateEvent, ModuleWidget, WidgetContext};
-use crate::popup::Popup;
+use crate::modules::{
+    Module, ModuleInfo, ModuleParts, ModulePopup, ModuleUpdateEvent, PopupButton, WidgetContext,
+};
 use crate::try_send;
 use gtk::gdk_pixbuf::Pixbuf;
 use gtk::gio::{Cancellable, MemoryInputStream};
@@ -124,25 +125,26 @@ impl Module<Button> for ClipboardModule {
         self,
         context: WidgetContext<Self::SendMessage, Self::ReceiveMessage>,
         info: &ModuleInfo,
-    ) -> color_eyre::Result<ModuleWidget<Button>> {
-        let position = info.bar_position;
-
+    ) -> color_eyre::Result<ModuleParts<Button>> {
         let button = new_icon_button(&self.icon, info.icon_theme, self.icon_size);
         button.style_context().add_class("btn");
 
         button.connect_clicked(move |button| {
-            let pos = Popup::widget_geometry(button, position.get_orientation());
-            try_send!(context.tx, ModuleUpdateEvent::TogglePopup(pos));
+            try_send!(
+                context.tx,
+                ModuleUpdateEvent::TogglePopup(button.popup_id())
+            );
         });
 
         // we need to bind to the receiver as the channel does not open
         // until the popup is first opened.
         context.widget_rx.attach(None, |_| Continue(true));
 
-        Ok(ModuleWidget {
-            widget: button,
-            popup: self.into_popup(context.controller_tx, context.popup_rx, info),
-        })
+        let popup = self
+            .into_popup(context.controller_tx, context.popup_rx, info)
+            .into_popup_parts(vec![&button]);
+
+        Ok(ModuleParts::new(button, popup))
     }
 
     fn into_popup(

@@ -1,5 +1,5 @@
 use crate::config::CommonConfig;
-use crate::modules::{Module, ModuleInfo, ModuleUpdateEvent, ModuleWidget, WidgetContext};
+use crate::modules::{Module, ModuleInfo, ModuleParts, ModuleUpdateEvent, WidgetContext};
 use crate::script::{OutputStream, Script, ScriptMode};
 use crate::try_send;
 use color_eyre::{Help, Report, Result};
@@ -83,7 +83,7 @@ impl Module<Label> for ScriptModule {
         self,
         context: WidgetContext<Self::SendMessage, Self::ReceiveMessage>,
         info: &ModuleInfo,
-    ) -> Result<ModuleWidget<Label>> {
+    ) -> Result<ModuleParts<Label>> {
         let label = Label::builder().use_markup(true).build();
         label.set_angle(info.bar_position.get_angle());
 
@@ -95,7 +95,7 @@ impl Module<Label> for ScriptModule {
             });
         }
 
-        Ok(ModuleWidget {
+        Ok(ModuleParts {
             widget: label,
             popup: None,
         })

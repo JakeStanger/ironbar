@@ -138,6 +138,49 @@ Responds with `ok_value` and the visibility (`true`/`false`) if the bar exists, 
 }
 ```
 
+### `toggle_popup`
+
+Toggles the open/closed state for a module's popup.
+Since each bar only has a single popup, any open popup on the bar is closed.
+
+Responds with `ok` if the popup exists, otherwise `error`.
+
+```json
+{
+  "type": "toggle_popup",
+  "bar_name": "DP-2-13",
+  "name": "clock"
+}
+```
+
+### `open_popup`
+
+Sets a module's popup open, regardless of its current state.
+Since each bar only has a single popup, any open popup on the bar is closed.
+
+Responds with `ok` if the popup exists, otherwise `error`.
+
+```json
+{
+  "type": "open_popup",
+  "bar_name": "DP-2-13",
+  "name": "clock"
+}
+```
+
+### `close_popup`
+
+Sets the popup on a bar closed, regardless of which module it is open for.
+
+Responds with `ok` if the popup exists, otherwise `error`.
+
+```json
+{
+  "type": "toggle_popup",
+  "bar_name": "DP-2-13"
+}
+```
+
 ## Responses
 
 ### `ok`

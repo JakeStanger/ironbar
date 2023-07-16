@@ -1,10 +1,12 @@
-use super::{CustomWidget, CustomWidgetContext};
-use crate::build;
-use crate::dynamic_value::dynamic_string;
-use crate::image::ImageProvider;
 use gtk::prelude::*;
 use gtk::Image;
 use serde::Deserialize;
+
+use crate::build;
+use crate::dynamic_value::dynamic_string;
+use crate::image::ImageProvider;
+
+use super::{CustomWidget, CustomWidgetContext};
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct ImageWidget {

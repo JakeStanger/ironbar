@@ -1,18 +1,22 @@
 use std::collections::HashMap;
 
-use crate::config::BarPosition;
-use crate::modules::ModuleInfo;
 use gtk::gdk::Monitor;
 use gtk::prelude::*;
 use gtk::{ApplicationWindow, Orientation};
 use tracing::debug;
 
+use crate::config::BarPosition;
+use crate::gtk_helpers::{IronbarGtkExt, WidgetGeometry};
+use crate::modules::{ModuleInfo, ModulePopupParts, PopupButton};
+use crate::unique_id::get_unique_usize;
+
 #[derive(Debug, Clone)]
 pub struct Popup {
     pub window: ApplicationWindow,
-    pub cache: HashMap<usize, gtk::Box>,
+    pub cache: HashMap<usize, (String, ModulePopupParts)>,
     monitor: Monitor,
     pos: BarPosition,
+    current_widget: Option<usize>,
 }
 
 impl Popup {
@@ -28,6 +32,7 @@ impl Popup {
             .build();
 
         gtk_layer_shell::init_for_window(&win);
+        gtk_layer_shell::set_monitor(&win, module_info.monitor);
         gtk_layer_shell::set_layer(&win, gtk_layer_shell::Layer::Overlay);
         gtk_layer_shell::set_namespace(&win, env!("CARGO_PKG_NAME"));
 
@@ -108,20 +113,54 @@ impl Popup {
             cache: HashMap::new(),
             monitor: module_info.monitor.clone(),
             pos,
+            current_widget: None,
         }
     }
 
-    pub fn register_content(&mut self, key: usize, content: gtk::Box) {
+    pub fn register_content(&mut self, key: usize, name: String, content: ModulePopupParts) {
         debug!("Registered popup content for #{}", key);
-        self.cache.insert(key, content);
+
+        for button in &content.buttons {
+            let id = get_unique_usize();
+            button.set_tag("popup-id", id);
+        }
+
+        self.cache.insert(key, (name, content));
     }
 
-    pub fn show_content(&self, key: usize) {
+    pub fn show(&mut self, widget_id: usize, button_id: usize) {
         self.clear_window();
 
-        if let Some(content) = self.cache.get(&key) {
-            content.style_context().add_class("popup");
-            self.window.add(content);
+        if let Some((_name, content)) = self.cache.get(&widget_id) {
+            self.current_widget = Some(widget_id);
+
+            content.container.style_context().add_class("popup");
+            self.window.add(&content.container);
+
+            self.window.show();
+
+            let button = content
+                .buttons
+                .iter()
+                .find(|b| b.popup_id() == button_id)
+                .expect("to find valid button");
+
+            let orientation = self.pos.get_orientation();
+            let geometry = button.geometry(orientation);
+
+            self.set_pos(geometry);
+        }
+    }
+
+    pub fn show_at(&self, widget_id: usize, geometry: WidgetGeometry) {
+        self.clear_window();
+
+        if let Some((_name, content)) = self.cache.get(&widget_id) {
+            content.container.style_context().add_class("popup");
+            self.window.add(&content.container);
+
+            self.window.show();
+            self.set_pos(geometry);
         }
     }
 
@@ -132,20 +171,19 @@ impl Popup {
         }
     }
 
-    /// Shows the popup
-    pub fn show(&self, geometry: WidgetGeometry) {
-        self.window.show();
-        self.set_pos(geometry);
-    }
-
     /// Hides the popover
-    pub fn hide(&self) {
+    pub fn hide(&mut self) {
+        self.current_widget = None;
         self.window.hide();
     }
 
     /// Checks if the popup is currently visible
     pub fn is_visible(&self) -> bool {
         self.window.is_visible()
+    }
+
+    pub fn current_widget(&self) -> Option<usize> {
+        self.current_widget
     }
 
     /// Sets the popup's X/Y position relative to the left or border of the screen
@@ -187,48 +225,4 @@ impl Popup {
 
         gtk_layer_shell::set_margin(&self.window, edge, offset as i32);
     }
-
-    /// Gets the absolute X position of the button
-    /// and its width / height (depending on orientation).
-    pub fn widget_geometry<W>(widget: &W, orientation: Orientation) -> WidgetGeometry
-    where
-        W: IsA<gtk::Widget>,
-    {
-        let widget_size = if orientation == Orientation::Horizontal {
-            widget.allocation().width()
-        } else {
-            widget.allocation().height()
-        };
-
-        let top_level = widget.toplevel().expect("Failed to get top-level widget");
-
-        let bar_size = if orientation == Orientation::Horizontal {
-            top_level.allocation().width()
-        } else {
-            top_level.allocation().height()
-        };
-
-        let (widget_x, widget_y) = widget
-            .translate_coordinates(&top_level, 0, 0)
-            .unwrap_or((0, 0));
-
-        let widget_pos = if orientation == Orientation::Horizontal {
-            widget_x
-        } else {
-            widget_y
-        };
-
-        WidgetGeometry {
-            position: widget_pos,
-            size: widget_size,
-            bar_size,
-        }
-    }
-}
-
-#[derive(Debug, Copy, Clone)]
-pub struct WidgetGeometry {
-    position: i32,
-    size: i32,
-    bar_size: i32,
 }

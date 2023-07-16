@@ -1,8 +1,77 @@
 use glib::IsA;
 use gtk::prelude::*;
-use gtk::Widget;
+use gtk::{Orientation, Widget};
 
-/// Adds a new CSS class to a widget.
-pub fn add_class<W: IsA<Widget>>(widget: &W, class: &str) {
-    widget.style_context().add_class(class);
+/// Represents a widget's size
+/// and location relative to the bar's start edge.
+#[derive(Debug, Copy, Clone)]
+pub struct WidgetGeometry {
+    /// Position of the start edge of the widget
+    /// from the start edge of the bar.
+    pub position: i32,
+    /// The length of the widget.
+    pub size: i32,
+    /// The length of the bar.
+    pub bar_size: i32,
+}
+
+pub trait IronbarGtkExt {
+    /// Adds a new CSS class to the widget.
+    fn add_class(&self, class: &str);
+    /// Gets the geometry for the widget
+    fn geometry(&self, orientation: Orientation) -> WidgetGeometry;
+
+    /// Gets a data tag on a widget, if it exists.
+    fn get_tag<V: 'static>(&self, key: &str) -> Option<&V>;
+    /// Sets a data tag on a widget.
+    fn set_tag<V: 'static>(&self, key: &str, value: V);
+}
+
+impl<W: IsA<Widget>> IronbarGtkExt for W {
+    fn add_class(&self, class: &str) {
+        self.style_context().add_class(class);
+    }
+
+    fn geometry(&self, orientation: Orientation) -> WidgetGeometry {
+        let allocation = self.allocation();
+
+        let widget_size = if orientation == Orientation::Horizontal {
+            allocation.width()
+        } else {
+            allocation.height()
+        };
+
+        let top_level = self.toplevel().expect("Failed to get top-level widget");
+        let top_level_allocation = top_level.allocation();
+
+        let bar_size = if orientation == Orientation::Horizontal {
+            top_level_allocation.width()
+        } else {
+            top_level_allocation.height()
+        };
+
+        let (widget_x, widget_y) = self
+            .translate_coordinates(&top_level, 0, 0)
+            .unwrap_or((0, 0));
+
+        let widget_pos = if orientation == Orientation::Horizontal {
+            widget_x
+        } else {
+            widget_y
+        };
+
+        WidgetGeometry {
+            position: widget_pos,
+            size: widget_size,
+            bar_size,
+        }
+    }
+
+    fn get_tag<V: 'static>(&self, key: &str) -> Option<&V> {
+        unsafe { self.data(key).map(|val| val.as_ref()) }
+    }
+
+    fn set_tag<V: 'static>(&self, key: &str, value: V) {
+        unsafe { self.set_data(key, value) }
+    }
 }

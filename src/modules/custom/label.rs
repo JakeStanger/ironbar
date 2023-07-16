@@ -1,9 +1,11 @@
-use super::{CustomWidget, CustomWidgetContext};
-use crate::build;
-use crate::dynamic_value::dynamic_string;
 use gtk::prelude::*;
 use gtk::Label;
 use serde::Deserialize;
+
+use crate::build;
+use crate::dynamic_value::dynamic_string;
+
+use super::{CustomWidget, CustomWidgetContext};
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct LabelWidget {

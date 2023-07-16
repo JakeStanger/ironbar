@@ -1,5 +1,5 @@
 use super::ImageProvider;
-use crate::gtk_helpers::add_class;
+use crate::gtk_helpers::IronbarGtkExt;
 use gtk::prelude::*;
 use gtk::{Button, IconTheme, Image, Label, Orientation};
 
@@ -9,8 +9,8 @@ pub fn new_icon_button(input: &str, icon_theme: &IconTheme, size: i32) -> Button
 
     if ImageProvider::is_definitely_image_input(input) {
         let image = Image::new();
-        add_class(&image, "image");
-        add_class(&image, "icon");
+        image.add_class("image");
+        image.add_class("icon");
 
         match ImageProvider::parse(input, icon_theme, size)
             .map(|provider| provider.load_into_image(image.clone()))
@@ -36,8 +36,8 @@ pub fn new_icon_label(input: &str, icon_theme: &IconTheme, size: i32) -> gtk::Bo
 
     if ImageProvider::is_definitely_image_input(input) {
         let image = Image::new();
-        add_class(&image, "icon");
-        add_class(&image, "image");
+        image.add_class("icon");
+        image.add_class("image");
 
         container.add(&image);
 
@@ -45,8 +45,8 @@ pub fn new_icon_label(input: &str, icon_theme: &IconTheme, size: i32) -> gtk::Bo
             .map(|provider| provider.load_into_image(image));
     } else {
         let label = Label::new(Some(input));
-        add_class(&label, "icon");
-        add_class(&label, "text-icon");
+        label.add_class("icon");
+        label.add_class("text-icon");
 
         container.add(&label);
     }

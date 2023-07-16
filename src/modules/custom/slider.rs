@@ -1,15 +1,17 @@
-use super::{try_get_orientation, CustomWidget, CustomWidgetContext, ExecEvent};
-use crate::modules::custom::set_length;
-use crate::popup::Popup;
-use crate::script::{OutputStream, Script, ScriptInput};
-use crate::{build, send, try_send};
+use std::cell::Cell;
+use std::ops::Neg;
+
 use gtk::prelude::*;
 use gtk::Scale;
 use serde::Deserialize;
-use std::cell::Cell;
-use std::ops::Neg;
 use tokio::spawn;
 use tracing::error;
+
+use crate::modules::custom::set_length;
+use crate::script::{OutputStream, Script, ScriptInput};
+use crate::{build, send, try_send};
+
+use super::{try_get_orientation, CustomWidget, CustomWidgetContext, ExecEvent};
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct SliderWidget {
@@ -78,7 +80,7 @@ impl CustomWidget for SliderWidget {
                 Inhibit(false)
             });
 
-            scale.connect_change_value(move |scale, _, val| {
+            scale.connect_change_value(move |_, _, val| {
                 // GTK will send values outside min/max range
                 let val = val.clamp(min, max);
 
@@ -88,7 +90,7 @@ impl CustomWidget for SliderWidget {
                         ExecEvent {
                             cmd: on_change.clone(),
                             args: Some(vec![val.to_string()]),
-                            geometry: Popup::widget_geometry(scale, context.bar_orientation),
+                            id: usize::MAX // ignored
                         }
                     );
 

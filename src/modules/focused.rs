@@ -1,8 +1,8 @@
 use crate::clients::wayland::{self, ToplevelEvent};
 use crate::config::{CommonConfig, TruncateMode};
-use crate::gtk_helpers::add_class;
+use crate::gtk_helpers::IronbarGtkExt;
 use crate::image::ImageProvider;
-use crate::modules::{Module, ModuleInfo, ModuleUpdateEvent, ModuleWidget, WidgetContext};
+use crate::modules::{Module, ModuleInfo, ModuleParts, ModuleUpdateEvent, WidgetContext};
 use crate::{lock, send_async, try_send};
 use color_eyre::Result;
 use glib::Continue;
@@ -104,19 +104,19 @@ impl Module<gtk::Box> for FocusedModule {
         self,
         context: WidgetContext<Self::SendMessage, Self::ReceiveMessage>,
         info: &ModuleInfo,
-    ) -> Result<ModuleWidget<gtk::Box>> {
+    ) -> Result<ModuleParts<gtk::Box>> {
         let icon_theme = info.icon_theme;
 
         let container = gtk::Box::new(info.bar_position.get_orientation(), 5);
 
         let icon = gtk::Image::new();
         if self.show_icon {
-            add_class(&icon, "icon");
+            icon.add_class("icon");
             container.add(&icon);
         }
 
         let label = Label::new(None);
-        add_class(&label, "label");
+        label.add_class("label");
 
         if let Some(truncate) = self.truncate {
             truncate.truncate_label(&label);
@@ -144,7 +144,7 @@ impl Module<gtk::Box> for FocusedModule {
             });
         }
 
-        Ok(ModuleWidget {
+        Ok(ModuleParts {
             widget: container,
             popup: None,
         })

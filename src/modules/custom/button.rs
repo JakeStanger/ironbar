@@ -1,10 +1,12 @@
-use super::{CustomWidget, CustomWidgetContext, ExecEvent};
-use crate::dynamic_value::dynamic_string;
-use crate::popup::Popup;
-use crate::{build, try_send};
 use gtk::prelude::*;
 use gtk::{Button, Label};
 use serde::Deserialize;
+
+use crate::dynamic_value::dynamic_string;
+use crate::modules::PopupButton;
+use crate::{build, try_send};
+
+use super::{CustomWidget, CustomWidgetContext, ExecEvent};
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct ButtonWidget {
@@ -19,6 +21,7 @@ impl CustomWidget for ButtonWidget {
 
     fn into_widget(self, context: CustomWidgetContext) -> Self::Widget {
         let button = build!(self, Self::Widget);
+        context.popup_buttons.borrow_mut().push(button.clone());
 
         if let Some(text) = self.label {
             let label = Label::new(None);
@@ -32,7 +35,6 @@ impl CustomWidget for ButtonWidget {
         }
 
         if let Some(exec) = self.on_click {
-            let bar_orientation = context.bar_orientation;
             let tx = context.tx.clone();
 
             button.connect_clicked(move |button| {
@@ -41,7 +43,7 @@ impl CustomWidget for ButtonWidget {
                     ExecEvent {
                         cmd: exec.clone(),
                         args: None,
-                        geometry: Popup::widget_geometry(button, bar_orientation),
+                        id: button.popup_id(),
                     }
                 );
             });
