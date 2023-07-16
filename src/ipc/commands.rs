@@ -43,6 +43,7 @@ pub enum Command {
         ///Bar name to target.
         bar_name: String,
         /// The visibility status.
+        #[arg(short, long)]
         visible: bool,
     },
 
