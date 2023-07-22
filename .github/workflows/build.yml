@@ -73,4 +73,6 @@ jobs:
           name: jakestanger
           signingKey: '${{ secrets.CACHIX_SIGNING_KEY }}'
 
+      - uses: DeterminateSystems/magic-nix-cache-action@main
+
       - run: nix build --print-build-logs
