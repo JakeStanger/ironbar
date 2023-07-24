@@ -42,7 +42,7 @@ impl<'a> ImageProvider<'a> {
     /// Note this checks that icons exist in theme, or files exist on disk
     /// but no other check is performed.
     pub fn parse(input: &str, theme: &'a IconTheme, size: i32) -> Option<Self> {
-        let location = Self::get_location(input, theme, size)?;
+        let location = Self::get_location(input, theme, size, 0)?;
         Some(Self { location, size })
     }
 
@@ -57,7 +57,14 @@ impl<'a> ImageProvider<'a> {
             || input.starts_with("https://")
     }
 
-    fn get_location(input: &str, theme: &'a IconTheme, size: i32) -> Option<ImageLocation<'a>> {
+    fn get_location(
+        input: &str,
+        theme: &'a IconTheme,
+        size: i32,
+        recurse_depth: usize,
+    ) -> Option<ImageLocation<'a>> {
+        const MAX_RECURSE_DEPTH: usize = 2;
+
         let (input_type, input_name) = input
             .split_once(':')
             .map_or((None, input), |(t, n)| (Some(t), n));
@@ -97,14 +104,15 @@ impl<'a> ImageProvider<'a> {
             None if PathBuf::from(input_name).is_file() => {
                 Some(ImageLocation::Local(PathBuf::from(input_name)))
             }
+            None if recurse_depth == MAX_RECURSE_DEPTH => Some(Self::get_fallback_icon(theme)),
             None => {
                 if let Some(location) = get_desktop_icon_name(input_name)
-                    .map(|input| Self::get_location(&input, theme, size))
+                    .map(|input| Self::get_location(&input, theme, size, recurse_depth + 1))
                 {
                     location
                 } else {
                     warn!("Failed to find image: {input}");
-                    None
+                    Some(Self::get_fallback_icon(theme))
                 }
             }
         }
@@ -246,6 +254,13 @@ impl<'a> ImageProvider<'a> {
             Err(Report::msg(format!(
                 "Received non-success HTTP code ({status})"
             )))
+        }
+    }
+
+    fn get_fallback_icon(theme: &'a IconTheme) -> ImageLocation<'a> {
+        ImageLocation::Icon {
+            name: "dialog-question-symbolic".to_string(),
+            theme,
         }
     }
 }
