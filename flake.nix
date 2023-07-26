@@ -6,11 +6,18 @@
       url = "github:oxalica/rust-overlay";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+    crane = {
+      url = "github:ipetkov/crane";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+    naersk.url = "github:nix-community/naersk";
   };
   outputs = {
     self,
     nixpkgs,
     rust-overlay,
+    crane,
+    naersk,
     ...
   }: let
     inherit (nixpkgs) lib;
@@ -31,6 +38,11 @@
   in {
     overlays.default = final: prev: let
       rust = mkRustToolchain final;
+      craneLib = (crane.mkLib final).overrideToolchain rust;
+      naersk' = prev.callPackage naersk {
+        cargo = rust;
+        rustc = rust;
+      };
 
       rustPlatform = prev.makeRustPlatform {
         cargo = rust;
@@ -42,11 +54,33 @@
         (builtins.substring 4 2 longDate)
         (builtins.substring 6 2 longDate)
       ]);
+      builder = "naersk";
     in {
-      ironbar = prev.callPackage ./nix/default.nix {
+      ironbar = let
         version = props.package.version + "+date=" + (mkDate (self.lastModifiedDate or "19700101")) + "_" + (self.shortRev or "dirty");
-        inherit rustPlatform;
-      };
+      in
+        if builder == "crane"
+        then
+          prev.callPackage ./nix/default.nix {
+            inherit version;
+            inherit rustPlatform;
+            builderName = builder;
+            builder = craneLib;
+          }
+        else if builder == "naersk"
+        then
+          prev.callPackage ./nix/default.nix {
+            inherit version;
+            inherit rustPlatform;
+            builderName = builder;
+            builder = naersk';
+          }
+        else
+          prev.callPackage ./nix/default.nix {
+            inherit version;
+            inherit rustPlatform;
+            builderName = builder;
+          };
     };
     packages = genSystems (
       system: let
