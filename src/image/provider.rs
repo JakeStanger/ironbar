@@ -41,29 +41,43 @@ impl<'a> ImageProvider<'a> {
     ///
     /// Note this checks that icons exist in theme, or files exist on disk
     /// but no other check is performed.
-    pub fn parse(input: &str, theme: &'a IconTheme, size: i32) -> Option<Self> {
-        let location = Self::get_location(input, theme, size, 0)?;
+    pub fn parse(input: &str, theme: &'a IconTheme, use_fallback: bool, size: i32) -> Option<Self> {
+        let location = Self::get_location(input, theme, size, use_fallback, 0)?;
+
         Some(Self { location, size })
     }
 
     /// Returns true if the input starts with a prefix
     /// that is supported by the parser
     /// (ie the parser would not fallback to checking the input).
-    #[cfg(any(feature = "music", feature = "workspaces"))]
     pub fn is_definitely_image_input(input: &str) -> bool {
         input.starts_with("icon:")
             || input.starts_with("file://")
             || input.starts_with("http://")
             || input.starts_with("https://")
+            || input.starts_with('/')
     }
 
     fn get_location(
         input: &str,
         theme: &'a IconTheme,
         size: i32,
+        use_fallback: bool,
         recurse_depth: usize,
     ) -> Option<ImageLocation<'a>> {
+        macro_rules! fallback {
+            () => {
+                if use_fallback {
+                    Some(Self::get_fallback_icon(theme))
+                } else {
+                    None
+                }
+            };
+        }
+
         const MAX_RECURSE_DEPTH: usize = 2;
+
+        let should_parse_desktop_file = !Self::is_definitely_image_input(input);
 
         let (input_type, input_name) = input
             .split_once(':')
@@ -99,21 +113,25 @@ impl<'a> ImageProvider<'a> {
                     Report::msg(format!("Unsupported image type: {input_type}"))
                         .note("You may need to recompile with support if available")
                 );
-                None
+                fallback!()
             }
             None if PathBuf::from(input_name).is_file() => {
                 Some(ImageLocation::Local(PathBuf::from(input_name)))
             }
-            None if recurse_depth == MAX_RECURSE_DEPTH => Some(Self::get_fallback_icon(theme)),
-            None => {
-                if let Some(location) = get_desktop_icon_name(input_name)
-                    .map(|input| Self::get_location(&input, theme, size, recurse_depth + 1))
-                {
+            None if recurse_depth == MAX_RECURSE_DEPTH => fallback!(),
+            None if should_parse_desktop_file => {
+                if let Some(location) = get_desktop_icon_name(input_name).map(|input| {
+                    Self::get_location(&input, theme, size, use_fallback, recurse_depth + 1)
+                }) {
                     location
                 } else {
                     warn!("Failed to find image: {input}");
-                    Some(Self::get_fallback_icon(theme))
+                    fallback!()
                 }
+            }
+            None => {
+                warn!("Failed to find image: {input}");
+                fallback!()
             }
         }
     }

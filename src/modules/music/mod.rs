@@ -408,11 +408,13 @@ impl Module<Button> for MusicModule {
                         if prev_cover != new_cover {
                             prev_cover = new_cover.clone();
                             let res = if let Some(image) = new_cover.and_then(|cover_path| {
-                                ImageProvider::parse(&cover_path, &icon_theme, image_size)
+                                ImageProvider::parse(&cover_path, &icon_theme, false, image_size)
                             }) {
+                                album_image.show();
                                 image.load_into_image(album_image.clone())
                             } else {
                                 album_image.set_from_pixbuf(None);
+                                album_image.hide();
                                 Ok(())
                             };
 

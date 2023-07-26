@@ -95,7 +95,7 @@ fn find_desktop_file_by_filename(app_id: &str, files: &[PathBuf]) -> Option<Path
                 // `com.company.app` or `com.app.something`
                 app_id
                     .split(&[' ', ':', '@', '.', '_'][..])
-                    .any(|part| name.contains(part))
+                    .any(|part| name.eq_ignore_ascii_case(part))
             })
         })
         .map(|(file, _)| file.into())
