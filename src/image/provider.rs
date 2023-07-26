@@ -50,12 +50,12 @@ impl<'a> ImageProvider<'a> {
     /// Returns true if the input starts with a prefix
     /// that is supported by the parser
     /// (ie the parser would not fallback to checking the input).
-    #[cfg(any(feature = "music", feature = "workspaces"))]
     pub fn is_definitely_image_input(input: &str) -> bool {
         input.starts_with("icon:")
             || input.starts_with("file://")
             || input.starts_with("http://")
             || input.starts_with("https://")
+            || input.starts_with('/')
     }
 
     fn get_location(
@@ -76,6 +76,8 @@ impl<'a> ImageProvider<'a> {
         }
 
         const MAX_RECURSE_DEPTH: usize = 2;
+
+        let should_parse_desktop_file = !Self::is_definitely_image_input(input);
 
         let (input_type, input_name) = input
             .split_once(':')
@@ -117,7 +119,7 @@ impl<'a> ImageProvider<'a> {
                 Some(ImageLocation::Local(PathBuf::from(input_name)))
             }
             None if recurse_depth == MAX_RECURSE_DEPTH => fallback!(),
-            None => {
+            None if should_parse_desktop_file => {
                 if let Some(location) = get_desktop_icon_name(input_name).map(|input| {
                     Self::get_location(&input, theme, size, use_fallback, recurse_depth + 1)
                 }) {
@@ -126,6 +128,10 @@ impl<'a> ImageProvider<'a> {
                     warn!("Failed to find image: {input}");
                     fallback!()
                 }
+            }
+            None => {
+                warn!("Failed to find image: {input}");
+                fallback!()
             }
         }
     }
