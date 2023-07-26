@@ -32,7 +32,7 @@ impl CustomWidget for ImageWidget {
             let icon_theme = context.icon_theme.clone();
 
             dynamic_string(&self.src, move |src| {
-                ImageProvider::parse(&src, &icon_theme, self.size)
+                ImageProvider::parse(&src, &icon_theme, false, self.size)
                     .map(|image| image.load_into_image(gtk_image.clone()));
 
                 Continue(true)

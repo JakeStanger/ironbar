@@ -12,7 +12,7 @@ pub fn new_icon_button(input: &str, icon_theme: &IconTheme, size: i32) -> Button
         image.add_class("image");
         image.add_class("icon");
 
-        match ImageProvider::parse(input, icon_theme, size)
+        match ImageProvider::parse(input, icon_theme, false, size)
             .map(|provider| provider.load_into_image(image.clone()))
         {
             Some(_) => {
@@ -41,7 +41,7 @@ pub fn new_icon_label(input: &str, icon_theme: &IconTheme, size: i32) -> gtk::Bo
 
         container.add(&image);
 
-        ImageProvider::parse(input, icon_theme, size)
+        ImageProvider::parse(input, icon_theme, false, size)
             .map(|provider| provider.load_into_image(image));
     } else {
         let label = Label::new(Some(input));

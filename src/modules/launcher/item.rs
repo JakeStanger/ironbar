@@ -191,7 +191,7 @@ impl ItemButton {
         if appearance.show_icons {
             let gtk_image = gtk::Image::new();
             let image =
-                ImageProvider::parse(&item.app_id.clone(), icon_theme, appearance.icon_size);
+                ImageProvider::parse(&item.app_id.clone(), icon_theme, true, appearance.icon_size);
             if let Some(image) = image {
                 button.set_image(Some(&gtk_image));
                 button.set_always_show_image(true);

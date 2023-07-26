@@ -189,7 +189,7 @@ impl Module<gtk::Button> for UpowerModule {
             .attach(None, move |properties: UpowerProperties| {
                 let format = format.replace("{percentage}", &properties.percentage.to_string());
                 let icon_name = String::from("icon:") + &properties.icon_name;
-                ImageProvider::parse(&icon_name, &icon_theme, self.icon_size)
+                ImageProvider::parse(&icon_name, &icon_theme, false, self.icon_size)
                     .map(|provider| provider.load_into_image(icon.clone()));
                 label.set_markup(format.as_ref());
                 Continue(true)
