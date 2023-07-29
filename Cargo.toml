@@ -5,6 +5,7 @@ edition = "2021"
 license = "MIT"
 description = "Customisable GTK Layer Shell wlroots/sway bar"
 repository = "https://github.com/jakestanger/ironbar"
+keywords = ["gtk", "bar", "wayland", "wlroots", "gtk-layer-shell"]
 
 [features]
 default = [
