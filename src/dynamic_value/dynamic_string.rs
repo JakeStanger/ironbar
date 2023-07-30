@@ -144,7 +144,7 @@ fn parse_script(chars: &[char]) -> (DynamicStringSegment, usize) {
         .map(|w| w[0])
         .collect::<String>();
 
-    let len = str.len() + SKIP_BRACKETS;
+    let len = str.chars().count() + SKIP_BRACKETS;
     let script = Script::from(str.as_str());
 
     (DynamicStringSegment::Script(script), len)
@@ -160,7 +160,7 @@ fn parse_variable(chars: &[char]) -> (DynamicStringSegment, usize) {
         .take_while(|&c| !c.is_whitespace())
         .collect::<String>();
 
-    let len = str.len() + SKIP_HASH;
+    let len = str.chars().count() + SKIP_HASH;
     let value = str.into();
 
     (DynamicStringSegment::Variable(value), len)
@@ -173,15 +173,16 @@ fn parse_static(chars: &[char]) -> (DynamicStringSegment, usize) {
         .map(|w| w[0])
         .collect::<String>();
 
+    let mut char_count = str.chars().count();
+
     // if segment is at end of string, last char gets missed above due to uneven window.
-    if chars.len() == str.len() + 1 {
-        let remaining_char = *chars.get(str.len()).expect("Failed to find last char");
+    if chars.len() == char_count + 1 {
+        let remaining_char = *chars.get(char_count).expect("Failed to find last char");
         str.push(remaining_char);
+        char_count += 1;
     }
 
-    let len = str.len();
-
-    (DynamicStringSegment::Static(str), len)
+    (DynamicStringSegment::Static(str), char_count)
 }
 
 #[cfg(test)]
