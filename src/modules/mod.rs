@@ -115,17 +115,24 @@ impl ModulePopup for Option<gtk::Box> {
 }
 
 pub trait PopupButton {
+    fn try_popup_id(&self) -> Option<usize>;
     fn popup_id(&self) -> usize;
 }
 
 impl PopupButton for Button {
+    /// Gets the popup ID associated with this button, if there is one.
+    /// Will return `None` if this is not a popup button.
+    fn try_popup_id(&self) -> Option<usize> {
+        self.get_tag("popup-id").copied()
+    }
+
     /// Gets the popup ID associated with this button.
     /// This should only be called on buttons which are known to be associated with popups.
     ///
     /// # Panics
     /// Will panic if an ID has not been set.
     fn popup_id(&self) -> usize {
-        *self.get_tag("popup-id").expect("data to exist")
+        self.try_popup_id().expect("id to exist")
     }
 }
 

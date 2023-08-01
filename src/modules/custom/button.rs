@@ -43,7 +43,7 @@ impl CustomWidget for ButtonWidget {
                     ExecEvent {
                         cmd: exec.clone(),
                         args: None,
-                        id: button.popup_id(),
+                        id: button.try_popup_id().unwrap_or(usize::MAX), // may not be a popup button
                     }
                 );
             });
