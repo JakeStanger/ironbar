@@ -3,7 +3,7 @@ use crate::{arc_mut, lock, send};
 use color_eyre::Result;
 use hyprland::data::{Workspace as HWorkspace, Workspaces};
 use hyprland::dispatch::{Dispatch, DispatchType, WorkspaceIdentifierWithSpecial};
-use hyprland::event_listener::EventListenerMutable as EventListener;
+use hyprland::event_listener::EventListener;
 use hyprland::prelude::*;
 use hyprland::shared::WorkspaceType;
 use lazy_static::lazy_static;
@@ -46,7 +46,7 @@ impl EventClient {
                 let lock = lock.clone();
                 let active = active.clone();
 
-                event_listener.add_workspace_added_handler(move |workspace_type, _state| {
+                event_listener.add_workspace_added_handler(move |workspace_type| {
                     let _lock = lock!(lock);
                     debug!("Added workspace: {workspace_type:?}");
 
@@ -69,7 +69,7 @@ impl EventClient {
                 let lock = lock.clone();
                 let active = active.clone();
 
-                event_listener.add_workspace_change_handler(move |workspace_type, _state| {
+                event_listener.add_workspace_change_handler(move |workspace_type| {
                     let _lock = lock!(lock);
 
                     let mut prev_workspace = lock!(active);
@@ -105,9 +105,9 @@ impl EventClient {
                 let lock = lock.clone();
                 let active = active.clone();
 
-                event_listener.add_active_monitor_change_handler(move |event_data, _state| {
+                event_listener.add_active_monitor_change_handler(move |event_data| {
                     let _lock = lock!(lock);
-                    let workspace_type = event_data.1;
+                    let workspace_type = event_data.workspace;
 
                     let mut prev_workspace = lock!(active);
 
@@ -134,9 +134,9 @@ impl EventClient {
                 let tx = tx.clone();
                 let lock = lock.clone();
 
-                event_listener.add_workspace_moved_handler(move |event_data, _state| {
+                event_listener.add_workspace_moved_handler(move |event_data| {
                     let _lock = lock!(lock);
-                    let workspace_type = event_data.1;
+                    let workspace_type = event_data.workspace;
                     debug!("Received workspace move: {workspace_type:?}");
 
                     let mut prev_workspace = lock!(active);
@@ -158,7 +158,7 @@ impl EventClient {
             }
 
             {
-                event_listener.add_workspace_destroy_handler(move |workspace_type, _state| {
+                event_listener.add_workspace_destroy_handler(move |workspace_type| {
                     let _lock = lock!(lock);
                     debug!("Received workspace destroy: {workspace_type:?}");
 
@@ -221,9 +221,12 @@ impl EventClient {
 
 impl WorkspaceClient for EventClient {
     fn focus(&self, id: String) -> Result<()> {
-        Dispatch::call(DispatchType::Workspace(
-            WorkspaceIdentifierWithSpecial::Name(&id),
-        ))?;
+        let identifier = match id.parse::<i32>() {
+            Ok(inum) => WorkspaceIdentifierWithSpecial::Id(inum),
+            Err(_) => WorkspaceIdentifierWithSpecial::Name(&id),
+        };
+
+        Dispatch::call(DispatchType::Workspace(identifier))?;
         Ok(())
     }
 
