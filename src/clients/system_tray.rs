@@ -5,10 +5,10 @@ use color_eyre::Report;
 use lazy_static::lazy_static;
 use std::collections::BTreeMap;
 use std::sync::{Arc, Mutex};
-use stray::message::menu::TrayMenu;
-use stray::message::tray::StatusNotifierItem;
-use stray::message::{NotifierItemCommand, NotifierItemMessage};
-use stray::StatusNotifierWatcher;
+use system_tray::message::menu::TrayMenu;
+use system_tray::message::tray::StatusNotifierItem;
+use system_tray::message::{NotifierItemCommand, NotifierItemMessage};
+use system_tray::StatusNotifierWatcher;
 use tokio::spawn;
 use tokio::sync::{broadcast, mpsc};
 use tracing::{debug, error, trace};
@@ -24,7 +24,7 @@ pub struct TrayEventReceiver {
 }
 
 impl TrayEventReceiver {
-    async fn new() -> stray::error::Result<Self> {
+    async fn new() -> system_tray::error::Result<Self> {
         let id = format!("ironbar-{}", get_unique_usize());
 
         let (tx, rx) = mpsc::channel(16);
