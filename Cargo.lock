@@ -1604,10 +1604,10 @@ dependencies = [
  "serde",
  "serde_json",
  "smithay-client-toolkit",
- "stray",
  "strip-ansi-escapes",
  "swayipc-async",
  "sysinfo",
+ "system-tray",
  "tokio",
  "tracing",
  "tracing-appender",
@@ -2739,23 +2739,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a2eb9349b6444b326872e140eb1cf5e7c522154d69e7a0ffb0fb81c06b37543f"
 
 [[package]]
-name = "stray"
-version = "0.1.3"
-source = "git+https://github.com/jakestanger/stray?branch=fix/connection-errors#d2ba068e2b1e4bc1ab62950612cb8ea08576fca1"
-dependencies = [
- "anyhow",
- "byteorder",
- "chrono",
- "log",
- "serde",
- "thiserror",
- "tokio",
- "tokio-stream",
- "tracing",
- "zbus",
-]
-
-[[package]]
 name = "strip-ansi-escapes"
 version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2885,6 +2868,24 @@ dependencies = [
  "pkg-config",
  "toml",
  "version-compare",
+]
+
+[[package]]
+name = "system-tray"
+version = "0.1.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3c8f7f19237d2149a8e4b56409c579b26a98748e3cfadba93762c4746c4c7ae2"
+dependencies = [
+ "anyhow",
+ "byteorder",
+ "chrono",
+ "log",
+ "serde",
+ "thiserror",
+ "tokio",
+ "tokio-stream",
+ "tracing",
+ "zbus",
 ]
 
 [[package]]

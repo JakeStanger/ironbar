@@ -11,9 +11,9 @@ use gtk::{
 };
 use serde::Deserialize;
 use std::collections::HashMap;
-use stray::message::menu::{MenuItem as MenuItemInfo, MenuType};
-use stray::message::tray::StatusNotifierItem;
-use stray::message::{NotifierItemCommand, NotifierItemMessage};
+use system_tray::message::menu::{MenuItem as MenuItemInfo, MenuType};
+use system_tray::message::tray::StatusNotifierItem;
+use system_tray::message::{NotifierItemCommand, NotifierItemMessage};
 use tokio::spawn;
 use tokio::sync::mpsc;
 use tokio::sync::mpsc::{Receiver, Sender};
