@@ -1,5 +1,6 @@
 use super::open_state::OpenState;
 use crate::clients::wayland::ToplevelHandle;
+use crate::config::BarPosition;
 use crate::gtk_helpers::IronbarGtkExt;
 use crate::image::ImageProvider;
 use crate::modules::launcher::{ItemEvent, LauncherUpdate};
@@ -7,7 +8,7 @@ use crate::modules::ModuleUpdateEvent;
 use crate::{read_lock, try_send};
 use color_eyre::{Report, Result};
 use gtk::prelude::*;
-use gtk::{Button, IconTheme, Orientation};
+use gtk::{Button, IconTheme};
 use indexmap::IndexMap;
 use std::rc::Rc;
 use std::sync::RwLock;
@@ -176,7 +177,7 @@ impl ItemButton {
         item: &Item,
         appearance: AppearanceOptions,
         icon_theme: &IconTheme,
-        orientation: Orientation,
+        bar_position: BarPosition,
         tx: &Sender<ModuleUpdateEvent<LauncherUpdate>>,
         controller_tx: &Sender<ItemEvent>,
     ) -> Self {
@@ -249,9 +250,36 @@ impl ItemButton {
 
                     try_send!(
                         tx,
-                        ModuleUpdateEvent::OpenPopupAt(button.geometry(orientation))
+                        ModuleUpdateEvent::OpenPopupAt(
+                            button.geometry(bar_position.get_orientation())
+                        )
                     );
                 } else {
+                    try_send!(tx, ModuleUpdateEvent::ClosePopup);
+                }
+
+                Inhibit(false)
+            });
+        }
+
+        {
+            let tx = tx.clone();
+
+            button.connect_leave_notify_event(move |button, ev| {
+                const THRESHOLD: f64 = 5.0;
+
+                let alloc = button.allocation();
+
+                let (x, y) = ev.position();
+
+                let close = match bar_position {
+                    BarPosition::Top => y + THRESHOLD < alloc.height() as f64,
+                    BarPosition::Bottom => y > 0.0,
+                    BarPosition::Left => x + THRESHOLD < alloc.width() as f64,
+                    BarPosition::Right => x > THRESHOLD,
+                };
+
+                if close {
                     try_send!(tx, ModuleUpdateEvent::ClosePopup);
                 }
 
