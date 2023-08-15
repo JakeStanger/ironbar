@@ -34,7 +34,10 @@
           rust-overlay.overlays.default
         ];
       };
-    mkRustToolchain = pkgs: pkgs.rust-bin.stable.latest.default;
+    mkRustToolchain = pkgs:
+      pkgs.rust-bin.stable.latest.default.override {
+        extensions = ["rust-src"];
+      };
   in {
     overlays.default = final: prev: let
       rust = mkRustToolchain final;
@@ -116,6 +119,14 @@
           gtk-layer-shell
           pkg-config
           openssl
+          gdk-pixbuf
+          glib
+          glib-networking
+          shared-mime-info
+          gnome.adwaita-icon-theme
+          hicolor-icon-theme
+          gsettings-desktop-schemas
+          libxkbcommon
         ];
 
         RUST_SRC_PATH = "${rust}/lib/rustlib/src/rust/library";

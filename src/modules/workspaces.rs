@@ -1,4 +1,4 @@
-use crate::clients::compositor::{Compositor, WorkspaceUpdate};
+use crate::clients::compositor::{Compositor, Workspace, WorkspaceUpdate};
 use crate::config::CommonConfig;
 use crate::image::new_icon_button;
 use crate::modules::{Module, ModuleInfo, ModuleParts, ModuleUpdateEvent, WidgetContext};
@@ -8,7 +8,7 @@ use gtk::prelude::*;
 use gtk::{Button, IconTheme};
 use serde::Deserialize;
 use std::cmp::Ordering;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use tokio::spawn;
 use tokio::sync::mpsc::{Receiver, Sender};
 use tracing::trace;
@@ -30,9 +30,30 @@ impl Default for SortOrder {
 }
 
 #[derive(Debug, Deserialize, Clone)]
+#[serde(untagged)]
+pub enum Favorites {
+    ByMonitor(HashMap<String, Vec<String>>),
+    Global(Vec<String>),
+}
+
+impl Default for Favorites {
+    fn default() -> Self {
+        Self::Global(vec![])
+    }
+}
+
+#[derive(Debug, Deserialize, Clone)]
 pub struct WorkspacesModule {
     /// Map of actual workspace names to custom names.
     name_map: Option<HashMap<String, String>>,
+
+    /// Array of always shown workspaces, and what monitor to show on
+    #[serde(default)]
+    favorites: Favorites,
+
+    /// List of workspace names to never show
+    #[serde(default)]
+    hidden: Vec<String>,
 
     /// Whether to display buttons for all monitors.
     #[serde(default = "crate::config::default_false")]
@@ -56,6 +77,7 @@ const fn default_icon_size() -> i32 {
 fn create_button(
     name: &str,
     focused: bool,
+    inactive: bool,
     name_map: &HashMap<String, String>,
     icon_theme: &IconTheme,
     icon_size: i32,
@@ -71,6 +93,8 @@ fn create_button(
 
     if focused {
         style_context.add_class("focused");
+    } else if inactive {
+        style_context.add_class("inactive");
     }
 
     {
@@ -102,6 +126,13 @@ fn reorder_workspaces(container: &gtk::Box) {
 
     for (i, (_, button)) in buttons.into_iter().enumerate() {
         container.reorder_child(&button, i as i32);
+    }
+}
+
+impl WorkspacesModule {
+    fn show_workspace_check(&self, output: &String, work: &Workspace) -> bool {
+        (work.focused || !self.hidden.contains(&work.name))
+            && (self.all_monitors || output == &work.monitor)
     }
 }
 
@@ -157,7 +188,9 @@ impl Module<gtk::Box> for WorkspacesModule {
     ) -> Result<ModuleParts<gtk::Box>> {
         let container = gtk::Box::new(info.bar_position.get_orientation(), 0);
 
-        let name_map = self.name_map.unwrap_or_default();
+        let name_map = self.name_map.clone().unwrap_or_default();
+        let favs = self.favorites.clone();
+        let mut fav_names: Vec<String> = vec![];
 
         let mut button_map: HashMap<String, Button> = HashMap::new();
 
@@ -176,19 +209,49 @@ impl Module<gtk::Box> for WorkspacesModule {
                     WorkspaceUpdate::Init(workspaces) => {
                         if !has_initialized {
                             trace!("Creating workspace buttons");
-                            for workspace in workspaces {
-                                if self.all_monitors || workspace.monitor == output_name {
-                                    let item = create_button(
-                                        &workspace.name,
-                                        workspace.focused,
-                                        &name_map,
-                                        &icon_theme,
-                                        icon_size,
-                                        &context.controller_tx,
-                                    );
-                                    container.add(&item);
 
-                                    button_map.insert(workspace.name, item);
+                            let mut added = HashSet::new();
+
+                            let mut add_workspace = |name: &str, focused: bool| {
+                                let item = create_button(
+                                    name,
+                                    focused,
+                                    false,
+                                    &name_map,
+                                    &icon_theme,
+                                    icon_size,
+                                    &context.controller_tx,
+                                );
+
+                                container.add(&item);
+                                button_map.insert(name.to_string(), item);
+                            };
+
+                            // add workspaces from client
+                            for workspace in &workspaces {
+                                if self.show_workspace_check(&output_name, workspace) {
+                                    add_workspace(&workspace.name, workspace.focused);
+                                    added.insert(workspace.name.to_string());
+                                }
+                            }
+
+                            let mut add_favourites = |names: &Vec<String>| {
+                                for name in names {
+                                    if !added.contains(name) {
+                                        add_workspace(name, false);
+                                        added.insert(name.to_string());
+                                        fav_names.push(name.to_string());
+                                    }
+                                }
+                            };
+
+                            // add workspaces from favourites
+                            match &favs {
+                                Favorites::Global(names) => add_favourites(names),
+                                Favorites::ByMonitor(map) => {
+                                    if let Some(to_add) = map.get(&output_name) {
+                                        add_favourites(to_add);
+                                    }
                                 }
                             }
 
@@ -212,11 +275,17 @@ impl Module<gtk::Box> for WorkspacesModule {
                         }
                     }
                     WorkspaceUpdate::Add(workspace) => {
-                        if self.all_monitors || workspace.monitor == output_name {
+                        if fav_names.contains(&workspace.name) {
+                            let btn = button_map.get(&workspace.name);
+                            if let Some(btn) = btn {
+                                btn.style_context().remove_class("inactive");
+                            }
+                        } else if self.show_workspace_check(&output_name, &workspace) {
                             let name = workspace.name;
                             let item = create_button(
                                 &name,
                                 workspace.focused,
+                                false,
                                 &name_map,
                                 &icon_theme,
                                 icon_size,
@@ -236,12 +305,13 @@ impl Module<gtk::Box> for WorkspacesModule {
                         }
                     }
                     WorkspaceUpdate::Move(workspace) => {
-                        if !self.all_monitors {
+                        if !self.hidden.contains(&workspace.name) && !self.all_monitors {
                             if workspace.monitor == output_name {
                                 let name = workspace.name;
                                 let item = create_button(
                                     &name,
                                     workspace.focused,
+                                    false,
                                     &name_map,
                                     &icon_theme,
                                     icon_size,
@@ -267,7 +337,11 @@ impl Module<gtk::Box> for WorkspacesModule {
                     WorkspaceUpdate::Remove(workspace) => {
                         let button = button_map.get(&workspace);
                         if let Some(item) = button {
-                            container.remove(item);
+                            if fav_names.contains(&workspace) {
+                                item.style_context().add_class("inactive");
+                            } else {
+                                container.remove(item);
+                            }
                         }
                     }
                     WorkspaceUpdate::Update(_) => {}
