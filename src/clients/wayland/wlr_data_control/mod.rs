@@ -239,7 +239,7 @@ impl DataControlOfferHandler for Environment {
         _offer: &mut DataControlDeviceOffer,
         _mime_type: String,
     ) {
-        debug!("Handler received offer");
+        trace!("Handler received offer");
     }
 }
 

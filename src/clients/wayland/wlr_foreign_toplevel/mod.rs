@@ -30,7 +30,7 @@ impl ToplevelManagerHandler for Environment {
 
 impl ToplevelHandleHandler for Environment {
     fn new_handle(&mut self, _conn: &Connection, _qh: &QueueHandle<Self>, handle: ToplevelHandle) {
-        debug!("Handler received new handle");
+        trace!("Handler received new handle");
 
         match handle.info() {
             Some(info) => {
@@ -50,7 +50,7 @@ impl ToplevelHandleHandler for Environment {
         _qh: &QueueHandle<Self>,
         handle: ToplevelHandle,
     ) {
-        debug!("Handler received handle update");
+        trace!("Handler received handle update");
 
         match handle.info() {
             Some(info) => {
