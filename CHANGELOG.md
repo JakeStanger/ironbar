@@ -4,6 +4,58 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.13.0] - 2023-08-16
+### :sparkles: New Features
+- [`c3e9654`](https://github.com/JakeStanger/ironbar/commit/c3e9654cd3dfcea4276f5b114112b7541dd847fd) - **upower**: icon size option *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`f5bdc5a`](https://github.com/JakeStanger/ironbar/commit/f5bdc5a0272fefca4c91336699ea63913cdf3c08) - ipc server and cli *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`ded50cc`](https://github.com/JakeStanger/ironbar/commit/ded50cca6f01f08a8e44257394fdde634d421e8e) - support for 'ironvar' dynamic variables *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`c6319b7`](https://github.com/JakeStanger/ironbar/commit/c6319b78fd3992ad43327e90b6326ab653238f2e) - **ipc**: support for injecting additional stylesheets *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`27f920d`](https://github.com/JakeStanger/ironbar/commit/27f920d01217bedba279003291ad48c1aaa56bb0) - **launcher**: slightly improve focus logic when clicking item with multiple windows *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`bd90167`](https://github.com/JakeStanger/ironbar/commit/bd90167f4ea90cb97984b9f3b5e6f65b375d0c4a) - **clock**: format option for popup header *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`12053f1`](https://github.com/JakeStanger/ironbar/commit/12053f111a6f05a59e33396b9042821b98b9bc5c) - **music**: progress/seek bar in popup *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`7d3bb02`](https://github.com/JakeStanger/ironbar/commit/7d3bb02b4612f278bcc8a268a48c61b239c63e82) - **ipc**: reload config command *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`b310ea7`](https://github.com/JakeStanger/ironbar/commit/b310ea76362bcdf10e187d6b00cd2b8ed2870c41) - **clock**: localization support *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`738b9e3`](https://github.com/JakeStanger/ironbar/commit/738b9e3da714c9b998030e9f60b9b6f50c62ec76) - **config**: use default fallback with config instructions *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`2ccb263`](https://github.com/JakeStanger/ironbar/commit/2ccb2633c6c4d7f6eb264a6c49951853b728c9f3) - IPC for get_visible, set_visible, new bar `name` config option *(commit by [@A-Cloud-Ninja](https://github.com/A-Cloud-Ninja))*
+- [`b7ee794`](https://github.com/JakeStanger/ironbar/commit/b7ee794bfc86730e7921c8a930cf8d8bb44474ad) - **ipc**: commands for opening/closing popups *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`ef443e6`](https://github.com/JakeStanger/ironbar/commit/ef443e6978949479388129760dabc3f8930c0b0f) - **image resolver**: add fallback image *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`9f65cf2`](https://github.com/JakeStanger/ironbar/commit/9f65cf293d9527a2c536847f0005957421a9be33) - **workspaces**: add `favorites` and `hidden` options *(commit by [@yavko](https://github.com/yavko))*
+- [`19c684e`](https://github.com/JakeStanger/ironbar/commit/19c684e49facb57e3e2acf9cafecf177c2e1bfbf) - **nix**: automatic development environment with direnv *(commit by [@yavko](https://github.com/yavko))*
+
+### :bug: Bug Fixes
+- [`6db7742`](https://github.com/JakeStanger/ironbar/commit/6db7742e068dc03d67dbf35e0d9db27f900392fe) - crash on startup introduced by recent refactors *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`f78c7f9`](https://github.com/JakeStanger/ironbar/commit/f78c7f9b981c98676e855ff6a63e33a51927c709) - not resolving flatpak application icons *(commit by [@body20002](https://github.com/body20002))*
+- [`1759945`](https://github.com/JakeStanger/ironbar/commit/1759945912e376581e5fcd5ed2916f89e2090f2b) - **music**: correctly show/hide popup elements based on player capabilities *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`a9ac29d`](https://github.com/JakeStanger/ironbar/commit/a9ac29d8857256d13e14104db235117e3c752972) - clipboard partially behind wrong feature flag *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`c711dd8`](https://github.com/JakeStanger/ironbar/commit/c711dd858554140bcfb6df515a43b40ee2baee67) - failing to resolve icons with home_manager *(commit by [@christoph00](https://github.com/christoph00))*
+- [`1a272e0`](https://github.com/JakeStanger/ironbar/commit/1a272e00fbeca4b5e39b527ffed439bc51fd4080) - **label**: not using markup *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`4ca17d1`](https://github.com/JakeStanger/ironbar/commit/4ca17d1337acfbbc21c04058d97f689a1cce60a6) - **launcher**: incorrectly resolving some applications *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`eee2182`](https://github.com/JakeStanger/ironbar/commit/eee2182ab90fdc22cd05da9417cbee17e4c67088) - **ipc**: command/response casing *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`c582bc3`](https://github.com/JakeStanger/ironbar/commit/c582bc33905702a9ebe323e6dfa9413485f48fb7) - **cli**: `set-visible` command causing panic *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`87dd764`](https://github.com/JakeStanger/ironbar/commit/87dd7646fc9223ac7e67842934f3bd104b4eea80) - **launcher**: not clearing focused state when closing window *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`6f57ad4`](https://github.com/JakeStanger/ironbar/commit/6f57ad47ac30348c0ae2b7dba35d5ffdbf96f72d) - **launcher**: not setting focus state when opening favourite *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`2367faa`](https://github.com/JakeStanger/ironbar/commit/2367faab0440327620052de845c6a0d3032f2f05) - **image**: using fallback in places it shouldn't *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`7f6fef6`](https://github.com/JakeStanger/ironbar/commit/7f6fef6338d7a8c909f3224b32426dfc2aacc295) - **image**: matching desktop file names too eagerly *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`89ec06f`](https://github.com/JakeStanger/ironbar/commit/89ec06fc7b252052f96e45f5d0f6d6504878a13a) - **music**: hide album art widget when no image *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`2902331`](https://github.com/JakeStanger/ironbar/commit/2902331af00f2e52fdea06964fbd89d72fe2ebbb) - **dynamic string**: incorrectly handling strings containing multipoint utf-8 chars *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`901a86c`](https://github.com/JakeStanger/ironbar/commit/901a86caa491648268f0618e17a25b978552db0c) - **custom**: crash when clicking non-popup button *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`54f0f23`](https://github.com/JakeStanger/ironbar/commit/54f0f232f208602699e5021942c3d0f3947ca6de) - **launcher**: popup not closing when hover leaves widget *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+
+### :recycle: Refactors
+- [`d121dc3`](https://github.com/JakeStanger/ironbar/commit/d121dc3d1e9468a67deb528c35fc3897c3840f77) - fix unused var warning *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`cc181a8`](https://github.com/JakeStanger/ironbar/commit/cc181a8b6d0ac1cccd4ed2f9f420c138ed5383d2) - fix new clippy warnings *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`7016f7f`](https://github.com/JakeStanger/ironbar/commit/7016f7f79e7e29a3318b535ba224aa78bd91688a) - use new smart pointer macros throughout codebase *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`06251e2`](https://github.com/JakeStanger/ironbar/commit/06251e293e8f56e1897fed80335f114fdea57183) - fix new pedantic clippy warnings *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`36f3db7`](https://github.com/JakeStanger/ironbar/commit/36f3db741178b959070ee90bcd6448e1b2a6ef26) - **image**: do not try to read desktop files where definitely not necessary *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+
+### :memo: Documentation Changes
+- [`aea8de2`](https://github.com/JakeStanger/ironbar/commit/aea8de25522e5f5e7f92f46a6248eb2e79cb457e) - update CHANGELOG.md for v0.12.1 [skip ci] *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`607c728`](https://github.com/JakeStanger/ironbar/commit/607c7285d7e01265a8c8417e2941b2099e61aa42) - update for ipc/cli, tidy a bit *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`4b88079`](https://github.com/JakeStanger/ironbar/commit/4b88079561e5c9fec63480afe56a1f89c76dc094) - fix header *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`4620f29`](https://github.com/JakeStanger/ironbar/commit/4620f29d381394aef8b241b03009ef8c3b8d0145) - **examples**: update stylesheet *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`3d94987`](https://github.com/JakeStanger/ironbar/commit/3d949874de90b0e5c06cb62726629133d0ea76e3) - **ipc**: add link to luajit library *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+
+
 ## [v0.12.1] - 2023-06-18
 ### :boom: BREAKING CHANGES
 - due to [`e11177f`](https://github.com/JakeStanger/ironbar/commit/e11177fea3095560057278d71cebca01bed295d6) - add sensible class names for icon labels *(commit by [@JakeStanger](https://github.com/JakeStanger))*:
@@ -373,3 +425,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [v0.11.0]: https://github.com/JakeStanger/ironbar/compare/v0.10.0...v0.11.0
 [v0.12.0]: https://github.com/JakeStanger/ironbar/compare/v0.11.0...v0.12.0
 [v0.12.1]: https://github.com/JakeStanger/ironbar/compare/v0.12.0...v0.12.1
+[v0.13.0]: https://github.com/JakeStanger/ironbar/compare/v0.12.1...v0.13.0
