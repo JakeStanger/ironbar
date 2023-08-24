@@ -103,6 +103,7 @@ end:
 | `.workspaces`                  | Workspaces widget box                |
 | `.workspaces .item`            | Workspace button                     |
 | `.workspaces .item.focused`    | Workspace button (workspace focused) |
+| `.workspaces .item.inactive`   | Workspace button (favourite, not currently open)
 | `.workspaces .item .icon`      | Workspace button icon (any type)     |
 | `.workspaces .item .text-icon` | Workspace button icon (textual only) |
 | `.workspaces .item .image`     | Workspace button icon (image only)   |
