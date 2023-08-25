@@ -1,4 +1,4 @@
-use super::{Workspace, WorkspaceClient, WorkspaceUpdate};
+use super::{Visibility, Workspace, WorkspaceClient, WorkspaceUpdate};
 use crate::{await_sync, send};
 use async_once::AsyncOnce;
 use color_eyre::Report;
@@ -105,22 +105,50 @@ pub fn get_sub_client() -> &'static SwayEventClient {
 
 impl From<Node> for Workspace {
     fn from(node: Node) -> Self {
+        let visibility = Visibility::from(&node);
+
         Self {
             id: node.id.to_string(),
             name: node.name.unwrap_or_default(),
             monitor: node.output.unwrap_or_default(),
-            focused: node.focused,
+            visibility,
         }
     }
 }
 
 impl From<swayipc_async::Workspace> for Workspace {
     fn from(workspace: swayipc_async::Workspace) -> Self {
+        let visibility = Visibility::from(&workspace);
+
         Self {
             id: workspace.id.to_string(),
             name: workspace.name,
             monitor: workspace.output,
-            focused: workspace.focused,
+            visibility,
+        }
+    }
+}
+
+impl From<&Node> for Visibility {
+    fn from(node: &Node) -> Self {
+        if node.focused {
+            Self::focused()
+        } else if node.visible.unwrap_or(false) {
+            Self::visible()
+        } else {
+            Self::Hidden
+        }
+    }
+}
+
+impl From<&swayipc_async::Workspace> for Visibility {
+    fn from(workspace: &swayipc_async::Workspace) -> Self {
+        if workspace.focused {
+            Self::focused()
+        } else if workspace.visible {
+            Self::visible()
+        } else {
+            Self::Hidden
         }
     }
 }
@@ -139,16 +167,8 @@ impl From<WorkspaceEvent> for WorkspaceUpdate {
                     .unwrap_or_default(),
             ),
             WorkspaceChange::Focus => Self::Focus {
-                old: event
-                    .old
-                    .expect("Missing old workspace")
-                    .name
-                    .unwrap_or_default(),
-                new: event
-                    .current
-                    .expect("Missing current workspace")
-                    .name
-                    .unwrap_or_default(),
+                old: event.old.map(Workspace::from),
+                new: Workspace::from(event.current.expect("Missing current workspace")),
             },
             WorkspaceChange::Move => {
                 Self::Move(event.current.expect("Missing current workspace").into())
