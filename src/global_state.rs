@@ -1,7 +1,7 @@
 use crate::popup::Popup;
-use crate::write_lock;
+use std::cell::{RefCell, RefMut};
 use std::collections::HashMap;
-use std::sync::{Arc, RwLock, RwLockWriteGuard};
+use std::rc::Rc;
 
 /// Global application state shared across all bars.
 ///
@@ -9,7 +9,7 @@ use std::sync::{Arc, RwLock, RwLockWriteGuard};
 /// that is not otherwise accessible should be placed on here.
 #[derive(Debug)]
 pub struct GlobalState {
-    popups: HashMap<Box<str>, Arc<RwLock<Popup>>>,
+    popups: HashMap<Box<str>, Rc<RefCell<Popup>>>,
 }
 
 impl GlobalState {
@@ -19,22 +19,22 @@ impl GlobalState {
         }
     }
 
-    pub fn popups(&self) -> &HashMap<Box<str>, Arc<RwLock<Popup>>> {
+    pub fn popups(&self) -> &HashMap<Box<str>, Rc<RefCell<Popup>>> {
         &self.popups
     }
 
-    pub fn popups_mut(&mut self) -> &mut HashMap<Box<str>, Arc<RwLock<Popup>>> {
+    pub fn popups_mut(&mut self) -> &mut HashMap<Box<str>, Rc<RefCell<Popup>>> {
         &mut self.popups
     }
 
     pub fn with_popup_mut<F, T>(&self, monitor_name: &str, f: F) -> Option<T>
     where
-        F: FnOnce(RwLockWriteGuard<Popup>) -> T,
+        F: FnOnce(RefMut<Popup>) -> T,
     {
         let popup = self.popups().get(monitor_name);
 
         if let Some(popup) = popup {
-            let popup = write_lock!(popup);
+            let popup = popup.borrow_mut();
             Some(f(popup))
         } else {
             None

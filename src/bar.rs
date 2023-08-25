@@ -4,14 +4,13 @@ use crate::modules::{
 };
 use crate::popup::Popup;
 use crate::unique_id::get_unique_usize;
-use crate::{arc_rw, Config, GlobalState};
+use crate::{Config, GlobalState};
 use color_eyre::Result;
 use gtk::gdk::Monitor;
 use gtk::prelude::*;
 use gtk::{Application, ApplicationWindow, IconTheme, Orientation};
 use std::cell::RefCell;
 use std::rc::Rc;
-use std::sync::{Arc, RwLock};
 use tracing::{debug, info};
 
 /// Creates a new window for a bar,
@@ -153,7 +152,7 @@ fn create_container(name: &str, orientation: Orientation) -> gtk::Box {
 
 #[derive(Debug)]
 struct BarLoadResult {
-    popup: Arc<RwLock<Popup>>,
+    popup: Rc<RefCell<Popup>>,
 }
 
 /// Loads the configured modules onto a bar.
@@ -186,7 +185,7 @@ fn load_modules(
 
     // popup ignores module location so can bodge this for now
     let popup = Popup::new(&info!(ModuleLocation::Left), config.popup_gap);
-    let popup = arc_rw!(popup);
+    let popup = Rc::new(RefCell::new(popup));
 
     if let Some(modules) = config.start {
         let info = info!(ModuleLocation::Left);
@@ -214,7 +213,7 @@ fn add_modules(
     content: &gtk::Box,
     modules: Vec<ModuleConfig>,
     info: &ModuleInfo,
-    popup: &Arc<RwLock<Popup>>,
+    popup: &Rc<RefCell<Popup>>,
 ) -> Result<()> {
     let orientation = info.bar_position.get_orientation();
 
@@ -226,7 +225,7 @@ fn add_modules(
                 $id,
                 common.name.clone(),
                 &info,
-                &Arc::clone(&popup),
+                &Rc::clone(&popup),
             )?;
             set_widget_identifiers(&widget_parts, &common);
 

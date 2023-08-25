@@ -224,7 +224,9 @@ fn create_bars(
             .get(i as usize)
             .ok_or_else(|| Report::msg(error::ERR_OUTPUTS))?;
 
-        let Some(monitor_name) = &output.name else { continue };
+        let Some(monitor_name) = &output.name else {
+            continue;
+        };
 
         config.monitors.as_ref().map_or_else(
             || {

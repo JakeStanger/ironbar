@@ -216,7 +216,9 @@ impl Module<Button> for MusicModule {
             let tx = context.tx.clone();
 
             context.widget_rx.attach(None, move |event| {
-                let ControllerEvent::Update(mut event) = event else { return Continue(true) };
+                let ControllerEvent::Update(mut event) = event else {
+                    return Continue(true);
+                };
 
                 if let Some(event) = event.take() {
                     label.set_label(&event.display_string);

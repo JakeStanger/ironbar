@@ -1,4 +1,5 @@
-use std::sync::{Arc, RwLock};
+use std::cell::RefCell;
+use std::rc::Rc;
 
 use color_eyre::Result;
 use glib::IsA;
@@ -12,7 +13,7 @@ use crate::bridge_channel::BridgeChannel;
 use crate::config::{BarPosition, CommonConfig, TransitionType};
 use crate::gtk_helpers::{IronbarGtkExt, WidgetGeometry};
 use crate::popup::Popup;
-use crate::{send, write_lock};
+use crate::send;
 
 #[cfg(feature = "clipboard")]
 pub mod clipboard;
@@ -178,7 +179,7 @@ pub fn create_module<TModule, TWidget, TSend, TRec>(
     id: usize,
     name: Option<String>,
     info: &ModuleInfo,
-    popup: &Arc<RwLock<Popup>>,
+    popup: &Rc<RefCell<Popup>>,
 ) -> Result<ModuleParts<TWidget>>
 where
     TModule: Module<TWidget, SendMessage = TSend, ReceiveMessage = TRec>,
@@ -234,12 +235,12 @@ where
 
 /// Registers the popup content with the popup.
 fn register_popup_content(
-    popup: &Arc<RwLock<Popup>>,
+    popup: &Rc<RefCell<Popup>>,
     id: usize,
     name: String,
     popup_content: ModulePopupParts,
 ) {
-    write_lock!(popup).register_content(id, name, popup_content);
+    popup.borrow_mut().register_content(id, name, popup_content);
 }
 
 /// Sets up the bridge channel receiver
@@ -251,7 +252,7 @@ fn setup_receiver<TSend>(
     channel: BridgeChannel<ModuleUpdateEvent<TSend>>,
     w_tx: glib::Sender<TSend>,
     p_tx: glib::Sender<TSend>,
-    popup: Arc<RwLock<Popup>>,
+    popup: Rc<RefCell<Popup>>,
     name: &'static str,
     id: usize,
     has_popup: bool,
@@ -273,7 +274,7 @@ fn setup_receiver<TSend>(
             }
             ModuleUpdateEvent::TogglePopup(button_id) => {
                 debug!("Toggling popup for {} [#{}]", name, id);
-                let mut popup = write_lock!(popup);
+                let mut popup = popup.borrow_mut();
                 if popup.is_visible() {
                     popup.hide();
                 } else {
@@ -289,7 +290,7 @@ fn setup_receiver<TSend>(
             ModuleUpdateEvent::OpenPopup(button_id) => {
                 debug!("Opening popup for {} [#{}]", name, id);
 
-                let mut popup = write_lock!(popup);
+                let mut popup = popup.borrow_mut();
                 popup.hide();
                 popup.show(id, button_id);
 
@@ -302,7 +303,7 @@ fn setup_receiver<TSend>(
             ModuleUpdateEvent::OpenPopupAt(geometry) => {
                 debug!("Opening popup for {} [#{}]", name, id);
 
-                let mut popup = write_lock!(popup);
+                let mut popup = popup.borrow_mut();
                 popup.hide();
                 popup.show_at(id, geometry);
 
@@ -315,7 +316,7 @@ fn setup_receiver<TSend>(
             ModuleUpdateEvent::ClosePopup => {
                 debug!("Closing popup for {} [#{}]", name, id);
 
-                let mut popup = write_lock!(popup);
+                let mut popup = popup.borrow_mut();
                 popup.hide();
             }
         }
