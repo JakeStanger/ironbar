@@ -1,4 +1,4 @@
-use super::{Workspace, WorkspaceClient, WorkspaceUpdate};
+use super::{Visibility, Workspace, WorkspaceClient, WorkspaceUpdate};
 use crate::{arc_mut, lock, send};
 use color_eyre::Result;
 use hyprland::data::{Workspace as HWorkspace, Workspaces};
@@ -52,11 +52,8 @@ impl EventClient {
 
                     let workspace_name = get_workspace_name(workspace_type);
                     let prev_workspace = lock!(active);
-                    let focused = prev_workspace
-                        .as_ref()
-                        .map_or(false, |w| w.name == workspace_name);
 
-                    let workspace = Self::get_workspace(&workspace_name, focused);
+                    let workspace = Self::get_workspace(&workspace_name, prev_workspace.as_ref());
 
                     if let Some(workspace) = workspace {
                         send!(tx, WorkspaceUpdate::Add(workspace));
@@ -80,10 +77,7 @@ impl EventClient {
                     );
 
                     let workspace_name = get_workspace_name(workspace_type);
-                    let focused = prev_workspace
-                        .as_ref()
-                        .map_or(false, |w| w.name == workspace_name);
-                    let workspace = Self::get_workspace(&workspace_name, focused);
+                    let workspace = Self::get_workspace(&workspace_name, prev_workspace.as_ref());
 
                     workspace.map_or_else(
                         || {
@@ -92,7 +86,7 @@ impl EventClient {
                         |workspace| {
                             // there may be another type of update so dispatch that regardless of focus change
                             send!(tx, WorkspaceUpdate::Update(workspace.clone()));
-                            if !focused {
+                            if !workspace.visibility.is_focused() {
                                 Self::send_focus_change(&mut prev_workspace, workspace, &tx);
                             }
                         },
@@ -117,12 +111,11 @@ impl EventClient {
                     );
 
                     let workspace_name = get_workspace_name(workspace_type);
-                    let focused = prev_workspace
-                        .as_ref()
-                        .map_or(false, |w| w.name == workspace_name);
-                    let workspace = Self::get_workspace(&workspace_name, focused);
+                    let workspace = Self::get_workspace(&workspace_name, prev_workspace.as_ref());
 
-                    if let (Some(workspace), false) = (workspace, focused) {
+                    if let Some((false, workspace)) =
+                        workspace.map(|w| (w.visibility.is_focused(), w))
+                    {
                         Self::send_focus_change(&mut prev_workspace, workspace, &tx);
                     } else {
                         error!("Unable to locate workspace");
@@ -142,15 +135,12 @@ impl EventClient {
                     let mut prev_workspace = lock!(active);
 
                     let workspace_name = get_workspace_name(workspace_type);
-                    let focused = prev_workspace
-                        .as_ref()
-                        .map_or(false, |w| w.name == workspace_name);
-                    let workspace = Self::get_workspace(&workspace_name, focused);
+                    let workspace = Self::get_workspace(&workspace_name, prev_workspace.as_ref());
 
                     if let Some(workspace) = workspace {
                         send!(tx, WorkspaceUpdate::Move(workspace.clone()));
 
-                        if !focused {
+                        if !workspace.visibility.is_focused() {
                             Self::send_focus_change(&mut prev_workspace, workspace, &tx);
                         }
                     }
@@ -180,32 +170,28 @@ impl EventClient {
         workspace: Workspace,
         tx: &Sender<WorkspaceUpdate>,
     ) {
-        let old = prev_workspace
-            .as_ref()
-            .map(|w| w.name.clone())
-            .unwrap_or_default();
-
         send!(
             tx,
             WorkspaceUpdate::Focus {
-                old,
-                new: workspace.name.clone(),
+                old: prev_workspace.take(),
+                new: workspace.clone(),
             }
         );
 
         prev_workspace.replace(workspace);
     }
 
-    /// Gets a workspace by name from the server.
-    ///
-    /// Use `focused` to manually mark the workspace as focused,
-    /// as this is not automatically checked.
-    fn get_workspace(name: &str, focused: bool) -> Option<Workspace> {
+    /// Gets a workspace by name from the server, given the active workspace if known.
+    fn get_workspace(name: &str, active: Option<&Workspace>) -> Option<Workspace> {
         Workspaces::get()
             .expect("Failed to get workspaces")
             .find_map(|w| {
                 if w.name == name {
-                    Some(Workspace::from((focused, w)))
+                    let vis = Visibility::from((&w, active.map(|w| w.name.as_ref()), &|w| {
+                        create_is_visible()(w)
+                    }));
+
+                    Some(Workspace::from((vis, w)))
                 } else {
                     None
                 }
@@ -214,7 +200,7 @@ impl EventClient {
 
     /// Gets the active workspace from the server.
     fn get_active_workspace() -> Result<Workspace> {
-        let w = HWorkspace::get_active().map(|w| Workspace::from((true, w)))?;
+        let w = HWorkspace::get_active().map(|w| Workspace::from((Visibility::focused(), w)))?;
         Ok(w)
     }
 }
@@ -236,13 +222,16 @@ impl WorkspaceClient for EventClient {
         {
             let tx = self.workspace_tx.clone();
 
-            let active_name = HWorkspace::get_active()
-                .map(|active| active.name)
-                .unwrap_or_default();
+            let active_id = HWorkspace::get_active().ok().map(|active| active.name);
+            let is_visible = create_is_visible();
 
             let workspaces = Workspaces::get()
                 .expect("Failed to get workspaces")
-                .map(|w| Workspace::from((w.name == active_name, w)))
+                .map(|w| {
+                    let vis = Visibility::from((&w, active_id.as_deref(), &is_visible));
+
+                    Workspace::from((vis, w))
+                })
                 .collect();
 
             send!(tx, WorkspaceUpdate::Init(workspaces));
@@ -271,13 +260,36 @@ fn get_workspace_name(name: WorkspaceType) -> String {
     }
 }
 
-impl From<(bool, hyprland::data::Workspace)> for Workspace {
-    fn from((focused, workspace): (bool, hyprland::data::Workspace)) -> Self {
+/// Creates a function which determines if a workspace is visible. This function makes a Hyprland call that allocates so it should be cached when possible, but it is only valid so long as workspaces do not change so it should not be stored long term
+fn create_is_visible() -> impl Fn(&HWorkspace) -> bool {
+    let monitors = hyprland::data::Monitors::get().map_or(Vec::new(), |ms| ms.to_vec());
+
+    move |w| monitors.iter().any(|m| m.active_workspace.id == w.id)
+}
+
+impl From<(Visibility, HWorkspace)> for Workspace {
+    fn from((visibility, workspace): (Visibility, HWorkspace)) -> Self {
         Self {
             id: workspace.id.to_string(),
             name: workspace.name,
             monitor: workspace.monitor,
-            focused,
+            visibility,
+        }
+    }
+}
+
+impl<'a, 'f, F> From<(&'a HWorkspace, Option<&str>, F)> for Visibility
+where
+    F: FnOnce(&'f HWorkspace) -> bool,
+    'a: 'f,
+{
+    fn from((workspace, active_name, is_visible): (&'a HWorkspace, Option<&str>, F)) -> Self {
+        if Some(workspace.name.as_str()) == active_name {
+            Self::focused()
+        } else if is_visible(workspace) {
+            Self::visible()
+        } else {
+            Self::Hidden
         }
     }
 }

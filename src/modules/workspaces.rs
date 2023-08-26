@@ -1,4 +1,4 @@
-use crate::clients::compositor::{Compositor, Workspace, WorkspaceUpdate};
+use crate::clients::compositor::{Compositor, Visibility, Workspace, WorkspaceUpdate};
 use crate::config::CommonConfig;
 use crate::image::new_icon_button;
 use crate::modules::{Module, ModuleInfo, ModuleParts, ModuleUpdateEvent, WidgetContext};
@@ -76,8 +76,7 @@ const fn default_icon_size() -> i32 {
 /// Creates a button from a workspace
 fn create_button(
     name: &str,
-    focused: bool,
-    inactive: bool,
+    visibility: Visibility,
     name_map: &HashMap<String, String>,
     icon_theme: &IconTheme,
     icon_size: i32,
@@ -91,10 +90,12 @@ fn create_button(
     let style_context = button.style_context();
     style_context.add_class("item");
 
-    if focused {
+    if visibility.is_visible() {
+        style_context.add_class("visible");
+    }
+
+    if visibility.is_focused() {
         style_context.add_class("focused");
-    } else if inactive {
-        style_context.add_class("inactive");
     }
 
     {
@@ -131,7 +132,7 @@ fn reorder_workspaces(container: &gtk::Box) {
 
 impl WorkspacesModule {
     fn show_workspace_check(&self, output: &String, work: &Workspace) -> bool {
-        (work.focused || !self.hidden.contains(&work.name))
+        (work.visibility.is_focused() || !self.hidden.contains(&work.name))
             && (self.all_monitors || output == &work.monitor)
     }
 }
@@ -212,11 +213,10 @@ impl Module<gtk::Box> for WorkspacesModule {
 
                             let mut added = HashSet::new();
 
-                            let mut add_workspace = |name: &str, focused: bool| {
+                            let mut add_workspace = |name: &str, visibility: Visibility| {
                                 let item = create_button(
                                     name,
-                                    focused,
-                                    false,
+                                    visibility,
                                     &name_map,
                                     &icon_theme,
                                     icon_size,
@@ -230,7 +230,7 @@ impl Module<gtk::Box> for WorkspacesModule {
                             // add workspaces from client
                             for workspace in &workspaces {
                                 if self.show_workspace_check(&output_name, workspace) {
-                                    add_workspace(&workspace.name, workspace.focused);
+                                    add_workspace(&workspace.name, workspace.visibility);
                                     added.insert(workspace.name.to_string());
                                 }
                             }
@@ -238,7 +238,7 @@ impl Module<gtk::Box> for WorkspacesModule {
                             let mut add_favourites = |names: &Vec<String>| {
                                 for name in names {
                                     if !added.contains(name) {
-                                        add_workspace(name, false);
+                                        add_workspace(name, Visibility::Hidden);
                                         added.insert(name.to_string());
                                         fav_names.push(name.to_string());
                                     }
@@ -264,14 +264,20 @@ impl Module<gtk::Box> for WorkspacesModule {
                         }
                     }
                     WorkspaceUpdate::Focus { old, new } => {
-                        let old = button_map.get(&old);
-                        if let Some(old) = old {
-                            old.style_context().remove_class("focused");
+                        if let Some(btn) = old.as_ref().and_then(|w| button_map.get(&w.name)) {
+                            if Some(new.monitor) == old.map(|w| w.monitor) {
+                                btn.style_context().remove_class("visible");
+                            }
+
+                            btn.style_context().remove_class("focused");
                         }
 
-                        let new = button_map.get(&new);
-                        if let Some(new) = new {
-                            new.style_context().add_class("focused");
+                        let new = button_map.get(&new.name);
+                        if let Some(btn) = new {
+                            let style = btn.style_context();
+
+                            style.add_class("visible");
+                            style.add_class("focused");
                         }
                     }
                     WorkspaceUpdate::Add(workspace) => {
@@ -284,8 +290,7 @@ impl Module<gtk::Box> for WorkspacesModule {
                             let name = workspace.name;
                             let item = create_button(
                                 &name,
-                                workspace.focused,
-                                false,
+                                workspace.visibility,
                                 &name_map,
                                 &icon_theme,
                                 icon_size,
@@ -310,8 +315,7 @@ impl Module<gtk::Box> for WorkspacesModule {
                                 let name = workspace.name;
                                 let item = create_button(
                                     &name,
-                                    workspace.focused,
-                                    false,
+                                    workspace.visibility,
                                     &name_map,
                                     &icon_theme,
                                     icon_size,
