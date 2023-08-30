@@ -92,7 +92,7 @@ wayland-protocols-wlr = { version = "0.1.0", features = ["client"] }
 smithay-client-toolkit = { version = "0.17.0", default-features = false, features = [
   "calloop",
 ] }
-universal-config = { version = "0.4.2", default_features = false }
+universal-config = { version = "0.4.3", default_features = false }
 ctrlc = "3.4.0"
 
 lazy_static = "1.4.0"
