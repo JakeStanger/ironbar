@@ -1,87 +1,87 @@
 anchor_to_edges: true
 end:
-  - music_dir: /home/jake/Music
-    player_type: mpd
-    truncate:
-      max_length: 100
-      mode: end
-    type: music
-  - host: chloe:6600
-    player_type: mpd
-    truncate: end
-    type: music
-  - cmd: /home/jake/bin/phone-battery
-    show_if:
-      cmd: /home/jake/bin/phone-connected
-      interval: 500
-    type: script
-  - format:
-      -  {cpu_percent}% | {temp_c:k10temp_Tccd1}°C
-      -  {memory_used} / {memory_total} GB ({memory_percent}%)
-      - '| {swap_used} / {swap_total} GB ({swap_percent}%)'
-      -  {disk_used:/} / {disk_total:/} GB ({disk_percent:/}%)
-      - 李 {net_down:enp39s0} / {net_up:enp39s0} Mbps
-      - 猪 {load_average:1} | {load_average:5} | {load_average:15}
-      -  {uptime}
-    interval:
-      cpu: 1
-      disks: 300
-      memory: 30
-      networks: 3
-      temps: 5
-    type: sys_info
-  - max_items: 3
-    truncate:
-      length: 50
-      mode: end
-    type: clipboard
-  - bar:
-      - label: 
-        name: power-btn
-        on_click: popup:toggle
+- music_dir: /home/jake/Music
+  player_type: mpd
+  truncate:
+    max_length: 100
+    mode: end
+  type: music
+- host: chloe:6600
+  player_type: mpd
+  truncate: end
+  type: music
+- cmd: /home/jake/bin/phone-battery
+  show_if:
+    cmd: /home/jake/bin/phone-connected
+    interval: 500
+  type: script
+- format:
+  -  {cpu_percent}% | {temp_c:k10temp_Tccd1}°C
+  -  {memory_used} / {memory_total} GB ({memory_percent}%)
+  - '| {swap_used} / {swap_total} GB ({swap_percent}%)'
+  -  {disk_used:/} / {disk_total:/} GB ({disk_percent:/}%)
+  - 李 {net_down:enp39s0} / {net_up:enp39s0} Mbps
+  - 猪 {load_average:1} | {load_average:5} | {load_average:15}
+  -  {uptime}
+  interval:
+    cpu: 1
+    disks: 300
+    memory: 30
+    networks: 3
+    temps: 5
+  type: sys_info
+- max_items: 3
+  truncate:
+    length: 50
+    mode: end
+  type: clipboard
+- bar:
+  - label: 
+    name: power-btn
+    on_click: popup:toggle
+    type: button
+  class: power-menu
+  popup:
+  - orientation: vertical
+    type: box
+    widgets:
+    - label: Power menu
+      name: header
+      type: label
+    - type: box
+      widgets:
+      - class: power-btn
+        label: <span font-size='40pt'></span>
+        on_click: '!shutdown now'
         type: button
-    class: power-menu
-    popup:
-      - orientation: vertical
-        type: box
-        widgets:
-          - label: Power menu
-            name: header
-            type: label
-          - type: box
-            widgets:
-              - class: power-btn
-                label: <span font-size='40pt'></span>
-                on_click: '!shutdown now'
-                type: button
-              - class: power-btn
-                label: <span font-size='40pt'></span>
-                on_click: '!reboot'
-                type: button
-          - label: 'Uptime: {{30000:uptime -p | cut -d '' '' -f2-}}'
-            name: uptime
-            type: label
-    tooltip: 'Up: {{30000:uptime -p | cut -d '' '' -f2-}}'
-    type: custom
-  - type: clock
+      - class: power-btn
+        label: <span font-size='40pt'></span>
+        on_click: '!reboot'
+        type: button
+    - label: 'Uptime: {{30000:uptime -p | cut -d '' '' -f2-}}'
+      name: uptime
+      type: label
+  tooltip: 'Up: {{30000:uptime -p | cut -d '' '' -f2-}}'
+  type: custom
+- type: clock
 icon_theme: Paper
 position: bottom
 start:
-  - all_monitors: false
-    name_map:
-      '1': ﭮ
-      '2': icon:firefox
-      '3': 
-      Code: 
-      Games: icon:steam
-    type: workspaces
-  - favorites:
-      - firefox
-      - discord
-      - steam
-    show_icons: true
-    show_names: false
-    type: launcher
-  - label: 'random num: {{500:echo $RANDOM}}'
-    type: label
+- all_monitors: false
+  name_map:
+    '1': 󰙯
+    '2': icon:firefox
+    '3': 
+    Code: 
+    Games: icon:steam
+  type: workspaces
+- favorites:
+  - firefox
+  - discord
+  - steam
+  show_icons: true
+  show_names: false
+  type: launcher
+- label: 'random num: {{500:echo FIXME}}'
+  type: label
 

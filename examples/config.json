@@ -109,7 +109,7 @@
     {
       "all_monitors": false,
       "name_map": {
-        "1": "ﭮ",
+        "1": "󰙯",
         "2": "icon:firefox",
         "3": "",
         "Code": "",
@@ -128,7 +128,7 @@
       "type": "launcher"
     },
     {
-      "label": "random num: {{500:echo $RANDOM}}",
+      "label": "random num: {{500:echo FIXME}}",
       "type": "label"
     }
   ]

@@ -3,7 +3,7 @@ let {
         type = "workspaces"
         all_monitors = false
         name_map = {
-            1 = "ﭮ"
+            1 = "󰙯"
             2 = "icon:firefox"
             3 = ""
             Games = "icon:steam"
@@ -67,7 +67,7 @@ let {
 
     $clipboard = { type = "clipboard" max_items = 3 truncate.mode = "end" truncate.length = 50 }
 
-    $label = { type = "label" label = "random num: {{500:echo $RANDOM}}" }
+    $label = { type = "label" label = "random num: {{500:echo FIXME}}" }
 
     // -- begin custom --
     $button = { type = "button" name="power-btn" label = "" on_click = "popup:toggle" }
