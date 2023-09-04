@@ -109,7 +109,7 @@ serde_json = { version = "1.0.105", optional = true }
 reqwest = { version = "0.11.20", optional = true }
 
 # clipboard
-nix = { version = "0.26.2", optional = true, features = ["event"] }
+nix = { version = "0.27.1", optional = true, features = ["event"] }
 
 # clock
 chrono = { version = "0.4.28", optional = true, features = ["unstable-locales"] }
