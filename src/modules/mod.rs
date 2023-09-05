@@ -206,7 +206,8 @@ where
     let instance_name = name.unwrap_or_else(|| module_name.to_string());
 
     let module_parts = module.into_widget(context, info)?;
-    module_parts.widget.style_context().add_class(module_name);
+    module_parts.widget.add_class("widget");
+    module_parts.widget.add_class(module_name);
 
     let has_popup = if let Some(popup_content) = module_parts.popup.clone() {
         popup_content
@@ -376,6 +377,8 @@ pub fn wrap_widget<W: IsA<Widget>>(
     revealer.set_reveal_child(true);
 
     let container = EventBox::new();
+    container.add_class("widget-container");
+
     container.add_events(EventMask::SCROLL_MASK);
     container.add(&revealer);
 
