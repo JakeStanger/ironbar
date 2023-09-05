@@ -12,7 +12,7 @@ use crate::{lock, send};
 use device::DataControlDevice;
 use glib::Bytes;
 use nix::fcntl::{fcntl, F_GETPIPE_SZ, F_SETPIPE_SZ};
-use nix::sys::epoll::{epoll_create, epoll_ctl, epoll_wait, EpollEvent, EpollFlags, EpollOp};
+use nix::sys::epoll::{Epoll, EpollCreateFlags, EpollEvent, EpollFlags};
 use smithay_client_toolkit::data_device_manager::WritePipe;
 use smithay_client_toolkit::reexports::calloop::RegistrationToken;
 use std::cmp::min;
@@ -289,23 +289,22 @@ impl DataControlSourceHandler for Environment {
                 trace!("Num bytes: {}", bytes.len());
 
                 let mut events = (0..16).map(|_| EpollEvent::empty()).collect::<Vec<_>>();
-                let mut epoll_event = EpollEvent::new(EpollFlags::EPOLLOUT, 0);
+                let epoll_event = EpollEvent::new(EpollFlags::EPOLLOUT, 0);
 
-                let epoll_fd = epoll_create().expect("to get valid file descriptor");
-                epoll_ctl(
-                    epoll_fd,
-                    EpollOp::EpollCtlAdd,
-                    fd.as_raw_fd(),
-                    &mut epoll_event,
-                )
-                .expect("to send valid epoll operation");
+                let epoll_fd =
+                    Epoll::new(EpollCreateFlags::empty()).expect("to get valid file descriptor");
+                epoll_fd
+                    .add(fd, epoll_event)
+                    .expect("to send valid epoll operation");
 
                 while !bytes.is_empty() {
                     let chunk = &bytes[..min(pipe_size as usize, bytes.len())];
 
                     trace!("Writing {} bytes ({} remain)", chunk.len(), bytes.len());
 
-                    epoll_wait(epoll_fd, &mut events, 100).expect("Failed to wait to epoll");
+                    epoll_fd
+                        .wait(&mut events, 100)
+                        .expect("Failed to wait to epoll");
 
                     match file.write(chunk) {
                         Ok(_) => bytes = &bytes[chunk.len()..],
