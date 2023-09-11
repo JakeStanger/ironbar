@@ -84,7 +84,7 @@ color-eyre = "0.6.2"
 serde = { version = "1.0.188", features = ["derive"] }
 indexmap = "2.0.0"
 dirs = "5.0.1"
-walkdir = "2.3.2"
+walkdir = "2.4.0"
 notify = { version = "6.1.1", default-features = false }
 wayland-client = "0.30.2"
 wayland-protocols = { version = "0.30.1", features = ["unstable", "client"] }
