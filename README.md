@@ -75,7 +75,15 @@ cargo install ironbar
 yay -S ironbar-git
 ```
 
-### Nix Flake
+### Nix
+
+[nix package](https://search.nixos.org/packages?channel=unstable&show=ironbar)
+
+```sh
+nix-shell -p ironbar
+```
+
+#### Flake
 
 A flake is included with the repo which can be used with Home Manager.
 
