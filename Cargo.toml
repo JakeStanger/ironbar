@@ -86,7 +86,7 @@ indexmap = "2.0.0"
 dirs = "5.0.1"
 walkdir = "2.4.0"
 notify = { version = "6.1.1", default-features = false }
-wayland-client = "0.30.2"
+wayland-client = "0.31.0"
 wayland-protocols = { version = "0.30.1", features = ["unstable", "client"] }
 wayland-protocols-wlr = { version = "0.1.0", features = ["client"] }
 smithay-client-toolkit = { version = "0.17.0", default-features = false, features = [
