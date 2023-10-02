@@ -82,7 +82,7 @@ tracing-appender = "0.2.2"
 strip-ansi-escapes = "0.2.0"
 color-eyre = "0.6.2"
 serde = { version = "1.0.188", features = ["derive"] }
-indexmap = "2.0.0"
+indexmap = "2.0.2"
 dirs = "5.0.1"
 walkdir = "2.4.0"
 notify = { version = "6.1.1", default-features = false }
