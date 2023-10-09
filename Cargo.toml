@@ -106,7 +106,7 @@ clap = { version = "4.4.6", optional = true, features = ["derive"] }
 serde_json = { version = "1.0.107", optional = true }
 
 # http
-reqwest = { version = "0.11.20", optional = true }
+reqwest = { version = "0.11.22", optional = true }
 
 # clipboard
 nix = { version = "0.27.1", optional = true, features = ["event"] }
