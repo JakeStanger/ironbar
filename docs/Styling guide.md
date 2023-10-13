@@ -28,7 +28,7 @@ You can also target popups by prefixing `popup-` to the name. For example, you c
 Setting the `name` option on a widget allows you to target that specific instance using `#name`. 
 You can also add additional classes to re-use styles. In both cases, `popup-` is automatically prefixed to the popup (`#popup-name` or `.popup-my-class`).
 
-You can also target all GTK widgets of a certain type directly using their name. For example, `button:hover` will select the hover state on *all* buttons.
+You can also target all GTK widgets of a certain type directly using their name. For example, `label` will select all labels, and `button:hover` will select the hover state on *all* buttons.
 These names are all lower case with no separator, so `MenuBar` -> `menubar`.
 
 GTK CSS does not support custom properties, but it does have its own custom `@define-color` syntax which you can use for re-using colours:
