@@ -22,7 +22,7 @@ Information on styling individual modules can be found on their pages in the sid
 | `.widget`           | Any widget.                                |
 | `.popup`            | Any popup box.                             |
 
-Every widget can be selected using a `kebab-case` class name matching its name. 
+Every Ironbar widget can be selected using a `kebab-case` class name matching its name. 
 You can also target popups by prefixing `popup-` to the name. For example, you can use `.clock` and `.popup-clock` respectively.
 
 Setting the `name` option on a widget allows you to target that specific instance using `#name`. 
@@ -30,6 +30,13 @@ You can also add additional classes to re-use styles. In both cases, `popup-` is
 
 You can also target all GTK widgets of a certain type directly using their name. For example, `label` will select all labels, and `button:hover` will select the hover state on *all* buttons.
 These names are all lower case with no separator, so `MenuBar` -> `menubar`.
+
+> [!NOTE]
+> If an entry takes no effect you might have to use a more specific selector. 
+> For example, attempting to set text size on `.popup-clipboard .item` will likely have no effect. 
+> Instead, you can target the more specific `.popup-clipboard .item label`. 
+
+Running `ironbar inspect` can be used to find out how to address an element.
 
 GTK CSS does not support custom properties, but it does have its own custom `@define-color` syntax which you can use for re-using colours:
 
