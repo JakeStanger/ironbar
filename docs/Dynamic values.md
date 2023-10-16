@@ -1,7 +1,7 @@
 In some configuration locations, Ironbar supports dynamic values, 
 meaning you can inject content into the bar from an external source.
 
-Currently two dynamic content sources are supported - scripts and ironvars.
+Currently two dynamic content sources are supported - [scripts](scripts) (via shorthand syntax) and [ironvars](ironvars).
 
 ## Dynamic String
 
