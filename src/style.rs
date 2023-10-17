@@ -4,7 +4,7 @@ use glib::Continue;
 use gtk::ffi::GTK_STYLE_PROVIDER_PRIORITY_USER;
 use gtk::prelude::CssProviderExt;
 use gtk::{gdk, gio, CssProvider, StyleContext};
-use notify::event::{DataChange, ModifyKind};
+use notify::event::ModifyKind;
 use notify::{recommended_watcher, Event, EventKind, RecursiveMode, Result, Watcher};
 use std::path::PathBuf;
 use std::time::Duration;
@@ -39,11 +39,17 @@ pub fn load_css(style_path: PathBuf) {
     let (tx, rx) = glib::MainContext::channel(glib::PRIORITY_DEFAULT);
 
     spawn(async move {
+        let style_path2 = style_path.clone();
         let mut watcher = recommended_watcher(move |res: Result<Event>| match res {
-            Ok(event) if event.kind == EventKind::Modify(ModifyKind::Data(DataChange::Any)) => {
+            Ok(event) if matches!(event.kind, EventKind::Modify(ModifyKind::Data(_))) => {
                 debug!("{event:?}");
-                if let Some(path) = event.paths.first() {
-                    send!(tx, path.clone());
+                if event
+                    .paths
+                    .first()
+                    .map(|p| p == &style_path2)
+                    .unwrap_or_default()
+                {
+                    send!(tx, style_path2.clone());
                 }
             }
             Err(e) => error!("Error occurred when watching stylesheet: {:?}", e),
@@ -51,8 +57,10 @@ pub fn load_css(style_path: PathBuf) {
         })
         .expect("Failed to create CSS file watcher");
 
+        let dir_path = style_path.parent().expect("to exist");
+
         watcher
-            .watch(&style_path, RecursiveMode::NonRecursive)
+            .watch(dir_path, RecursiveMode::NonRecursive)
             .expect("Failed to start CSS file watcher");
         debug!("Installed CSS file watcher on '{}'", style_path.display());
 

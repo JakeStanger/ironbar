@@ -180,7 +180,7 @@ fn parse_desktop_file(path: &Path) -> Option<DesktopFile> {
         .for_each(|(key, value)| {
             desktop_file
                 .entry(key.to_string())
-                .or_insert_with(Vec::new)
+                .or_default()
                 .push(value.to_string());
         });
 
