@@ -137,7 +137,7 @@ impl Ipc {
                 let variable_manager = get_variable_manager();
                 let mut variable_manager = write_lock!(variable_manager);
                 match variable_manager.set(key, value) {
-                    Ok(_) => Response::Ok,
+                    Ok(()) => Response::Ok,
                     Err(err) => Response::error(&format!("{err}")),
                 }
             }

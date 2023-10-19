@@ -5,7 +5,7 @@ use hyprland::data::{Workspace as HWorkspace, Workspaces};
 use hyprland::dispatch::{Dispatch, DispatchType, WorkspaceIdentifierWithSpecial};
 use hyprland::event_listener::EventListener;
 use hyprland::prelude::*;
-use hyprland::shared::WorkspaceType;
+use hyprland::shared::{HyprDataVec, WorkspaceType};
 use lazy_static::lazy_static;
 use tokio::sync::broadcast::{channel, Receiver, Sender};
 use tokio::task::spawn_blocking;
@@ -260,9 +260,12 @@ fn get_workspace_name(name: WorkspaceType) -> String {
     }
 }
 
-/// Creates a function which determines if a workspace is visible. This function makes a Hyprland call that allocates so it should be cached when possible, but it is only valid so long as workspaces do not change so it should not be stored long term
+/// Creates a function which determines if a workspace is visible.
+///
+/// This function makes a Hyprland call that allocates so it should be cached when possible,
+/// but it is only valid so long as workspaces do not change so it should not be stored long term
 fn create_is_visible() -> impl Fn(&HWorkspace) -> bool {
-    let monitors = hyprland::data::Monitors::get().map_or(Vec::new(), |ms| ms.to_vec());
+    let monitors = hyprland::data::Monitors::get().map_or(Vec::new(), HyprDataVec::to_vec);
 
     move |w| monitors.iter().any(|m| m.active_workspace.id == w.id)
 }

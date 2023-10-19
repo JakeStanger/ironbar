@@ -205,7 +205,7 @@ impl Script {
                     Ok(output) => callback(output.0, output.1),
                     Err(err) => error!("{err:?}"),
                 },
-                ScriptMode::Watch => match self.spawn().await {
+                ScriptMode::Watch => match self.spawn() {
                     Ok(mut rx) => {
                         while let Some(msg) = rx.recv().await {
                             callback(msg, true);
@@ -264,7 +264,7 @@ impl Script {
     /// Spawns a long-running process.
     /// Returns a `mpsc::Receiver` that sends a message
     /// every time a new line is written to `stdout` or `stderr`.
-    pub async fn spawn(&self) -> Result<mpsc::Receiver<OutputStream>> {
+    pub fn spawn(&self) -> Result<mpsc::Receiver<OutputStream>> {
         let mut handle = Command::new("/bin/sh")
             .args(["-c", &self.cmd])
             .stdout(Stdio::piped())

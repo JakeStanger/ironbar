@@ -198,7 +198,7 @@ impl DataControlDeviceHandler for Environment {
 
                 let token = self
                     .loop_handle
-                    .insert_source(read_pipe, move |_, file, state| {
+                    .insert_source(read_pipe, move |(), file, state| {
                         let item = state
                             .selection_offers
                             .iter()
