@@ -49,7 +49,7 @@ const fn default_icon_size() -> i32 {
 }
 
 impl Module<gtk::Box> for FocusedModule {
-    type SendMessage = (String, String);
+    type SendMessage = Option<(String, String)>;
     type ReceiveMessage = ();
 
     fn name() -> &'static str {
@@ -78,21 +78,34 @@ impl Module<gtk::Box> for FocusedModule {
             if let Some(focused) = focused {
                 try_send!(
                     tx,
-                    ModuleUpdateEvent::Update((focused.title.clone(), focused.app_id))
+                    ModuleUpdateEvent::Update(Some((focused.title.clone(), focused.app_id)))
                 );
             };
 
             while let Ok(event) = wlrx.recv().await {
-                if let ToplevelEvent::Update(handle) = event {
-                    let info = handle.info().unwrap_or_default();
+                match event {
+                    ToplevelEvent::Update(handle) => {
+                        let info = handle.info().unwrap_or_default();
 
-                    if info.focused {
-                        debug!("Changing focus");
-                        send_async!(
-                            tx,
-                            ModuleUpdateEvent::Update((info.title.clone(), info.app_id.clone()))
-                        );
+                        if info.focused {
+                            debug!("Changing focus");
+                            send_async!(
+                                tx,
+                                ModuleUpdateEvent::Update(Some((
+                                    info.title.clone(),
+                                    info.app_id.clone()
+                                )))
+                            );
+                        }
                     }
+                    ToplevelEvent::Remove(handle) => {
+                        let info = handle.info().unwrap_or_default();
+                        if info.focused {
+                            debug!("Clearing focus");
+                            send_async!(tx, ModuleUpdateEvent::Update(None));
+                        }
+                    }
+                    ToplevelEvent::New(_) => {}
                 }
             }
         });
@@ -126,18 +139,24 @@ impl Module<gtk::Box> for FocusedModule {
 
         {
             let icon_theme = icon_theme.clone();
-            context.widget_rx.attach(None, move |(name, id)| {
-                if self.show_icon {
-                    match ImageProvider::parse(&id, &icon_theme, true, self.icon_size)
-                        .map(|image| image.load_into_image(icon.clone()))
-                    {
-                        Some(Ok(_)) => icon.show(),
-                        _ => icon.hide(),
+            context.widget_rx.attach(None, move |data| {
+                if let Some((name, id)) = data {
+                    if self.show_icon {
+                        match ImageProvider::parse(&id, &icon_theme, true, self.icon_size)
+                            .map(|image| image.load_into_image(icon.clone()))
+                        {
+                            Some(Ok(())) => icon.show(),
+                            _ => icon.hide(),
+                        }
                     }
-                }
 
-                if self.show_title {
-                    label.set_label(&name);
+                    if self.show_title {
+                        label.show();
+                        label.set_label(&name);
+                    }
+                } else {
+                    icon.hide();
+                    label.hide();
                 }
 
                 Continue(true)
