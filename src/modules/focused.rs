@@ -96,6 +96,8 @@ impl Module<gtk::Box> for FocusedModule {
                                     info.app_id.clone()
                                 )))
                             );
+                        } else {
+                            send_async!(tx, ModuleUpdateEvent::Update(None));
                         }
                     }
                     ToplevelEvent::Remove(handle) => {
