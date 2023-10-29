@@ -18,6 +18,8 @@ You also need rust; only the latest stable version is supported.
 
 ```shell
 pacman -S gtk3 gtk-layer-shell
+# for http support
+pacman -S openssl
 ```
 
 ### Ubuntu/Debian
@@ -31,7 +33,9 @@ apt install libssl-dev
 ### Fedora
 
 ```shell
-dnf install gtk3 gtk-layer-shell
+dnf install gtk3-devel gtk-layer-shell-devel
+# for http support
+dnf install openssl-devel
 ```
 
 ## Features
