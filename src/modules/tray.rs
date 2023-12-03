@@ -3,6 +3,9 @@ use crate::config::CommonConfig;
 use crate::modules::{Module, ModuleInfo, ModuleParts, ModuleUpdateEvent, WidgetContext};
 use crate::{await_sync, try_send};
 use color_eyre::Result;
+use glib::ffi::g_strfreev;
+use glib::translate::ToGlibPtr;
+use gtk::ffi::gtk_icon_theme_get_search_path;
 use gtk::gdk_pixbuf::{Colorspace, InterpType};
 use gtk::prelude::*;
 use gtk::{
@@ -10,7 +13,10 @@ use gtk::{
     SeparatorMenuItem,
 };
 use serde::Deserialize;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
+use std::ffi::CStr;
+use std::os::raw::{c_char, c_int};
+use std::ptr;
 use system_tray::message::menu::{MenuItem as MenuItemInfo, MenuType};
 use system_tray::message::tray::StatusNotifierItem;
 use system_tray::message::{NotifierItemCommand, NotifierItemMessage};
@@ -24,21 +30,43 @@ pub struct TrayModule {
     pub common: Option<CommonConfig>,
 }
 
+/// Gets the GTK icon theme search paths by calling the FFI function.
+/// Conveniently returns the result as a `HashSet`.
+fn get_icon_theme_search_paths(icon_theme: &IconTheme) -> HashSet<String> {
+    let mut gtk_paths: *mut *mut c_char = ptr::null_mut();
+    let mut n_elements: c_int = 0;
+    let mut paths = HashSet::new();
+    unsafe {
+        gtk_icon_theme_get_search_path(
+            icon_theme.to_glib_none().0,
+            &mut gtk_paths,
+            &mut n_elements,
+        );
+        // n_elements is never negative (that would be weird)
+        for i in 0..n_elements as usize {
+            let c_str = CStr::from_ptr(*gtk_paths.add(i));
+            if let Ok(str) = c_str.to_str() {
+                paths.insert(str.to_owned());
+            }
+        }
+
+        g_strfreev(gtk_paths);
+    }
+
+    paths
+}
+
 /// Attempts to get a GTK `Image` component
 /// for the status notifier item's icon.
-fn get_image_from_icon_name(item: &StatusNotifierItem) -> Option<Image> {
-    let theme = item
-        .icon_theme_path
-        .as_ref()
-        .map(|path| {
-            let theme = IconTheme::new();
-            theme.append_search_path(path);
-            theme
-        })
-        .unwrap_or_default();
+fn get_image_from_icon_name(item: &StatusNotifierItem, icon_theme: IconTheme) -> Option<Image> {
+    if let Some(path) = item.icon_theme_path.as_ref() {
+        if !path.is_empty() && !get_icon_theme_search_paths(&icon_theme).contains(path) {
+            icon_theme.append_search_path(path);
+        }
+    }
 
     item.icon_name.as_ref().and_then(|icon_name| {
-        let icon_info = theme.lookup_icon(icon_name, 16, IconLookupFlags::empty());
+        let icon_info = icon_theme.lookup_icon(icon_name, 16, IconLookupFlags::empty());
         icon_info.map(|icon_info| Image::from_pixbuf(icon_info.load_icon().ok().as_ref()))
     })
 }
@@ -171,13 +199,14 @@ impl Module<MenuBar> for TrayModule {
     fn into_widget(
         self,
         context: WidgetContext<Self::SendMessage, Self::ReceiveMessage>,
-        _info: &ModuleInfo,
+        info: &ModuleInfo,
     ) -> Result<ModuleParts<MenuBar>> {
         let container = MenuBar::new();
 
         {
             let container = container.clone();
             let mut widgets = HashMap::new();
+            let icon_theme = info.icon_theme.clone();
 
             // listen for UI updates
             context.widget_rx.attach(None, move |update| {
@@ -192,7 +221,7 @@ impl Module<MenuBar> for TrayModule {
                             let menu_item = MenuItem::new();
                             menu_item.style_context().add_class("item");
 
-                            get_image_from_icon_name(&item)
+                            get_image_from_icon_name(&item, icon_theme.clone())
                                 .or_else(|| get_image_from_pixmap(&item))
                                 .map_or_else(
                                     || {
