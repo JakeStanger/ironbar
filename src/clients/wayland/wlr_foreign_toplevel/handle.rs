@@ -1,6 +1,5 @@
 use super::manager::ToplevelManagerState;
-use crate::lock;
-use crate::unique_id::get_unique_usize;
+use crate::{lock, Ironbar};
 use std::collections::HashSet;
 use std::sync::{Arc, Mutex};
 use tracing::trace;
@@ -68,7 +67,7 @@ pub struct ToplevelInfo {
 impl Default for ToplevelInfo {
     fn default() -> Self {
         Self {
-            id: get_unique_usize(),
+            id: Ironbar::unique_id(),
             app_id: String::new(),
             title: String::new(),
             fullscreen: false,

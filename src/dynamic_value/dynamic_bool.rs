@@ -1,7 +1,7 @@
-#[cfg(feature = "ipc")]
-use crate::ironvar::get_variable_manager;
 use crate::script::Script;
 use crate::send;
+#[cfg(feature = "ipc")]
+use crate::Ironbar;
 use cfg_if::cfg_if;
 use glib::Continue;
 use serde::Deserialize;
@@ -55,7 +55,7 @@ impl DynamicBool {
                 }
                 #[cfg(feature = "ipc")]
                 DynamicBool::Variable(variable) => {
-                    let variable_manager = get_variable_manager();
+                    let variable_manager = Ironbar::variable_manager();
 
                     let variable_name = variable[1..].into(); // remove hash
                     let mut rx = crate::write_lock!(variable_manager).subscribe(variable_name);

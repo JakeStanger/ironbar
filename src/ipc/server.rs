@@ -1,4 +1,3 @@
-use std::cell::RefCell;
 use std::fs;
 use std::path::Path;
 use std::rc::Rc;
@@ -15,10 +14,9 @@ use tracing::{debug, error, info, warn};
 
 use crate::bridge_channel::BridgeChannel;
 use crate::ipc::{Command, Response};
-use crate::ironvar::get_variable_manager;
 use crate::modules::PopupButton;
 use crate::style::load_css;
-use crate::{read_lock, send_async, try_send, write_lock, GlobalState};
+use crate::{read_lock, send_async, try_send, write_lock, Ironbar};
 
 use super::Ipc;
 
@@ -26,7 +24,7 @@ impl Ipc {
     /// Starts the IPC server on its socket.
     ///
     /// Once started, the server will begin accepting connections.
-    pub fn start(&self, application: &Application) {
+    pub fn start(&self, application: &Application, ironbar: Rc<Ironbar>) {
         let bridge = BridgeChannel::<Command>::new();
         let cmd_tx = bridge.create_sender();
         let (res_tx, mut res_rx) = mpsc::channel(32);
@@ -70,9 +68,8 @@ impl Ipc {
         });
 
         let application = application.clone();
-        let global_state = self.global_state.clone();
         bridge.recv(move |command| {
-            let res = Self::handle_command(command, &application, &global_state);
+            let res = Self::handle_command(command, &application, ironbar.clone());
             try_send!(res_tx, res);
             Continue(true)
         });
@@ -115,7 +112,7 @@ impl Ipc {
     fn handle_command(
         command: Command,
         application: &Application,
-        global_state: &Rc<RefCell<GlobalState>>,
+        ironbar: Rc<Ironbar>,
     ) -> Response {
         match command {
             Command::Inspect => {
@@ -129,12 +126,12 @@ impl Ipc {
                     window.close();
                 }
 
-                crate::load_interface(application, global_state);
+                *ironbar.bars.borrow_mut() = crate::load_interface(application);
 
                 Response::Ok
             }
             Command::Set { key, value } => {
-                let variable_manager = get_variable_manager();
+                let variable_manager = Ironbar::variable_manager();
                 let mut variable_manager = write_lock!(variable_manager);
                 match variable_manager.set(key, value) {
                     Ok(()) => Response::Ok,
@@ -142,7 +139,7 @@ impl Ipc {
                 }
             }
             Command::Get { key } => {
-                let variable_manager = get_variable_manager();
+                let variable_manager = Ironbar::variable_manager();
                 let value = read_lock!(variable_manager).get(&key);
                 match value {
                     Some(value) => Response::OkValue { value },
@@ -158,68 +155,85 @@ impl Ipc {
                 }
             }
             Command::TogglePopup { bar_name, name } => {
-                let global_state = global_state.borrow();
-                let response = global_state.with_popup_mut(&bar_name, |mut popup| {
-                    let current_widget = popup.current_widget();
-                    popup.hide();
+                let bar = ironbar.bar_by_name(&bar_name);
 
-                    let data = popup
-                        .cache
-                        .iter()
-                        .find(|(_, (module_name, _))| module_name == &name)
-                        .map(|module| (module, module.1 .1.buttons.first()));
+                match bar {
+                    Some(bar) => {
+                        let popup = bar.popup();
+                        let current_widget = popup.borrow().current_widget();
 
-                    match data {
-                        Some(((&id, _), Some(button))) if current_widget != Some(id) => {
-                            let button_id = button.popup_id();
-                            popup.show(id, button_id);
+                        popup.borrow_mut().hide();
 
-                            Response::Ok
+                        let data = popup
+                            .borrow()
+                            .cache
+                            .iter()
+                            .find(|(_, value)| value.name == name)
+                            .map(|(id, value)| (*id, value.content.buttons.first().cloned()));
+
+                        match data {
+                            Some((id, Some(button))) if current_widget != Some(id) => {
+                                let button_id = button.popup_id();
+                                let mut popup = popup.borrow_mut();
+
+                                if popup.is_visible() {
+                                    popup.hide();
+                                } else {
+                                    popup.show(id, button_id);
+                                }
+
+                                Response::Ok
+                            }
+                            Some((_, None)) => Response::error("Module has no popup functionality"),
+                            Some(_) => Response::Ok,
+                            None => Response::error("Invalid module name"),
                         }
-                        Some((_, None)) => Response::error("Module has no popup functionality"),
-                        Some(_) => Response::Ok,
-                        None => Response::error("Invalid module name"),
                     }
-                });
-
-                response.unwrap_or_else(|| Response::error("Invalid monitor name"))
+                    None => Response::error("Invalid bar name"),
+                }
             }
             Command::OpenPopup { bar_name, name } => {
-                let global_state = global_state.borrow();
-                let response = global_state.with_popup_mut(&bar_name, |mut popup| {
-                    // only one popup per bar, so hide if open for another widget
-                    popup.hide();
+                let bar = ironbar.bar_by_name(&bar_name);
 
-                    let data = popup
-                        .cache
-                        .iter()
-                        .find(|(_, (module_name, _))| module_name == &name)
-                        .map(|module| (module, module.1 .1.buttons.first()));
+                match bar {
+                    Some(bar) => {
+                        let popup = bar.popup();
 
-                    match data {
-                        Some(((&id, _), Some(button))) => {
-                            let button_id = button.popup_id();
-                            popup.show(id, button_id);
+                        // only one popup per bar, so hide if open for another widget
+                        popup.borrow_mut().hide();
 
-                            Response::Ok
+                        let data = popup
+                            .borrow()
+                            .cache
+                            .iter()
+                            .find(|(_, value)| value.name == name)
+                            .map(|(id, value)| (*id, value.content.buttons.first().cloned()));
+
+                        match data {
+                            Some((id, Some(button))) => {
+                                let button_id = button.popup_id();
+                                popup.borrow_mut().show(id, button_id);
+
+                                Response::Ok
+                            }
+                            Some((_, None)) => Response::error("Module has no popup functionality"),
+                            None => Response::error("Invalid module name"),
                         }
-                        Some((_, None)) => Response::error("Module has no popup functionality"),
-                        None => Response::error("Invalid module name"),
                     }
-                });
-
-                response.unwrap_or_else(|| Response::error("Invalid monitor name"))
+                    None => Response::error("Invalid bar name"),
+                }
             }
             Command::ClosePopup { bar_name } => {
-                let global_state = global_state.borrow();
-                let popup_found = global_state
-                    .with_popup_mut(&bar_name, |mut popup| popup.hide())
-                    .is_some();
+                let bar = ironbar.bar_by_name(&bar_name);
 
-                if popup_found {
-                    Response::Ok
-                } else {
-                    Response::error("Invalid monitor name")
+                match bar {
+                    Some(bar) => {
+                        let popup = bar.popup();
+                        popup.borrow_mut().hide();
+
+                        Response::Ok
+                    }
+                    None => Response::error("Invalid bar name"),
                 }
             }
             Command::Ping => Response::Ok,
