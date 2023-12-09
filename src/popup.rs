@@ -8,12 +8,18 @@ use tracing::debug;
 use crate::config::BarPosition;
 use crate::gtk_helpers::{IronbarGtkExt, WidgetGeometry};
 use crate::modules::{ModuleInfo, ModulePopupParts, PopupButton};
-use crate::unique_id::get_unique_usize;
+use crate::Ironbar;
+
+#[derive(Debug, Clone)]
+pub struct PopupCacheValue {
+    pub name: String,
+    pub content: ModulePopupParts,
+}
 
 #[derive(Debug, Clone)]
 pub struct Popup {
     pub window: ApplicationWindow,
-    pub cache: HashMap<usize, (String, ModulePopupParts)>,
+    pub cache: HashMap<usize, PopupCacheValue>,
     monitor: Monitor,
     pos: BarPosition,
     current_widget: Option<usize>,
@@ -121,17 +127,17 @@ impl Popup {
         debug!("Registered popup content for #{}", key);
 
         for button in &content.buttons {
-            let id = get_unique_usize();
+            let id = Ironbar::unique_id();
             button.set_tag("popup-id", id);
         }
 
-        self.cache.insert(key, (name, content));
+        self.cache.insert(key, PopupCacheValue { name, content });
     }
 
     pub fn show(&mut self, widget_id: usize, button_id: usize) {
         self.clear_window();
 
-        if let Some((_name, content)) = self.cache.get(&widget_id) {
+        if let Some(PopupCacheValue { content, .. }) = self.cache.get(&widget_id) {
             self.current_widget = Some(widget_id);
 
             content.container.style_context().add_class("popup");
@@ -155,7 +161,7 @@ impl Popup {
     pub fn show_at(&self, widget_id: usize, geometry: WidgetGeometry) {
         self.clear_window();
 
-        if let Some((_name, content)) = self.cache.get(&widget_id) {
+        if let Some(PopupCacheValue { content, .. }) = self.cache.get(&widget_id) {
             content.container.style_context().add_class("popup");
             self.window.add(&content.container);
 

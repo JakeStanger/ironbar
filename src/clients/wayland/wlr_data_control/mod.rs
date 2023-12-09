@@ -7,8 +7,7 @@ use self::device::{DataControlDeviceDataExt, DataControlDeviceHandler};
 use self::offer::{DataControlDeviceOffer, DataControlOfferHandler, SelectionOffer};
 use self::source::DataControlSourceHandler;
 use crate::clients::wayland::Environment;
-use crate::unique_id::get_unique_usize;
-use crate::{lock, send};
+use crate::{lock, send, Ironbar};
 use device::DataControlDevice;
 use glib::Bytes;
 use nix::fcntl::{fcntl, F_GETPIPE_SZ, F_SETPIPE_SZ};
@@ -145,7 +144,7 @@ impl Environment {
         };
 
         Ok(ClipboardItem {
-            id: get_unique_usize(),
+            id: Ironbar::unique_id(),
             value,
             mime_type: mime_type.value.clone(),
         })

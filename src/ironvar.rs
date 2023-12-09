@@ -1,23 +1,19 @@
 #![doc = include_str!("../docs/Ironvars.md")]
 
-use crate::{arc_rw, send};
+use crate::send;
 use color_eyre::{Report, Result};
-use lazy_static::lazy_static;
 use std::collections::HashMap;
-use std::sync::{Arc, RwLock};
 use tokio::sync::broadcast;
-
-lazy_static! {
-    static ref VARIABLE_MANAGER: Arc<RwLock<VariableManager>> = arc_rw!(VariableManager::new());
-}
-
-pub fn get_variable_manager() -> Arc<RwLock<VariableManager>> {
-    VARIABLE_MANAGER.clone()
-}
 
 /// Global singleton manager for `IronVar` variables.
 pub struct VariableManager {
     variables: HashMap<Box<str>, IronVar>,
+}
+
+impl Default for VariableManager {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl VariableManager {

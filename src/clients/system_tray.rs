@@ -1,5 +1,4 @@
-use crate::unique_id::get_unique_usize;
-use crate::{arc_mut, lock, send};
+use crate::{arc_mut, lock, send, Ironbar};
 use async_once::AsyncOnce;
 use color_eyre::Report;
 use lazy_static::lazy_static;
@@ -25,7 +24,7 @@ pub struct TrayEventReceiver {
 
 impl TrayEventReceiver {
     async fn new() -> system_tray::error::Result<Self> {
-        let id = format!("ironbar-{}", get_unique_usize());
+        let id = format!("ironbar-{}", Ironbar::unique_id());
 
         let (tx, rx) = mpsc::channel(16);
         let (b_tx, b_rx) = broadcast::channel(16);

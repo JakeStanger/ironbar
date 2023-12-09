@@ -1,6 +1,6 @@
-#[cfg(feature = "ipc")]
-use crate::ironvar::get_variable_manager;
 use crate::script::{OutputStream, Script};
+#[cfg(feature = "ipc")]
+use crate::Ironbar;
 use crate::{arc_mut, lock, send};
 use gtk::prelude::*;
 use tokio::spawn;
@@ -72,7 +72,7 @@ where
                 lock!(label_parts).push(String::new());
 
                 spawn(async move {
-                    let variable_manager = get_variable_manager();
+                    let variable_manager = Ironbar::variable_manager();
                     let mut rx = crate::write_lock!(variable_manager).subscribe(name);
 
                     while let Ok(value) = rx.recv().await {
