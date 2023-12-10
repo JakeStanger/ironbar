@@ -95,7 +95,11 @@ Create a map/object called `monitors` inside the top-level object.
 Each of the map's keys should be an output name,
 and each value should be an object containing the bar config.
 
-To find your output names, run `wayland-info | grep wl_output -A1`.
+You can still define a top-level "default" config to use for unspecified monitors.
+Alternatively, leave the top-level `start`, `center` and `end` keys null to hide bars on unspecified monitors.
+
+> [!TIP]
+> To find your output names, run `wayland-info | grep wl_output -A1`.
 
 <details>
 <summary>JSON</summary>

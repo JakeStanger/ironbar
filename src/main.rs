@@ -276,6 +276,9 @@ fn create_bars(app: &Application, display: &Display, config: &Config) -> Result<
 
     let num_monitors = display.n_monitors();
 
+    let show_default_bar =
+        config.start.is_some() || config.center.is_some() || config.end.is_some();
+
     let mut all_bars = vec![];
     for i in 0..num_monitors {
         let monitor = display
@@ -306,12 +309,13 @@ fn create_bars(app: &Application, display: &Display, config: &Config) -> Result<
                 .iter()
                 .map(|config| create_bar(app, &monitor, monitor_name.to_string(), config.clone()))
                 .collect::<Result<_>>()?,
-            None => vec![create_bar(
+            None if show_default_bar => vec![create_bar(
                 app,
                 &monitor,
                 monitor_name.to_string(),
                 config.clone(),
             )?],
+            None => vec![],
         };
 
         all_bars.append(&mut bars);
