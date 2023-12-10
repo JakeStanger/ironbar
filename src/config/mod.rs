@@ -99,6 +99,11 @@ pub struct Config {
     pub popup_gap: i32,
     pub name: Option<String>,
 
+    #[serde(default)]
+    pub start_hidden: Option<bool>,
+    #[serde(default)]
+    pub autohide: Option<u64>,
+
     /// GTK icon theme to use.
     pub icon_theme: Option<String>,
 
@@ -127,6 +132,8 @@ impl Default for Config {
             height: default_bar_height(),
             margin: MarginConfig::default(),
             name: None,
+            start_hidden: None,
+            autohide: None,
             popup_gap: default_popup_gap(),
             icon_theme: None,
             ironvar_defaults: None,

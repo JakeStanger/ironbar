@@ -7,9 +7,10 @@ use crate::{Config, Ironbar};
 use color_eyre::Result;
 use gtk::gdk::Monitor;
 use gtk::prelude::*;
-use gtk::{Application, ApplicationWindow, IconTheme, Orientation};
+use gtk::{Application, ApplicationWindow, IconTheme, Orientation, Window, WindowType};
 use std::cell::RefCell;
 use std::rc::Rc;
+use std::time::Duration;
 use tracing::{debug, info};
 
 #[derive(Debug, Clone)]
@@ -37,7 +38,11 @@ pub struct Bar {
 
 impl Bar {
     pub fn new(app: &Application, monitor_name: String, config: Config) -> Self {
-        let window = ApplicationWindow::builder().application(app).build();
+        let window = ApplicationWindow::builder()
+            .application(app)
+            .type_(WindowType::Toplevel)
+            .build();
+
         let name = config
             .name
             .clone()
@@ -108,11 +113,36 @@ impl Bar {
             self.name, self.monitor_name
         );
 
-        self.setup_layer_shell(config.anchor_to_edges, config.margin, monitor);
+        self.setup_layer_shell(
+            &self.window,
+            true,
+            config.anchor_to_edges,
+            config.margin,
+            monitor,
+        );
+
+        let start_hidden = config.start_hidden.unwrap_or(config.autohide.is_some());
+
+        if let Some(autohide) = config.autohide {
+            let hotspot_window = Window::new(WindowType::Toplevel);
+
+            Self::setup_autohide(&self.window, &hotspot_window, autohide);
+            self.setup_layer_shell(
+                &hotspot_window,
+                false,
+                config.anchor_to_edges,
+                config.margin,
+                monitor,
+            );
+
+            if start_hidden {
+                hotspot_window.show();
+            }
+        }
 
         let load_result = self.load_modules(config, monitor)?;
 
-        self.show();
+        self.show(!start_hidden);
 
         self.inner = Inner::Loaded {
             popup: load_result.popup,
@@ -121,15 +151,24 @@ impl Bar {
     }
 
     /// Sets up GTK layer shell for a provided application window.
-    fn setup_layer_shell(&self, anchor_to_edges: bool, margin: MarginConfig, monitor: &Monitor) {
-        let win = &self.window;
+    fn setup_layer_shell(
+        &self,
+        win: &impl IsA<Window>,
+        exclusive_zone: bool,
+        anchor_to_edges: bool,
+        margin: MarginConfig,
+        monitor: &Monitor,
+    ) {
         let position = self.position;
 
         gtk_layer_shell::init_for_window(win);
         gtk_layer_shell::set_monitor(win, monitor);
         gtk_layer_shell::set_layer(win, gtk_layer_shell::Layer::Top);
-        gtk_layer_shell::auto_exclusive_zone_enable(win);
         gtk_layer_shell::set_namespace(win, env!("CARGO_PKG_NAME"));
+
+        if exclusive_zone {
+            gtk_layer_shell::auto_exclusive_zone_enable(win);
+        }
 
         gtk_layer_shell::set_margin(win, gtk_layer_shell::Edge::Top, margin.top);
         gtk_layer_shell::set_margin(win, gtk_layer_shell::Edge::Bottom, margin.bottom);
@@ -162,6 +201,40 @@ impl Bar {
             position == BarPosition::Right
                 || (bar_orientation == Orientation::Horizontal && anchor_to_edges),
         );
+    }
+
+    fn setup_autohide(window: &ApplicationWindow, hotspot_window: &Window, timeout: u64) {
+        hotspot_window.hide();
+
+        hotspot_window.set_opacity(0.0);
+        hotspot_window.set_decorated(false);
+        hotspot_window.set_size_request(0, 1);
+
+        {
+            let hotspot_window = hotspot_window.clone();
+
+            window.connect_leave_notify_event(move |win, _| {
+                let win = win.clone();
+                let hotspot_window = hotspot_window.clone();
+
+                glib::timeout_add_local_once(Duration::from_millis(timeout), move || {
+                    win.hide();
+                    hotspot_window.show();
+                });
+                Inhibit(false)
+            });
+        }
+
+        {
+            let win = window.clone();
+
+            hotspot_window.connect_enter_notify_event(move |hotspot_win, _| {
+                hotspot_win.hide();
+                win.show();
+
+                Inhibit(false)
+            });
+        }
     }
 
     /// Loads the configured modules onto a bar.
@@ -210,7 +283,7 @@ impl Bar {
         Ok(result)
     }
 
-    fn show(&self) {
+    fn show(&self, include_window: bool) {
         debug!("Showing bar: {}", self.name);
 
         // show each box but do not use `show_all`.
@@ -219,7 +292,10 @@ impl Bar {
         self.center.show();
         self.end.show();
         self.content.show();
-        self.window.show();
+
+        if include_window {
+            self.window.show();
+        }
     }
 
     pub fn name(&self) -> &str {

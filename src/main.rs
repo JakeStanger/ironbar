@@ -21,7 +21,6 @@ use glib::PropertySet;
 use gtk::gdk::Display;
 use gtk::prelude::*;
 use gtk::Application;
-use lazy_static::lazy_static;
 use tokio::runtime::Handle;
 use tokio::task::{block_in_place, spawn_blocking};
 use tracing::{debug, error, info, warn};
@@ -93,7 +92,7 @@ async fn run_with_args() {
 static COUNTER: AtomicUsize = AtomicUsize::new(1);
 
 #[cfg(feature = "ipc")]
-lazy_static! {
+lazy_static::lazy_static! {
     static ref VARIABLE_MANAGER: Arc<RwLock<VariableManager>> = arc_rw!(VariableManager::new());
 }
 
