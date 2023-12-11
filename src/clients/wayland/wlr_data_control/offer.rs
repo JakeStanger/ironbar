@@ -5,7 +5,7 @@ use nix::unistd::{close, pipe2};
 use smithay_client_toolkit::data_device_manager::data_offer::DataOfferError;
 use smithay_client_toolkit::data_device_manager::ReadPipe;
 use std::ops::DerefMut;
-use std::os::fd::FromRawFd;
+use std::os::fd::{BorrowedFd, FromRawFd};
 use std::sync::{Arc, Mutex};
 use tracing::{trace, warn};
 use wayland_client::{Connection, Dispatch, Proxy, QueueHandle};
@@ -37,7 +37,7 @@ impl PartialEq for SelectionOffer {
 
 impl SelectionOffer {
     pub fn receive(&self, mime_type: String) -> Result<ReadPipe, DataOfferError> {
-        receive(&self.data_offer, mime_type).map_err(DataOfferError::Io)
+        unsafe { receive(&self.data_offer, mime_type) }.map_err(DataOfferError::Io)
     }
 }
 
@@ -169,15 +169,18 @@ where
 ///
 /// Fails if too many file descriptors were already open and a pipe
 /// could not be created.
-pub fn receive(offer: &ZwlrDataControlOfferV1, mime_type: String) -> std::io::Result<ReadPipe> {
+pub unsafe fn receive(
+    offer: &ZwlrDataControlOfferV1,
+    mime_type: String,
+) -> std::io::Result<ReadPipe> {
     // create a pipe
     let (readfd, writefd) = pipe2(OFlag::O_CLOEXEC)?;
 
-    offer.receive(mime_type, writefd);
+    offer.receive(mime_type, BorrowedFd::borrow_raw(writefd));
 
     if let Err(err) = close(writefd) {
         warn!("Failed to close write pipe: {}", err);
     }
 
-    Ok(unsafe { FromRawFd::from_raw_fd(readfd) })
+    Ok(FromRawFd::from_raw_fd(readfd))
 }
