@@ -13,7 +13,7 @@ use glib::Bytes;
 use nix::fcntl::{fcntl, F_GETPIPE_SZ, F_SETPIPE_SZ};
 use nix::sys::epoll::{Epoll, EpollCreateFlags, EpollEvent, EpollFlags};
 use smithay_client_toolkit::data_device_manager::WritePipe;
-use smithay_client_toolkit::reexports::calloop::RegistrationToken;
+use smithay_client_toolkit::reexports::calloop::{PostAction, RegistrationToken};
 use std::cmp::min;
 use std::fmt::{Debug, Formatter};
 use std::fs::File;
@@ -195,29 +195,31 @@ impl DataControlDeviceHandler for Environment {
                 let tx = self.clipboard_tx.clone();
                 let clipboard = self.clipboard.clone();
 
-                let token = self
-                    .loop_handle
-                    .insert_source(read_pipe, move |(), file, state| {
-                        let item = state
-                            .selection_offers
-                            .iter()
-                            .position(|o| o.offer == offer_clone)
-                            .map(|p| state.selection_offers.remove(p))
-                            .expect("Failed to find selection offer item");
+                let token =
+                    self.loop_handle
+                        .insert_source(read_pipe, move |(), file, state| unsafe {
+                            let item = state
+                                .selection_offers
+                                .iter()
+                                .position(|o| o.offer == offer_clone)
+                                .map(|p| state.selection_offers.remove(p))
+                                .expect("Failed to find selection offer item");
 
-                        match Self::read_file(&mime_type, file) {
-                            Ok(item) => {
-                                let item = Arc::new(item);
-                                lock!(clipboard).replace(item.clone());
-                                send!(tx, item);
+                            match Self::read_file(&mime_type, file.get_mut()) {
+                                Ok(item) => {
+                                    let item = Arc::new(item);
+                                    lock!(clipboard).replace(item.clone());
+                                    send!(tx, item);
+                                }
+                                Err(err) => error!("{err:?}"),
                             }
-                            Err(err) => error!("{err:?}"),
-                        }
 
-                        state
-                            .loop_handle
-                            .remove(item.token.expect("Missing item token"));
-                    });
+                            state
+                                .loop_handle
+                                .remove(item.token.expect("Missing item token"));
+
+                            PostAction::Remove
+                        });
 
                 match token {
                     Ok(token) => {

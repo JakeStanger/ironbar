@@ -9,6 +9,7 @@ use color_eyre::Report;
 use smithay_client_toolkit::output::{OutputInfo, OutputState};
 use smithay_client_toolkit::reexports::calloop::channel::{channel, Event, Sender};
 use smithay_client_toolkit::reexports::calloop::EventLoop;
+use smithay_client_toolkit::reexports::calloop_wayland_source::WaylandSource;
 use smithay_client_toolkit::registry::RegistryState;
 use smithay_client_toolkit::seat::SeatState;
 use std::collections::HashMap;
@@ -18,7 +19,7 @@ use tokio::task::spawn_blocking;
 use tracing::{debug, error, trace};
 use wayland_client::globals::registry_queue_init;
 use wayland_client::protocol::wl_seat::WlSeat;
-use wayland_client::{Connection, WaylandSource};
+use wayland_client::Connection;
 
 cfg_if! {
     if #[cfg(feature = "clipboard")] {
@@ -106,8 +107,7 @@ impl WaylandClient {
             let mut event_loop =
                 EventLoop::<Environment>::try_new().expect("Failed to create new event loop");
 
-            WaylandSource::new(queue)
-                .expect("Failed to create Wayland source from queue")
+            WaylandSource::new(conn, queue)
                 .insert(event_loop.handle())
                 .expect("Failed to insert Wayland event queue into event loop");
 
