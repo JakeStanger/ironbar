@@ -1657,7 +1657,6 @@ dependencies = [
  "clap",
  "color-eyre",
  "ctrlc",
- "dbus",
  "dirs",
  "futures-lite 2.1.0",
  "futures-util",
@@ -1669,7 +1668,6 @@ dependencies = [
  "lazy_static",
  "mpd_client",
  "mpris",
- "networkmanager",
  "nix 0.27.1",
  "notify",
  "regex",
@@ -1946,17 +1944,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "networkmanager"
-version = "0.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5bc2c3495d1d015f7ad8fbbdd88a4fe329d9ee44d4bca4448e3fadf6c297876e"
-dependencies = [
- "dbus",
- "num-derive",
- "num-traits",
-]
-
-[[package]]
 name = "nix"
 version = "0.26.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2023,17 +2010,6 @@ checksum = "77a8165726e8236064dbb45459242600304b42a5ea24ee2948e18e023bf7ba84"
 dependencies = [
  "overload",
  "winapi",
-]
-
-[[package]]
-name = "num-derive"
-version = "0.3.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "876a53fff98e03a936a674b29568b0e605f06b29372c2489ff4de23f1949743d"
-dependencies = [
- "proc-macro2",
- "quote 1.0.32",
- "syn 1.0.109",
 ]
 
 [[package]]
