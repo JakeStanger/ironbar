@@ -28,7 +28,7 @@ Pango markup is supported.
   "end": [
     {
       "format": [
-        " {cpu_percent}% | {temp_c:k10temp_Tccd1}°C",
+        " {cpu_percent}% | {temp_c:k10temp-Tccd1}°C",
         " {memory_used} / {memory_total} GB ({memory_percent}%)",
         "| {swap_used} / {swap_total} GB ({swap_percent}%)",
         " {disk_used:/} / {disk_total:/} GB ({disk_percent:/}%)",
@@ -58,7 +58,7 @@ Pango markup is supported.
 [[end]]
 type = 'sys_info'
 format = [
-    ' {cpu_percent}% | {temp_c:k10temp_Tccd1}°C',
+    ' {cpu_percent}% | {temp_c:k10temp-Tccd1}°C',
     ' {memory_used} / {memory_total} GB ({memory_percent}%)',
     '| {swap_used} / {swap_total} GB ({swap_percent}%)',
     ' {disk_used:/} / {disk_total:/} GB ({disk_percent:/}%)',
@@ -85,7 +85,7 @@ temps = 5
 ```yaml
 end:
 - format:
-  - ' {cpu_percent}% | {temp_c:k10temp_Tccd1}°C'
+  - ' {cpu_percent}% | {temp_c:k10temp-Tccd1}°C'
   - ' {memory_used} / {memory_total} GB ({memory_percent}%)'
   - '| {swap_used} / {swap_total} GB ({swap_percent}%)'
   - ' {disk_used:/} / {disk_total:/} GB ({disk_percent:/}%)'
@@ -119,7 +119,7 @@ end:
       interval.networks = 3
 
       format = [
-        " {cpu_percent}% | {temp_c:k10temp_Tccd1}°C"
+        " {cpu_percent}% | {temp_c:k10temp-Tccd1}°C"
         " {memory_used} / {memory_total} GB ({memory_percent}%)"
         "| {swap_used} / {swap_total} GB ({swap_percent}%)"
         " {disk_used:/} / {disk_total:/} GB ({disk_percent:/}%)"
@@ -168,7 +168,7 @@ The following tokens can be used in the `format` configuration option:
 | `{load_average:15}`      | 15-minute load average.                                                            |
 | `{uptime}`               | System uptime formatted as `HH:mm`.                                                |
 
-For Intel CPUs, you can typically use `coretemp-Package-id-0` for the temperature sensor. For AMD, you can use `k10temp_Tccd1`.
+For Intel CPUs, you can typically use `coretemp-Package-id-0` for the temperature sensor. For AMD, you can use `k10temp-Tccd1`.
 
 ## Styling
 
