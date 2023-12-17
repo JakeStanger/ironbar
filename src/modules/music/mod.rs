@@ -460,7 +460,7 @@ impl Module<Button> for MusicModule {
                         btn_next.set_sensitive(enable_next);
 
                         if let Some(volume) = update.status.volume_percent {
-                            volume_slider.set_value(volume as f64);
+                            volume_slider.set_value(f64::from(volume));
                             volume_box.show();
                         } else {
                             volume_box.hide();

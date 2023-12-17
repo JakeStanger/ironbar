@@ -244,7 +244,7 @@ impl MusicClient for Client {
 
     fn set_volume_percent(&self, vol: u8) -> Result<()> {
         if let Some(player) = Self::get_player(self) {
-            player.set_volume(vol as f64 / 100.0)?;
+            player.set_volume(f64::from(vol) / 100.0)?;
         } else {
             error!("Could not find player");
         }

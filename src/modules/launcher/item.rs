@@ -274,9 +274,9 @@ impl ItemButton {
                 let (x, y) = ev.position();
 
                 let close = match bar_position {
-                    BarPosition::Top => y + THRESHOLD < alloc.height() as f64,
+                    BarPosition::Top => y + THRESHOLD < f64::from(alloc.height()),
                     BarPosition::Bottom => y > THRESHOLD,
-                    BarPosition::Left => x + THRESHOLD < alloc.width() as f64,
+                    BarPosition::Left => x + THRESHOLD < f64::from(alloc.width()),
                     BarPosition::Right => x > THRESHOLD,
                 };
 
