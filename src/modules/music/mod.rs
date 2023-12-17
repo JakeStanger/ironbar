@@ -4,12 +4,11 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use color_eyre::Result;
-use glib::{Continue, PropertySet};
+use glib::{Propagation, PropertySet};
 use gtk::prelude::*;
 use gtk::{Button, IconTheme, Label, Orientation, Scale};
 use regex::Regex;
-use tokio::spawn;
-use tokio::sync::mpsc::{Receiver, Sender};
+use tokio::sync::{broadcast, mpsc};
 use tracing::error;
 
 use crate::clients::music::{
@@ -21,7 +20,7 @@ use crate::modules::PopupButton;
 use crate::modules::{
     Module, ModuleInfo, ModuleParts, ModulePopup, ModuleUpdateEvent, WidgetContext,
 };
-use crate::{send_async, try_send};
+use crate::{glib_recv, send_async, spawn, try_send};
 
 pub use self::config::MusicModule;
 use self::config::PlayerType;
@@ -91,8 +90,8 @@ impl Module<Button> for MusicModule {
     fn spawn_controller(
         &self,
         _info: &ModuleInfo,
-        tx: Sender<ModuleUpdateEvent<Self::SendMessage>>,
-        mut rx: Receiver<Self::ReceiveMessage>,
+        tx: mpsc::Sender<ModuleUpdateEvent<Self::SendMessage>>,
+        mut rx: mpsc::Receiver<Self::ReceiveMessage>,
     ) -> Result<()> {
         let format = self.format.clone();
 
@@ -213,11 +212,13 @@ impl Module<Button> for MusicModule {
 
         {
             let button = button.clone();
-            let tx = context.tx.clone();
 
-            context.widget_rx.attach(None, move |event| {
+            let tx = context.tx.clone();
+            let mut rx = context.subscribe();
+
+            glib_recv!(rx, event => {
                 let ControllerEvent::Update(mut event) = event else {
-                    return Continue(true);
+                    continue;
                 };
 
                 if let Some(event) = event.take() {
@@ -248,13 +249,12 @@ impl Module<Button> for MusicModule {
                     button.hide();
                     try_send!(tx, ModuleUpdateEvent::ClosePopup);
                 }
-
-                Continue(true)
             });
         };
 
+        let rx = context.subscribe();
         let popup = self
-            .into_popup(context.controller_tx, context.popup_rx, info)
+            .into_popup(context.controller_tx, rx, info)
             .into_popup_parts(vec![&button]);
 
         Ok(ModuleParts::new(button, popup))
@@ -262,8 +262,8 @@ impl Module<Button> for MusicModule {
 
     fn into_popup(
         self,
-        tx: Sender<Self::ReceiveMessage>,
-        rx: glib::Receiver<Self::SendMessage>,
+        tx: mpsc::Sender<Self::ReceiveMessage>,
+        mut rx: broadcast::Receiver<Self::SendMessage>,
         info: &ModuleInfo,
     ) -> Option<gtk::Box> {
         let icon_theme = info.icon_theme;
@@ -355,7 +355,7 @@ impl Module<Button> for MusicModule {
         let tx_vol = tx.clone();
         volume_slider.connect_change_value(move |_, _, val| {
             try_send!(tx_vol, PlayerCommand::Volume(val as u8));
-            Inhibit(false)
+            Propagation::Proceed
         });
 
         let progress_box = gtk::Box::new(Orientation::Horizontal, 5);
@@ -380,7 +380,7 @@ impl Module<Button> for MusicModule {
             let drag_lock = drag_lock.clone();
             progress.connect_button_press_event(move |_, _| {
                 drag_lock.set(true);
-                Inhibit(false)
+                Propagation::Proceed
             });
         }
 
@@ -391,7 +391,7 @@ impl Module<Button> for MusicModule {
                 try_send!(tx, PlayerCommand::Seek(Duration::from_secs_f64(value)));
 
                 drag_lock.set(false);
-                Inhibit(false)
+                Propagation::Proceed
             });
         }
 
@@ -402,7 +402,7 @@ impl Module<Button> for MusicModule {
             let image_size = self.cover_image_size;
 
             let mut prev_cover = None;
-            rx.attach(None, move |event| {
+            glib_recv!(rx, event =>  {
                 match event {
                     ControllerEvent::Update(Some(update)) => {
                         // only update art when album changes
@@ -487,8 +487,6 @@ impl Module<Button> for MusicModule {
                     }
                     _ => {}
                 };
-
-                Continue(true)
             });
         }
 

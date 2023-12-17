@@ -2,14 +2,13 @@ use crate::clients::compositor::{Compositor, Visibility, Workspace, WorkspaceUpd
 use crate::config::CommonConfig;
 use crate::image::new_icon_button;
 use crate::modules::{Module, ModuleInfo, ModuleParts, ModuleUpdateEvent, WidgetContext};
-use crate::{send_async, try_send};
+use crate::{glib_recv, send_async, spawn, try_send};
 use color_eyre::{Report, Result};
 use gtk::prelude::*;
 use gtk::{Button, IconTheme};
 use serde::Deserialize;
 use std::cmp::Ordering;
 use std::collections::{HashMap, HashSet};
-use tokio::spawn;
 use tokio::sync::mpsc::{Receiver, Sender};
 use tracing::trace;
 
@@ -205,7 +204,7 @@ impl Module<gtk::Box> for WorkspacesModule {
             // since it fires for every workspace subscriber
             let mut has_initialized = false;
 
-            context.widget_rx.attach(None, move |event| {
+            glib_recv!(context.subscribe(), event => {
                 match event {
                     WorkspaceUpdate::Init(workspaces) => {
                         if !has_initialized {
@@ -350,8 +349,6 @@ impl Module<gtk::Box> for WorkspacesModule {
                     }
                     WorkspaceUpdate::Update(_) => {}
                 };
-
-                Continue(true)
             });
         }
 

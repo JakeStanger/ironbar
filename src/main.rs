@@ -7,9 +7,9 @@ use std::path::PathBuf;
 use std::process::exit;
 use std::rc::Rc;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
-use std::sync::mpsc;
 #[cfg(feature = "ipc")]
-use std::sync::{Arc, RwLock};
+use std::sync::RwLock;
+use std::sync::{mpsc, Arc};
 
 use cfg_if::cfg_if;
 #[cfg(feature = "cli")]
@@ -21,8 +21,8 @@ use glib::PropertySet;
 use gtk::gdk::Display;
 use gtk::prelude::*;
 use gtk::Application;
-use tokio::runtime::Handle;
-use tokio::task::{block_in_place, spawn_blocking};
+use tokio::runtime::{Handle, Runtime};
+use tokio::task::{block_in_place, JoinHandle};
 use tracing::{debug, error, info, warn};
 use universal_config::ConfigLoader;
 
@@ -36,7 +36,6 @@ use crate::ironvar::VariableManager;
 use crate::style::load_css;
 
 mod bar;
-mod bridge_channel;
 #[cfg(feature = "cli")]
 mod cli;
 mod clients;
@@ -60,13 +59,12 @@ mod style;
 const GTK_APP_ID: &str = "dev.jstanger.ironbar";
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 
-#[tokio::main]
-async fn main() {
+fn main() {
     let _guard = logging::install_logging();
 
     cfg_if! {
         if #[cfg(feature = "cli")] {
-            run_with_args().await;
+            run_with_args();
         } else {
             start_ironbar();
         }
@@ -74,22 +72,29 @@ async fn main() {
 }
 
 #[cfg(feature = "cli")]
-async fn run_with_args() {
+fn run_with_args() {
     let args = cli::Args::parse();
 
     match args.command {
         Some(command) => {
-            let ipc = ipc::Ipc::new();
-            match ipc.send(command).await {
-                Ok(res) => cli::handle_response(res),
-                Err(err) => error!("{err:?}"),
-            };
+            let rt = create_runtime();
+            rt.block_on(async move {
+                let ipc = ipc::Ipc::new();
+                match ipc.send(command).await {
+                    Ok(res) => cli::handle_response(res),
+                    Err(err) => error!("{err:?}"),
+                };
+            });
         }
         None => start_ironbar(),
     }
 }
 
 static COUNTER: AtomicUsize = AtomicUsize::new(1);
+
+lazy_static::lazy_static! {
+    static ref RUNTIME: Arc<Runtime> = Arc::new(create_runtime());
+}
 
 #[cfg(feature = "ipc")]
 lazy_static::lazy_static! {
@@ -182,6 +187,12 @@ impl Ironbar {
         // Ignore CLI args
         // Some are provided by swaybar_config but not currently supported
         app.run_with_args(&Vec::<&str>::new());
+    }
+
+    /// Gets the current Tokio runtime.
+    #[must_use]
+    pub fn runtime() -> Arc<Runtime> {
+        RUNTIME.clone()
     }
 
     /// Gets a `usize` ID value that is unique to the entire Ironbar instance.
@@ -321,6 +332,31 @@ fn create_bars(app: &Application, display: &Display, config: &Config) -> Result<
     }
 
     Ok(all_bars)
+}
+
+fn create_runtime() -> Runtime {
+    tokio::runtime::Builder::new_multi_thread()
+        .enable_all()
+        .build()
+        .expect("tokio to create a valid runtime")
+}
+
+/// Calls `spawn` on the Tokio runtime.
+pub fn spawn<F>(f: F) -> JoinHandle<F::Output>
+where
+    F: Future + Send + 'static,
+    F::Output: Send + 'static,
+{
+    Ironbar::runtime().spawn(f)
+}
+
+/// Calls `spawn_blocking` on the Tokio runtime.
+pub fn spawn_blocking<F, R>(f: F) -> JoinHandle<R>
+where
+    F: FnOnce() -> R + Send + 'static,
+    R: Send + 'static,
+{
+    Ironbar::runtime().spawn_blocking(f)
 }
 
 /// Blocks on a `Future` until it resolves.

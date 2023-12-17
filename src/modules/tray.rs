@@ -1,7 +1,7 @@
 use crate::clients::system_tray::get_tray_event_client;
 use crate::config::CommonConfig;
 use crate::modules::{Module, ModuleInfo, ModuleParts, ModuleUpdateEvent, WidgetContext};
-use crate::{await_sync, try_send};
+use crate::{await_sync, glib_recv, spawn, try_send};
 use color_eyre::Result;
 use glib::ffi::g_strfreev;
 use glib::translate::ToGlibPtr;
@@ -20,7 +20,6 @@ use std::ptr;
 use system_tray::message::menu::{MenuItem as MenuItemInfo, MenuType};
 use system_tray::message::tray::StatusNotifierItem;
 use system_tray::message::{NotifierItemCommand, NotifierItemMessage};
-use tokio::spawn;
 use tokio::sync::mpsc;
 use tokio::sync::mpsc::{Receiver, Sender};
 
@@ -58,9 +57,9 @@ fn get_icon_theme_search_paths(icon_theme: &IconTheme) -> HashSet<String> {
 
 /// Attempts to get a GTK `Image` component
 /// for the status notifier item's icon.
-fn get_image_from_icon_name(item: &StatusNotifierItem, icon_theme: IconTheme) -> Option<Image> {
+fn get_image_from_icon_name(item: &StatusNotifierItem, icon_theme: &IconTheme) -> Option<Image> {
     if let Some(path) = item.icon_theme_path.as_ref() {
-        if !path.is_empty() && !get_icon_theme_search_paths(&icon_theme).contains(path) {
+        if !path.is_empty() && !get_icon_theme_search_paths(icon_theme).contains(path) {
             icon_theme.append_search_path(path);
         }
     }
@@ -209,7 +208,7 @@ impl Module<MenuBar> for TrayModule {
             let icon_theme = info.icon_theme.clone();
 
             // listen for UI updates
-            context.widget_rx.attach(None, move |update| {
+            glib_recv!(context.subscribe(), update =>  {
                 match update {
                     NotifierItemMessage::Update {
                         item,
@@ -221,7 +220,7 @@ impl Module<MenuBar> for TrayModule {
                             let menu_item = MenuItem::new();
                             menu_item.style_context().add_class("item");
 
-                            get_image_from_icon_name(&item, icon_theme.clone())
+                            get_image_from_icon_name(&item, &icon_theme)
                                 .or_else(|| get_image_from_pixmap(&item))
                                 .map_or_else(
                                     || {
@@ -262,8 +261,6 @@ impl Module<MenuBar> for TrayModule {
                         }
                     }
                 };
-
-                Continue(true)
             });
         };
 

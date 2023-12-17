@@ -1,11 +1,10 @@
 use crate::script::Script;
-use crate::send;
+use crate::{glib_recv_mpsc, spawn, try_send};
 #[cfg(feature = "ipc")]
-use crate::Ironbar;
+use crate::{send_async, Ironbar};
 use cfg_if::cfg_if;
-use glib::Continue;
 use serde::Deserialize;
-use tokio::spawn;
+use tokio::sync::mpsc;
 
 #[derive(Debug, Deserialize, Clone)]
 #[serde(untagged)]
@@ -18,9 +17,9 @@ pub enum DynamicBool {
 }
 
 impl DynamicBool {
-    pub fn subscribe<F>(self, f: F)
+    pub fn subscribe<F>(self, mut f: F)
     where
-        F: FnMut(bool) -> Continue + 'static,
+        F: FnMut(bool) + 'static,
     {
         let value = match self {
             Self::Unknown(input) => {
@@ -40,16 +39,16 @@ impl DynamicBool {
             _ => self,
         };
 
-        let (tx, rx) = glib::MainContext::channel(glib::PRIORITY_DEFAULT);
+        let (tx, mut rx) = mpsc::channel(32);
 
-        rx.attach(None, f);
+        glib_recv_mpsc!(rx, val => f(val));
 
         spawn(async move {
             match value {
                 DynamicBool::Script(script) => {
                     script
                         .run(None, |_, success| {
-                            send!(tx, success);
+                            try_send!(tx, success);
                         })
                         .await;
                 }
@@ -62,7 +61,7 @@ impl DynamicBool {
 
                     while let Ok(value) = rx.recv().await {
                         let has_value = value.map(|s| is_truthy(&s)).unwrap_or_default();
-                        send!(tx, has_value);
+                        send_async!(tx, has_value);
                     }
                 }
                 DynamicBool::Unknown(_) => unreachable!(),
@@ -71,7 +70,10 @@ impl DynamicBool {
     }
 }
 
-/// Check if a string ironvar is 'truthy'
+/// Check if a string ironvar is 'truthy',
+/// i.e should be evaluated to true.
+///
+/// This loosely follows the common JavaScript cases.
 #[cfg(feature = "ipc")]
 fn is_truthy(string: &str) -> bool {
     !(string.is_empty() || string == "0" || string == "false")

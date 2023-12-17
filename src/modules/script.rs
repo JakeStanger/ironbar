@@ -1,12 +1,11 @@
 use crate::config::CommonConfig;
 use crate::modules::{Module, ModuleInfo, ModuleParts, ModuleUpdateEvent, WidgetContext};
 use crate::script::{OutputStream, Script, ScriptMode};
-use crate::try_send;
+use crate::{glib_recv, spawn, try_send};
 use color_eyre::{Help, Report, Result};
 use gtk::prelude::*;
 use gtk::Label;
 use serde::Deserialize;
-use tokio::spawn;
 use tokio::sync::mpsc::{Receiver, Sender};
 use tracing::error;
 
@@ -89,10 +88,7 @@ impl Module<Label> for ScriptModule {
 
         {
             let label = label.clone();
-            context.widget_rx.attach(None, move |s| {
-                label.set_markup(s.as_str());
-                Continue(true)
-            });
+            glib_recv!(context.subscribe(), s => label.set_markup(s.as_str()));
         }
 
         Ok(ModuleParts {

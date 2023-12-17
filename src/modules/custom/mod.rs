@@ -16,15 +16,14 @@ use crate::modules::{
     wrap_widget, Module, ModuleInfo, ModuleParts, ModulePopup, ModuleUpdateEvent, WidgetContext,
 };
 use crate::script::Script;
-use crate::send_async;
+use crate::{send_async, spawn};
 use color_eyre::{Report, Result};
 use gtk::prelude::*;
 use gtk::{Button, IconTheme, Orientation};
 use serde::Deserialize;
 use std::cell::RefCell;
 use std::rc::Rc;
-use tokio::spawn;
-use tokio::sync::mpsc::{Receiver, Sender};
+use tokio::sync::{broadcast, mpsc};
 use tracing::{debug, error};
 
 #[derive(Debug, Deserialize, Clone)]
@@ -59,7 +58,7 @@ pub enum Widget {
 
 #[derive(Clone)]
 struct CustomWidgetContext<'a> {
-    tx: &'a Sender<ExecEvent>,
+    tx: &'a mpsc::Sender<ExecEvent>,
     bar_orientation: Orientation,
     icon_theme: &'a IconTheme,
     popup_buttons: Rc<RefCell<Vec<Button>>>,
@@ -159,8 +158,8 @@ impl Module<gtk::Box> for CustomModule {
     fn spawn_controller(
         &self,
         _info: &ModuleInfo,
-        tx: Sender<ModuleUpdateEvent<Self::SendMessage>>,
-        mut rx: Receiver<Self::ReceiveMessage>,
+        tx: mpsc::Sender<ModuleUpdateEvent<Self::SendMessage>>,
+        mut rx: mpsc::Receiver<Self::ReceiveMessage>,
     ) -> Result<()> {
         spawn(async move {
             while let Some(event) = rx.recv().await {
@@ -213,7 +212,7 @@ impl Module<gtk::Box> for CustomModule {
         });
 
         let popup = self
-            .into_popup(context.controller_tx, context.popup_rx, info)
+            .into_popup(context.controller_tx.clone(), context.subscribe(), info)
             .into_popup_parts_owned(popup_buttons.take());
 
         Ok(ModuleParts {
@@ -224,8 +223,8 @@ impl Module<gtk::Box> for CustomModule {
 
     fn into_popup(
         self,
-        tx: Sender<Self::ReceiveMessage>,
-        _rx: glib::Receiver<Self::SendMessage>,
+        tx: mpsc::Sender<Self::ReceiveMessage>,
+        _rx: broadcast::Receiver<Self::SendMessage>,
         info: &ModuleInfo,
     ) -> Option<gtk::Box>
     where

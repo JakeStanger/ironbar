@@ -5,7 +5,8 @@ use crate::image::new_icon_button;
 use crate::modules::{
     Module, ModuleInfo, ModuleParts, ModulePopup, ModuleUpdateEvent, PopupButton, WidgetContext,
 };
-use crate::try_send;
+use crate::{glib_recv, spawn, try_send};
+use glib::Propagation;
 use gtk::gdk_pixbuf::Pixbuf;
 use gtk::gio::{Cancellable, MemoryInputStream};
 use gtk::prelude::*;
@@ -13,8 +14,7 @@ use gtk::{Button, EventBox, Image, Label, Orientation, RadioButton, Widget};
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::sync::Arc;
-use tokio::spawn;
-use tokio::sync::mpsc::{Receiver, Sender};
+use tokio::sync::{broadcast, mpsc};
 use tracing::{debug, error};
 
 #[derive(Debug, Deserialize, Clone)]
@@ -72,8 +72,8 @@ impl Module<Button> for ClipboardModule {
     fn spawn_controller(
         &self,
         _info: &ModuleInfo,
-        tx: Sender<ModuleUpdateEvent<Self::SendMessage>>,
-        mut rx: Receiver<Self::ReceiveMessage>,
+        tx: mpsc::Sender<ModuleUpdateEvent<Self::SendMessage>>,
+        mut rx: mpsc::Receiver<Self::ReceiveMessage>,
     ) -> color_eyre::Result<()> {
         let max_items = self.max_items;
 
@@ -129,19 +129,14 @@ impl Module<Button> for ClipboardModule {
         let button = new_icon_button(&self.icon, info.icon_theme, self.icon_size);
         button.style_context().add_class("btn");
 
+        let tx = context.tx.clone();
         button.connect_clicked(move |button| {
-            try_send!(
-                context.tx,
-                ModuleUpdateEvent::TogglePopup(button.popup_id())
-            );
+            try_send!(tx, ModuleUpdateEvent::TogglePopup(button.popup_id()));
         });
 
-        // we need to bind to the receiver as the channel does not open
-        // until the popup is first opened.
-        context.widget_rx.attach(None, |_| Continue(true));
-
+        let rx = context.subscribe();
         let popup = self
-            .into_popup(context.controller_tx, context.popup_rx, info)
+            .into_popup(context.controller_tx, rx, info)
             .into_popup_parts(vec![&button]);
 
         Ok(ModuleParts::new(button, popup))
@@ -149,8 +144,8 @@ impl Module<Button> for ClipboardModule {
 
     fn into_popup(
         self,
-        tx: Sender<Self::ReceiveMessage>,
-        rx: glib::Receiver<Self::SendMessage>,
+        tx: mpsc::Sender<Self::ReceiveMessage>,
+        mut rx: broadcast::Receiver<Self::SendMessage>,
         _info: &ModuleInfo,
     ) -> Option<gtk::Box>
     where
@@ -168,7 +163,7 @@ impl Module<Button> for ClipboardModule {
 
         {
             let hidden_option = hidden_option.clone();
-            rx.attach(None, move |event| {
+            glib_recv!(rx, event => {
                 match event {
                     ControllerEvent::Add(id, item) => {
                         debug!("Adding new value with ID {}", id);
@@ -234,7 +229,7 @@ impl Module<Button> for ClipboardModule {
                                         try_send!(tx, UIEvent::Copy(id));
                                     }
 
-                                    Inhibit(true)
+                                    Propagation::Stop
                                 },
                             );
                         }
@@ -293,8 +288,6 @@ impl Module<Button> for ClipboardModule {
                         hidden_option.set_active(true);
                     }
                 }
-
-                Continue(true)
             });
         }
 

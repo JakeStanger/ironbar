@@ -3,8 +3,7 @@ use futures_lite::stream::StreamExt;
 use gtk::{prelude::*, Button};
 use gtk::{Label, Orientation};
 use serde::Deserialize;
-use tokio::spawn;
-use tokio::sync::mpsc::{Receiver, Sender};
+use tokio::sync::{broadcast, mpsc};
 use upower_dbus::BatteryState;
 use zbus;
 
@@ -16,7 +15,7 @@ use crate::modules::PopupButton;
 use crate::modules::{
     Module, ModuleInfo, ModuleParts, ModulePopup, ModuleUpdateEvent, WidgetContext,
 };
-use crate::{await_sync, error, send_async, try_send};
+use crate::{await_sync, error, glib_recv, send_async, spawn, try_send};
 
 const DAY: i64 = 24 * 60 * 60;
 const HOUR: i64 = 60 * 60;
@@ -62,8 +61,8 @@ impl Module<gtk::Button> for UpowerModule {
     fn spawn_controller(
         &self,
         _info: &ModuleInfo,
-        tx: Sender<ModuleUpdateEvent<Self::SendMessage>>,
-        _rx: Receiver<Self::ReceiveMessage>,
+        tx: mpsc::Sender<ModuleUpdateEvent<Self::SendMessage>>,
+        _rx: mpsc::Receiver<Self::ReceiveMessage>,
     ) -> Result<()> {
         spawn(async move {
             // await_sync due to strange "higher-ranked lifetime error"
@@ -174,29 +173,28 @@ impl Module<gtk::Button> for UpowerModule {
         container.add(&label);
         button.add(&container);
 
+        let tx = context.tx.clone();
         button.connect_clicked(move |button| {
-            try_send!(
-                context.tx,
-                ModuleUpdateEvent::TogglePopup(button.popup_id())
-            );
+            try_send!(tx, ModuleUpdateEvent::TogglePopup(button.popup_id()));
         });
 
         label.set_angle(info.bar_position.get_angle());
         let format = self.format.clone();
 
-        context
-            .widget_rx
-            .attach(None, move |properties: UpowerProperties| {
-                let format = format.replace("{percentage}", &properties.percentage.to_string());
-                let icon_name = String::from("icon:") + &properties.icon_name;
-                ImageProvider::parse(&icon_name, &icon_theme, false, self.icon_size)
-                    .map(|provider| provider.load_into_image(icon.clone()));
-                label.set_markup(format.as_ref());
-                Continue(true)
-            });
+        let mut rx = context.subscribe();
+        glib_recv!(rx, properties => {
+            let format = format.replace("{percentage}", &properties.percentage.to_string());
+            let icon_name = String::from("icon:") + &properties.icon_name;
 
+            ImageProvider::parse(&icon_name, &icon_theme, false, self.icon_size)
+                    .map(|provider| provider.load_into_image(icon.clone()));
+
+            label.set_markup(format.as_ref());
+        });
+
+        let rx = context.subscribe();
         let popup = self
-            .into_popup(context.controller_tx, context.popup_rx, info)
+            .into_popup(context.controller_tx, rx, info)
             .into_popup_parts(vec![&button]);
 
         Ok(ModuleParts::new(button, popup))
@@ -204,8 +202,8 @@ impl Module<gtk::Button> for UpowerModule {
 
     fn into_popup(
         self,
-        _tx: Sender<Self::ReceiveMessage>,
-        rx: glib::Receiver<Self::SendMessage>,
+        _tx: mpsc::Sender<Self::ReceiveMessage>,
+        mut rx: broadcast::Receiver<Self::SendMessage>,
         _info: &ModuleInfo,
     ) -> Option<gtk::Box>
     where
@@ -219,7 +217,7 @@ impl Module<gtk::Button> for UpowerModule {
         label.add_class("upower-details");
         container.add(&label);
 
-        rx.attach(None, move |properties| {
+        glib_recv!(rx, properties => {
             let state = u32_to_battery_state(properties.state);
             let format = match state {
                 Ok(BatteryState::Charging | BatteryState::PendingCharge) => {
@@ -246,7 +244,6 @@ impl Module<gtk::Button> for UpowerModule {
             };
 
             label.set_markup(&format);
-            Continue(true)
         });
 
         container.show_all();

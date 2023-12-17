@@ -30,7 +30,6 @@ impl CustomWidget for ButtonWidget {
 
             dynamic_string(&text, move |string| {
                 label.set_markup(&string);
-                Continue(true)
             });
         }
 

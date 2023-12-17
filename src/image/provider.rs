@@ -1,4 +1,6 @@
 use crate::desktop_file::get_desktop_icon_name;
+#[cfg(feature = "http")]
+use crate::{glib_recv_mpsc, send_async, spawn};
 use cfg_if::cfg_if;
 use color_eyre::{Help, Report, Result};
 use gtk::cairo::Surface;
@@ -7,13 +9,13 @@ use gtk::gdk_pixbuf::Pixbuf;
 use gtk::prelude::*;
 use gtk::{IconLookupFlags, IconTheme};
 use std::path::{Path, PathBuf};
+#[cfg(feature = "http")]
+use tokio::sync::mpsc;
 use tracing::warn;
 
 cfg_if!(
     if #[cfg(feature = "http")] {
-        use crate::send;
         use gtk::gio::{Cancellable, MemoryInputStream};
-        use tokio::spawn;
         use tracing::error;
     }
 );
@@ -143,18 +145,18 @@ impl<'a> ImageProvider<'a> {
         #[cfg(feature = "http")]
         if let ImageLocation::Remote(url) = &self.location {
             let url = url.clone();
-            let (tx, rx) = glib::MainContext::channel(glib::PRIORITY_DEFAULT);
+            let (tx, mut rx) = mpsc::channel(64);
 
             spawn(async move {
                 let bytes = Self::get_bytes_from_http(url).await;
                 if let Ok(bytes) = bytes {
-                    send!(tx, bytes);
+                    send_async!(tx, bytes);
                 }
             });
 
             {
                 let size = self.size;
-                rx.attach(None, move |bytes| {
+                glib_recv_mpsc!(rx, bytes => {
                     let stream = MemoryInputStream::from_bytes(&bytes);
 
                     let scale = image.scale_factor();
@@ -175,8 +177,6 @@ impl<'a> ImageProvider<'a> {
                         Err(err) => error!("{err:?}"),
                         _ => {}
                     }
-
-                    Continue(false)
                 });
             }
         } else {

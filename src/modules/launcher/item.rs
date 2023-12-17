@@ -7,6 +7,7 @@ use crate::modules::launcher::{ItemEvent, LauncherUpdate};
 use crate::modules::ModuleUpdateEvent;
 use crate::{read_lock, try_send};
 use color_eyre::{Report, Result};
+use glib::Propagation;
 use gtk::prelude::*;
 use gtk::{Button, IconTheme};
 use indexmap::IndexMap;
@@ -258,7 +259,7 @@ impl ItemButton {
                     try_send!(tx, ModuleUpdateEvent::ClosePopup);
                 }
 
-                Inhibit(false)
+                Propagation::Proceed
             });
         }
 
@@ -283,7 +284,7 @@ impl ItemButton {
                     try_send!(tx, ModuleUpdateEvent::ClosePopup);
                 }
 
-                Inhibit(false)
+                Propagation::Proceed
             });
         }
 

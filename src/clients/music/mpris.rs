@@ -1,6 +1,6 @@
 use super::{MusicClient, PlayerState, PlayerUpdate, Status, Track, TICK_INTERVAL_MS};
 use crate::clients::music::ProgressTick;
-use crate::{arc_mut, lock, send};
+use crate::{arc_mut, lock, send, spawn_blocking};
 use color_eyre::Result;
 use lazy_static::lazy_static;
 use mpris::{DBusError, Event, Metadata, PlaybackStatus, Player, PlayerFinder};
@@ -10,7 +10,6 @@ use std::thread::sleep;
 use std::time::Duration;
 use std::{cmp, string};
 use tokio::sync::broadcast;
-use tokio::task::spawn_blocking;
 use tracing::{debug, error, trace};
 
 lazy_static! {

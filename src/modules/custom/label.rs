@@ -26,7 +26,6 @@ impl CustomWidget for LabelWidget {
             let label = label.clone();
             dynamic_string(&self.label, move |string| {
                 label.set_markup(&string);
-                Continue(true)
             });
         }
 

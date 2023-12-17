@@ -1,7 +1,7 @@
 use crate::config::CommonConfig;
 use crate::gtk_helpers::IronbarGtkExt;
 use crate::modules::{Module, ModuleInfo, ModuleParts, ModuleUpdateEvent, WidgetContext};
-use crate::send_async;
+use crate::{glib_recv, send_async, spawn};
 use color_eyre::Result;
 use gtk::prelude::*;
 use gtk::Label;
@@ -10,7 +10,6 @@ use serde::Deserialize;
 use std::collections::HashMap;
 use std::time::Duration;
 use sysinfo::{ComponentExt, CpuExt, DiskExt, NetworkExt, RefreshKind, System, SystemExt};
-use tokio::spawn;
 use tokio::sync::mpsc;
 use tokio::sync::mpsc::{Receiver, Sender};
 use tokio::time::sleep;
@@ -205,7 +204,7 @@ impl Module<gtk::Box> for SysInfoModule {
 
         {
             let formats = self.format;
-            context.widget_rx.attach(None, move |info| {
+            glib_recv!(context.subscribe(), info => {
                 for (format, label) in formats.iter().zip(labels.clone()) {
                     let format_compiled = re.replace_all(format, |caps: &Captures| {
                         info.get(&caps[1])
@@ -215,8 +214,6 @@ impl Module<gtk::Box> for SysInfoModule {
 
                     label.set_markup(format_compiled.as_ref());
                 }
-
-                Continue(true)
             });
         }
 

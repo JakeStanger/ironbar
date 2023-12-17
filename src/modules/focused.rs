@@ -3,13 +3,11 @@ use crate::config::{CommonConfig, TruncateMode};
 use crate::gtk_helpers::IronbarGtkExt;
 use crate::image::ImageProvider;
 use crate::modules::{Module, ModuleInfo, ModuleParts, ModuleUpdateEvent, WidgetContext};
-use crate::{lock, send_async, try_send};
+use crate::{glib_recv, lock, send_async, spawn, try_send};
 use color_eyre::Result;
-use glib::Continue;
 use gtk::prelude::*;
 use gtk::Label;
 use serde::Deserialize;
-use tokio::spawn;
 use tokio::sync::mpsc::{Receiver, Sender};
 use tracing::debug;
 
@@ -141,7 +139,7 @@ impl Module<gtk::Box> for FocusedModule {
 
         {
             let icon_theme = icon_theme.clone();
-            context.widget_rx.attach(None, move |data| {
+            glib_recv!(context.subscribe(), data => {
                 if let Some((name, id)) = data {
                     if self.show_icon {
                         match ImageProvider::parse(&id, &icon_theme, true, self.icon_size)
@@ -160,8 +158,6 @@ impl Module<gtk::Box> for FocusedModule {
                     icon.hide();
                     label.hide();
                 }
-
-                Continue(true)
             });
         }
 

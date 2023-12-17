@@ -1,6 +1,5 @@
-use crate::send;
+use crate::{glib_recv_mpsc, spawn, try_send};
 use color_eyre::{Help, Report};
-use glib::Continue;
 use gtk::ffi::GTK_STYLE_PROVIDER_PRIORITY_USER;
 use gtk::prelude::CssProviderExt;
 use gtk::{gdk, gio, CssProvider, StyleContext};
@@ -8,7 +7,7 @@ use notify::event::ModifyKind;
 use notify::{recommended_watcher, Event, EventKind, RecursiveMode, Result, Watcher};
 use std::path::PathBuf;
 use std::time::Duration;
-use tokio::spawn;
+use tokio::sync::mpsc;
 use tokio::time::sleep;
 use tracing::{debug, error, info};
 
@@ -36,7 +35,7 @@ pub fn load_css(style_path: PathBuf) {
         GTK_STYLE_PROVIDER_PRIORITY_USER as u32,
     );
 
-    let (tx, rx) = glib::MainContext::channel(glib::PRIORITY_DEFAULT);
+    let (tx, mut rx) = mpsc::channel(8);
 
     spawn(async move {
         let style_path2 = style_path.clone();
@@ -49,7 +48,7 @@ pub fn load_css(style_path: PathBuf) {
                     .map(|p| p == &style_path2)
                     .unwrap_or_default()
                 {
-                    send!(tx, style_path2.clone());
+                    try_send!(tx, style_path2.clone());
                 }
             }
             Err(e) => error!("Error occurred when watching stylesheet: {:?}", e),
@@ -70,19 +69,14 @@ pub fn load_css(style_path: PathBuf) {
         }
     });
 
-    {
-        rx.attach(None, move |path| {
-            info!("Reloading CSS");
-            if let Err(err) = provider
-                .load_from_file(&gio::File::for_path(path)) {
-                error!("{:?}", Report::new(err)
-                    .wrap_err("Failed to load CSS")
-                    .suggestion("Check the CSS file for errors")
-                    .suggestion("GTK CSS uses a subset of the full CSS spec and many properties are not available. Ensure you are not using any unsupported property.")
-                );
-            }
-
-            Continue(true)
-        });
-    }
+    glib_recv_mpsc!(rx, path => {
+        info!("Reloading CSS");
+        if let Err(err) = provider.load_from_file(&gio::File::for_path(path)) {
+            error!("{:?}", Report::new(err)
+                .wrap_err("Failed to load CSS")
+                .suggestion("Check the CSS file for errors")
+                .suggestion("GTK CSS uses a subset of the full CSS spec and many properties are not available. Ensure you are not using any unsupported property.")
+            );
+        }
+    });
 }

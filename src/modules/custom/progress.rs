@@ -1,13 +1,13 @@
 use gtk::prelude::*;
 use gtk::ProgressBar;
 use serde::Deserialize;
-use tokio::spawn;
+use tokio::sync::mpsc;
 use tracing::error;
 
 use crate::dynamic_value::dynamic_string;
 use crate::modules::custom::set_length;
 use crate::script::{OutputStream, Script, ScriptInput};
-use crate::{build, send};
+use crate::{build, glib_recv_mpsc, spawn, try_send};
 
 use super::{try_get_orientation, CustomWidget, CustomWidgetContext};
 
@@ -47,13 +47,13 @@ impl CustomWidget for ProgressWidget {
             let script = Script::from(value);
             let progress = progress.clone();
 
-            let (tx, rx) = glib::MainContext::channel(glib::PRIORITY_DEFAULT);
+            let (tx, mut rx) = mpsc::channel(128);
 
             spawn(async move {
                 script
                     .run(None, move |stream, _success| match stream {
                         OutputStream::Stdout(out) => match out.parse::<f64>() {
-                            Ok(value) => send!(tx, value),
+                            Ok(value) => try_send!(tx, value),
                             Err(err) => error!("{err:?}"),
                         },
                         OutputStream::Stderr(err) => error!("{err:?}"),
@@ -61,10 +61,7 @@ impl CustomWidget for ProgressWidget {
                     .await;
             });
 
-            rx.attach(None, move |value| {
-                progress.set_fraction(value / self.max);
-                Continue(true)
-            });
+            glib_recv_mpsc!(rx, value => progress.set_fraction(value / self.max));
         }
 
         if let Some(text) = self.label {
@@ -73,7 +70,6 @@ impl CustomWidget for ProgressWidget {
 
             dynamic_string(&text, move |string| {
                 progress.set_text(Some(&string));
-                Continue(true)
             });
         }
 

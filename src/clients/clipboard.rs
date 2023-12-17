@@ -1,10 +1,9 @@
 use super::wayland::{self, ClipboardItem};
-use crate::{arc_mut, lock, try_send};
+use crate::{arc_mut, lock, spawn, try_send};
 use indexmap::map::Iter;
 use indexmap::IndexMap;
 use lazy_static::lazy_static;
 use std::sync::{Arc, Mutex};
-use tokio::spawn;
 use tokio::sync::mpsc;
 use tracing::{debug, trace};
 

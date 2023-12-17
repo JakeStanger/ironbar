@@ -1,12 +1,11 @@
 use super::{Visibility, Workspace, WorkspaceClient, WorkspaceUpdate};
-use crate::{await_sync, send};
+use crate::{await_sync, send, spawn};
 use async_once::AsyncOnce;
 use color_eyre::Report;
 use futures_util::StreamExt;
 use lazy_static::lazy_static;
 use std::sync::Arc;
 use swayipc_async::{Connection, Event, EventType, Node, WorkspaceChange, WorkspaceEvent};
-use tokio::spawn;
 use tokio::sync::broadcast::{channel, Receiver, Sender};
 use tokio::sync::Mutex;
 use tracing::{info, trace};

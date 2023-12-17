@@ -1,15 +1,16 @@
+use glib::Propagation;
 use std::cell::Cell;
 use std::ops::Neg;
 
 use gtk::prelude::*;
 use gtk::Scale;
 use serde::Deserialize;
-use tokio::spawn;
+use tokio::sync::mpsc;
 use tracing::error;
 
 use crate::modules::custom::set_length;
 use crate::script::{OutputStream, Script, ScriptInput};
-use crate::{build, send, try_send};
+use crate::{build, glib_recv_mpsc, spawn, try_send};
 
 use super::{try_get_orientation, CustomWidget, CustomWidgetContext, ExecEvent};
 
@@ -77,7 +78,7 @@ impl CustomWidget for SliderWidget {
                 };
 
                 scale.set_value(value + delta);
-                Inhibit(false)
+                Propagation::Proceed
             });
 
             scale.connect_change_value(move |_, _, val| {
@@ -97,7 +98,7 @@ impl CustomWidget for SliderWidget {
                     prev_value.set(val);
                 }
 
-                Inhibit(false)
+                Propagation::Proceed
             });
         }
 
@@ -105,13 +106,13 @@ impl CustomWidget for SliderWidget {
             let script = Script::from(value);
             let scale = scale.clone();
 
-            let (tx, rx) = glib::MainContext::channel(glib::PRIORITY_DEFAULT);
+            let (tx, mut rx) = mpsc::channel(128);
 
             spawn(async move {
                 script
                     .run(None, move |stream, _success| match stream {
                         OutputStream::Stdout(out) => match out.parse() {
-                            Ok(value) => send!(tx, value),
+                            Ok(value) => try_send!(tx, value),
                             Err(err) => error!("{err:?}"),
                         },
                         OutputStream::Stderr(err) => error!("{err:?}"),
@@ -119,10 +120,7 @@ impl CustomWidget for SliderWidget {
                     .await;
             });
 
-            rx.attach(None, move |value| {
-                scale.set_value(value);
-                Continue(true)
-            });
+            glib_recv_mpsc!(rx, value => scale.set_value(value));
         }
 
         scale
