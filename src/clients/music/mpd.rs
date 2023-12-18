@@ -1,7 +1,7 @@
 use super::{
     MusicClient, PlayerState, PlayerUpdate, ProgressTick, Status, Track, TICK_INTERVAL_MS,
 };
-use crate::{await_sync, send};
+use crate::{await_sync, send, spawn};
 use color_eyre::Result;
 use lazy_static::lazy_static;
 use mpd_client::client::{Connection, ConnectionEvent, Subsystem};
@@ -17,7 +17,6 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::net::{TcpStream, UnixStream};
-use tokio::spawn;
 use tokio::sync::broadcast;
 use tokio::sync::Mutex;
 use tokio::time::sleep;

@@ -1,9 +1,8 @@
 use crate::config::CommonConfig;
 use crate::dynamic_value::dynamic_string;
 use crate::modules::{Module, ModuleInfo, ModuleParts, ModuleUpdateEvent, WidgetContext};
-use crate::try_send;
+use crate::{glib_recv, try_send};
 use color_eyre::Result;
-use glib::Continue;
 use gtk::prelude::*;
 use gtk::Label;
 use serde::Deserialize;
@@ -42,7 +41,6 @@ impl Module<Label> for LabelModule {
     ) -> Result<()> {
         dynamic_string(&self.label, move |string| {
             try_send!(tx, ModuleUpdateEvent::Update(string));
-            Continue(true)
         });
 
         Ok(())
@@ -58,10 +56,7 @@ impl Module<Label> for LabelModule {
 
         {
             let label = label.clone();
-            context.widget_rx.attach(None, move |string| {
-                label.set_markup(&string);
-                Continue(true)
-            });
+            glib_recv!(context.subscribe(), string => label.set_markup(&string));
         }
 
         Ok(ModuleParts {

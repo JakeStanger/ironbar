@@ -1,8 +1,10 @@
+use glib::Propagation;
 use std::collections::HashMap;
 
 use gtk::gdk::Monitor;
 use gtk::prelude::*;
 use gtk::{ApplicationWindow, Orientation};
+use gtk_layer_shell::LayerShell;
 use tracing::debug;
 
 use crate::config::BarPosition;
@@ -37,52 +39,38 @@ impl Popup {
             .application(module_info.app)
             .build();
 
-        gtk_layer_shell::init_for_window(&win);
-        gtk_layer_shell::set_monitor(&win, module_info.monitor);
-        gtk_layer_shell::set_layer(&win, gtk_layer_shell::Layer::Overlay);
-        gtk_layer_shell::set_namespace(&win, env!("CARGO_PKG_NAME"));
+        win.init_layer_shell();
+        win.set_monitor(module_info.monitor);
+        win.set_layer(gtk_layer_shell::Layer::Overlay);
+        win.set_namespace(env!("CARGO_PKG_NAME"));
 
-        gtk_layer_shell::set_margin(
-            &win,
+        win.set_layer_shell_margin(
             gtk_layer_shell::Edge::Top,
             if pos == BarPosition::Top { gap } else { 0 },
         );
-        gtk_layer_shell::set_margin(
-            &win,
+        win.set_layer_shell_margin(
             gtk_layer_shell::Edge::Bottom,
             if pos == BarPosition::Bottom { gap } else { 0 },
         );
-        gtk_layer_shell::set_margin(
-            &win,
+        win.set_layer_shell_margin(
             gtk_layer_shell::Edge::Left,
             if pos == BarPosition::Left { gap } else { 0 },
         );
-        gtk_layer_shell::set_margin(
-            &win,
+        win.set_layer_shell_margin(
             gtk_layer_shell::Edge::Right,
             if pos == BarPosition::Right { gap } else { 0 },
         );
 
-        gtk_layer_shell::set_anchor(
-            &win,
+        win.set_anchor(
             gtk_layer_shell::Edge::Top,
             pos == BarPosition::Top || orientation == Orientation::Vertical,
         );
-        gtk_layer_shell::set_anchor(
-            &win,
-            gtk_layer_shell::Edge::Bottom,
-            pos == BarPosition::Bottom,
-        );
-        gtk_layer_shell::set_anchor(
-            &win,
+        win.set_anchor(gtk_layer_shell::Edge::Bottom, pos == BarPosition::Bottom);
+        win.set_anchor(
             gtk_layer_shell::Edge::Left,
             pos == BarPosition::Left || orientation == Orientation::Horizontal,
         );
-        gtk_layer_shell::set_anchor(
-            &win,
-            gtk_layer_shell::Edge::Right,
-            pos == BarPosition::Right,
-        );
+        win.set_anchor(gtk_layer_shell::Edge::Right, pos == BarPosition::Right);
 
         win.connect_leave_notify_event(move |win, ev| {
             const THRESHOLD: f64 = 3.0;
@@ -111,7 +99,7 @@ impl Popup {
                 win.hide();
             }
 
-            Inhibit(false)
+            Propagation::Proceed
         });
 
         Self {
@@ -229,6 +217,6 @@ impl Popup {
             gtk_layer_shell::Edge::Top
         };
 
-        gtk_layer_shell::set_margin(&self.window, edge, offset as i32);
+        self.window.set_layer_shell_margin(edge, offset as i32);
     }
 }

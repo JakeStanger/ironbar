@@ -1,5 +1,5 @@
 use super::{Visibility, Workspace, WorkspaceClient, WorkspaceUpdate};
-use crate::{arc_mut, lock, send};
+use crate::{arc_mut, lock, send, spawn_blocking};
 use color_eyre::Result;
 use hyprland::data::{Workspace as HWorkspace, Workspaces};
 use hyprland::dispatch::{Dispatch, DispatchType, WorkspaceIdentifierWithSpecial};
@@ -8,7 +8,6 @@ use hyprland::prelude::*;
 use hyprland::shared::{HyprDataVec, WorkspaceType};
 use lazy_static::lazy_static;
 use tokio::sync::broadcast::{channel, Receiver, Sender};
-use tokio::task::spawn_blocking;
 use tracing::{debug, error, info};
 
 pub struct EventClient {

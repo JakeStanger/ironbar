@@ -43,6 +43,55 @@ macro_rules! try_send {
     };
 }
 
+/// Spawns a `GLib` future on the local thread, and calls `rx.recv()`
+/// in a loop.
+///
+/// This allows use of `GObjects` and futures in the same context.
+///
+/// For use with receivers which return a `Result`.
+///
+/// # Example
+///
+/// ```rs
+/// let (tx, mut rx) = broadcast::channel(32);
+/// glib_recv(rx, msg => println!("{msg}"));
+/// ```
+#[macro_export]
+macro_rules! glib_recv {
+    ($rx:expr, $val:ident => $expr:expr) => {
+        glib::spawn_future_local(async move {
+            while let Ok($val) = $rx.recv().await {
+                $expr
+            }
+        });
+    };
+}
+
+/// Spawns a `GLib` future on the local thread, and calls `rx.recv()`
+/// in a loop.
+///
+/// This allows use of `GObjects` and futures in the same context.
+///
+/// For use with receivers which return an `Option`,
+/// such as Tokio's `mpsc` channel.
+///
+/// # Example
+///
+/// ```rs
+/// let (tx, mut rx) = broadcast::channel(32);
+/// glib_recv_mpsc(rx, msg => println!("{msg}"));
+/// ```
+#[macro_export]
+macro_rules! glib_recv_mpsc {
+    ($rx:expr, $val:ident => $expr:expr) => {
+        glib::spawn_future_local(async move {
+            while let Some($val) = $rx.recv().await {
+                $expr
+            }
+        });
+    };
+}
+
 /// Locks a `Mutex`.
 /// Panics if the `Mutex` cannot be locked.
 ///

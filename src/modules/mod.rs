@@ -1,4 +1,5 @@
 use std::cell::RefCell;
+use std::fmt::Debug;
 use std::rc::Rc;
 
 use color_eyre::Result;
@@ -6,14 +7,13 @@ use glib::IsA;
 use gtk::gdk::{EventMask, Monitor};
 use gtk::prelude::*;
 use gtk::{Application, Button, EventBox, IconTheme, Orientation, Revealer, Widget};
-use tokio::sync::mpsc;
+use tokio::sync::{broadcast, mpsc};
 use tracing::debug;
 
-use crate::bridge_channel::BridgeChannel;
 use crate::config::{BarPosition, CommonConfig, TransitionType};
 use crate::gtk_helpers::{IronbarGtkExt, WidgetGeometry};
 use crate::popup::Popup;
-use crate::send;
+use crate::{glib_recv_mpsc, send};
 
 #[cfg(feature = "clipboard")]
 pub mod clipboard;
@@ -56,8 +56,8 @@ pub struct ModuleInfo<'a> {
     pub icon_theme: &'a IconTheme,
 }
 
-#[derive(Debug)]
-pub enum ModuleUpdateEvent<T> {
+#[derive(Debug, Clone)]
+pub enum ModuleUpdateEvent<T: Clone> {
     /// Sends an update to the module UI.
     Update(T),
     /// Toggles the open state of the popup.
@@ -71,12 +71,25 @@ pub enum ModuleUpdateEvent<T> {
     ClosePopup,
 }
 
-pub struct WidgetContext<TSend, TReceive> {
+pub struct WidgetContext<TSend, TReceive>
+where
+    TSend: Clone,
+{
     pub id: usize,
     pub tx: mpsc::Sender<ModuleUpdateEvent<TSend>>,
+    pub update_tx: broadcast::Sender<TSend>,
     pub controller_tx: mpsc::Sender<TReceive>,
-    pub widget_rx: glib::Receiver<TSend>,
-    pub popup_rx: glib::Receiver<TSend>,
+
+    _update_rx: broadcast::Receiver<TSend>,
+}
+
+impl<TSend, TReceive> WidgetContext<TSend, TReceive>
+where
+    TSend: Clone,
+{
+    pub fn subscribe(&self) -> broadcast::Receiver<TSend> {
+        self.update_tx.subscribe()
+    }
 }
 
 pub struct ModuleParts<W: IsA<Widget>> {
@@ -151,18 +164,22 @@ where
         info: &ModuleInfo,
         tx: mpsc::Sender<ModuleUpdateEvent<Self::SendMessage>>,
         rx: mpsc::Receiver<Self::ReceiveMessage>,
-    ) -> Result<()>;
+    ) -> Result<()>
+    where
+        <Self as Module<W>>::SendMessage: Clone;
 
     fn into_widget(
         self,
         context: WidgetContext<Self::SendMessage, Self::ReceiveMessage>,
         info: &ModuleInfo,
-    ) -> Result<ModuleParts<W>>;
+    ) -> Result<ModuleParts<W>>
+    where
+        <Self as Module<W>>::SendMessage: Clone;
 
     fn into_popup(
         self,
         _tx: mpsc::Sender<Self::ReceiveMessage>,
-        _rx: glib::Receiver<Self::SendMessage>,
+        _rx: broadcast::Receiver<Self::SendMessage>,
         _info: &ModuleInfo,
     ) -> Option<gtk::Box>
     where
@@ -184,22 +201,21 @@ pub fn create_module<TModule, TWidget, TSend, TRec>(
 where
     TModule: Module<TWidget, SendMessage = TSend, ReceiveMessage = TRec>,
     TWidget: IsA<Widget>,
-    TSend: Clone + Send + 'static,
+    TSend: Debug + Clone + Send + 'static,
 {
-    let (w_tx, w_rx) = glib::MainContext::channel::<TSend>(glib::PRIORITY_DEFAULT);
-    let (p_tx, p_rx) = glib::MainContext::channel::<TSend>(glib::PRIORITY_DEFAULT);
+    let (ui_tx, ui_rx) = mpsc::channel::<ModuleUpdateEvent<TSend>>(64);
+    let (controller_tx, controller_rx) = mpsc::channel::<TRec>(64);
 
-    let channel = BridgeChannel::<ModuleUpdateEvent<TSend>>::new();
-    let (ui_tx, ui_rx) = mpsc::channel::<TRec>(16);
+    let (tx, rx) = broadcast::channel(64);
 
-    module.spawn_controller(info, channel.create_sender(), ui_rx)?;
+    module.spawn_controller(info, ui_tx.clone(), controller_rx)?;
 
     let context = WidgetContext {
         id,
-        widget_rx: w_rx,
-        popup_rx: p_rx,
-        tx: channel.create_sender(),
-        controller_tx: ui_tx,
+        tx: ui_tx,
+        update_tx: tx.clone(),
+        controller_tx,
+        _update_rx: rx,
     };
 
     let module_name = TModule::name();
@@ -209,27 +225,16 @@ where
     module_parts.widget.add_class("widget");
     module_parts.widget.add_class(module_name);
 
-    let has_popup = if let Some(popup_content) = module_parts.popup.clone() {
+    if let Some(popup_content) = module_parts.popup.clone() {
         popup_content
             .container
             .style_context()
             .add_class(&format!("popup-{module_name}"));
 
         register_popup_content(popup, id, instance_name, popup_content);
-        true
-    } else {
-        false
-    };
+    }
 
-    setup_receiver(
-        channel,
-        w_tx,
-        p_tx,
-        popup.clone(),
-        module_name,
-        id,
-        has_popup,
-    );
+    setup_receiver(tx, ui_rx, popup.clone(), module_name, id);
 
     Ok(module_parts)
 }
@@ -250,28 +255,22 @@ fn register_popup_content(
 /// Handles opening/closing popups
 /// and communicating update messages between controllers and widgets/popups.
 fn setup_receiver<TSend>(
-    channel: BridgeChannel<ModuleUpdateEvent<TSend>>,
-    w_tx: glib::Sender<TSend>,
-    p_tx: glib::Sender<TSend>,
+    tx: broadcast::Sender<TSend>,
+    mut rx: mpsc::Receiver<ModuleUpdateEvent<TSend>>,
     popup: Rc<RefCell<Popup>>,
     name: &'static str,
     id: usize,
-    has_popup: bool,
 ) where
-    TSend: Clone + Send + 'static,
+    TSend: Debug + Clone + Send + 'static,
 {
     // some rare cases can cause the popup to incorrectly calculate its size on first open.
     // we can fix that by just force re-rendering it on its first open.
     let mut has_popup_opened = false;
 
-    channel.recv(move |ev| {
+    glib_recv_mpsc!(rx, ev => {
         match ev {
             ModuleUpdateEvent::Update(update) => {
-                if has_popup {
-                    send!(p_tx, update.clone());
-                }
-
-                send!(w_tx, update);
+                send!(tx, update);
             }
             ModuleUpdateEvent::TogglePopup(button_id) => {
                 debug!("Toggling popup for {} [#{}]", name, id);
@@ -321,8 +320,6 @@ fn setup_receiver<TSend>(
                 popup.hide();
             }
         }
-
-        Continue(true)
     });
 }
 

@@ -5,9 +5,11 @@ use crate::modules::{
 use crate::popup::Popup;
 use crate::{Config, Ironbar};
 use color_eyre::Result;
+use glib::Propagation;
 use gtk::gdk::Monitor;
 use gtk::prelude::*;
 use gtk::{Application, ApplicationWindow, IconTheme, Orientation, Window, WindowType};
+use gtk_layer_shell::LayerShell;
 use std::cell::RefCell;
 use std::rc::Rc;
 use std::time::Duration;
@@ -81,7 +83,7 @@ impl Bar {
         window.connect_destroy_event(|_, _| {
             info!("Shutting down");
             gtk::main_quit();
-            Inhibit(false)
+            Propagation::Proceed
         });
 
         Bar {
@@ -161,42 +163,38 @@ impl Bar {
     ) {
         let position = self.position;
 
-        gtk_layer_shell::init_for_window(win);
-        gtk_layer_shell::set_monitor(win, monitor);
-        gtk_layer_shell::set_layer(win, gtk_layer_shell::Layer::Top);
-        gtk_layer_shell::set_namespace(win, env!("CARGO_PKG_NAME"));
+        win.init_layer_shell();
+        win.set_monitor(monitor);
+        win.set_layer(gtk_layer_shell::Layer::Top);
+        win.set_namespace(env!("CARGO_PKG_NAME"));
 
         if exclusive_zone {
-            gtk_layer_shell::auto_exclusive_zone_enable(win);
+            win.auto_exclusive_zone_enable();
         }
 
-        gtk_layer_shell::set_margin(win, gtk_layer_shell::Edge::Top, margin.top);
-        gtk_layer_shell::set_margin(win, gtk_layer_shell::Edge::Bottom, margin.bottom);
-        gtk_layer_shell::set_margin(win, gtk_layer_shell::Edge::Left, margin.left);
-        gtk_layer_shell::set_margin(win, gtk_layer_shell::Edge::Right, margin.right);
+        win.set_layer_shell_margin(gtk_layer_shell::Edge::Top, margin.top);
+        win.set_layer_shell_margin(gtk_layer_shell::Edge::Bottom, margin.bottom);
+        win.set_layer_shell_margin(gtk_layer_shell::Edge::Left, margin.left);
+        win.set_layer_shell_margin(gtk_layer_shell::Edge::Right, margin.right);
 
         let bar_orientation = position.get_orientation();
 
-        gtk_layer_shell::set_anchor(
-            win,
+        win.set_anchor(
             gtk_layer_shell::Edge::Top,
             position == BarPosition::Top
                 || (bar_orientation == Orientation::Vertical && anchor_to_edges),
         );
-        gtk_layer_shell::set_anchor(
-            win,
+        win.set_anchor(
             gtk_layer_shell::Edge::Bottom,
             position == BarPosition::Bottom
                 || (bar_orientation == Orientation::Vertical && anchor_to_edges),
         );
-        gtk_layer_shell::set_anchor(
-            win,
+        win.set_anchor(
             gtk_layer_shell::Edge::Left,
             position == BarPosition::Left
                 || (bar_orientation == Orientation::Horizontal && anchor_to_edges),
         );
-        gtk_layer_shell::set_anchor(
-            win,
+        win.set_anchor(
             gtk_layer_shell::Edge::Right,
             position == BarPosition::Right
                 || (bar_orientation == Orientation::Horizontal && anchor_to_edges),
@@ -221,7 +219,7 @@ impl Bar {
                     win.hide();
                     hotspot_window.show();
                 });
-                Inhibit(false)
+                Propagation::Proceed
             });
         }
 
@@ -232,7 +230,7 @@ impl Bar {
                 hotspot_win.hide();
                 win.show();
 
-                Inhibit(false)
+                Propagation::Proceed
             });
         }
     }

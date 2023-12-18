@@ -1,5 +1,6 @@
 use crate::dynamic_value::{dynamic_string, DynamicBool};
 use crate::script::{Script, ScriptInput};
+use glib::Propagation;
 use gtk::gdk::ScrollDirection;
 use gtk::prelude::*;
 use gtk::{EventBox, Orientation, Revealer, RevealerTransitionType};
@@ -75,7 +76,7 @@ impl CommonConfig {
                 script.run_as_oneshot(None);
             }
 
-            Inhibit(false)
+            Propagation::Proceed
         });
 
         let scroll_up_script = self.on_scroll_up.map(Script::new_polling);
@@ -93,7 +94,7 @@ impl CommonConfig {
                 script.run_as_oneshot(None);
             }
 
-            Inhibit(false)
+            Propagation::Proceed
         });
 
         macro_rules! install_oneshot {
@@ -101,7 +102,7 @@ impl CommonConfig {
                 $option.map(Script::new_polling).map(|script| {
                     container.$method(move |_, _| {
                         script.run_as_oneshot(None);
-                        Inhibit(false)
+                        Propagation::Proceed
                     });
                 })
             };
@@ -114,7 +115,6 @@ impl CommonConfig {
             let container = container.clone();
             dynamic_string(&tooltip, move |string| {
                 container.set_tooltip_text(Some(&string));
-                Continue(true)
             });
         }
     }
@@ -136,7 +136,6 @@ impl CommonConfig {
                             container.show_all();
                         }
                         revealer.set_reveal_child(success);
-                        Continue(true)
                     });
                 }
 

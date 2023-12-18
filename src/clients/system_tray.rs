@@ -1,4 +1,4 @@
-use crate::{arc_mut, lock, send, Ironbar};
+use crate::{arc_mut, lock, send, spawn, Ironbar};
 use async_once::AsyncOnce;
 use color_eyre::Report;
 use lazy_static::lazy_static;
@@ -8,7 +8,6 @@ use system_tray::message::menu::TrayMenu;
 use system_tray::message::tray::StatusNotifierItem;
 use system_tray::message::{NotifierItemCommand, NotifierItemMessage};
 use system_tray::StatusNotifierWatcher;
-use tokio::spawn;
 use tokio::sync::{broadcast, mpsc};
 use tracing::{debug, error, trace};
 

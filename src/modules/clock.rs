@@ -2,12 +2,10 @@ use std::env;
 
 use chrono::{DateTime, Local, Locale};
 use color_eyre::Result;
-use glib::Continue;
 use gtk::prelude::*;
 use gtk::{Align, Button, Calendar, Label, Orientation};
 use serde::Deserialize;
-use tokio::spawn;
-use tokio::sync::mpsc;
+use tokio::sync::{broadcast, mpsc};
 use tokio::time::sleep;
 
 use crate::config::CommonConfig;
@@ -15,7 +13,7 @@ use crate::gtk_helpers::IronbarGtkExt;
 use crate::modules::{
     Module, ModuleInfo, ModuleParts, ModulePopup, ModuleUpdateEvent, PopupButton, WidgetContext,
 };
-use crate::{send_async, try_send};
+use crate::{glib_recv, send_async, spawn, try_send};
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct ClockModule {
@@ -104,24 +102,22 @@ impl Module<Button> for ClockModule {
         label.set_angle(info.bar_position.get_angle());
         button.add(&label);
 
+        let tx = context.tx.clone();
         button.connect_clicked(move |button| {
-            try_send!(
-                context.tx,
-                ModuleUpdateEvent::TogglePopup(button.popup_id())
-            );
+            try_send!(tx, ModuleUpdateEvent::TogglePopup(button.popup_id()));
         });
 
         let format = self.format.clone();
         let locale = Locale::try_from(self.locale.as_str()).unwrap_or(Locale::POSIX);
 
-        context.widget_rx.attach(None, move |date| {
+        let mut rx = context.subscribe();
+        glib_recv!(rx, date => {
             let date_string = format!("{}", date.format_localized(&format, locale));
             label.set_label(&date_string);
-            Continue(true)
         });
 
         let popup = self
-            .into_popup(context.controller_tx, context.popup_rx, info)
+            .into_popup(context.controller_tx.clone(), context.subscribe(), info)
             .into_popup_parts(vec![&button]);
 
         Ok(ModuleParts::new(button, popup))
@@ -130,7 +126,7 @@ impl Module<Button> for ClockModule {
     fn into_popup(
         self,
         _tx: mpsc::Sender<Self::ReceiveMessage>,
-        rx: glib::Receiver<Self::SendMessage>,
+        mut rx: broadcast::Receiver<Self::SendMessage>,
         _info: &ModuleInfo,
     ) -> Option<gtk::Box> {
         let container = gtk::Box::new(Orientation::Vertical, 0);
@@ -147,10 +143,9 @@ impl Module<Button> for ClockModule {
         let format = self.format_popup;
         let locale = Locale::try_from(self.locale.as_str()).unwrap_or(Locale::POSIX);
 
-        rx.attach(None, move |date| {
+        glib_recv!(rx, date => {
             let date_string = format!("{}", date.format_localized(&format, locale));
             clock.set_label(&date_string);
-            Continue(true)
         });
 
         container.show_all();

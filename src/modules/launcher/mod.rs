@@ -10,17 +10,15 @@ use crate::modules::launcher::item::AppearanceOptions;
 use crate::modules::{
     Module, ModuleInfo, ModuleParts, ModulePopup, ModuleUpdateEvent, WidgetContext,
 };
-use crate::{arc_mut, lock, send_async, try_send, write_lock};
+use crate::{arc_mut, glib_recv, lock, send_async, spawn, try_send, write_lock};
 use color_eyre::{Help, Report};
-use glib::Continue;
 use gtk::prelude::*;
 use gtk::{Button, Orientation};
 use indexmap::IndexMap;
 use serde::Deserialize;
 use std::process::{Command, Stdio};
 use std::sync::Arc;
-use tokio::spawn;
-use tokio::sync::mpsc::{Receiver, Sender};
+use tokio::sync::{broadcast, mpsc};
 use tracing::{debug, error, trace};
 
 #[derive(Debug, Deserialize, Clone)]
@@ -92,8 +90,8 @@ impl Module<gtk::Box> for LauncherModule {
     fn spawn_controller(
         &self,
         _info: &ModuleInfo,
-        tx: Sender<ModuleUpdateEvent<Self::SendMessage>>,
-        mut rx: Receiver<Self::ReceiveMessage>,
+        tx: mpsc::Sender<ModuleUpdateEvent<Self::SendMessage>>,
+        mut rx: mpsc::Receiver<Self::ReceiveMessage>,
     ) -> crate::Result<()> {
         let items = self
             .favorites
@@ -338,7 +336,9 @@ impl Module<gtk::Box> for LauncherModule {
 
             let mut buttons = IndexMap::<String, ItemButton>::new();
 
-            context.widget_rx.attach(None, move |event| {
+            let tx = context.tx.clone();
+            let mut rx = context.subscribe();
+            glib_recv!(rx, event => {
                 match event {
                     LauncherUpdate::AddItem(item) => {
                         debug!("Adding item with id {}", item.app_id);
@@ -351,7 +351,7 @@ impl Module<gtk::Box> for LauncherModule {
                                 appearance_options,
                                 &icon_theme,
                                 bar_position,
-                                &context.tx,
+                                &tx,
                                 &controller_tx,
                             );
 
@@ -411,13 +411,12 @@ impl Module<gtk::Box> for LauncherModule {
                     }
                     LauncherUpdate::Hover(_) => {}
                 };
-
-                Continue(true)
             });
         }
 
+        let rx = context.subscribe();
         let popup = self
-            .into_popup(context.controller_tx, context.popup_rx, info)
+            .into_popup(context.controller_tx, rx, info)
             .into_popup_parts(vec![]); // since item buttons are dynamic, they pass their geometry directly
 
         Ok(ModuleParts {
@@ -428,8 +427,8 @@ impl Module<gtk::Box> for LauncherModule {
 
     fn into_popup(
         self,
-        controller_tx: Sender<Self::ReceiveMessage>,
-        rx: glib::Receiver<Self::SendMessage>,
+        controller_tx: mpsc::Sender<Self::ReceiveMessage>,
+        mut rx: broadcast::Receiver<Self::SendMessage>,
         _info: &ModuleInfo,
     ) -> Option<gtk::Box> {
         const MAX_WIDTH: i32 = 250;
@@ -445,7 +444,7 @@ impl Module<gtk::Box> for LauncherModule {
 
         {
             let container = container.clone();
-            rx.attach(None, move |event| {
+            glib_recv!(rx, event => {
                 match event {
                     LauncherUpdate::AddItem(item) => {
                         let app_id = item.app_id.clone();
@@ -532,8 +531,6 @@ impl Module<gtk::Box> for LauncherModule {
                     }
                     _ => {}
                 }
-
-                Continue(true)
             });
         }
 

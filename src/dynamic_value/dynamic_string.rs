@@ -1,9 +1,8 @@
 use crate::script::{OutputStream, Script};
 #[cfg(feature = "ipc")]
 use crate::Ironbar;
-use crate::{arc_mut, lock, send};
-use gtk::prelude::*;
-use tokio::spawn;
+use crate::{arc_mut, glib_recv_mpsc, lock, spawn, try_send};
+use tokio::sync::mpsc;
 
 /// A segment of a dynamic string,
 /// containing either a static string
@@ -24,17 +23,16 @@ enum DynamicStringSegment {
 /// ```rs
 /// dynamic_string(&text, move |string| {
 ///     label.set_markup(&string);
-///     Continue(true)
 /// });
 /// ```
-pub fn dynamic_string<F>(input: &str, f: F)
+pub fn dynamic_string<F>(input: &str, mut f: F)
 where
-    F: FnMut(String) -> Continue + 'static,
+    F: FnMut(String) + 'static,
 {
     let tokens = parse_input(input);
 
     let label_parts = arc_mut!(vec![]);
-    let (tx, rx) = glib::MainContext::channel(glib::PRIORITY_DEFAULT);
+    let (tx, mut rx) = mpsc::channel(32);
 
     for (i, segment) in tokens.into_iter().enumerate() {
         match segment {
@@ -57,7 +55,7 @@ where
                                 let _: String = std::mem::replace(&mut label_parts[i], out);
 
                                 let string = label_parts.join("");
-                                send!(tx, string);
+                                try_send!(tx, string);
                             }
                         })
                         .await;
@@ -82,7 +80,7 @@ where
                             let _: String = std::mem::replace(&mut label_parts[i], value);
 
                             let string = label_parts.join("");
-                            send!(tx, string);
+                            try_send!(tx, string);
                         }
                     }
                 });
@@ -90,12 +88,12 @@ where
         }
     }
 
-    rx.attach(None, f);
+    glib_recv_mpsc!(rx , val => f(val));
 
     // initialize
     {
         let label_parts = lock!(label_parts).join("");
-        send!(tx, label_parts);
+        try_send!(tx, label_parts);
     }
 }
 

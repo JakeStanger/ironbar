@@ -1,6 +1,6 @@
 use super::{MusicClient, PlayerState, PlayerUpdate, Status, Track, TICK_INTERVAL_MS};
 use crate::clients::music::ProgressTick;
-use crate::{arc_mut, lock, send};
+use crate::{arc_mut, lock, send, spawn_blocking};
 use color_eyre::Result;
 use lazy_static::lazy_static;
 use mpris::{DBusError, Event, Metadata, PlaybackStatus, Player, PlayerFinder};
@@ -10,7 +10,6 @@ use std::thread::sleep;
 use std::time::Duration;
 use std::{cmp, string};
 use tokio::sync::broadcast;
-use tokio::task::spawn_blocking;
 use tracing::{debug, error, trace};
 
 lazy_static! {
@@ -245,7 +244,7 @@ impl MusicClient for Client {
 
     fn set_volume_percent(&self, vol: u8) -> Result<()> {
         if let Some(player) = Self::get_player(self) {
-            player.set_volume(vol as f64 / 100.0)?;
+            player.set_volume(f64::from(vol) / 100.0)?;
         } else {
             error!("Could not find player");
         }

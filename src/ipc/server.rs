@@ -3,20 +3,17 @@ use std::path::Path;
 use std::rc::Rc;
 
 use color_eyre::{Report, Result};
-use glib::Continue;
 use gtk::prelude::*;
 use gtk::Application;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::{UnixListener, UnixStream};
-use tokio::spawn;
 use tokio::sync::mpsc::{self, Receiver, Sender};
 use tracing::{debug, error, info, warn};
 
-use crate::bridge_channel::BridgeChannel;
 use crate::ipc::{Command, Response};
 use crate::modules::PopupButton;
 use crate::style::load_css;
-use crate::{read_lock, send_async, try_send, write_lock, Ironbar};
+use crate::{glib_recv_mpsc, read_lock, send_async, spawn, try_send, write_lock, Ironbar};
 
 use super::Ipc;
 
@@ -25,8 +22,7 @@ impl Ipc {
     ///
     /// Once started, the server will begin accepting connections.
     pub fn start(&self, application: &Application, ironbar: Rc<Ironbar>) {
-        let bridge = BridgeChannel::<Command>::new();
-        let cmd_tx = bridge.create_sender();
+        let (cmd_tx, mut cmd_rx) = mpsc::channel(32);
         let (res_tx, mut res_rx) = mpsc::channel(32);
 
         let path = self.path.clone();
@@ -68,10 +64,9 @@ impl Ipc {
         });
 
         let application = application.clone();
-        bridge.recv(move |command| {
-            let res = Self::handle_command(command, &application, ironbar.clone());
+        glib_recv_mpsc!(cmd_rx, command => {
+            let res = Self::handle_command(command, &application, &ironbar);
             try_send!(res_tx, res);
-            Continue(true)
         });
     }
 
@@ -109,11 +104,7 @@ impl Ipc {
     /// Takes an input command, runs it and returns with the appropriate response.
     ///
     /// This runs on the main thread, allowing commands to interact with GTK.
-    fn handle_command(
-        command: Command,
-        application: &Application,
-        ironbar: Rc<Ironbar>,
-    ) -> Response {
+    fn handle_command(command: Command, application: &Application, ironbar: &Ironbar) -> Response {
         match command {
             Command::Inspect => {
                 gtk::Window::set_interactive_debugging(true);
