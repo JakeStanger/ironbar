@@ -21,7 +21,7 @@ use glib::PropertySet;
 use gtk::gdk::Display;
 use gtk::prelude::*;
 use gtk::Application;
-use tokio::runtime::{Handle, Runtime};
+use tokio::runtime::Runtime;
 use tokio::task::{block_in_place, JoinHandle};
 use tracing::{debug, error, info, warn};
 use universal_config::ConfigLoader;
@@ -370,5 +370,5 @@ where
 ///
 /// TODO: remove all instances of this once async trait funcs are stable
 pub fn await_sync<F: Future>(f: F) -> F::Output {
-    block_in_place(|| Handle::current().block_on(f))
+    block_in_place(|| Ironbar::runtime().block_on(f))
 }
