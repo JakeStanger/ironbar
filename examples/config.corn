@@ -46,10 +46,10 @@ let {
             " {cpu_percent}% | {temp_c:k10temp_Tccd1}°C"
             " {memory_used} / {memory_total} GB ({memory_percent}%)"
             "| {swap_used} / {swap_total} GB ({swap_percent}%)"
-            " {disk_used:/} / {disk_total:/} GB ({disk_percent:/}%)"
-            "李 {net_down:enp39s0} / {net_up:enp39s0} Mbps"
-            "猪 {load_average:1} | {load_average:5} | {load_average:15}"
-            " {uptime}"
+            "󰋊 {disk_used:/} / {disk_total:/} GB ({disk_percent:/}%)"
+            "󰓢 {net_down:enp39s0} / {net_up:enp39s0} Mbps"
+            "󰖡 {load_average:1} | {load_average:5} | {load_average:15}"
+            "󰥔 {uptime}"
         ]
     }
 
