@@ -31,10 +31,10 @@ Pango markup is supported.
         " {cpu_percent}% | {temp_c:k10temp-Tccd1}°C",
         " {memory_used} / {memory_total} GB ({memory_percent}%)",
         "| {swap_used} / {swap_total} GB ({swap_percent}%)",
-        " {disk_used:/} / {disk_total:/} GB ({disk_percent:/}%)",
-        "李 {net_down:enp39s0} / {net_up:enp39s0} Mbps",
-        "猪 {load_average:1} | {load_average:5} | {load_average:15}",
-        " {uptime}"
+        "󰋊 {disk_used:/} / {disk_total:/} GB ({disk_percent:/}%)",
+        "󰓢 {net_down:enp39s0} / {net_up:enp39s0} Mbps",
+        "󰖡 {load_average:1} | {load_average:5} | {load_average:15}",
+        "󰥔 {uptime}"
       ],
       "interval": {
         "cpu": 1,
@@ -61,10 +61,10 @@ format = [
     ' {cpu_percent}% | {temp_c:k10temp-Tccd1}°C',
     ' {memory_used} / {memory_total} GB ({memory_percent}%)',
     '| {swap_used} / {swap_total} GB ({swap_percent}%)',
-    ' {disk_used:/} / {disk_total:/} GB ({disk_percent:/}%)',
-    '李 {net_down:enp39s0} / {net_up:enp39s0} Mbps',
-    '猪 {load_average:1} | {load_average:5} | {load_average:15}',
-    ' {uptime}',
+    '󰋊 {disk_used:/} / {disk_total:/} GB ({disk_percent:/}%)',
+    '󰓢 {net_down:enp39s0} / {net_up:enp39s0} Mbps',
+    '󰖡 {load_average:1} | {load_average:5} | {load_average:15}',
+    '󰥔 {uptime}',
 ]
 
 [end.interval]
@@ -88,10 +88,10 @@ end:
   - ' {cpu_percent}% | {temp_c:k10temp-Tccd1}°C'
   - ' {memory_used} / {memory_total} GB ({memory_percent}%)'
   - '| {swap_used} / {swap_total} GB ({swap_percent}%)'
-  - ' {disk_used:/} / {disk_total:/} GB ({disk_percent:/}%)'
-  - '李 {net_down:enp39s0} / {net_up:enp39s0} Mbps'
-  - '猪 {load_average:1} | {load_average:5} | {load_average:15}'
-  - ' {uptime}'
+  - '󰋊 {disk_used:/} / {disk_total:/} GB ({disk_percent:/}%)'
+  - '󰓢 {net_down:enp39s0} / {net_up:enp39s0} Mbps'
+  - '󰖡 {load_average:1} | {load_average:5} | {load_average:15}'
+  - '󰥔 {uptime}'
   interval:
     cpu: 1
     disks: 300
@@ -122,10 +122,10 @@ end:
         " {cpu_percent}% | {temp_c:k10temp-Tccd1}°C"
         " {memory_used} / {memory_total} GB ({memory_percent}%)"
         "| {swap_used} / {swap_total} GB ({swap_percent}%)"
-        " {disk_used:/} / {disk_total:/} GB ({disk_percent:/}%)"
-        "李 {net_down:enp39s0} / {net_up:enp39s0} Mbps"
-        "猪 {load_average:1} | {load_average:5} | {load_average:15}"
-        " {uptime}"
+        "󰋊 {disk_used:/} / {disk_total:/} GB ({disk_percent:/}%)"
+        "󰓢 {net_down:enp39s0} / {net_up:enp39s0} Mbps"
+        "󰖡 {load_average:1} | {load_average:5} | {load_average:15}"
+        "󰥔 {uptime}"
       ]
     }
   ]
