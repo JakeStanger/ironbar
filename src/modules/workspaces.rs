@@ -97,6 +97,10 @@ fn create_button(
         style_context.add_class("focused");
     }
 
+    if !visibility.is_visible() {
+        style_context.add_class("inactive")
+    }
+
     {
         let tx = tx.clone();
         let name = name.to_string();
