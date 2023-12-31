@@ -145,7 +145,7 @@ impl Module<Button> for ClipboardModule {
     fn into_popup(
         self,
         tx: mpsc::Sender<Self::ReceiveMessage>,
-        mut rx: broadcast::Receiver<Self::SendMessage>,
+        rx: broadcast::Receiver<Self::SendMessage>,
         _info: &ModuleInfo,
     ) -> Option<gtk::Box>
     where

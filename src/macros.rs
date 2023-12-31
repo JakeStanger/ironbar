@@ -58,13 +58,15 @@ macro_rules! try_send {
 /// ```
 #[macro_export]
 macro_rules! glib_recv {
-    ($rx:expr, $val:ident => $expr:expr) => {
+    ($rx:expr, $val:ident => $expr:expr) => {{
         glib::spawn_future_local(async move {
-            while let Ok($val) = $rx.recv().await {
+            // re-delcare in case ie `context.subscribe()` is passed directly
+            let mut rx = $rx;
+            while let Ok($val) = rx.recv().await {
                 $expr
             }
         });
-    };
+    }};
 }
 
 /// Spawns a `GLib` future on the local thread, and calls `rx.recv()`
@@ -83,13 +85,15 @@ macro_rules! glib_recv {
 /// ```
 #[macro_export]
 macro_rules! glib_recv_mpsc {
-    ($rx:expr, $val:ident => $expr:expr) => {
+    ($rx:expr, $val:ident => $expr:expr) => {{
         glib::spawn_future_local(async move {
-            while let Some($val) = $rx.recv().await {
+            // re-delcare in case ie `context.subscribe()` is passed directly
+            let mut rx = $rx;
+            while let Some($val) = rx.recv().await {
                 $expr
             }
         });
-    };
+    }};
 }
 
 /// Locks a `Mutex`.

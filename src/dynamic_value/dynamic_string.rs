@@ -32,7 +32,7 @@ where
     let tokens = parse_input(input);
 
     let label_parts = arc_mut!(vec![]);
-    let (tx, mut rx) = mpsc::channel(32);
+    let (tx, rx) = mpsc::channel(32);
 
     for (i, segment) in tokens.into_iter().enumerate() {
         match segment {

@@ -256,7 +256,7 @@ fn register_popup_content(
 /// and communicating update messages between controllers and widgets/popups.
 fn setup_receiver<TSend>(
     tx: broadcast::Sender<TSend>,
-    mut rx: mpsc::Receiver<ModuleUpdateEvent<TSend>>,
+    rx: mpsc::Receiver<ModuleUpdateEvent<TSend>>,
     popup: Rc<RefCell<Popup>>,
     name: &'static str,
     id: usize,

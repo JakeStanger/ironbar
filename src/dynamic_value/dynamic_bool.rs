@@ -39,7 +39,7 @@ impl DynamicBool {
             _ => self,
         };
 
-        let (tx, mut rx) = mpsc::channel(32);
+        let (tx, rx) = mpsc::channel(32);
 
         glib_recv_mpsc!(rx, val => f(val));
 

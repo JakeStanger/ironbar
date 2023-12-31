@@ -106,7 +106,7 @@ impl CustomWidget for SliderWidget {
             let script = Script::from(value);
             let scale = scale.clone();
 
-            let (tx, mut rx) = mpsc::channel(128);
+            let (tx, rx) = mpsc::channel(128);
 
             spawn(async move {
                 script
