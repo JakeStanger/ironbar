@@ -84,7 +84,6 @@ impl EventClient {
                         },
                         |workspace| {
                             // there may be another type of update so dispatch that regardless of focus change
-                            send!(tx, WorkspaceUpdate::Update(workspace.clone()));
                             if !workspace.visibility.is_focused() {
                                 Self::send_focus_change(&mut prev_workspace, workspace, &tx);
                             }

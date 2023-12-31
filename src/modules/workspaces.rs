@@ -10,7 +10,7 @@ use serde::Deserialize;
 use std::cmp::Ordering;
 use std::collections::{HashMap, HashSet};
 use tokio::sync::mpsc::{Receiver, Sender};
-use tracing::trace;
+use tracing::{debug, trace, warn};
 
 #[derive(Debug, Deserialize, Clone, Copy, Eq, PartialEq)]
 #[serde(rename_all = "snake_case")]
@@ -97,6 +97,10 @@ fn create_button(
         style_context.add_class("focused");
     }
 
+    if !visibility.is_visible() {
+        style_context.add_class("inactive")
+    }
+
     {
         let tx = tx.clone();
         let name = name.to_string();
@@ -158,9 +162,10 @@ impl Module<gtk::Box> for WorkspacesModule {
                 client.subscribe_workspace_change()
             };
 
-            trace!("Set up Sway workspace subscription");
+            trace!("Set up workspace subscription");
 
             while let Ok(payload) = srx.recv().await {
+                debug!("Received update: {payload:?}");
                 send_async!(tx, ModuleUpdateEvent::Update(payload));
             }
         });
@@ -347,7 +352,7 @@ impl Module<gtk::Box> for WorkspacesModule {
                             }
                         }
                     }
-                    WorkspaceUpdate::Update(_) => {}
+                    WorkspaceUpdate::Unknown => warn!("Received unknown type workspace event")
                 };
             });
         }

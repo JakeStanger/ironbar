@@ -145,7 +145,7 @@ impl<'a> ImageProvider<'a> {
         #[cfg(feature = "http")]
         if let ImageLocation::Remote(url) = &self.location {
             let url = url.clone();
-            let (tx, mut rx) = mpsc::channel(64);
+            let (tx, rx) = mpsc::channel(64);
 
             spawn(async move {
                 let bytes = Self::get_bytes_from_http(url).await;

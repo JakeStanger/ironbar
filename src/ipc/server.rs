@@ -22,7 +22,7 @@ impl Ipc {
     ///
     /// Once started, the server will begin accepting connections.
     pub fn start(&self, application: &Application, ironbar: Rc<Ironbar>) {
-        let (cmd_tx, mut cmd_rx) = mpsc::channel(32);
+        let (cmd_tx, cmd_rx) = mpsc::channel(32);
         let (res_tx, mut res_rx) = mpsc::channel(32);
 
         let path = self.path.clone();

@@ -181,7 +181,7 @@ impl Module<gtk::Button> for UpowerModule {
         label.set_angle(info.bar_position.get_angle());
         let format = self.format.clone();
 
-        let mut rx = context.subscribe();
+        let rx = context.subscribe();
         glib_recv!(rx, properties => {
             let format = format.replace("{percentage}", &properties.percentage.to_string());
             let icon_name = String::from("icon:") + &properties.icon_name;
@@ -203,7 +203,7 @@ impl Module<gtk::Button> for UpowerModule {
     fn into_popup(
         self,
         _tx: mpsc::Sender<Self::ReceiveMessage>,
-        mut rx: broadcast::Receiver<Self::SendMessage>,
+        rx: broadcast::Receiver<Self::SendMessage>,
         _info: &ModuleInfo,
     ) -> Option<gtk::Box>
     where

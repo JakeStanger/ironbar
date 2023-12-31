@@ -116,13 +116,17 @@ pub enum WorkspaceUpdate {
     Init(Vec<Workspace>),
     Add(Workspace),
     Remove(String),
-    Update(Workspace),
     Move(Workspace),
     /// Declares focus moved from the old workspace to the new.
     Focus {
         old: Option<Workspace>,
         new: Workspace,
     },
+    /// An update was triggered by the compositor but this was not mapped by Ironbar.
+    ///
+    /// This is purely used for ergonomics within the compositor clients
+    /// and should be ignored by consumers.
+    Unknown,
 }
 
 pub trait WorkspaceClient {

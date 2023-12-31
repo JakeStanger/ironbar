@@ -337,7 +337,7 @@ impl Module<gtk::Box> for LauncherModule {
             let mut buttons = IndexMap::<String, ItemButton>::new();
 
             let tx = context.tx.clone();
-            let mut rx = context.subscribe();
+            let rx = context.subscribe();
             glib_recv!(rx, event => {
                 match event {
                     LauncherUpdate::AddItem(item) => {
@@ -428,7 +428,7 @@ impl Module<gtk::Box> for LauncherModule {
     fn into_popup(
         self,
         controller_tx: mpsc::Sender<Self::ReceiveMessage>,
-        mut rx: broadcast::Receiver<Self::SendMessage>,
+        rx: broadcast::Receiver<Self::SendMessage>,
         _info: &ModuleInfo,
     ) -> Option<gtk::Box> {
         const MAX_WIDTH: i32 = 250;

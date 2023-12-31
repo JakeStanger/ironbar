@@ -214,7 +214,7 @@ impl Module<Button> for MusicModule {
             let button = button.clone();
 
             let tx = context.tx.clone();
-            let mut rx = context.subscribe();
+            let rx = context.subscribe();
 
             glib_recv!(rx, event => {
                 let ControllerEvent::Update(mut event) = event else {
@@ -263,7 +263,7 @@ impl Module<Button> for MusicModule {
     fn into_popup(
         self,
         tx: mpsc::Sender<Self::ReceiveMessage>,
-        mut rx: broadcast::Receiver<Self::SendMessage>,
+        rx: broadcast::Receiver<Self::SendMessage>,
         info: &ModuleInfo,
     ) -> Option<gtk::Box> {
         let icon_theme = info.icon_theme;

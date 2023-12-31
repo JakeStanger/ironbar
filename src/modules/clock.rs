@@ -110,7 +110,7 @@ impl Module<Button> for ClockModule {
         let format = self.format.clone();
         let locale = Locale::try_from(self.locale.as_str()).unwrap_or(Locale::POSIX);
 
-        let mut rx = context.subscribe();
+        let rx = context.subscribe();
         glib_recv!(rx, date => {
             let date_string = format!("{}", date.format_localized(&format, locale));
             label.set_label(&date_string);
@@ -126,7 +126,7 @@ impl Module<Button> for ClockModule {
     fn into_popup(
         self,
         _tx: mpsc::Sender<Self::ReceiveMessage>,
-        mut rx: broadcast::Receiver<Self::SendMessage>,
+        rx: broadcast::Receiver<Self::SendMessage>,
         _info: &ModuleInfo,
     ) -> Option<gtk::Box> {
         let container = gtk::Box::new(Orientation::Vertical, 0);

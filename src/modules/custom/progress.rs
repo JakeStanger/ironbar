@@ -47,7 +47,7 @@ impl CustomWidget for ProgressWidget {
             let script = Script::from(value);
             let progress = progress.clone();
 
-            let (tx, mut rx) = mpsc::channel(128);
+            let (tx, rx) = mpsc::channel(128);
 
             spawn(async move {
                 script

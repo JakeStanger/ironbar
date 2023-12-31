@@ -35,7 +35,7 @@ pub fn load_css(style_path: PathBuf) {
         GTK_STYLE_PROVIDER_PRIORITY_USER as u32,
     );
 
-    let (tx, mut rx) = mpsc::channel(8);
+    let (tx, rx) = mpsc::channel(8);
 
     spawn(async move {
         let style_path2 = style_path.clone();
