@@ -31,8 +31,11 @@ impl SwayEventClient {
 
                 while let Some(event) = events.next().await {
                     trace!("event: {:?}", event);
-                    if let Event::Workspace(ev) = event? {
-                        workspace_tx.send(WorkspaceUpdate::from(*ev))?;
+                    if let Event::Workspace(event) = event? {
+                        let event = WorkspaceUpdate::from(*event);
+                        if !matches!(event, WorkspaceUpdate::Unknown) {
+                            workspace_tx.send(event)?;
+                        }
                     };
                 }
 
@@ -172,7 +175,7 @@ impl From<WorkspaceEvent> for WorkspaceUpdate {
             WorkspaceChange::Move => {
                 Self::Move(event.current.expect("Missing current workspace").into())
             }
-            _ => Self::Update(event.current.expect("Missing current workspace").into()),
+            _ => Self::Unknown,
         }
     }
 }
