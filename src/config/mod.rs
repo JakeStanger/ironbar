@@ -26,7 +26,7 @@ use serde::Deserialize;
 use std::collections::HashMap;
 
 pub use self::common::{CommonConfig, TransitionType};
-pub use self::truncate::{EllipsizeMode, TruncateMode};
+pub use self::truncate::TruncateMode;
 
 #[derive(Debug, Deserialize, Clone)]
 #[serde(tag = "type", rename_all = "snake_case")]
