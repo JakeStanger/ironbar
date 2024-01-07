@@ -240,12 +240,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "async_once"
-version = "0.2.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2ce4f10ea3abcd6617873bae9f91d1c5332b4a778bd9ce34d0cd517474c1de82"
-
-[[package]]
 name = "atk"
 version = "0.18.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1643,7 +1637,6 @@ checksum = "12b6ee2129af8d4fb011108c73d99a1b83a85977f23b82460c0ae2e25bb4b57f"
 name = "ironbar"
 version = "0.14.0-pre"
 dependencies = [
- "async_once",
  "cfg-if",
  "chrono",
  "clap",

@@ -94,9 +94,6 @@ smithay-client-toolkit = { version = "0.18.0", default-features = false, feature
 ] }
 universal-config = { version = "0.4.3", default_features = false }
 ctrlc = "3.4.2"
-
-lazy_static = "1.4.0"
-async_once = "0.2.6"
 cfg-if = "1.0.0"
 
 # cli

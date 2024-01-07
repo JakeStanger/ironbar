@@ -9,7 +9,7 @@ use std::rc::Rc;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 #[cfg(feature = "ipc")]
 use std::sync::RwLock;
-use std::sync::{mpsc, Arc};
+use std::sync::{mpsc, Arc, OnceLock};
 
 use cfg_if::cfg_if;
 #[cfg(feature = "cli")]
@@ -87,17 +87,6 @@ fn run_with_args() {
         }
         None => start_ironbar(),
     }
-}
-
-static COUNTER: AtomicUsize = AtomicUsize::new(1);
-
-lazy_static::lazy_static! {
-    static ref RUNTIME: Arc<Runtime> = Arc::new(create_runtime());
-}
-
-#[cfg(feature = "ipc")]
-lazy_static::lazy_static! {
-    static ref VARIABLE_MANAGER: Arc<RwLock<VariableManager>> = arc_rw!(VariableManager::new());
 }
 
 #[derive(Debug)]
@@ -193,12 +182,14 @@ impl Ironbar {
     /// Gets the current Tokio runtime.
     #[must_use]
     pub fn runtime() -> Arc<Runtime> {
-        RUNTIME.clone()
+        static RUNTIME: OnceLock<Arc<Runtime>> = OnceLock::new();
+        RUNTIME.get_or_init(|| Arc::new(create_runtime())).clone()
     }
 
     /// Gets a `usize` ID value that is unique to the entire Ironbar instance.
     /// This is just a static `AtomicUsize` that increments every time this function is called.
     pub fn unique_id() -> usize {
+        static COUNTER: AtomicUsize = AtomicUsize::new(1);
         COUNTER.fetch_add(1, Ordering::Relaxed)
     }
 
@@ -206,7 +197,10 @@ impl Ironbar {
     #[cfg(feature = "ipc")]
     #[must_use]
     pub fn variable_manager() -> Arc<RwLock<VariableManager>> {
-        VARIABLE_MANAGER.clone()
+        static VARIABLE_MANAGER: OnceLock<Arc<RwLock<VariableManager>>> = OnceLock::new();
+        VARIABLE_MANAGER
+            .get_or_init(|| arc_rw!(VariableManager::new()))
+            .clone()
     }
 
     /// Gets a clone of a bar by its unique name.

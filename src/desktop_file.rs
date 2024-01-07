@@ -1,9 +1,8 @@
-use lazy_static::lazy_static;
 use std::collections::{HashMap, HashSet};
 use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};
-use std::sync::Mutex;
+use std::sync::{Mutex, OnceLock};
 use tracing::warn;
 use walkdir::{DirEntry, WalkDir};
 
@@ -11,13 +10,15 @@ use crate::lock;
 
 type DesktopFile = HashMap<String, Vec<String>>;
 
-lazy_static! {
-    static ref DESKTOP_FILES: Mutex<HashMap<PathBuf, DesktopFile>> =
-        Mutex::new(HashMap::new());
+fn desktop_files() -> &'static Mutex<HashMap<PathBuf, DesktopFile>> {
+    static DESKTOP_FILES: OnceLock<Mutex<HashMap<PathBuf, DesktopFile>>> = OnceLock::new();
+    DESKTOP_FILES.get_or_init(|| Mutex::new(HashMap::new()))
+}
 
-    /// These are the keys that in the cache
-    static ref DESKTOP_FILES_LOOK_OUT_KEYS: HashSet<&'static str> =
-        HashSet::from(["Name", "StartupWMClass", "Exec", "Icon"]);
+fn desktop_files_look_out_keys() -> &'static HashSet<&'static str> {
+    static DESKTOP_FILES_LOOK_OUT_KEYS: OnceLock<HashSet<&'static str>> = OnceLock::new();
+    DESKTOP_FILES_LOOK_OUT_KEYS
+        .get_or_init(|| HashSet::from(["Name", "StartupWMClass", "Exec", "Icon"]))
 }
 
 /// Finds directories that should contain `.desktop` files
@@ -104,7 +105,7 @@ fn find_desktop_file_by_filename(app_id: &str, files: &[PathBuf]) -> Option<Path
 /// Finds the correct desktop file using the keys in `DESKTOP_FILES_LOOK_OUT_KEYS`
 fn find_desktop_file_by_filedata(app_id: &str, files: &[PathBuf]) -> Option<PathBuf> {
     let app_id = &app_id.to_lowercase();
-    let mut desktop_files_cache = lock!(DESKTOP_FILES);
+    let mut desktop_files_cache = lock!(desktop_files());
 
     let files = files
         .iter()
@@ -171,7 +172,7 @@ fn parse_desktop_file(path: &Path) -> Option<DesktopFile> {
             let key = key.trim();
             let value = value.trim();
 
-            if DESKTOP_FILES_LOOK_OUT_KEYS.contains(key) {
+            if desktop_files_look_out_keys().contains(key) {
                 Some((key, value))
             } else {
                 None
@@ -193,7 +194,7 @@ pub fn get_desktop_icon_name(app_id: &str) -> Option<String> {
         return None;
     };
 
-    let mut desktop_files_cache = lock!(DESKTOP_FILES);
+    let mut desktop_files_cache = lock!(desktop_files());
 
     let desktop_file = match desktop_files_cache.get(&path) {
         Some(desktop_file) => desktop_file,
