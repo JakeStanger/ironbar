@@ -1,24 +1,30 @@
 use super::Environment;
 use smithay_client_toolkit::seat::{Capability, SeatHandler, SeatState};
 use tracing::debug;
-use wayland_client::protocol::wl_seat;
+use wayland_client::protocol::wl_seat::WlSeat;
 use wayland_client::{Connection, QueueHandle};
+
+impl Environment {
+    /// Gets the default seat.
+    pub(crate) fn default_seat(&self) -> WlSeat {
+        self.seat_state.seats().next().expect("one seat to exist")
+    }
+}
 
 impl SeatHandler for Environment {
     fn seat_state(&mut self) -> &mut SeatState {
         &mut self.seat_state
     }
 
-    fn new_seat(&mut self, _: &Connection, _: &QueueHandle<Self>, seat: wl_seat::WlSeat) {
+    fn new_seat(&mut self, _: &Connection, _: &QueueHandle<Self>, _seat: WlSeat) {
         debug!("Handler received new seat");
-        self.seats.push(seat);
     }
 
     fn new_capability(
         &mut self,
         _: &Connection,
         qh: &QueueHandle<Self>,
-        seat: wl_seat::WlSeat,
+        seat: WlSeat,
         _: Capability,
     ) {
         debug!("Handler received new capability");
@@ -39,25 +45,22 @@ impl SeatHandler for Environment {
                     device: data_control_device,
                 });
         }
-
-        if !self.seats.iter().any(|s| s == &seat) {
-            self.seats.push(seat);
-        }
     }
 
     fn remove_capability(
         &mut self,
         _: &Connection,
         _: &QueueHandle<Self>,
-        _: wl_seat::WlSeat,
+        seat: WlSeat,
         _: Capability,
     ) {
         debug!("Handler received capability removal");
-        // Not applicable
+
+        #[cfg(feature = "clipboard")]
+        self.data_control_devices.retain(|entry| entry.seat != seat);
     }
 
-    fn remove_seat(&mut self, _: &Connection, _: &QueueHandle<Self>, seat: wl_seat::WlSeat) {
+    fn remove_seat(&mut self, _: &Connection, _: &QueueHandle<Self>, _seat: WlSeat) {
         debug!("Handler received seat removal");
-        self.seats.retain(|s| s != &seat);
     }
 }

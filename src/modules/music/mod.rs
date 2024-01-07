@@ -1,3 +1,4 @@
+use std::cell::RefMut;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
@@ -14,6 +15,7 @@ use tracing::error;
 use crate::clients::music::{
     self, MusicClient, PlayerState, PlayerUpdate, ProgressTick, Status, Track,
 };
+use crate::clients::Clients;
 use crate::gtk_helpers::IronbarGtkExt;
 use crate::image::{new_icon_button, new_icon_label, ImageProvider};
 use crate::modules::PopupButton;
@@ -67,16 +69,18 @@ pub struct SongUpdate {
     display_string: String,
 }
 
-async fn get_client(
+fn get_client(
+    mut clients: RefMut<'_, Clients>,
     player_type: PlayerType,
-    host: &str,
+    host: String,
     music_dir: PathBuf,
-) -> Box<Arc<dyn MusicClient>> {
-    match player_type {
-        PlayerType::Mpd => music::get_client(music::ClientType::Mpd { host, music_dir }),
-        PlayerType::Mpris => music::get_client(music::ClientType::Mpris {}),
-    }
-    .await
+) -> Arc<dyn MusicClient> {
+    let client_type = match player_type {
+        PlayerType::Mpd => music::ClientType::Mpd { host, music_dir },
+        PlayerType::Mpris => music::ClientType::Mpris,
+    };
+
+    clients.music(client_type)
 }
 
 impl Module<Button> for MusicModule {
@@ -98,19 +102,21 @@ impl Module<Button> for MusicModule {
         let re = Regex::new(r"\{([\w-]+)}")?;
         let tokens = get_tokens(&re, self.format.as_str());
 
+        let client = get_client(
+            context.ironbar.clients.borrow_mut(),
+            self.player_type,
+            self.host.clone(),
+            self.music_dir.clone(),
+        );
+
         // receive player updates
         {
-            let player_type = self.player_type;
-            let host = self.host.clone();
-            let music_dir = self.music_dir.clone();
             let tx = context.tx.clone();
+            let client = client.clone();
 
             spawn(async move {
                 loop {
-                    let mut rx = {
-                        let client = get_client(player_type, &host, music_dir.clone()).await;
-                        client.subscribe_change()
-                    };
+                    let mut rx = client.subscribe_change();
 
                     while let Ok(update) = rx.recv().await {
                         match update {
@@ -143,7 +149,6 @@ impl Module<Button> for MusicModule {
                                     progress_tick
                                 ))
                             ),
-                            PlayerUpdate::Disconnect => break,
                         }
                     }
                 }
@@ -152,13 +157,8 @@ impl Module<Button> for MusicModule {
 
         // listen to ui events
         {
-            let player_type = self.player_type;
-            let host = self.host.clone();
-            let music_dir = self.music_dir.clone();
-
             spawn(async move {
                 while let Some(event) = rx.recv().await {
-                    let client = get_client(player_type, &host, music_dir.clone()).await;
                     let res = match event {
                         PlayerCommand::Previous => client.prev(),
                         PlayerCommand::Play => client.play(),

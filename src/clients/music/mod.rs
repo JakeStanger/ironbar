@@ -1,4 +1,5 @@
 use color_eyre::Result;
+use std::fmt::Debug;
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
@@ -19,8 +20,6 @@ pub enum PlayerUpdate {
     /// Triggered at regular intervals while a track is playing.
     /// Used to keep track of the progress through the current track.
     ProgressTick(ProgressTick),
-    /// Triggered when the client disconnects from the player.
-    Disconnect,
 }
 
 #[derive(Clone, Debug)]
@@ -56,7 +55,7 @@ pub struct ProgressTick {
     pub elapsed: Option<Duration>,
 }
 
-pub trait MusicClient {
+pub trait MusicClient: Debug + Send + Sync {
     fn play(&self) -> Result<()>;
     fn pause(&self) -> Result<()>;
     fn next(&self) -> Result<()>;
@@ -68,18 +67,15 @@ pub trait MusicClient {
     fn subscribe_change(&self) -> broadcast::Receiver<PlayerUpdate>;
 }
 
-pub enum ClientType<'a> {
-    Mpd { host: &'a str, music_dir: PathBuf },
+#[derive(Debug, Clone, Eq, PartialEq, Hash)]
+pub enum ClientType {
+    Mpd { host: String, music_dir: PathBuf },
     Mpris,
 }
 
-pub async fn get_client(client_type: ClientType<'_>) -> Box<Arc<dyn MusicClient>> {
+pub fn create_client(client_type: ClientType) -> Arc<dyn MusicClient> {
     match client_type {
-        ClientType::Mpd { host, music_dir } => Box::new(
-            mpd::get_client(host, music_dir)
-                .await
-                .expect("Failed to connect to MPD client"),
-        ),
-        ClientType::Mpris => Box::new(mpris::get_client()),
+        ClientType::Mpd { host, music_dir } => Arc::new(mpd::Client::new(host, music_dir)),
+        ClientType::Mpris => Arc::new(mpris::Client::new()),
     }
 }

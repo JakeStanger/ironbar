@@ -49,7 +49,7 @@ const fn default_max_items() -> usize {
 
 #[derive(Debug, Clone)]
 pub enum ControllerEvent {
-    Add(usize, Arc<ClipboardItem>),
+    Add(usize, ClipboardItem),
     Remove(usize),
     Activate(usize),
     Deactivate,
@@ -78,17 +78,16 @@ impl Module<Button> for ClipboardModule {
         let max_items = self.max_items;
 
         let tx = context.tx.clone();
+        let client: Arc<clipboard::Client> = context.client();
+
         // listen to clipboard events
         spawn(async move {
-            let mut rx = {
-                let client = clipboard::get_client();
-                client.subscribe(max_items)
-            };
+            let mut rx = client.subscribe(max_items);
 
             while let Some(event) = rx.recv().await {
                 match event {
                     ClipboardEvent::Add(item) => {
-                        let msg = match &item.value {
+                        let msg = match item.value.as_ref() {
                             ClipboardValue::Other => {
                                 ModuleUpdateEvent::Update(ControllerEvent::Deactivate)
                             }
@@ -108,10 +107,11 @@ impl Module<Button> for ClipboardModule {
             error!("Clipboard client unexpectedly closed");
         });
 
+        let client = context.client::<clipboard::Client>();
+
         // listen to ui events
         spawn(async move {
             while let Some(event) = rx.recv().await {
-                let client = clipboard::get_client();
                 match event {
                     UIEvent::Copy(id) => client.copy(id),
                     UIEvent::Remove(id) => client.remove(id),
@@ -172,7 +172,7 @@ impl Module<Button> for ClipboardModule {
                         let row = gtk::Box::new(Orientation::Horizontal, 0);
                         row.style_context().add_class("item");
 
-                        let button = match &item.value {
+                        let button = match item.value.as_ref() {
                             ClipboardValue::Text(value) => {
                                 let button = RadioButton::from_widget(&hidden_option);
 

@@ -1,7 +1,5 @@
-use crate::{arc_mut, lock, send, spawn, Ironbar};
-use async_once::AsyncOnce;
+use crate::{arc_mut, lock, register_client, send, spawn, Ironbar};
 use color_eyre::Report;
-use lazy_static::lazy_static;
 use std::collections::BTreeMap;
 use std::sync::{Arc, Mutex};
 use system_tray::message::menu::TrayMenu;
@@ -13,6 +11,7 @@ use tracing::{debug, error, trace};
 
 type Tray = BTreeMap<String, (Box<StatusNotifierItem>, Option<TrayMenu>)>;
 
+#[derive(Debug)]
 pub struct TrayEventReceiver {
     tx: mpsc::Sender<NotifierItemCommand>,
     b_tx: broadcast::Sender<NotifierItemMessage>,
@@ -39,7 +38,7 @@ impl TrayEventReceiver {
 
             spawn(async move {
                 while let Ok(message) = host.recv().await {
-                    trace!("Received message: {message:?} ");
+                    trace!("Received message: {message:?}");
 
                     send!(b_tx, message.clone());
                     let mut tray = lock!(tray);
@@ -94,32 +93,35 @@ impl TrayEventReceiver {
     }
 }
 
-lazy_static! {
-    static ref CLIENT: AsyncOnce<TrayEventReceiver> = AsyncOnce::new(async {
-        const MAX_RETRIES: i32 = 10;
+/// Attempts to create a new `TrayEventReceiver` instance,
+/// retrying a maximum of 10 times before panicking the thread.
+pub async fn create_client() -> TrayEventReceiver {
+    const MAX_RETRIES: i32 = 10;
 
-        // sometimes this can fail
-        let mut retries = 0;
+    // sometimes this can fail
+    let mut retries = 0;
 
-        let value = loop {
-            retries += 1;
+    let value = loop {
+        retries += 1;
 
-            let tray = Box::pin(TrayEventReceiver::new()).await;
+        let tray = Box::pin(TrayEventReceiver::new()).await;
 
-            match tray {
-                Ok(tray) => break Some(tray),
-                Err(err) => error!("{:?}", Report::new(err).wrap_err(format!("Failed to create StatusNotifierWatcher (attempt {retries})")))
-            }
+        match tray {
+            Ok(tray) => break Some(tray),
+            Err(err) => error!(
+                "{:?}",
+                Report::new(err).wrap_err(format!(
+                    "Failed to create StatusNotifierWatcher (attempt {retries})"
+                ))
+            ),
+        }
 
-            if retries == MAX_RETRIES {
-                break None;
-            }
-        };
+        if retries == MAX_RETRIES {
+            break None;
+        }
+    };
 
-        value.expect("Failed to create StatusNotifierWatcher")
-    });
+    value.expect("Failed to create StatusNotifierWatcher")
 }
 
-pub async fn get_tray_event_client() -> &'static TrayEventReceiver {
-    CLIENT.get().await
-}
+register_client!(TrayEventReceiver, tray);

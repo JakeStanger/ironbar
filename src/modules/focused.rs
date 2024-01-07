@@ -3,12 +3,12 @@ use crate::config::{CommonConfig, TruncateMode};
 use crate::gtk_helpers::IronbarGtkExt;
 use crate::image::ImageProvider;
 use crate::modules::{Module, ModuleInfo, ModuleParts, ModuleUpdateEvent, WidgetContext};
-use crate::{glib_recv, lock, send_async, spawn, try_send};
+use crate::{glib_recv, send_async, spawn, try_send};
 use color_eyre::Result;
 use gtk::prelude::*;
 use gtk::Label;
 use serde::Deserialize;
-use tokio::sync::mpsc::{Receiver, Sender};
+use tokio::sync::mpsc;
 use tracing::debug;
 
 #[derive(Debug, Deserialize, Clone)]
@@ -58,21 +58,16 @@ impl Module<gtk::Box> for FocusedModule {
         &self,
         _info: &ModuleInfo,
         context: &WidgetContext<Self::SendMessage, Self::ReceiveMessage>,
-        _rx: Receiver<Self::ReceiveMessage>,
+        _rx: mpsc::Receiver<Self::ReceiveMessage>,
     ) -> Result<()> {
         let tx = context.tx.clone();
-        spawn(async move {
-            let (mut wlrx, handles) = {
-                let wl = wayland::get_client();
-                let wl = lock!(wl);
-                wl.subscribe_toplevels()
-            };
+        let wl = context.client::<wayland::Client>();
 
-            let focused = handles.values().find_map(|handle| {
-                handle
-                    .info()
-                    .and_then(|info| if info.focused { Some(info) } else { None })
-            });
+        spawn(async move {
+            let mut wlrx = wl.subscribe_toplevels();
+            let handles = wl.toplevel_info_all();
+
+            let focused = handles.into_iter().find(|info| info.focused);
 
             if let Some(focused) = focused {
                 try_send!(
@@ -83,9 +78,7 @@ impl Module<gtk::Box> for FocusedModule {
 
             while let Ok(event) = wlrx.recv().await {
                 match event {
-                    ToplevelEvent::Update(handle) => {
-                        let info = handle.info().unwrap_or_default();
-
+                    ToplevelEvent::Update(info) => {
                         if info.focused {
                             debug!("Changing focus");
                             send_async!(
@@ -99,8 +92,7 @@ impl Module<gtk::Box> for FocusedModule {
                             send_async!(tx, ModuleUpdateEvent::Update(None));
                         }
                     }
-                    ToplevelEvent::Remove(handle) => {
-                        let info = handle.info().unwrap_or_default();
+                    ToplevelEvent::Remove(info) => {
                         if info.focused {
                             debug!("Clearing focus");
                             send_async!(tx, ModuleUpdateEvent::Update(None));

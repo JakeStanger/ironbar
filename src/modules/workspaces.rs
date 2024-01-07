@@ -1,4 +1,4 @@
-use crate::clients::compositor::{Compositor, Visibility, Workspace, WorkspaceUpdate};
+use crate::clients::compositor::{Visibility, Workspace, WorkspaceClient, WorkspaceUpdate};
 use crate::config::CommonConfig;
 use crate::image::new_icon_button;
 use crate::modules::{Module, ModuleInfo, ModuleParts, ModuleUpdateEvent, WidgetContext};
@@ -98,7 +98,7 @@ fn create_button(
     }
 
     if !visibility.is_visible() {
-        style_context.add_class("inactive")
+        style_context.add_class("inactive");
     }
 
     {
@@ -155,13 +155,10 @@ impl Module<gtk::Box> for WorkspacesModule {
         mut rx: Receiver<Self::ReceiveMessage>,
     ) -> Result<()> {
         let tx = context.tx.clone();
+        let client = context.ironbar.clients.borrow_mut().workspaces();
         // Subscribe & send events
         spawn(async move {
-            let mut srx = {
-                let client =
-                    Compositor::get_workspace_client().expect("Failed to get workspace client");
-                client.subscribe_workspace_change()
-            };
+            let mut srx = client.subscribe_workspace_change();
 
             trace!("Set up workspace subscription");
 
@@ -171,13 +168,13 @@ impl Module<gtk::Box> for WorkspacesModule {
             }
         });
 
+        let client = context.client::<dyn WorkspaceClient>();
+
         // Change workspace focus
         spawn(async move {
             trace!("Setting up UI event handler");
 
             while let Some(name) = rx.recv().await {
-                let client =
-                    Compositor::get_workspace_client().expect("Failed to get workspace client");
                 client.focus(name)?;
             }
 

@@ -1,12 +1,11 @@
 use super::open_state::OpenState;
-use crate::clients::wayland::ToplevelHandle;
+use crate::clients::wayland::ToplevelInfo;
 use crate::config::BarPosition;
 use crate::gtk_helpers::IronbarGtkExt;
 use crate::image::ImageProvider;
 use crate::modules::launcher::{ItemEvent, LauncherUpdate};
 use crate::modules::ModuleUpdateEvent;
 use crate::{read_lock, try_send};
-use color_eyre::{Report, Result};
 use glib::Propagation;
 use gtk::prelude::*;
 use gtk::{Button, IconTheme};
@@ -15,7 +14,6 @@ use std::rc::Rc;
 use std::sync::RwLock;
 use tokio::sync::mpsc::Sender;
 use tracing::error;
-use wayland_client::protocol::wl_seat::WlSeat;
 
 #[derive(Debug, Clone)]
 pub struct Item {
@@ -38,30 +36,24 @@ impl Item {
     }
 
     /// Merges the provided node into this launcher item
-    pub fn merge_toplevel(&mut self, handle: ToplevelHandle) -> Result<Window> {
-        let info = handle
-            .info()
-            .ok_or_else(|| Report::msg("Toplevel is missing associated info"))?;
-
+    pub fn merge_toplevel(&mut self, info: ToplevelInfo) -> Window {
         let id = info.id;
 
         if self.windows.is_empty() {
-            self.name = info.title;
+            self.name = info.title.clone();
         }
 
-        let window = Window::try_from(handle)?;
+        let window = Window::from(info);
         self.windows.insert(id, window.clone());
 
         self.recalculate_open_state();
 
-        Ok(window)
+        window
     }
 
-    pub fn unmerge_toplevel(&mut self, handle: &ToplevelHandle) {
-        if let Some(info) = handle.info() {
-            self.windows.remove(&info.id);
-            self.recalculate_open_state();
-        }
+    pub fn unmerge_toplevel(&mut self, info: &ToplevelInfo) {
+        self.windows.remove(&info.id);
+        self.recalculate_open_state();
     }
 
     pub fn set_window_name(&mut self, window_id: usize, name: String) {
@@ -97,29 +89,24 @@ impl Item {
     }
 }
 
-impl TryFrom<ToplevelHandle> for Item {
-    type Error = Report;
-
-    fn try_from(handle: ToplevelHandle) -> std::result::Result<Self, Self::Error> {
-        let info = handle
-            .info()
-            .ok_or_else(|| Report::msg("Toplevel is missing associated info"))?;
-
+impl From<ToplevelInfo> for Item {
+    fn from(info: ToplevelInfo) -> Self {
+        let id = info.id;
         let name = info.title.clone();
         let app_id = info.app_id.clone();
         let open_state = OpenState::from(&info);
 
         let mut windows = IndexMap::new();
-        let window = Window::try_from(handle)?;
-        windows.insert(info.id, window);
+        let window = Window::from(info);
+        windows.insert(id, window);
 
-        Ok(Self {
+        Self {
             app_id,
             favorite: false,
             open_state,
             windows,
             name,
-        })
+        }
     }
 }
 
@@ -128,30 +115,17 @@ pub struct Window {
     pub id: usize,
     pub name: String,
     pub open_state: OpenState,
-    handle: ToplevelHandle,
 }
 
-impl TryFrom<ToplevelHandle> for Window {
-    type Error = Report;
-
-    fn try_from(handle: ToplevelHandle) -> Result<Self, Self::Error> {
-        let info = handle
-            .info()
-            .ok_or_else(|| Report::msg("Toplevel is missing associated info"))?;
+impl From<ToplevelInfo> for Window {
+    fn from(info: ToplevelInfo) -> Self {
         let open_state = OpenState::from(&info);
 
-        Ok(Self {
+        Self {
             id: info.id,
             name: info.title,
             open_state,
-            handle,
-        })
-    }
-}
-
-impl Window {
-    pub fn focus(&self, seat: &WlSeat) {
-        self.handle.focus(seat);
+        }
     }
 }
 

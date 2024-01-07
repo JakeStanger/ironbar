@@ -10,6 +10,7 @@ use wayland_protocols_wlr::foreign_toplevel::v1::client::{
     zwlr_foreign_toplevel_manager_v1::{Event, ZwlrForeignToplevelManagerV1},
 };
 
+#[derive(Debug)]
 pub struct ToplevelManagerState<V = ToplevelHandleData> {
     manager: ZwlrForeignToplevelManagerV1,
     _phantom: PhantomData<V>,
@@ -31,12 +32,7 @@ impl ToplevelManagerState {
 
 pub trait ToplevelManagerHandler: Sized {
     /// Advertises a new toplevel.
-    fn toplevel(
-        &mut self,
-        conn: &Connection,
-        qh: &QueueHandle<Self>,
-        manager: ToplevelManagerState,
-    );
+    fn toplevel(&mut self, conn: &Connection, qh: &QueueHandle<Self>);
 }
 
 impl ProvidesBoundGlobal<ZwlrForeignToplevelManagerV1, 3> for ToplevelManagerState {
@@ -60,7 +56,7 @@ where
 
     fn event(
         state: &mut D,
-        toplevel_manager: &ZwlrForeignToplevelManagerV1,
+        _toplevel_manager: &ZwlrForeignToplevelManagerV1,
         event: Event,
         _data: &GlobalData,
         conn: &Connection,
@@ -68,14 +64,7 @@ where
     ) {
         match event {
             Event::Toplevel { toplevel: _ } => {
-                state.toplevel(
-                    conn,
-                    qhandle,
-                    ToplevelManagerState {
-                        manager: toplevel_manager.clone(),
-                        _phantom: PhantomData,
-                    },
-                );
+                state.toplevel(conn, qhandle);
             }
             Event::Finished => {
                 warn!("Foreign toplevel manager is no longer valid, but has not been dropped by client. This could cause window tracking issues.");
