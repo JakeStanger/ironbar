@@ -61,9 +61,10 @@ impl Module<gtk::Button> for UpowerModule {
     fn spawn_controller(
         &self,
         _info: &ModuleInfo,
-        tx: mpsc::Sender<ModuleUpdateEvent<Self::SendMessage>>,
+        context: &WidgetContext<Self::SendMessage, Self::ReceiveMessage>,
         _rx: mpsc::Receiver<Self::ReceiveMessage>,
     ) -> Result<()> {
+        let tx = context.tx.clone();
         spawn(async move {
             // await_sync due to strange "higher-ranked lifetime error"
             let display_proxy = await_sync(async move { get_display_proxy().await });

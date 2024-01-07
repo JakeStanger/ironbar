@@ -90,7 +90,7 @@ impl Module<Button> for MusicModule {
     fn spawn_controller(
         &self,
         _info: &ModuleInfo,
-        tx: mpsc::Sender<ModuleUpdateEvent<Self::SendMessage>>,
+        context: &WidgetContext<Self::SendMessage, Self::ReceiveMessage>,
         mut rx: mpsc::Receiver<Self::ReceiveMessage>,
     ) -> Result<()> {
         let format = self.format.clone();
@@ -103,6 +103,7 @@ impl Module<Button> for MusicModule {
             let player_type = self.player_type;
             let host = self.host.clone();
             let music_dir = self.music_dir.clone();
+            let tx = context.tx.clone();
 
             spawn(async move {
                 loop {

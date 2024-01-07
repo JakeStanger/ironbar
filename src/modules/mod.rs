@@ -162,7 +162,7 @@ where
     fn spawn_controller(
         &self,
         info: &ModuleInfo,
-        tx: mpsc::Sender<ModuleUpdateEvent<Self::SendMessage>>,
+        context: &WidgetContext<Self::SendMessage, Self::ReceiveMessage>,
         rx: mpsc::Receiver<Self::ReceiveMessage>,
     ) -> Result<()>
     where
@@ -208,8 +208,6 @@ where
 
     let (tx, rx) = broadcast::channel(64);
 
-    module.spawn_controller(info, ui_tx.clone(), controller_rx)?;
-
     let context = WidgetContext {
         id,
         tx: ui_tx,
@@ -217,6 +215,8 @@ where
         controller_tx,
         _update_rx: rx,
     };
+
+    module.spawn_controller(info, &context, controller_rx)?;
 
     let module_name = TModule::name();
     let instance_name = name.unwrap_or_else(|| module_name.to_string());

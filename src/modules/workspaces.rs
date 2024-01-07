@@ -151,9 +151,10 @@ impl Module<gtk::Box> for WorkspacesModule {
     fn spawn_controller(
         &self,
         _info: &ModuleInfo,
-        tx: Sender<ModuleUpdateEvent<Self::SendMessage>>,
+        context: &WidgetContext<Self::SendMessage, Self::ReceiveMessage>,
         mut rx: Receiver<Self::ReceiveMessage>,
     ) -> Result<()> {
+        let tx = context.tx.clone();
         // Subscribe & send events
         spawn(async move {
             let mut srx = {

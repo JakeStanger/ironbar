@@ -158,9 +158,10 @@ impl Module<gtk::Box> for CustomModule {
     fn spawn_controller(
         &self,
         _info: &ModuleInfo,
-        tx: mpsc::Sender<ModuleUpdateEvent<Self::SendMessage>>,
+        context: &WidgetContext<Self::SendMessage, Self::ReceiveMessage>,
         mut rx: mpsc::Receiver<Self::ReceiveMessage>,
     ) -> Result<()> {
+        let tx = context.tx.clone();
         spawn(async move {
             while let Some(event) = rx.recv().await {
                 if event.cmd.starts_with('!') {

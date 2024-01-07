@@ -90,7 +90,7 @@ impl Module<gtk::Box> for LauncherModule {
     fn spawn_controller(
         &self,
         _info: &ModuleInfo,
-        tx: mpsc::Sender<ModuleUpdateEvent<Self::SendMessage>>,
+        context: &WidgetContext<Self::SendMessage, Self::ReceiveMessage>,
         mut rx: mpsc::Receiver<Self::ReceiveMessage>,
     ) -> crate::Result<()> {
         let items = self
@@ -111,7 +111,7 @@ impl Module<gtk::Box> for LauncherModule {
         let items = arc_mut!(items);
 
         let items2 = Arc::clone(&items);
-        let tx2 = tx.clone();
+
         spawn(async move {
             let items = items2;
             let tx = tx2;

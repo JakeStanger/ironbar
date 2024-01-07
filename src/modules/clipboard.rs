@@ -72,11 +72,12 @@ impl Module<Button> for ClipboardModule {
     fn spawn_controller(
         &self,
         _info: &ModuleInfo,
-        tx: mpsc::Sender<ModuleUpdateEvent<Self::SendMessage>>,
+        context: &WidgetContext<Self::SendMessage, Self::ReceiveMessage>,
         mut rx: mpsc::Receiver<Self::ReceiveMessage>,
     ) -> color_eyre::Result<()> {
         let max_items = self.max_items;
 
+        let tx = context.tx.clone();
         // listen to clipboard events
         spawn(async move {
             let mut rx = {

@@ -57,9 +57,10 @@ impl Module<gtk::Box> for FocusedModule {
     fn spawn_controller(
         &self,
         _info: &ModuleInfo,
-        tx: Sender<ModuleUpdateEvent<Self::SendMessage>>,
+        context: &WidgetContext<Self::SendMessage, Self::ReceiveMessage>,
         _rx: Receiver<Self::ReceiveMessage>,
     ) -> Result<()> {
+        let tx = context.tx.clone();
         spawn(async move {
             let (mut wlrx, handles) = {
                 let wl = wayland::get_client();

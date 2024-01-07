@@ -36,9 +36,10 @@ impl Module<Label> for LabelModule {
     fn spawn_controller(
         &self,
         _info: &ModuleInfo,
-        tx: mpsc::Sender<ModuleUpdateEvent<Self::SendMessage>>,
+        context: &WidgetContext<Self::SendMessage, Self::ReceiveMessage>,
         _rx: mpsc::Receiver<Self::ReceiveMessage>,
     ) -> Result<()> {
+        let tx = context.tx.clone();
         dynamic_string(&self.label, move |string| {
             try_send!(tx, ModuleUpdateEvent::Update(string));
         });

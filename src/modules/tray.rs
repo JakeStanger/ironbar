@@ -168,10 +168,11 @@ impl Module<MenuBar> for TrayModule {
     fn spawn_controller(
         &self,
         _info: &ModuleInfo,
-        tx: Sender<ModuleUpdateEvent<Self::SendMessage>>,
+        context: &WidgetContext<Self::SendMessage, Self::ReceiveMessage>,
         mut rx: Receiver<Self::ReceiveMessage>,
     ) -> Result<()> {
         let client = await_sync(async { get_tray_event_client().await });
+        let tx = context.tx.clone();
         let (tray_tx, mut tray_rx) = client.subscribe();
 
         // listen to tray updates
