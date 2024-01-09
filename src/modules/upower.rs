@@ -6,8 +6,8 @@ use serde::Deserialize;
 use tokio::sync::{broadcast, mpsc};
 use upower_dbus::BatteryState;
 use zbus;
+use zbus::fdo::PropertiesProxy;
 
-use crate::clients::upower::get_display_proxy;
 use crate::config::CommonConfig;
 use crate::gtk_helpers::IronbarGtkExt;
 use crate::image::ImageProvider;
@@ -15,7 +15,7 @@ use crate::modules::PopupButton;
 use crate::modules::{
     Module, ModuleInfo, ModuleParts, ModulePopup, ModuleUpdateEvent, WidgetContext,
 };
-use crate::{await_sync, error, glib_recv, send_async, spawn, try_send};
+use crate::{error, glib_recv, send_async, spawn, try_send};
 
 const DAY: i64 = 24 * 60 * 60;
 const HOUR: i64 = 60 * 60;
@@ -61,12 +61,14 @@ impl Module<gtk::Button> for UpowerModule {
     fn spawn_controller(
         &self,
         _info: &ModuleInfo,
-        tx: mpsc::Sender<ModuleUpdateEvent<Self::SendMessage>>,
+        context: &WidgetContext<Self::SendMessage, Self::ReceiveMessage>,
         _rx: mpsc::Receiver<Self::ReceiveMessage>,
     ) -> Result<()> {
+        let tx = context.tx.clone();
+
+        let display_proxy = context.client::<PropertiesProxy>();
+
         spawn(async move {
-            // await_sync due to strange "higher-ranked lifetime error"
-            let display_proxy = await_sync(async move { get_display_proxy().await });
             let mut prop_changed_stream = display_proxy.receive_properties_changed().await?;
 
             let device_interface_name =

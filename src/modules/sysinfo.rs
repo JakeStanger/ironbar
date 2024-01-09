@@ -11,7 +11,6 @@ use std::collections::HashMap;
 use std::time::Duration;
 use sysinfo::{ComponentExt, CpuExt, DiskExt, NetworkExt, RefreshKind, System, SystemExt};
 use tokio::sync::mpsc;
-use tokio::sync::mpsc::{Receiver, Sender};
 use tokio::time::sleep;
 
 #[derive(Debug, Deserialize, Clone)]
@@ -124,8 +123,8 @@ impl Module<gtk::Box> for SysInfoModule {
     fn spawn_controller(
         &self,
         _info: &ModuleInfo,
-        tx: Sender<ModuleUpdateEvent<Self::SendMessage>>,
-        _rx: Receiver<Self::ReceiveMessage>,
+        context: &WidgetContext<Self::SendMessage, Self::ReceiveMessage>,
+        _rx: mpsc::Receiver<Self::ReceiveMessage>,
     ) -> Result<()> {
         let interval = self.interval;
 
@@ -159,6 +158,7 @@ impl Module<gtk::Box> for SysInfoModule {
         spawn_refresh!(RefreshType::Network, networks);
         spawn_refresh!(RefreshType::System, system);
 
+        let tx = context.tx.clone();
         spawn(async move {
             let mut format_info = HashMap::new();
 

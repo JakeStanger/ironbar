@@ -6,7 +6,7 @@ use color_eyre::{Help, Report, Result};
 use gtk::prelude::*;
 use gtk::Label;
 use serde::Deserialize;
-use tokio::sync::mpsc::{Receiver, Sender};
+use tokio::sync::mpsc;
 use tracing::error;
 
 #[derive(Debug, Deserialize, Clone)]
@@ -55,11 +55,12 @@ impl Module<Label> for ScriptModule {
     fn spawn_controller(
         &self,
         _info: &ModuleInfo,
-        tx: Sender<ModuleUpdateEvent<Self::SendMessage>>,
-        _rx: Receiver<Self::ReceiveMessage>,
+        context: &WidgetContext<Self::SendMessage, Self::ReceiveMessage>,
+        _rx: mpsc::Receiver<Self::ReceiveMessage>,
     ) -> Result<()> {
         let script: Script = self.into();
 
+        let tx = context.tx.clone();
         spawn(async move {
             script.run(None, move |out, _| match out {
                OutputStream::Stdout(stdout) => {

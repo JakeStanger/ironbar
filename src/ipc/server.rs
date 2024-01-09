@@ -104,7 +104,11 @@ impl Ipc {
     /// Takes an input command, runs it and returns with the appropriate response.
     ///
     /// This runs on the main thread, allowing commands to interact with GTK.
-    fn handle_command(command: Command, application: &Application, ironbar: &Ironbar) -> Response {
+    fn handle_command(
+        command: Command,
+        application: &Application,
+        ironbar: &Rc<Ironbar>,
+    ) -> Response {
         match command {
             Command::Inspect => {
                 gtk::Window::set_interactive_debugging(true);
@@ -117,7 +121,7 @@ impl Ipc {
                     window.close();
                 }
 
-                *ironbar.bars.borrow_mut() = crate::load_interface(application);
+                *ironbar.bars.borrow_mut() = crate::load_interface(application, ironbar.clone());
 
                 Response::Ok
             }

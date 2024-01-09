@@ -14,6 +14,7 @@ use wayland_protocols_wlr::data_control::v1::client::{
     zwlr_data_control_source_v1::ZwlrDataControlSourceV1,
 };
 
+#[derive(Debug)]
 pub struct DataControlDeviceManagerState<V = DataControlOfferData> {
     manager: ZwlrDataControlManagerV1,
     _phantom: PhantomData<V>,

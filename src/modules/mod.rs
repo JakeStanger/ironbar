@@ -1,6 +1,7 @@
 use std::cell::RefCell;
 use std::fmt::Debug;
 use std::rc::Rc;
+use std::sync::Arc;
 
 use color_eyre::Result;
 use glib::IsA;
@@ -10,10 +11,11 @@ use gtk::{Application, Button, EventBox, IconTheme, Orientation, Revealer, Widge
 use tokio::sync::{broadcast, mpsc};
 use tracing::debug;
 
+use crate::clients::ProvidesClient;
 use crate::config::{BarPosition, CommonConfig, TransitionType};
 use crate::gtk_helpers::{IronbarGtkExt, WidgetGeometry};
 use crate::popup::Popup;
-use crate::{glib_recv_mpsc, send};
+use crate::{glib_recv_mpsc, send, Ironbar};
 
 #[cfg(feature = "clipboard")]
 pub mod clipboard;
@@ -76,6 +78,7 @@ where
     TSend: Clone,
 {
     pub id: usize,
+    pub ironbar: Rc<Ironbar>,
     pub tx: mpsc::Sender<ModuleUpdateEvent<TSend>>,
     pub update_tx: broadcast::Sender<TSend>,
     pub controller_tx: mpsc::Sender<TReceive>,
@@ -87,6 +90,18 @@ impl<TSend, TReceive> WidgetContext<TSend, TReceive>
 where
     TSend: Clone,
 {
+    /// Gets client `T` from the context.
+    ///
+    /// This is a shorthand to avoid needing to go through
+    /// `context.ironbar.clients`.
+    pub fn client<T: ?Sized>(&self) -> Arc<T>
+    where
+        WidgetContext<TSend, TReceive>: ProvidesClient<T>,
+    {
+        ProvidesClient::provide(self)
+    }
+
+    /// Subscribes to events sent from this widget.
     pub fn subscribe(&self) -> broadcast::Receiver<TSend> {
         self.update_tx.subscribe()
     }
@@ -162,7 +177,7 @@ where
     fn spawn_controller(
         &self,
         info: &ModuleInfo,
-        tx: mpsc::Sender<ModuleUpdateEvent<Self::SendMessage>>,
+        context: &WidgetContext<Self::SendMessage, Self::ReceiveMessage>,
         rx: mpsc::Receiver<Self::ReceiveMessage>,
     ) -> Result<()>
     where
@@ -194,6 +209,7 @@ where
 pub fn create_module<TModule, TWidget, TSend, TRec>(
     module: TModule,
     id: usize,
+    ironbar: Rc<Ironbar>,
     name: Option<String>,
     info: &ModuleInfo,
     popup: &Rc<RefCell<Popup>>,
@@ -208,15 +224,16 @@ where
 
     let (tx, rx) = broadcast::channel(64);
 
-    module.spawn_controller(info, ui_tx.clone(), controller_rx)?;
-
     let context = WidgetContext {
         id,
+        ironbar,
         tx: ui_tx,
         update_tx: tx.clone(),
         controller_tx,
         _update_rx: rx,
     };
+
+    module.spawn_controller(info, &context, controller_rx)?;
 
     let module_name = TModule::name();
     let instance_name = name.unwrap_or_else(|| module_name.to_string());

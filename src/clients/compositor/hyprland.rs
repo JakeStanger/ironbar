@@ -6,23 +6,26 @@ use hyprland::dispatch::{Dispatch, DispatchType, WorkspaceIdentifierWithSpecial}
 use hyprland::event_listener::EventListener;
 use hyprland::prelude::*;
 use hyprland::shared::{HyprDataVec, WorkspaceType};
-use lazy_static::lazy_static;
 use tokio::sync::broadcast::{channel, Receiver, Sender};
 use tracing::{debug, error, info};
 
-pub struct EventClient {
+#[derive(Debug)]
+pub struct Client {
     workspace_tx: Sender<WorkspaceUpdate>,
     _workspace_rx: Receiver<WorkspaceUpdate>,
 }
 
-impl EventClient {
-    fn new() -> Self {
+impl Client {
+    pub(crate) fn new() -> Self {
         let (workspace_tx, workspace_rx) = channel(16);
 
-        Self {
+        let instance = Self {
             workspace_tx,
             _workspace_rx: workspace_rx,
-        }
+        };
+
+        instance.listen_workspace_events();
+        instance
     }
 
     fn listen_workspace_events(&self) {
@@ -203,7 +206,7 @@ impl EventClient {
     }
 }
 
-impl WorkspaceClient for EventClient {
+impl WorkspaceClient for Client {
     fn focus(&self, id: String) -> Result<()> {
         let identifier = match id.parse::<i32>() {
             Ok(inum) => WorkspaceIdentifierWithSpecial::Id(inum),
@@ -237,18 +240,6 @@ impl WorkspaceClient for EventClient {
 
         rx
     }
-}
-
-lazy_static! {
-    static ref CLIENT: EventClient = {
-        let client = EventClient::new();
-        client.listen_workspace_events();
-        client
-    };
-}
-
-pub fn get_client() -> &'static EventClient {
-    &CLIENT
 }
 
 fn get_workspace_name(name: WorkspaceType) -> String {

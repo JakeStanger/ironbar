@@ -1,15 +1,12 @@
 mod item;
 mod open_state;
 
-use self::item::{Item, ItemButton, Window};
+use self::item::{AppearanceOptions, Item, ItemButton, Window};
 use self::open_state::OpenState;
+use super::{Module, ModuleInfo, ModuleParts, ModulePopup, ModuleUpdateEvent, WidgetContext};
 use crate::clients::wayland::{self, ToplevelEvent};
 use crate::config::CommonConfig;
 use crate::desktop_file::find_desktop_file;
-use crate::modules::launcher::item::AppearanceOptions;
-use crate::modules::{
-    Module, ModuleInfo, ModuleParts, ModulePopup, ModuleUpdateEvent, WidgetContext,
-};
 use crate::{arc_mut, glib_recv, lock, send_async, spawn, try_send, write_lock};
 use color_eyre::{Help, Report};
 use gtk::prelude::*;
@@ -90,7 +87,7 @@ impl Module<gtk::Box> for LauncherModule {
     fn spawn_controller(
         &self,
         _info: &ModuleInfo,
-        tx: mpsc::Sender<ModuleUpdateEvent<Self::SendMessage>>,
+        context: &WidgetContext<Self::SendMessage, Self::ReceiveMessage>,
         mut rx: mpsc::Receiver<Self::ReceiveMessage>,
     ) -> crate::Result<()> {
         let items = self
@@ -111,28 +108,27 @@ impl Module<gtk::Box> for LauncherModule {
         let items = arc_mut!(items);
 
         let items2 = Arc::clone(&items);
-        let tx2 = tx.clone();
+
+        let tx = context.tx.clone();
+        let tx2 = context.tx.clone();
+
+        let wl = context.client::<wayland::Client>();
         spawn(async move {
             let items = items2;
             let tx = tx2;
 
-            let (mut wlrx, handles) = {
-                let wl = wayland::get_client();
-                let wl = lock!(wl);
-                wl.subscribe_toplevels()
-            };
+            let mut wlrx = wl.subscribe_toplevels();
+            let handles = wl.toplevel_info_all();
 
-            for handle in handles.values() {
-                let Some(info) = handle.info() else { continue };
-
+            for info in handles {
                 let mut items = lock!(items);
                 let item = items.get_mut(&info.app_id);
                 match item {
                     Some(item) => {
-                        item.merge_toplevel(handle.clone())?;
+                        item.merge_toplevel(info.clone());
                     }
                     None => {
-                        items.insert(info.app_id.clone(), Item::try_from(handle.clone())?);
+                        items.insert(info.app_id.clone(), Item::from(info.clone()));
                     }
                 }
             }
@@ -154,22 +150,22 @@ impl Module<gtk::Box> for LauncherModule {
                 trace!("event: {:?}", event);
 
                 match event {
-                    ToplevelEvent::New(handle) => {
-                        let Some(info) = handle.info() else { continue };
+                    ToplevelEvent::New(info) => {
+                        let app_id = info.app_id.clone();
 
                         let new_item = {
                             let mut items = lock!(items);
                             let item = items.get_mut(&info.app_id);
                             match item {
                                 None => {
-                                    let item: Item = handle.try_into()?;
+                                    let item: Item = info.into();
 
-                                    items.insert(info.app_id.clone(), item.clone());
+                                    items.insert(app_id.clone(), item.clone());
 
                                     ItemOrWindow::Item(item)
                                 }
                                 Some(item) => {
-                                    let window = item.merge_toplevel(handle)?;
+                                    let window = item.merge_toplevel(info);
                                     ItemOrWindow::Window(window)
                                 }
                             }
@@ -180,14 +176,11 @@ impl Module<gtk::Box> for LauncherModule {
                                 send_update(LauncherUpdate::AddItem(item)).await
                             }
                             ItemOrWindow::Window(window) => {
-                                send_update(LauncherUpdate::AddWindow(info.app_id.clone(), window))
-                                    .await
+                                send_update(LauncherUpdate::AddWindow(app_id, window)).await
                             }
                         }?;
                     }
-                    ToplevelEvent::Update(handle) => {
-                        let Some(info) = handle.info() else { continue };
-
+                    ToplevelEvent::Update(info) => {
                         if let Some(item) = lock!(items).get_mut(&info.app_id) {
                             item.set_window_focused(info.id, info.focused);
                             item.set_window_name(info.id, info.title.clone());
@@ -202,15 +195,13 @@ impl Module<gtk::Box> for LauncherModule {
                         ))
                         .await?;
                     }
-                    ToplevelEvent::Remove(handle) => {
-                        let Some(info) = handle.info() else { continue };
-
+                    ToplevelEvent::Remove(info) => {
                         let remove_item = {
                             let mut items = lock!(items);
                             let item = items.get_mut(&info.app_id);
                             match item {
                                 Some(item) => {
-                                    item.unmerge_toplevel(&handle);
+                                    item.unmerge_toplevel(&info);
 
                                     if item.windows.is_empty() {
                                         items.remove(&info.app_id);
@@ -245,6 +236,7 @@ impl Module<gtk::Box> for LauncherModule {
         });
 
         // listen to ui events
+        let wl = context.client::<wayland::Client>();
         spawn(async move {
             while let Some(event) = rx.recv().await {
                 if let ItemEvent::OpenItem(app_id) = event {
@@ -272,37 +264,29 @@ impl Module<gtk::Box> for LauncherModule {
                 } else {
                     send_async!(tx, ModuleUpdateEvent::ClosePopup);
 
-                    let wl = wayland::get_client();
-                    let items = lock!(items);
-
                     let id = match event {
-                        ItemEvent::FocusItem(app_id) => items.get(&app_id).and_then(|item| {
-                            item.windows
-                                .iter()
-                                .find(|(_, win)| !win.open_state.is_focused())
-                                .or_else(|| item.windows.first())
-                                .map(|(_, win)| win.id)
-                        }),
+                        ItemEvent::FocusItem(app_id) => {
+                            lock!(items).get(&app_id).and_then(|item| {
+                                item.windows
+                                    .iter()
+                                    .find(|(_, win)| !win.open_state.is_focused())
+                                    .or_else(|| item.windows.first())
+                                    .map(|(_, win)| win.id)
+                            })
+                        }
                         ItemEvent::FocusWindow(id) => Some(id),
                         ItemEvent::OpenItem(_) => unreachable!(),
                     };
 
                     if let Some(id) = id {
-                        if let Some(window) =
-                            items.iter().find_map(|(_, item)| item.windows.get(&id))
+                        if let Some(window) = lock!(items)
+                            .iter()
+                            .find_map(|(_, item)| item.windows.get(&id))
                         {
                             debug!("Focusing window {id}: {}", window.name);
-
-                            let seat = lock!(wl)
-                                .get_seats()
-                                .pop()
-                                .expect("Failed to get Wayland seat");
-                            window.focus(&seat);
+                            wl.toplevel_focus(window.id);
                         }
                     }
-
-                    // roundtrip to immediately send activate event
-                    lock!(wl).roundtrip();
                 }
             }
         });

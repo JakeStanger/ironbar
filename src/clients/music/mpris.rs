@@ -2,20 +2,16 @@ use super::{MusicClient, PlayerState, PlayerUpdate, Status, Track, TICK_INTERVAL
 use crate::clients::music::ProgressTick;
 use crate::{arc_mut, lock, send, spawn_blocking};
 use color_eyre::Result;
-use lazy_static::lazy_static;
 use mpris::{DBusError, Event, Metadata, PlaybackStatus, Player, PlayerFinder};
+use std::cmp;
 use std::collections::HashSet;
 use std::sync::{Arc, Mutex};
 use std::thread::sleep;
 use std::time::Duration;
-use std::{cmp, string};
 use tokio::sync::broadcast;
 use tracing::{debug, error, trace};
 
-lazy_static! {
-    static ref CLIENT: Arc<Client> = Arc::new(Client::new());
-}
-
+#[derive(Debug)]
 pub struct Client {
     current_player: Arc<Mutex<Option<String>>>,
     tx: broadcast::Sender<PlayerUpdate>,
@@ -23,7 +19,7 @@ pub struct Client {
 }
 
 impl Client {
-    fn new() -> Self {
+    pub(crate) fn new() -> Self {
         let (tx, rx) = broadcast::channel(32);
 
         let current_player = arc_mut!(None);
@@ -289,10 +285,6 @@ impl MusicClient for Client {
     }
 }
 
-pub fn get_client() -> Arc<Client> {
-    CLIENT.clone()
-}
-
 impl From<Metadata> for Track {
     fn from(value: Metadata) -> Self {
         const KEY_DATE: &str = "xesam:contentCreated";
@@ -301,11 +293,11 @@ impl From<Metadata> for Track {
         Self {
             title: value
                 .title()
-                .map(std::string::ToString::to_string)
+                .map(ToString::to_string)
                 .and_then(replace_empty_none),
             album: value
                 .album_name()
-                .map(std::string::ToString::to_string)
+                .map(ToString::to_string)
                 .and_then(replace_empty_none),
             artist: value
                 .artists()
@@ -314,14 +306,14 @@ impl From<Metadata> for Track {
             date: value
                 .get(KEY_DATE)
                 .and_then(mpris::MetadataValue::as_string)
-                .map(std::string::ToString::to_string),
+                .map(ToString::to_string),
             disc: value.disc_number().map(|disc| disc as u64),
             genre: value
                 .get(KEY_GENRE)
                 .and_then(mpris::MetadataValue::as_str_array)
                 .and_then(|arr| arr.first().map(|val| (*val).to_string())),
             track: value.track_number().map(|track| track as u64),
-            cover_path: value.art_url().map(string::ToString::to_string),
+            cover_path: value.art_url().map(ToString::to_string),
         }
     }
 }

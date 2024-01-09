@@ -1,11 +1,41 @@
-use super::Environment;
+use super::{Client, Environment, Event, Request, Response};
+use crate::try_send;
 use smithay_client_toolkit::output::{OutputHandler, OutputInfo, OutputState};
-use tracing::debug;
-use wayland_client::protocol::wl_output;
+use tokio::sync::broadcast;
+use tracing::{debug, error};
+use wayland_client::protocol::wl_output::WlOutput;
 use wayland_client::{Connection, QueueHandle};
 
+#[derive(Debug, Clone)]
+pub struct OutputEvent {
+    output: OutputInfo,
+    event_type: OutputEventType,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub enum OutputEventType {
+    New,
+    Update,
+    Destroyed,
+}
+
+impl Client {
+    /// Gets the information for all outputs.
+    pub fn output_info_all(&self) -> Vec<OutputInfo> {
+        match self.send_request(Request::OutputInfoAll) {
+            Response::OutputInfoAll(info) => info,
+            _ => unreachable!(),
+        }
+    }
+
+    /// Subscribes to events from outputs.
+    pub fn subscribe_outputs(&self) -> broadcast::Receiver<OutputEvent> {
+        self.output_channel.0.subscribe()
+    }
+}
+
 impl Environment {
-    pub fn output_info(&mut self) -> Vec<OutputInfo> {
+    pub fn output_info_all(&mut self) -> Vec<OutputInfo> {
         self.output_state
             .outputs()
             .filter_map(|output| self.output_state.info(&output))
@@ -27,29 +57,48 @@ impl OutputHandler for Environment {
     // Then there exist these functions that indicate the lifecycle of an output.
     // These will be called as appropriate by the delegate implementation.
 
-    fn new_output(
-        &mut self,
-        _conn: &Connection,
-        _qh: &QueueHandle<Self>,
-        _output: wl_output::WlOutput,
-    ) {
+    fn new_output(&mut self, _conn: &Connection, _qh: &QueueHandle<Self>, output: WlOutput) {
         debug!("Handler received new output");
+        if let Some(info) = self.output_state.info(&output) {
+            try_send!(
+                self.event_tx,
+                Event::Output(OutputEvent {
+                    output: info,
+                    event_type: OutputEventType::New
+                })
+            );
+        } else {
+            error!("Output is missing information!");
+        }
     }
 
-    fn update_output(
-        &mut self,
-        _conn: &Connection,
-        _qh: &QueueHandle<Self>,
-        _output: wl_output::WlOutput,
-    ) {
+    fn update_output(&mut self, _conn: &Connection, _qh: &QueueHandle<Self>, output: WlOutput) {
+        debug!("Handle received output update");
+        if let Some(info) = self.output_state.info(&output) {
+            try_send!(
+                self.event_tx,
+                Event::Output(OutputEvent {
+                    output: info,
+                    event_type: OutputEventType::Update
+                })
+            );
+        } else {
+            error!("Output is missing information!");
+        }
     }
 
-    fn output_destroyed(
-        &mut self,
-        _conn: &Connection,
-        _qh: &QueueHandle<Self>,
-        _output: wl_output::WlOutput,
-    ) {
+    fn output_destroyed(&mut self, _conn: &Connection, _qh: &QueueHandle<Self>, output: WlOutput) {
         debug!("Handle received output destruction");
+        if let Some(info) = self.output_state.info(&output) {
+            try_send!(
+                self.event_tx,
+                Event::Output(OutputEvent {
+                    output: info,
+                    event_type: OutputEventType::Destroyed
+                })
+            );
+        } else {
+            error!("Output is missing information!");
+        }
     }
 }

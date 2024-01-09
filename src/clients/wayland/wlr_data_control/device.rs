@@ -12,6 +12,7 @@ use wayland_protocols_wlr::data_control::v1::client::{
     zwlr_data_control_offer_v1::ZwlrDataControlOfferV1,
 };
 
+#[derive(Debug)]
 pub struct DataControlDevice {
     pub device: ZwlrDataControlDeviceV1,
 }

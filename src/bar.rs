@@ -27,6 +27,8 @@ pub struct Bar {
     monitor_name: String,
     position: BarPosition,
 
+    ironbar: Rc<Ironbar>,
+
     window: ApplicationWindow,
 
     content: gtk::Box,
@@ -39,7 +41,12 @@ pub struct Bar {
 }
 
 impl Bar {
-    pub fn new(app: &Application, monitor_name: String, config: Config) -> Self {
+    pub fn new(
+        app: &Application,
+        monitor_name: String,
+        config: Config,
+        ironbar: Rc<Ironbar>,
+    ) -> Self {
         let window = ApplicationWindow::builder()
             .application(app)
             .type_(WindowType::Toplevel)
@@ -90,6 +97,7 @@ impl Bar {
             name,
             monitor_name,
             position,
+            ironbar,
             window,
             content,
             start,
@@ -263,17 +271,17 @@ impl Bar {
 
         if let Some(modules) = config.start {
             let info = info!(ModuleLocation::Left);
-            add_modules(&self.start, modules, &info, &popup)?;
+            add_modules(&self.start, modules, &info, &self.ironbar, &popup)?;
         }
 
         if let Some(modules) = config.center {
             let info = info!(ModuleLocation::Center);
-            add_modules(&self.center, modules, &info, &popup)?;
+            add_modules(&self.center, modules, &info, &self.ironbar, &popup)?;
         }
 
         if let Some(modules) = config.end {
             let info = info!(ModuleLocation::Right);
-            add_modules(&self.end, modules, &info, &popup)?;
+            add_modules(&self.end, modules, &info, &self.ironbar, &popup)?;
         }
 
         let result = BarLoadResult { popup };
@@ -333,6 +341,7 @@ fn add_modules(
     content: &gtk::Box,
     modules: Vec<ModuleConfig>,
     info: &ModuleInfo,
+    ironbar: &Rc<Ironbar>,
     popup: &Rc<RefCell<Popup>>,
 ) -> Result<()> {
     let orientation = info.bar_position.get_orientation();
@@ -343,6 +352,7 @@ fn add_modules(
             let widget_parts = create_module(
                 *$module,
                 $id,
+                ironbar.clone(),
                 common.name.clone(),
                 &info,
                 &Rc::clone(&popup),
@@ -387,7 +397,8 @@ pub fn create_bar(
     monitor: &Monitor,
     monitor_name: String,
     config: Config,
+    ironbar: Rc<Ironbar>,
 ) -> Result<Bar> {
-    let bar = Bar::new(app, monitor_name, config);
+    let bar = Bar::new(app, monitor_name, config, ironbar);
     bar.init(monitor)
 }

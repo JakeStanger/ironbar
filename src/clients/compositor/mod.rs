@@ -1,6 +1,8 @@
+use crate::{await_sync, register_client};
 use cfg_if::cfg_if;
 use color_eyre::{Help, Report, Result};
-use std::fmt::{Display, Formatter};
+use std::fmt::{Debug, Display, Formatter};
+use std::sync::Arc;
 use tokio::sync::broadcast;
 use tracing::debug;
 
@@ -44,7 +46,7 @@ impl Compositor {
             }
         } else if std::env::var("HYPRLAND_INSTANCE_SIGNATURE").is_ok() {
             cfg_if! {
-                if #[cfg(feature = "workspaces+hyprland")] { Self::Hyprland}
+                if #[cfg(feature = "workspaces+hyprland")] { Self::Hyprland }
                 else { tracing::error!("Not compiled with Hyprland support"); Self::Unsupported }
             }
         } else {
@@ -52,15 +54,17 @@ impl Compositor {
         }
     }
 
-    /// Gets the workspace client for the current compositor
-    pub fn get_workspace_client() -> Result<&'static (dyn WorkspaceClient + Send)> {
+    /// Creates a new instance of
+    /// the workspace client for the current compositor.
+    pub fn create_workspace_client() -> Result<Arc<dyn WorkspaceClient + Send + Sync>> {
         let current = Self::get_current();
         debug!("Getting workspace client for: {current}");
         match current {
             #[cfg(feature = "workspaces+sway")]
-            Self::Sway => Ok(sway::get_sub_client()),
+            Self::Sway => await_sync(async { sway::Client::new().await })
+                .map(|client| Arc::new(client) as Arc<dyn WorkspaceClient + Send + Sync>),
             #[cfg(feature = "workspaces+hyprland")]
-            Self::Hyprland => Ok(hyprland::get_client()),
+            Self::Hyprland => Ok(Arc::new(hyprland::Client::new())),
             Self::Unsupported => Err(Report::msg("Unsupported compositor")
                 .note("Currently workspaces are only supported by Sway and Hyprland")),
         }
@@ -129,10 +133,12 @@ pub enum WorkspaceUpdate {
     Unknown,
 }
 
-pub trait WorkspaceClient {
+pub trait WorkspaceClient: Debug + Send + Sync {
     /// Requests the workspace with this name is focused.
     fn focus(&self, name: String) -> Result<()>;
 
     /// Creates a new to workspace event receiver.
     fn subscribe_workspace_change(&self) -> broadcast::Receiver<WorkspaceUpdate>;
 }
+
+register_client!(dyn WorkspaceClient, workspaces);

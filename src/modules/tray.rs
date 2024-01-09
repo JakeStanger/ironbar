@@ -1,7 +1,7 @@
-use crate::clients::system_tray::get_tray_event_client;
+use crate::clients::system_tray::TrayEventReceiver;
 use crate::config::CommonConfig;
 use crate::modules::{Module, ModuleInfo, ModuleParts, ModuleUpdateEvent, WidgetContext};
-use crate::{await_sync, glib_recv, spawn, try_send};
+use crate::{glib_recv, spawn, try_send};
 use color_eyre::Result;
 use glib::ffi::g_strfreev;
 use glib::translate::ToGlibPtr;
@@ -168,10 +168,13 @@ impl Module<MenuBar> for TrayModule {
     fn spawn_controller(
         &self,
         _info: &ModuleInfo,
-        tx: Sender<ModuleUpdateEvent<Self::SendMessage>>,
+        context: &WidgetContext<Self::SendMessage, Self::ReceiveMessage>,
         mut rx: Receiver<Self::ReceiveMessage>,
     ) -> Result<()> {
-        let client = await_sync(async { get_tray_event_client().await });
+        let tx = context.tx.clone();
+
+        let client = context.client::<TrayEventReceiver>();
+
         let (tray_tx, mut tray_rx) = client.subscribe();
 
         // listen to tray updates

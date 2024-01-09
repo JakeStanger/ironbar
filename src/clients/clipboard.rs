@@ -1,15 +1,14 @@
 use super::wayland::{self, ClipboardItem};
-use crate::{arc_mut, lock, spawn, try_send};
+use crate::{arc_mut, lock, register_client, spawn, try_send};
 use indexmap::map::Iter;
 use indexmap::IndexMap;
-use lazy_static::lazy_static;
 use std::sync::{Arc, Mutex};
 use tokio::sync::mpsc;
 use tracing::{debug, trace};
 
 #[derive(Debug)]
 pub enum ClipboardEvent {
-    Add(Arc<ClipboardItem>),
+    Add(ClipboardItem),
     Remove(usize),
     Activate(usize),
 }
@@ -18,13 +17,16 @@ type EventSender = mpsc::Sender<ClipboardEvent>;
 
 /// Clipboard client singleton,
 /// to ensure bars don't duplicate requests to the compositor.
-pub struct ClipboardClient {
+#[derive(Debug)]
+pub struct Client {
+    wayland: Arc<wayland::Client>,
+
     senders: Arc<Mutex<Vec<(EventSender, usize)>>>,
     cache: Arc<Mutex<ClipboardCache>>,
 }
 
-impl ClipboardClient {
-    fn new() -> Self {
+impl Client {
+    pub(crate) fn new(wl: Arc<wayland::Client>) -> Self {
         trace!("Initializing clipboard client");
 
         let senders = arc_mut!(Vec::<(EventSender, usize)>::new());
@@ -34,13 +36,11 @@ impl ClipboardClient {
         {
             let senders = senders.clone();
             let cache = cache.clone();
+            let wl = wl.clone();
 
             spawn(async move {
-                let (mut rx, item) = {
-                    let wl = wayland::get_client();
-                    let wl = lock!(wl);
-                    wl.subscribe_clipboard()
-                };
+                let item = wl.clipboard_item();
+                let mut rx = wl.subscribe_clipboard();
 
                 if let Some(item) = item {
                     let senders = lock!(senders);
@@ -91,7 +91,11 @@ impl ClipboardClient {
             });
         }
 
-        Self { senders, cache }
+        Self {
+            wayland: wl,
+            senders,
+            cache,
+        }
     }
 
     pub fn subscribe(&self, cache_size: usize) -> mpsc::Receiver<ClipboardEvent> {
@@ -120,9 +124,7 @@ impl ClipboardClient {
         };
 
         if let Some(item) = item {
-            let wl = wayland::get_client();
-            let wl = lock!(wl);
-            wl.copy_to_clipboard(item);
+            self.wayland.copy_to_clipboard(item);
         }
 
         let senders = lock!(self.senders);
@@ -150,7 +152,7 @@ impl ClipboardClient {
 /// at different times.
 #[derive(Debug)]
 struct ClipboardCache {
-    cache: IndexMap<usize, (Arc<ClipboardItem>, usize)>,
+    cache: IndexMap<usize, (ClipboardItem, usize)>,
 }
 
 impl ClipboardCache {
@@ -162,12 +164,12 @@ impl ClipboardCache {
     }
 
     /// Gets the entry with key `id` from the cache.
-    fn get(&self, id: usize) -> Option<Arc<ClipboardItem>> {
+    fn get(&self, id: usize) -> Option<ClipboardItem> {
         self.cache.get(&id).map(|(item, _)| item).cloned()
     }
 
     /// Inserts an entry with `ref_count` initial references.
-    fn insert(&mut self, item: Arc<ClipboardItem>, ref_count: usize) -> Option<Arc<ClipboardItem>> {
+    fn insert(&mut self, item: ClipboardItem, ref_count: usize) -> Option<ClipboardItem> {
         self.cache
             .insert(item.id, (item, ref_count))
             .map(|(item, _)| item)
@@ -175,7 +177,7 @@ impl ClipboardCache {
 
     /// Removes the entry with key `id`.
     /// This ignores references.
-    fn remove(&mut self, id: usize) -> Option<Arc<ClipboardItem>> {
+    fn remove(&mut self, id: usize) -> Option<ClipboardItem> {
         self.cache.shift_remove(&id).map(|(item, _)| item)
     }
 
@@ -224,15 +226,9 @@ impl ClipboardCache {
         self.cache.len()
     }
 
-    fn iter(&self) -> Iter<'_, usize, (Arc<ClipboardItem>, usize)> {
+    fn iter(&self) -> Iter<'_, usize, (ClipboardItem, usize)> {
         self.cache.iter()
     }
 }
 
-lazy_static! {
-    static ref CLIENT: ClipboardClient = ClipboardClient::new();
-}
-
-pub fn get_client() -> &'static ClipboardClient {
-    &CLIENT
-}
+register_client!(Client, clipboard);

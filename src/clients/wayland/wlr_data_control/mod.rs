@@ -6,8 +6,8 @@ pub mod source;
 use self::device::{DataControlDeviceDataExt, DataControlDeviceHandler};
 use self::offer::{DataControlDeviceOffer, DataControlOfferHandler, SelectionOffer};
 use self::source::DataControlSourceHandler;
-use crate::clients::wayland::Environment;
-use crate::{lock, send, Ironbar};
+use super::{Client, Environment, Event, Request, Response};
+use crate::{lock, try_send, Ironbar};
 use device::DataControlDevice;
 use glib::Bytes;
 use nix::fcntl::{fcntl, F_GETPIPE_SZ, F_SETPIPE_SZ};
@@ -21,22 +21,28 @@ use std::io::{ErrorKind, Read, Write};
 use std::os::fd::{AsRawFd, OwnedFd, RawFd};
 use std::sync::Arc;
 use std::{fs, io};
+use tokio::sync::broadcast;
 use tracing::{debug, error, trace};
 use wayland_client::{Connection, QueueHandle};
 use wayland_protocols_wlr::data_control::v1::client::zwlr_data_control_source_v1::ZwlrDataControlSourceV1;
 
 const INTERNAL_MIME_TYPE: &str = "x-ironbar-internal";
 
+#[derive(Debug)]
 pub struct SelectionOfferItem {
     offer: SelectionOffer,
     token: Option<RegistrationToken>,
 }
 
+/// Represents a value which can be read/written
+/// to/from the system clipboard and surrounding metadata.
+///
+/// Can be cheaply cloned.
 #[derive(Debug, Clone, Eq)]
 pub struct ClipboardItem {
     pub id: usize,
-    pub value: ClipboardValue,
-    pub mime_type: String,
+    pub value: Arc<ClipboardValue>,
+    pub mime_type: Arc<str>,
 }
 
 impl PartialEq<Self> for ClipboardItem {
@@ -108,24 +114,60 @@ impl MimeType {
     }
 }
 
-impl Environment {
-    pub fn copy_to_clipboard(&mut self, item: Arc<ClipboardItem>, qh: &QueueHandle<Self>) {
-        debug!("Copying item to clipboard: {item:?}");
-
-        // TODO: Proper device tracking
-        let device = self.data_control_devices.first();
-        if let Some(device) = device {
-            let source = self
-                .data_control_device_manager_state
-                .create_copy_paste_source(qh, [INTERNAL_MIME_TYPE, item.mime_type.as_str()]);
-
-            source.set_selection(&device.device);
-            self.copy_paste_sources.push(source);
-
-            lock!(self.clipboard).replace(item);
+impl Client {
+    /// Gets the current clipboard item,
+    /// if this exists and Ironbar has record of it.
+    pub fn clipboard_item(&self) -> Option<ClipboardItem> {
+        match self.send_request(Request::ClipboardItem) {
+            Response::ClipboardItem(item) => item,
+            _ => unreachable!(),
         }
     }
 
+    /// Copies the provided value to the system clipboard.
+    pub fn copy_to_clipboard(&self, item: ClipboardItem) {
+        match self.send_request(Request::CopyToClipboard(item)) {
+            Response::Ok => (),
+            _ => unreachable!(),
+        }
+    }
+
+    /// Subscribes to the system clipboard,
+    /// receiving all new copied items.
+    pub fn subscribe_clipboard(&self) -> broadcast::Receiver<ClipboardItem> {
+        self.clipboard_channel.0.subscribe()
+    }
+}
+
+impl Environment {
+    /// Creates a new copy/paste source on the
+    /// seat's data control device.
+    ///
+    /// This provides it as an offer,
+    /// which the compositor will then treat as the current copied value.
+    pub fn copy_to_clipboard(&mut self, item: ClipboardItem) {
+        debug!("Copying item to clipboard: {item:?}");
+
+        let seat = self.default_seat();
+        let Some(device) = self
+            .data_control_devices
+            .iter()
+            .find(|entry| entry.seat == seat)
+        else {
+            return;
+        };
+
+        let source = self
+            .data_control_device_manager_state
+            .create_copy_paste_source(&self.queue_handle, [INTERNAL_MIME_TYPE, &item.mime_type]);
+
+        source.set_selection(&device.device);
+        self.copy_paste_sources.push(source);
+
+        lock!(self.clipboard).replace(item);
+    }
+
+    /// Reads an offer file handle into a new `ClipboardItem`.
     fn read_file(mime_type: &MimeType, file: &mut File) -> io::Result<ClipboardItem> {
         let value = match mime_type.category {
             MimeTypeCategory::Text => {
@@ -145,13 +187,15 @@ impl Environment {
 
         Ok(ClipboardItem {
             id: Ironbar::unique_id(),
-            value,
-            mime_type: mime_type.value.clone(),
+            value: Arc::new(value),
+            mime_type: mime_type.value.clone().into(),
         })
     }
 }
 
 impl DataControlDeviceHandler for Environment {
+    /// Called when an offer for a new value is received
+    /// (ie something has copied to the clipboard)
     fn selection(
         &mut self,
         _conn: &Connection,
@@ -175,15 +219,16 @@ impl DataControlDeviceHandler for Environment {
                 .last_mut()
                 .expect("Failed to get current offer");
 
+            // clear prev
             let Some(mime_type) = MimeType::parse_multiple(&mime_types) else {
                 lock!(self.clipboard).take();
                 // send an event so the clipboard module is aware it's changed
-                send!(
-                    self.clipboard_tx,
-                    Arc::new(ClipboardItem {
+                try_send!(
+                    self.event_tx,
+                    Event::Clipboard(ClipboardItem {
                         id: usize::MAX,
-                        mime_type: String::new(),
-                        value: ClipboardValue::Other
+                        mime_type: String::new().into(),
+                        value: Arc::new(ClipboardValue::Other)
                     })
                 );
                 return;
@@ -192,7 +237,7 @@ impl DataControlDeviceHandler for Environment {
             if let Ok(read_pipe) = cur_offer.offer.receive(mime_type.value.clone()) {
                 let offer_clone = cur_offer.offer.clone();
 
-                let tx = self.clipboard_tx.clone();
+                let tx = self.event_tx.clone();
                 let clipboard = self.clipboard.clone();
 
                 let token =
@@ -207,9 +252,8 @@ impl DataControlDeviceHandler for Environment {
 
                             match Self::read_file(&mime_type, file.get_mut()) {
                                 Ok(item) => {
-                                    let item = Arc::new(item);
                                     lock!(clipboard).replace(item.clone());
-                                    send!(tx, item);
+                                    try_send!(tx, Event::Clipboard(item));
                                 }
                                 Err(err) => error!("{err:?}"),
                             }
@@ -255,6 +299,8 @@ impl DataControlSourceHandler for Environment {
         debug!("Accepted mime type: {mime:?}");
     }
 
+    /// Writes the current clipboard item to 'paste' it
+    /// upon request from a compositor client.
     fn send_request(
         &mut self,
         _conn: &Connection,
@@ -274,12 +320,12 @@ impl DataControlSourceHandler for Environment {
             {
                 trace!("Source found, writing to file");
 
-                let mut bytes = match &item.value {
+                let mut bytes = match item.value.as_ref() {
                     ClipboardValue::Text(text) => text.as_bytes(),
                     ClipboardValue::Image(bytes) => bytes.as_ref(),
                     ClipboardValue::Other => panic!(
                         "{:?}",
-                        io::Error::new(ErrorKind::Other, "Attempted to copy unsupported mime type",)
+                        io::Error::new(ErrorKind::Other, "Attempted to copy unsupported mime type")
                     ),
                 };
 

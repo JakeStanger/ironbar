@@ -9,7 +9,7 @@ use std::rc::Rc;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 #[cfg(feature = "ipc")]
 use std::sync::RwLock;
-use std::sync::{mpsc, Arc};
+use std::sync::{mpsc, Arc, OnceLock};
 
 use cfg_if::cfg_if;
 #[cfg(feature = "cli")]
@@ -26,9 +26,8 @@ use tokio::task::{block_in_place, JoinHandle};
 use tracing::{debug, error, info, warn};
 use universal_config::ConfigLoader;
 
-use clients::wayland;
-
 use crate::bar::{create_bar, Bar};
+use crate::clients::Clients;
 use crate::config::{Config, MonitorConfig};
 use crate::error::ExitCode;
 #[cfg(feature = "ipc")]
@@ -90,26 +89,17 @@ fn run_with_args() {
     }
 }
 
-static COUNTER: AtomicUsize = AtomicUsize::new(1);
-
-lazy_static::lazy_static! {
-    static ref RUNTIME: Arc<Runtime> = Arc::new(create_runtime());
-}
-
-#[cfg(feature = "ipc")]
-lazy_static::lazy_static! {
-    static ref VARIABLE_MANAGER: Arc<RwLock<VariableManager>> = arc_rw!(VariableManager::new());
-}
-
 #[derive(Debug)]
 pub struct Ironbar {
     bars: Rc<RefCell<Vec<Bar>>>,
+    clients: Rc<RefCell<Clients>>,
 }
 
 impl Ironbar {
     fn new() -> Self {
         Self {
             bars: Rc::new(RefCell::new(vec![])),
+            clients: Rc::new(RefCell::new(Clients::new())),
         }
     }
 
@@ -124,8 +114,8 @@ impl Ironbar {
         let instance = Rc::new(self);
 
         // force start wayland client ahead of ui
-        let wl = wayland::get_client();
-        lock!(wl).roundtrip();
+        let wl = instance.clients.borrow_mut().wayland();
+        wl.roundtrip();
 
         app.connect_activate(move |app| {
             if running.load(Ordering::Relaxed) {
@@ -142,7 +132,7 @@ impl Ironbar {
                 }
             }
 
-            *instance.bars.borrow_mut() = load_interface(app);
+            *instance.bars.borrow_mut() = load_interface(app, instance.clone());
 
             let style_path = env::var("IRONBAR_CSS").ok().map_or_else(
                 || {
@@ -192,12 +182,14 @@ impl Ironbar {
     /// Gets the current Tokio runtime.
     #[must_use]
     pub fn runtime() -> Arc<Runtime> {
-        RUNTIME.clone()
+        static RUNTIME: OnceLock<Arc<Runtime>> = OnceLock::new();
+        RUNTIME.get_or_init(|| Arc::new(create_runtime())).clone()
     }
 
     /// Gets a `usize` ID value that is unique to the entire Ironbar instance.
     /// This is just a static `AtomicUsize` that increments every time this function is called.
     pub fn unique_id() -> usize {
+        static COUNTER: AtomicUsize = AtomicUsize::new(1);
         COUNTER.fetch_add(1, Ordering::Relaxed)
     }
 
@@ -205,7 +197,10 @@ impl Ironbar {
     #[cfg(feature = "ipc")]
     #[must_use]
     pub fn variable_manager() -> Arc<RwLock<VariableManager>> {
-        VARIABLE_MANAGER.clone()
+        static VARIABLE_MANAGER: OnceLock<Arc<RwLock<VariableManager>>> = OnceLock::new();
+        VARIABLE_MANAGER
+            .get_or_init(|| arc_rw!(VariableManager::new()))
+            .clone()
     }
 
     /// Gets a clone of a bar by its unique name.
@@ -228,7 +223,7 @@ fn start_ironbar() {
 }
 
 /// Loads the Ironbar config and interface.
-pub fn load_interface(app: &Application) -> Vec<Bar> {
+pub fn load_interface(app: &Application, ironbar: Rc<Ironbar>) -> Vec<Bar> {
     let display = Display::default().map_or_else(
         || {
             let report = Report::msg("Failed to get default GTK display");
@@ -264,7 +259,7 @@ pub fn load_interface(app: &Application) -> Vec<Bar> {
         }
     }
 
-    match create_bars(app, &display, &config) {
+    match create_bars(app, &display, &config, &ironbar) {
         Ok(bars) => {
             debug!("Created {} bars", bars.len());
             bars
@@ -277,9 +272,14 @@ pub fn load_interface(app: &Application) -> Vec<Bar> {
 }
 
 /// Creates each of the bars across each of the (configured) outputs.
-fn create_bars(app: &Application, display: &Display, config: &Config) -> Result<Vec<Bar>> {
-    let wl = wayland::get_client();
-    let outputs = lock!(wl).get_outputs();
+fn create_bars(
+    app: &Application,
+    display: &Display,
+    config: &Config,
+    ironbar: &Rc<Ironbar>,
+) -> Result<Vec<Bar>> {
+    let wl = ironbar.clients.borrow_mut().wayland();
+    let outputs = wl.output_info_all();
 
     debug!("Received {} outputs from Wayland", outputs.len());
     debug!("Outputs: {:?}", outputs);
@@ -313,17 +313,27 @@ fn create_bars(app: &Application, display: &Display, config: &Config) -> Result<
                     &monitor,
                     monitor_name.to_string(),
                     config.clone(),
+                    ironbar.clone(),
                 )?]
             }
             Some(MonitorConfig::Multiple(configs)) => configs
                 .iter()
-                .map(|config| create_bar(app, &monitor, monitor_name.to_string(), config.clone()))
+                .map(|config| {
+                    create_bar(
+                        app,
+                        &monitor,
+                        monitor_name.to_string(),
+                        config.clone(),
+                        ironbar.clone(),
+                    )
+                })
                 .collect::<Result<_>>()?,
             None if show_default_bar => vec![create_bar(
                 app,
                 &monitor,
                 monitor_name.to_string(),
                 config.clone(),
+                ironbar.clone(),
             )?],
             None => vec![],
         };
@@ -364,11 +374,8 @@ where
 /// This is not an `async` operation
 /// so can be used outside of an async function.
 ///
-/// Do note it must be called from within a Tokio runtime still.
-///
-/// Use sparingly! Prefer async functions wherever possible.
-///
-/// TODO: remove all instances of this once async trait funcs are stable
+/// Use sparingly, as this risks blocking the UI thread!
+/// Prefer async functions wherever possible.
 pub fn await_sync<F: Future>(f: F) -> F::Output {
     block_in_place(|| Ironbar::runtime().block_on(f))
 }
