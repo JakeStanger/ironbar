@@ -21,12 +21,14 @@ use glib::PropertySet;
 use gtk::gdk::Display;
 use gtk::prelude::*;
 use gtk::Application;
+use smithay_client_toolkit::output::OutputInfo;
 use tokio::runtime::Runtime;
 use tokio::task::{block_in_place, JoinHandle};
 use tracing::{debug, error, info, warn};
 use universal_config::ConfigLoader;
 
 use crate::bar::{create_bar, Bar};
+use crate::clients::wayland::OutputEventType;
 use crate::clients::Clients;
 use crate::config::{Config, MonitorConfig};
 use crate::error::ExitCode;
@@ -93,6 +95,7 @@ fn run_with_args() {
 pub struct Ironbar {
     bars: Rc<RefCell<Vec<Bar>>>,
     clients: Rc<RefCell<Clients>>,
+    config: Rc<RefCell<Config>>,
 }
 
 impl Ironbar {
@@ -100,6 +103,7 @@ impl Ironbar {
         Self {
             bars: Rc::new(RefCell::new(vec![])),
             clients: Rc::new(RefCell::new(Clients::new())),
+            config: Rc::new(RefCell::new(load_config())),
         }
     }
 
@@ -111,10 +115,15 @@ impl Ironbar {
 
         let running = AtomicBool::new(false);
 
+        // cannot use `oneshot` as `connect_activate` is not `FnOnce`.
+        let (activate_tx, activate_rx) = mpsc::channel();
+
         let instance = Rc::new(self);
+        let instance2 = instance.clone();
 
         // force start wayland client ahead of ui
         let wl = instance.clients.borrow_mut().wayland();
+        let mut rx_outputs = wl.subscribe_outputs();
         wl.roundtrip();
 
         app.connect_activate(move |app| {
@@ -131,8 +140,6 @@ impl Ironbar {
                     ipc.start(app, instance.clone());
                 }
             }
-
-            *instance.bars.borrow_mut() = load_interface(app, instance.clone());
 
             let style_path = env::var("IRONBAR_CSS").ok().map_or_else(
                 || {
@@ -170,9 +177,42 @@ impl Ironbar {
             ctrlc::set_handler(move || tx.send(()).expect("Could not send signal on channel."))
                 .expect("Error setting Ctrl-C handler");
 
-            // TODO: Start wayland client - listen for outputs
-            //  All bar loading should happen as an event response to this
+            let hold = app.hold();
+            send!(activate_tx, hold);
         });
+
+        {
+            let instance = instance2;
+            let app = app.clone();
+
+            glib::spawn_future_local(async move {
+                let _hold = activate_rx.recv().expect("to receive activation signal");
+                debug!("Received activation signal, initialising bars");
+
+                while let Ok(event) = rx_outputs.recv().await {
+                    match event.event_type {
+                        OutputEventType::New => {
+                            match load_output_bars(&instance, &app, event.output) {
+                                Ok(mut new_bars) => {
+                                    instance.bars.borrow_mut().append(&mut new_bars)
+                                }
+                                Err(err) => error!("{err:?}"),
+                            }
+                        }
+                        OutputEventType::Destroyed => {
+                            let Some(name) = event.output.name else {
+                                continue;
+                            };
+                            instance
+                                .bars
+                                .borrow_mut()
+                                .retain(|bar| bar.monitor_name() != name);
+                        }
+                        OutputEventType::Update => {}
+                    }
+                }
+            });
+        }
 
         // Ignore CLI args
         // Some are provided by swaybar_config but not currently supported
@@ -215,6 +255,13 @@ impl Ironbar {
             .find(|&bar| bar.name() == name)
             .cloned()
     }
+
+    /// Re-reads the config file from disk and replaces the active config.
+    /// Note this does *not* reload bars, which must be performed separately.
+    #[cfg(feature = "ipc")]
+    fn reload_config(&self) {
+        self.config.replace(load_config());
+    }
 }
 
 fn start_ironbar() {
@@ -222,17 +269,8 @@ fn start_ironbar() {
     ironbar.start();
 }
 
-/// Loads the Ironbar config and interface.
-pub fn load_interface(app: &Application, ironbar: Rc<Ironbar>) -> Vec<Bar> {
-    let display = Display::default().map_or_else(
-        || {
-            let report = Report::msg("Failed to get default GTK display");
-            error!("{:?}", report);
-            exit(ExitCode::GtkDisplay as i32)
-        },
-        |display| display,
-    );
-
+/// Loads the config file from disk.
+fn load_config() -> Config {
     let mut config = env::var("IRONBAR_CONFIG")
         .map_or_else(
             |_| ConfigLoader::new("ironbar").find_and_load(),
@@ -259,89 +297,77 @@ pub fn load_interface(app: &Application, ironbar: Rc<Ironbar>) -> Vec<Bar> {
         }
     }
 
-    match create_bars(app, &display, &config, &ironbar) {
-        Ok(bars) => {
-            debug!("Created {} bars", bars.len());
-            bars
-        }
-        Err(err) => {
-            error!("{:?}", err);
-            exit(ExitCode::CreateBars as i32);
-        }
-    }
+    config
 }
 
-/// Creates each of the bars across each of the (configured) outputs.
-fn create_bars(
-    app: &Application,
-    display: &Display,
-    config: &Config,
+/// Gets the GDK `Display` instance.
+fn get_display() -> Display {
+    Display::default().map_or_else(
+        || {
+            let report = Report::msg("Failed to get default GTK display");
+            error!("{:?}", report);
+            exit(ExitCode::GtkDisplay as i32)
+        },
+        |display| display,
+    )
+}
+
+/// Loads all the bars associated with an output.
+fn load_output_bars(
     ironbar: &Rc<Ironbar>,
+    app: &Application,
+    output: OutputInfo,
 ) -> Result<Vec<Bar>> {
-    let wl = ironbar.clients.borrow_mut().wayland();
-    let outputs = wl.output_info_all();
+    let Some(monitor_name) = &output.name else {
+        return Err(Report::msg("Output missing monitor name"));
+    };
 
-    debug!("Received {} outputs from Wayland", outputs.len());
-    debug!("Outputs: {:?}", outputs);
+    let config = ironbar.config.borrow();
+    let display = get_display();
 
-    let num_monitors = display.n_monitors();
+    let pos = output.logical_position.unwrap_or_default();
+    let monitor = display.monitor_at_point(pos.0, pos.1).unwrap();
 
     let show_default_bar =
         config.start.is_some() || config.center.is_some() || config.end.is_some();
 
-    let mut all_bars = vec![];
-    for i in 0..num_monitors {
-        let monitor = display
-            .monitor(i)
-            .ok_or_else(|| Report::msg(error::ERR_OUTPUTS))?;
-        let output = outputs
-            .get(i as usize)
-            .ok_or_else(|| Report::msg(error::ERR_OUTPUTS))?;
-
-        let Some(monitor_name) = &output.name else {
-            continue;
-        };
-
-        let mut bars = match config
-            .monitors
-            .as_ref()
-            .and_then(|config| config.get(monitor_name))
-        {
-            Some(MonitorConfig::Single(config)) => {
-                vec![create_bar(
-                    app,
-                    &monitor,
-                    monitor_name.to_string(),
-                    config.clone(),
-                    ironbar.clone(),
-                )?]
-            }
-            Some(MonitorConfig::Multiple(configs)) => configs
-                .iter()
-                .map(|config| {
-                    create_bar(
-                        app,
-                        &monitor,
-                        monitor_name.to_string(),
-                        config.clone(),
-                        ironbar.clone(),
-                    )
-                })
-                .collect::<Result<_>>()?,
-            None if show_default_bar => vec![create_bar(
+    let bars = match config
+        .monitors
+        .as_ref()
+        .and_then(|config| config.get(monitor_name))
+    {
+        Some(MonitorConfig::Single(config)) => {
+            vec![create_bar(
                 app,
                 &monitor,
                 monitor_name.to_string(),
                 config.clone(),
                 ironbar.clone(),
-            )?],
-            None => vec![],
-        };
+            )?]
+        }
+        Some(MonitorConfig::Multiple(configs)) => configs
+            .iter()
+            .map(|config| {
+                create_bar(
+                    app,
+                    &monitor,
+                    monitor_name.to_string(),
+                    config.clone(),
+                    ironbar.clone(),
+                )
+            })
+            .collect::<Result<_>>()?,
+        None if show_default_bar => vec![create_bar(
+            app,
+            &monitor,
+            monitor_name.to_string(),
+            config.clone(),
+            ironbar.clone(),
+        )?],
+        None => vec![],
+    };
 
-        all_bars.append(&mut bars);
-    }
-
-    Ok(all_bars)
+    Ok(bars)
 }
 
 fn create_runtime() -> Runtime {

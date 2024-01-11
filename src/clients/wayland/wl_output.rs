@@ -1,4 +1,4 @@
-use super::{Client, Environment, Event, Request, Response};
+use super::{Client, Environment, Event};
 use crate::try_send;
 use smithay_client_toolkit::output::{OutputHandler, OutputInfo, OutputState};
 use tokio::sync::broadcast;
@@ -8,8 +8,8 @@ use wayland_client::{Connection, QueueHandle};
 
 #[derive(Debug, Clone)]
 pub struct OutputEvent {
-    output: OutputInfo,
-    event_type: OutputEventType,
+    pub output: OutputInfo,
+    pub event_type: OutputEventType,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -21,7 +21,9 @@ pub enum OutputEventType {
 
 impl Client {
     /// Gets the information for all outputs.
+    #[cfg(feature = "ipc")]
     pub fn output_info_all(&self) -> Vec<OutputInfo> {
+        use super::{Request, Response};
         match self.send_request(Request::OutputInfoAll) {
             Response::OutputInfoAll(info) => info,
             _ => unreachable!(),
@@ -35,6 +37,7 @@ impl Client {
 }
 
 impl Environment {
+    #[cfg(feature = "ipc")]
     pub fn output_info_all(&mut self) -> Vec<OutputInfo> {
         self.output_state
             .outputs()

@@ -116,12 +116,24 @@ impl Ipc {
             }
             Command::Reload => {
                 info!("Closing existing bars");
+                ironbar.bars.borrow_mut().clear();
+
                 let windows = application.windows();
                 for window in windows {
                     window.close();
                 }
 
-                *ironbar.bars.borrow_mut() = crate::load_interface(application, ironbar.clone());
+                let wl = ironbar.clients.borrow_mut().wayland();
+                let outputs = wl.output_info_all();
+
+                ironbar.reload_config();
+
+                for output in outputs {
+                    match crate::load_output_bars(ironbar, application, output) {
+                        Ok(mut bars) => ironbar.bars.borrow_mut().append(&mut bars),
+                        Err(err) => error!("{err:?}"),
+                    }
+                }
 
                 Response::Ok
             }

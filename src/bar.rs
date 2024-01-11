@@ -308,6 +308,11 @@ impl Bar {
         &self.name
     }
 
+    /// The name of the output the bar is displayed on.
+    pub fn monitor_name(&self) -> &str {
+        &self.monitor_name
+    }
+
     pub fn popup(&self) -> Rc<RefCell<Popup>> {
         match &self.inner {
             Inner::New { .. } => {

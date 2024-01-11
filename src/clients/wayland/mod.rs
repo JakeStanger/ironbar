@@ -13,7 +13,7 @@ use std::sync::{Arc, Mutex};
 use calloop_channel::Event::Msg;
 use cfg_if::cfg_if;
 use color_eyre::Report;
-use smithay_client_toolkit::output::{OutputInfo, OutputState};
+use smithay_client_toolkit::output::OutputState;
 use smithay_client_toolkit::reexports::calloop::channel as calloop_channel;
 use smithay_client_toolkit::reexports::calloop::{EventLoop, LoopHandle};
 use smithay_client_toolkit::reexports::calloop_wayland_source::WaylandSource;
@@ -25,12 +25,11 @@ use smithay_client_toolkit::{
 use tokio::sync::{broadcast, mpsc};
 use tracing::{debug, error, trace};
 use wayland_client::globals::registry_queue_init;
-use wayland_client::protocol::wl_seat::WlSeat;
 use wayland_client::{Connection, QueueHandle};
 
 use wlr_foreign_toplevel::manager::ToplevelManagerState;
 
-pub use wl_output::OutputEvent;
+pub use wl_output::{OutputEvent, OutputEventType};
 pub use wlr_foreign_toplevel::{ToplevelEvent, ToplevelHandle, ToplevelInfo};
 
 cfg_if! {
@@ -42,6 +41,7 @@ cfg_if! {
         use self::wlr_data_control::manager::DataControlDeviceManagerState;
         use self::wlr_data_control::source::CopyPasteSource;
         use self::wlr_data_control::SelectionOfferItem;
+        use wayland_client::protocol::wl_seat::WlSeat;
 
         pub use wlr_data_control::{ClipboardItem, ClipboardValue};
 
@@ -65,6 +65,7 @@ pub enum Event {
 pub enum Request {
     Roundtrip,
 
+    #[cfg(feature = "ipc")]
     OutputInfoAll,
 
     ToplevelInfoAll,
@@ -81,16 +82,13 @@ pub enum Response {
     /// An empty success response
     Ok,
 
-    OutputInfo(Option<OutputInfo>),
-    OutputInfoAll(Vec<OutputInfo>),
+    #[cfg(feature = "ipc")]
+    OutputInfoAll(Vec<smithay_client_toolkit::output::OutputInfo>),
 
-    ToplevelInfo(Option<ToplevelInfo>),
     ToplevelInfoAll(Vec<ToplevelInfo>),
 
     #[cfg(feature = "clipboard")]
     ClipboardItem(Option<ClipboardItem>),
-
-    Seat(WlSeat),
 }
 
 #[derive(Debug)]
@@ -303,6 +301,7 @@ impl Environment {
                 debug!("received roundtrip request");
                 send!(env.response_tx, Response::Ok);
             }
+            #[cfg(feature = "ipc")]
             Msg(Request::OutputInfoAll) => {
                 let infos = env.output_info_all();
                 send!(env.response_tx, Response::OutputInfoAll(infos));
