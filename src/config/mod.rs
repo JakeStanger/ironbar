@@ -7,6 +7,7 @@ use crate::modules::clipboard::ClipboardModule;
 #[cfg(feature = "clock")]
 use crate::modules::clock::ClockModule;
 use crate::modules::custom::CustomModule;
+#[cfg(feature = "focused")]
 use crate::modules::focused::FocusedModule;
 use crate::modules::label::LabelModule;
 use crate::modules::launcher::LauncherModule;
@@ -36,6 +37,7 @@ pub enum ModuleConfig {
     #[cfg(feature = "clock")]
     Clock(Box<ClockModule>),
     Custom(Box<CustomModule>),
+    #[cfg(feature = "focused")]
     Focused(Box<FocusedModule>),
     Label(Box<LabelModule>),
     Launcher(Box<LauncherModule>),
@@ -140,7 +142,16 @@ impl Default for Config {
             start: Some(vec![ModuleConfig::Label(
                 LabelModule::new("ℹ️ Using default config".to_string()).into(),
             )]),
-            center: Some(vec![ModuleConfig::Focused(Box::default())]),
+            center: {
+                #[cfg(feature = "focused")]
+                {
+                    Some(vec![ModuleConfig::Focused(Box::default())])
+                }
+                #[cfg(not(feature = "focused"))]
+                {
+                    None
+                }
+            },
             end,
             anchor_to_edges: default_true(),
             monitors: None,

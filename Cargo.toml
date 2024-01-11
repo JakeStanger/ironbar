@@ -20,7 +20,8 @@ default = [
     "sys_info",
     "tray",
     "upower",
-    "workspaces+all"
+    "workspaces+all",
+    "focused"
 ]
 
 cli = ["dep:clap", "ipc"]
@@ -44,6 +45,8 @@ http = ["dep:reqwest"]
 clipboard = ["nix"]
 
 clock = ["chrono"]
+
+focused = []
 
 music = ["regex"]
 "music+all" = ["music", "music+mpris", "music+mpd"]

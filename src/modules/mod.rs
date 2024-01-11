@@ -28,6 +28,7 @@ pub mod clipboard;
 #[cfg(feature = "clock")]
 pub mod clock;
 pub mod custom;
+#[cfg(feature = "focused")]
 pub mod focused;
 pub mod label;
 pub mod launcher;

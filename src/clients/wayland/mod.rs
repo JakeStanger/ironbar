@@ -1,13 +1,9 @@
 mod macros;
 mod wl_output;
 mod wl_seat;
-mod wlr_foreign_toplevel;
 
 use crate::error::ERR_CHANNEL_RECV;
-use crate::{
-    arc_mut, delegate_foreign_toplevel_handle, delegate_foreign_toplevel_manager, lock,
-    register_client, send, Ironbar,
-};
+use crate::{arc_mut, lock, register_client, send, Ironbar};
 use std::sync::{Arc, Mutex};
 
 use calloop_channel::Event::Msg;
@@ -27,11 +23,17 @@ use tracing::{debug, error, trace};
 use wayland_client::globals::registry_queue_init;
 use wayland_client::protocol::wl_seat::WlSeat;
 use wayland_client::{Connection, QueueHandle};
-
-use wlr_foreign_toplevel::manager::ToplevelManagerState;
-
 pub use wl_output::OutputEvent;
-pub use wlr_foreign_toplevel::{ToplevelEvent, ToplevelHandle, ToplevelInfo};
+
+cfg_if! {
+    if #[cfg(feature = "focused")] {
+        mod wlr_foreign_toplevel;
+        use crate::{delegate_foreign_toplevel_handle, delegate_foreign_toplevel_manager};
+        use wlr_foreign_toplevel::manager::ToplevelManagerState;
+        pub use wlr_foreign_toplevel::{ToplevelEvent, ToplevelHandle, ToplevelInfo};
+
+    }
+}
 
 cfg_if! {
     if #[cfg(feature = "clipboard")] {
@@ -56,6 +58,7 @@ cfg_if! {
 #[derive(Debug)]
 pub enum Event {
     Output(OutputEvent),
+    #[cfg(feature = "focused")]
     Toplevel(ToplevelEvent),
     #[cfg(feature = "clipboard")]
     Clipboard(ClipboardItem),
@@ -84,7 +87,9 @@ pub enum Response {
     OutputInfo(Option<OutputInfo>),
     OutputInfoAll(Vec<OutputInfo>),
 
+    #[cfg(feature = "focused")]
     ToplevelInfo(Option<ToplevelInfo>),
+    #[cfg(feature = "focused")]
     ToplevelInfoAll(Vec<ToplevelInfo>),
 
     #[cfg(feature = "clipboard")]
@@ -108,6 +113,7 @@ pub struct Client {
     rx: Arc<Mutex<std::sync::mpsc::Receiver<Response>>>,
 
     output_channel: BroadcastChannel<OutputEvent>,
+    #[cfg(feature = "focused")]
     toplevel_channel: BroadcastChannel<ToplevelEvent>,
     #[cfg(feature = "clipboard")]
     clipboard_channel: BroadcastChannel<ClipboardItem>,
@@ -121,6 +127,7 @@ impl Client {
         let (response_tx, response_rx) = std::sync::mpsc::channel();
 
         let output_channel = broadcast::channel(32);
+        #[cfg(feature = "focused")]
         let toplevel_channel = broadcast::channel(32);
 
         #[cfg(feature = "clipboard")]
@@ -133,6 +140,7 @@ impl Client {
         // listen to events
         {
             let output_tx = output_channel.0.clone();
+            #[cfg(feature = "focused")]
             let toplevel_tx = toplevel_channel.0.clone();
 
             #[cfg(feature = "clipboard")]
@@ -143,6 +151,7 @@ impl Client {
                 while let Some(event) = event_rx.recv().await {
                     match event {
                         Event::Output(event) => send!(output_tx, event),
+                        #[cfg(feature = "focused")]
                         Event::Toplevel(event) => send!(toplevel_tx, event),
                         #[cfg(feature = "clipboard")]
                         Event::Clipboard(item) => send!(clipboard_tx, item),
@@ -156,6 +165,7 @@ impl Client {
             rx: arc_mut!(response_rx),
 
             output_channel: output_channel.into(),
+            #[cfg(feature = "focused")]
             toplevel_channel: toplevel_channel.into(),
             #[cfg(feature = "clipboard")]
             clipboard_channel: clipboard_channel.into(),
@@ -189,6 +199,7 @@ pub struct Environment {
     response_tx: std::sync::mpsc::Sender<Response>,
 
     // local state
+    #[cfg(feature = "focused")]
     handles: Vec<ToplevelHandle>,
 
     // -- clipboard --
@@ -212,8 +223,12 @@ delegate_registry!(Environment);
 delegate_output!(Environment);
 delegate_seat!(Environment);
 
-delegate_foreign_toplevel_manager!(Environment);
-delegate_foreign_toplevel_handle!(Environment);
+cfg_if! {
+    if #[cfg(feature = "focused")] {
+        delegate_foreign_toplevel_manager!(Environment);
+        delegate_foreign_toplevel_handle!(Environment);
+    }
+}
 
 cfg_if! {
     if #[cfg(feature = "clipboard")] {
@@ -249,6 +264,7 @@ impl Environment {
 
         let output_state = OutputState::new(&globals, &qh);
         let seat_state = SeatState::new(&globals, &qh);
+        #[cfg(feature = "focused")]
         ToplevelManagerState::bind(&globals, &qh)
             .expect("to bind to wlr_foreign_toplevel_manager global");
 
@@ -266,6 +282,7 @@ impl Environment {
             loop_handle: loop_handle.clone(),
             event_tx,
             response_tx,
+            #[cfg(feature = "focused")]
             handles: vec![],
 
             #[cfg(feature = "clipboard")]
@@ -307,6 +324,7 @@ impl Environment {
                 let infos = env.output_info_all();
                 send!(env.response_tx, Response::OutputInfoAll(infos));
             }
+            #[cfg(feature = "focused")]
             Msg(Request::ToplevelInfoAll) => {
                 let infos = env
                     .handles
@@ -316,14 +334,21 @@ impl Environment {
                 send!(env.response_tx, Response::ToplevelInfoAll(infos));
             }
             Msg(Request::ToplevelFocus(id)) => {
+                #[cfg(feature = "focused")]
                 let handle = env
                     .handles
                     .iter()
                     .find(|handle| handle.info().map_or(false, |info| info.id == id));
+
+                #[cfg(not(any(feature = "focused", feature = "launcher")))]
+                let handle: Option<()> = None;
+
+                #[cfg(feature = "focused")]
                 if let Some(handle) = handle {
                     let seat = env.default_seat();
                     handle.focus(&seat);
                 }
+
                 send!(env.response_tx, Response::Ok);
             }
             #[cfg(feature = "clipboard")]
@@ -337,6 +362,9 @@ impl Environment {
                 send!(env.response_tx, Response::ClipboardItem(item));
             }
             calloop_channel::Event::Closed => error!("request channel unexpectedly closed"),
+            smithay_client_toolkit::reexports::calloop::channel::Event::Msg(
+                crate::clients::wayland::Request::ToplevelInfoAll,
+            ) => unreachable!(),
         }
     }
 }
