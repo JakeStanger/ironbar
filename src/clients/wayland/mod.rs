@@ -362,6 +362,7 @@ impl Environment {
                 send!(env.response_tx, Response::ClipboardItem(item));
             }
             calloop_channel::Event::Closed => error!("request channel unexpectedly closed"),
+            #[cfg(not(any(feature = "focused", feature = "launcher")))]
             smithay_client_toolkit::reexports::calloop::channel::Event::Msg(
                 crate::clients::wayland::Request::ToplevelInfoAll,
             ) => unreachable!(),
