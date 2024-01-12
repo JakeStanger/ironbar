@@ -31,6 +31,7 @@ pub mod custom;
 #[cfg(feature = "focused")]
 pub mod focused;
 pub mod label;
+#[cfg(feature = "launcher")]
 pub mod launcher;
 #[cfg(feature = "music")]
 pub mod music;

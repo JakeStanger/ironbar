@@ -10,6 +10,7 @@ use crate::modules::custom::CustomModule;
 #[cfg(feature = "focused")]
 use crate::modules::focused::FocusedModule;
 use crate::modules::label::LabelModule;
+#[cfg(feature = "launcher")]
 use crate::modules::launcher::LauncherModule;
 #[cfg(feature = "music")]
 use crate::modules::music::MusicModule;
@@ -40,6 +41,7 @@ pub enum ModuleConfig {
     #[cfg(feature = "focused")]
     Focused(Box<FocusedModule>),
     Label(Box<LabelModule>),
+    #[cfg(feature = "launcher")]
     Launcher(Box<LauncherModule>),
     #[cfg(feature = "music")]
     Music(Box<MusicModule>),

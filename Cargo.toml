@@ -21,7 +21,8 @@ default = [
     "tray",
     "upower",
     "workspaces+all",
-    "focused"
+    "focused",
+    "launcher"
 ]
 
 cli = ["dep:clap", "ipc"]
@@ -47,6 +48,8 @@ clipboard = ["nix"]
 clock = ["chrono"]
 
 focused = []
+
+launcher = []
 
 music = ["regex"]
 "music+all" = ["music", "music+mpris", "music+mpd"]
