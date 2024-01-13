@@ -325,10 +325,11 @@ impl Module<gtk::Box> for LauncherModule {
             glib_recv!(rx, event => {
                 match event {
                     LauncherUpdate::AddItem(item) => {
-                        debug!("Adding item with id {}", item.app_id);
+                        debug!("Adding item with id '{}' to the bar: {item:?}", item.app_id);
 
                         if let Some(button) = buttons.get(&item.app_id) {
                             button.set_open(true);
+                            button.set_focused(item.open_state.is_focused());
                         } else {
                             let button = ItemButton::new(
                                 &item,
