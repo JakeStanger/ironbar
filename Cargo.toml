@@ -11,18 +11,18 @@ keywords = ["gtk", "bar", "wayland", "wlroots", "gtk-layer-shell"]
 [features]
 default = [
     "cli",
-    "ipc",
-    "http",
-    "config+all",
     "clipboard",
     "clock",
+    "config+all",
+    "focused",
+    "http",
+    "ipc",
+    "launcher",
     "music+all",
     "sys_info",
     "tray",
     "upower",
-    "workspaces+all",
-    "focused",
-    "launcher"
+    "workspaces+all"
 ]
 
 cli = ["dep:clap", "ipc"]
