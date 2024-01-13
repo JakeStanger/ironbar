@@ -1,3 +1,6 @@
+> [!NOTE]
+> This module requires that your wayland compositor support the [wlr-foreign-toplevel-management](https://wayland.app/protocols/wlr-foreign-toplevel-management-unstable-v1) protocol.
+
 Displays the title and/or icon of the currently focused window.
 
 ![Screenshot of focused widget, showing this page open on firefox](https://user-images.githubusercontent.com/5057870/184714118-c1fb1c67-cd8c-4cc0-b5cd-6faccff818ac.png)

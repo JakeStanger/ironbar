@@ -1,3 +1,6 @@
+> [!NOTE]
+> This module requires that your wayland compositor support the [wlr data control](https://wayland.app/protocols/wlr-data-control-unstable-v1) protocol.
+
 Shows recent clipboard items, allowing you to switch between them to re-copy previous values.
 Clicking the icon button opens the popup containing all functionality.
 

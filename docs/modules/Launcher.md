@@ -1,3 +1,6 @@
+> [!NOTE]
+> This module requires that your wayland compositor support the [wlr-foreign-toplevel-management](https://wayland.app/protocols/wlr-foreign-toplevel-management-unstable-v1) protocol.
+
 Windows-style taskbar that displays running windows, grouped by program.
 Hovering over a program with multiple windows open shows a popup with each window.
 Clicking an icon/popup item focuses or launches the program.
