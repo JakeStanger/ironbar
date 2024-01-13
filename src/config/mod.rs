@@ -131,6 +131,15 @@ impl Default for Config {
             }
         }
 
+        cfg_if! {
+            if #[cfg(feature = "focused")] {
+                let center = Some(vec![ModuleConfig::Focused(Box::default())]);
+            }
+            else {
+                let center = None;
+            }
+        }
+
         Self {
             position: BarPosition::default(),
             height: default_bar_height(),
@@ -144,16 +153,7 @@ impl Default for Config {
             start: Some(vec![ModuleConfig::Label(
                 LabelModule::new("ℹ️ Using default config".to_string()).into(),
             )]),
-            center: {
-                #[cfg(feature = "focused")]
-                {
-                    Some(vec![ModuleConfig::Focused(Box::default())])
-                }
-                #[cfg(not(feature = "focused"))]
-                {
-                    None
-                }
-            },
+            center,
             end,
             anchor_to_edges: default_true(),
             monitors: None,
