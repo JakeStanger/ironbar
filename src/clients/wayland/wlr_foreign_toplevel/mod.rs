@@ -28,6 +28,7 @@ impl Client {
     }
 
     /// Focuses the toplevel with the provided ID.
+    #[cfg(feature = "launcher")]
     pub fn toplevel_focus(&self, handle_id: usize) {
         match self.send_request(Request::ToplevelFocus(handle_id)) {
             Response::Ok => (),

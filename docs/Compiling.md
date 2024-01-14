@@ -73,6 +73,8 @@ cargo build --release --no-default-features \
 | **Modules**         |                                                                                   |
 | clipboard           | Enables the `clipboard` module.                                                   |
 | clock               | Enables the `clock` module.                                                       |
+| focused             | Enables the `focused` module.                                                     |
+| launcher            | Enables the `launcher` module.                                                    |
 | music+all           | Enables the `music` module with support for all player types.                     |
 | music+mpris         | Enables the `music` module with MPRIS support.                                    |
 | music+mpd           | Enables the `music` module with MPD support.                                      |
