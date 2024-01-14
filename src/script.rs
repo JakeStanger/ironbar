@@ -1,4 +1,4 @@
-use crate::send_async;
+use crate::{send_async, spawn};
 use color_eyre::eyre::WrapErr;
 use color_eyre::{Report, Result};
 use serde::Deserialize;
@@ -7,9 +7,9 @@ use std::fmt::{Display, Formatter};
 use std::process::Stdio;
 use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::process::Command;
+use tokio::select;
 use tokio::sync::mpsc;
 use tokio::time::sleep;
-use tokio::{select, spawn};
 use tracing::{debug, error, trace, warn};
 
 #[derive(Debug, Deserialize, Clone)]
