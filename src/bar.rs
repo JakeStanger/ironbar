@@ -377,8 +377,10 @@ fn add_modules(
             #[cfg(feature = "clock")]
             ModuleConfig::Clock(mut module) => add_module!(module, id),
             ModuleConfig::Custom(mut module) => add_module!(module, id),
+            #[cfg(feature = "focused")]
             ModuleConfig::Focused(mut module) => add_module!(module, id),
             ModuleConfig::Label(mut module) => add_module!(module, id),
+            #[cfg(feature = "launcher")]
             ModuleConfig::Launcher(mut module) => add_module!(module, id),
             #[cfg(feature = "music")]
             ModuleConfig::Music(mut module) => add_module!(module, id),

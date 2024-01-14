@@ -11,11 +11,13 @@ keywords = ["gtk", "bar", "wayland", "wlroots", "gtk-layer-shell"]
 [features]
 default = [
     "cli",
-    "ipc",
-    "http",
-    "config+all",
     "clipboard",
     "clock",
+    "config+all",
+    "focused",
+    "http",
+    "ipc",
+    "launcher",
     "music+all",
     "sys_info",
     "tray",
@@ -44,6 +46,10 @@ http = ["dep:reqwest"]
 clipboard = ["nix"]
 
 clock = ["chrono"]
+
+focused = []
+
+launcher = []
 
 music = ["regex"]
 "music+all" = ["music", "music+mpris", "music+mpd"]

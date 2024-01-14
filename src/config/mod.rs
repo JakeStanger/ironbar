@@ -7,8 +7,10 @@ use crate::modules::clipboard::ClipboardModule;
 #[cfg(feature = "clock")]
 use crate::modules::clock::ClockModule;
 use crate::modules::custom::CustomModule;
+#[cfg(feature = "focused")]
 use crate::modules::focused::FocusedModule;
 use crate::modules::label::LabelModule;
+#[cfg(feature = "launcher")]
 use crate::modules::launcher::LauncherModule;
 #[cfg(feature = "music")]
 use crate::modules::music::MusicModule;
@@ -36,8 +38,10 @@ pub enum ModuleConfig {
     #[cfg(feature = "clock")]
     Clock(Box<ClockModule>),
     Custom(Box<CustomModule>),
+    #[cfg(feature = "focused")]
     Focused(Box<FocusedModule>),
     Label(Box<LabelModule>),
+    #[cfg(feature = "launcher")]
     Launcher(Box<LauncherModule>),
     #[cfg(feature = "music")]
     Music(Box<MusicModule>),
@@ -127,6 +131,15 @@ impl Default for Config {
             }
         }
 
+        cfg_if! {
+            if #[cfg(feature = "focused")] {
+                let center = Some(vec![ModuleConfig::Focused(Box::default())]);
+            }
+            else {
+                let center = None;
+            }
+        }
+
         Self {
             position: BarPosition::default(),
             height: default_bar_height(),
@@ -140,7 +153,7 @@ impl Default for Config {
             start: Some(vec![ModuleConfig::Label(
                 LabelModule::new("ℹ️ Using default config".to_string()).into(),
             )]),
-            center: Some(vec![ModuleConfig::Focused(Box::default())]),
+            center,
             end,
             anchor_to_edges: default_true(),
             monitors: None,

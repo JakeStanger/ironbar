@@ -28,8 +28,10 @@ pub mod clipboard;
 #[cfg(feature = "clock")]
 pub mod clock;
 pub mod custom;
+#[cfg(feature = "focused")]
 pub mod focused;
 pub mod label;
+#[cfg(feature = "launcher")]
 pub mod launcher;
 #[cfg(feature = "music")]
 pub mod music;
@@ -68,6 +70,7 @@ pub enum ModuleUpdateEvent<T: Clone> {
     /// Force sets the popup open.
     /// Takes the button ID.
     OpenPopup(usize),
+    #[cfg(feature = "launcher")]
     OpenPopupAt(WidgetGeometry),
     /// Force sets the popup closed.
     ClosePopup,
@@ -317,6 +320,7 @@ fn setup_receiver<TSend>(
                     has_popup_opened = true;
                 }
             }
+            #[cfg(feature = "launcher")]
             ModuleUpdateEvent::OpenPopupAt(geometry) => {
                 debug!("Opening popup for {} [#{}]", name, id);
 
