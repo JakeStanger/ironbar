@@ -90,8 +90,6 @@ pub enum Response {
     #[cfg(feature = "ipc")]
     OutputInfoAll(Vec<smithay_client_toolkit::output::OutputInfo>),
 
-    #[cfg(feature = "launcher")]
-    ToplevelInfo(Option<ToplevelInfo>),
     #[cfg(any(feature = "focused", feature = "launcher"))]
     ToplevelInfoAll(Vec<ToplevelInfo>),
 
