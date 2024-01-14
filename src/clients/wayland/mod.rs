@@ -3,7 +3,7 @@ mod wl_output;
 mod wl_seat;
 
 use crate::error::ERR_CHANNEL_RECV;
-use crate::{arc_mut, lock, register_client, send, Ironbar};
+use crate::{arc_mut, lock, register_client, send, spawn, spawn_blocking};
 use std::sync::{Arc, Mutex};
 
 use calloop_channel::Event::Msg;
@@ -132,7 +132,7 @@ impl Client {
         #[cfg(feature = "clipboard")]
         let clipboard_channel = broadcast::channel(32);
 
-        Ironbar::runtime().spawn_blocking(move || {
+        spawn_blocking(move || {
             Environment::spawn(event_tx, request_rx, response_tx);
         });
 
@@ -145,8 +145,7 @@ impl Client {
             #[cfg(feature = "clipboard")]
             let clipboard_tx = clipboard_channel.0.clone();
 
-            let rt = Ironbar::runtime();
-            rt.spawn(async move {
+            spawn(async move {
                 while let Some(event) = event_rx.recv().await {
                     match event {
                         Event::Output(event) => send!(output_tx, event),
