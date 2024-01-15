@@ -183,3 +183,4 @@ All are welcome, but I ask a few basic things to help make things easier. Please
 - [Rustbar](https://github.com/zeroeightysix/rustbar) - Served as a good demo for writing a basic GTK bar in Rust
 - [Smithay Client Toolkit](https://github.com/Smithay/client-toolkit) - Essential in being able to communicate to Wayland
 - [gtk-layer-shell](https://github.com/wmww/gtk-layer-shell) - Ironbar and many other projects would be impossible without this
+- [Mixxc](https://github.com/Elvyria/Mixxc) - Basis for Ironbar's PulseAudio client code and a cool standalone volume widget.
