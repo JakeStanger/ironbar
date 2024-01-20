@@ -8,6 +8,11 @@ use serde::{Deserialize, Serialize};
 pub struct Args {
     #[command(subcommand)]
     pub command: Option<Command>,
+
+    /// `bar_id` argument passed by `swaybar_command`.
+    /// Not used.
+    #[arg(short('b'), hide(true))]
+    sway_bar_id: Option<String>,
 }
 
 pub fn handle_response(response: Response) {
