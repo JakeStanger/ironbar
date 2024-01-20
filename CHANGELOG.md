@@ -4,6 +4,56 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.14.0] - 2024-01-20
+### :sparkles: New Features
+- [`25c490b`](https://github.com/JakeStanger/ironbar/commit/25c490b8b426176c1a4c9d402aafd6783c9b6d48) - **workspaces**: visible CSS selector *(commit by [@malicean](https://github.com/malicean))*
+- [`60bb69f`](https://github.com/JakeStanger/ironbar/commit/60bb69feecd9444586cce29b32c4845d9888ad4e) - add `widget` and `widget-container` css classes on all widgets *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`ee04cd0`](https://github.com/JakeStanger/ironbar/commit/ee04cd025aa2a4c35aa8b4947a02a9cf66f87734) - bar auto-hide options *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`659c93d`](https://github.com/JakeStanger/ironbar/commit/659c93dd2aa36d12b720fa5bca84c0d4ec8f4eaf) - use top-level config as fallback when using monitor-based config *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`8371a92`](https://github.com/JakeStanger/ironbar/commit/8371a92204185a78a0ea597462a8dd5112774554) - load bars on monitor when it connects *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+
+### :bug: Bug Fixes
+- [`4099847`](https://github.com/JakeStanger/ironbar/commit/40998475e2500c3ba04a0e5dad59a4fa5f891961) - **styles**: hot reload not working when edited with vim *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`f24b21d`](https://github.com/JakeStanger/ironbar/commit/f24b21d24226da12361c63e080382fbedfb4d114) - **focused**: clear when no window is focused *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`34ed6a9`](https://github.com/JakeStanger/ironbar/commit/34ed6a9e11861af3cfb647a06e1fde63c1d0d569) - **focused**: not clearing when switching to empty workspace *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`518c2ef`](https://github.com/JakeStanger/ironbar/commit/518c2ef023f97311f0d307448bc98700470dd41f) - Home Manager systemdIntegration warnings *(commit by [@delliottxyz](https://github.com/delliottxyz))*
+- [`5f82b6e`](https://github.com/JakeStanger/ironbar/commit/5f82b6e9e0966cf22c2420fb1f584b5f94746afb) - **tray**: existing icons rendering as text *(commit by [@chmanie](https://github.com/chmanie))*
+- [`80de5dd`](https://github.com/JakeStanger/ironbar/commit/80de5dd824011b0eabf573cf4546c8e59b251bf7) - some modules crashing due to recent gtk refactor *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`c356b22`](https://github.com/JakeStanger/ironbar/commit/c356b22401ad412c9a6a7f0092f2f2214e13f5f0) - **workspaces**: favourites missing `inactive` class on startup *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`b4d7545`](https://github.com/JakeStanger/ironbar/commit/b4d75450acacc36a71e0ed8365f82bd88d2a55e8) - **regression**: GTK refactor causing updates to be missed *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`b004d50`](https://github.com/JakeStanger/ironbar/commit/b004d5007cca051bab4e9b8eb8b3471deacc9512) - **launcher**: favourites not focused when opened *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`963f8ed`](https://github.com/JakeStanger/ironbar/commit/963f8edc4590af5a182a2b3eb2e5088de638715c) - **script**: spawning outside of tokio runtime causing crash *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+
+### :recycle: Refactors
+- [`fea1f18`](https://github.com/JakeStanger/ironbar/commit/fea1f1852484c0ac2686152be26817d57e19146e) - fix new clippy warnings, fmt *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`4e67b73`](https://github.com/JakeStanger/ironbar/commit/4e67b73a83be038914407210a19ce5a38da23e99) - **wlr data control**: update to new nix epoll bindings *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`5582dcf`](https://github.com/JakeStanger/ironbar/commit/5582dcf373dfceabd02e3dcab0bdfcccf7563c44) - fix new clippy warning *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`08e354e`](https://github.com/JakeStanger/ironbar/commit/08e354e019d9e14a6df6ae8d29bb883b21bdb882) - fix new clippy warnings *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`b2fa19a`](https://github.com/JakeStanger/ironbar/commit/b2fa19ab6ce93e8865e9450ec58bf891e7380dd8) - begin restructuring core code to better encapsulate *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`ed5a162`](https://github.com/JakeStanger/ironbar/commit/ed5a16237d23decbbc12e310bbcfbc6975647006) - update wayland crates to latest versions *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`bea442e`](https://github.com/JakeStanger/ironbar/commit/bea442ed960f513288cf857e8ee9a5c61f742dfa) - update gtk/glib, remove glib channels *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`e847a84`](https://github.com/JakeStanger/ironbar/commit/e847a84c21763164d7f90b7c85e48c386b41002c) - fix casting based clippy warnings *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`967801d`](https://github.com/JakeStanger/ironbar/commit/967801dc322c8edbc5335e4e23d70a2442b5280c) - **workspaces**: avoid sending unknown update info *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`b2a37a3`](https://github.com/JakeStanger/ironbar/commit/b2a37a32b07d46fe56cb7c6b81b9e7da3fe27a15) - fix clippy warning *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`57b57ed`](https://github.com/JakeStanger/ironbar/commit/57b57ed002c394eae6caa87836aa8769345781bc) - pass context into modules controllers *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`c702f6f`](https://github.com/JakeStanger/ironbar/commit/c702f6fffa538037c47399dc2b5f7377252fff1b) - major client code changes *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`6f531a5`](https://github.com/JakeStanger/ironbar/commit/6f531a5654b1554d1bbba5b56ce623d2bb4f4d83) - remove `lazy_static` and `async_once` *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`e0dc5e1`](https://github.com/JakeStanger/ironbar/commit/e0dc5e104a773024fc8124672c954a984b0a9f1e) - **wayland**: remove unused request type *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`18b4784`](https://github.com/JakeStanger/ironbar/commit/18b47844f94067bbf029cf4b6b94153a742d6af1) - **wayland**: simplify task spawning code *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+
+### :memo: Documentation Changes
+- [`e5281e9`](https://github.com/JakeStanger/ironbar/commit/e5281e96193a2f42d52a0eb736473cdb378dd243) - update CHANGELOG.md for v0.13.0 [skip ci] *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`b9c41af`](https://github.com/JakeStanger/ironbar/commit/b9c41af0f73c85c0daf6f0af2fd1339c79e66758) - **workspaces**: add missing `.inactive` selector *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`abd1f80`](https://github.com/JakeStanger/ironbar/commit/abd1f8054821cedef594ebcb22a914feb230c9f1) - **examples**: update discord icon, temporarily disable random label *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`ccc6ff2`](https://github.com/JakeStanger/ironbar/commit/ccc6ff2d943ba46d0f9a36478933cda8b14b7ab1) - **readme**: add nixpkgs details *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`c2306d6`](https://github.com/JakeStanger/ironbar/commit/c2306d668007d5f1e69b8b652443c04d2b9190fa) - **styling**: add another example for selecting gtk widgets *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`a768164`](https://github.com/JakeStanger/ironbar/commit/a7681645158ff4b6eae38dede2a4ec77344314c9) - **styling guide**: add explanation on specificity *(commit by [@Schweber](https://github.com/Schweber))*
+- [`917c1bd`](https://github.com/JakeStanger/ironbar/commit/917c1bd52efef2dace262fc7affe7501c654a557) - **dynamic values**: link to scripts/ironvars pages *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`74930df`](https://github.com/JakeStanger/ironbar/commit/74930df83bbc7ba59e11912f301a77ae0f364b52) - **compiling**: fix fedora instructions *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`f2c4ddb`](https://github.com/JakeStanger/ironbar/commit/f2c4ddb91456ed6053edd66f18ffda708feb4489) - **sys info**: fix cpu temp examples *(commit by [@cyhyraethz](https://github.com/cyhyraethz))*
+- [`a159825`](https://github.com/JakeStanger/ironbar/commit/a1598259eb11ebe0a9cc26d0230d36ecc257a7f4) - fix nerdfont icons *(commit by [@eclairevoyant](https://github.com/eclairevoyant))*
+
+
 ## [v0.13.0] - 2023-08-16
 ### :sparkles: New Features
 - [`c3e9654`](https://github.com/JakeStanger/ironbar/commit/c3e9654cd3dfcea4276f5b114112b7541dd847fd) - **upower**: icon size option *(commit by [@JakeStanger](https://github.com/JakeStanger))*
@@ -426,3 +476,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [v0.12.0]: https://github.com/JakeStanger/ironbar/compare/v0.11.0...v0.12.0
 [v0.12.1]: https://github.com/JakeStanger/ironbar/compare/v0.12.0...v0.12.1
 [v0.13.0]: https://github.com/JakeStanger/ironbar/compare/v0.12.1...v0.13.0
+[v0.14.0]: https://github.com/JakeStanger/ironbar/compare/v0.13.0...v0.14.0
