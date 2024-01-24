@@ -85,3 +85,45 @@ cargo build --release --no-default-features \
 | workspaces+sway     | Enables the `workspaces` module with support for Sway.                            |
 | workspaces+hyprland | Enables the `workspaces` module with support for Hyprland.                        |
 
+## Speeding up compiling
+
+With the full feature set, Ironbar can take a good while to compile. 
+There are a couple of tricks which can be used to improve compile times.
+
+## Linker 
+
+The default GCC linker is *slow* - it takes nearly half of the compile time.
+As an alternative, you can use [mold](https://github.com/rui314/mold).
+
+Install the package for your distro, create/modify the `.cargo/config.toml` file inside the project dir,
+then add the following:
+
+```toml
+[target.x86_64-unknown-linux-gnu]
+rustflags = ["-C", "link-arg=-fuse-ld=mold"]
+```
+
+## Codegen Backend
+
+> [!WARNING]
+> The Cranelift backend is experimental and requires the use of the nightly compiler.
+> It is designed for development builds only.
+
+If working on the Ironbar codebase, you may see some benefit from using the [Cranelift](https://github.com/rust-lang/rustc_codegen_cranelift) compiler backend.
+This is known to shave a further few seconds off the compile time (bringing down from 10 to 7-8 on my own hardware).
+
+Firstly install the component:
+
+```shell
+rustup component add rustc-codegen-cranelift-preview --toolchain nightly
+```
+
+Then create/modify the `.cargo/config.toml` file inside the project dir, and add the following:
+
+```toml
+[unstable]
+codegen-backend = true
+
+[profile.dev]
+codegen-backend = "cranelift"
+```
