@@ -5,6 +5,7 @@ use gtk::prelude::CssProviderExt;
 use gtk::{gdk, gio, CssProvider, StyleContext};
 use notify::event::ModifyKind;
 use notify::{recommended_watcher, Event, EventKind, RecursiveMode, Result, Watcher};
+use std::env;
 use std::path::PathBuf;
 use std::time::Duration;
 use tokio::sync::mpsc;
@@ -17,6 +18,13 @@ use tracing::{debug, error, info};
 /// Installs a file watcher and reloads CSS when
 /// write changes are detected on the file.
 pub fn load_css(style_path: PathBuf) {
+    // file watcher requires absolute path
+    let style_path = if style_path.is_absolute() {
+        style_path
+    } else {
+        env::current_dir().expect("to exist").join(style_path)
+    };
+
     let provider = CssProvider::new();
 
     match provider.load_from_file(&gio::File::for_path(&style_path)) {
