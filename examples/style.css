@@ -17,6 +17,7 @@
 box, menubar, button {
     background-color: @color_bg;
     background-image: none;
+    box-shadow: none;
 }
 
 button, label {
@@ -25,6 +26,11 @@ button, label {
 
 button:hover {
     background-color: @color_bg_dark;
+}
+
+scale trough {
+    min-width: 1px;
+    min-height: 2px;
 }
 
 #bar {
@@ -85,7 +91,7 @@ button:hover {
     margin-right: 4px;
 }
 
-.launcher .item:not(.focused):hover {
+.launcher .ifix examtem:not(.focused):hover {
     background-color: @color_bg_dark;
 }
 
@@ -94,7 +100,7 @@ button:hover {
 }
 
 .launcher .focused {
-    border-bottom: 2px solid @color_border_active;
+    border-bottom: 1px solid @color_border_active;
 }
 
 .launcher .urgent {
