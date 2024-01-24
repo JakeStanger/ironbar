@@ -110,9 +110,7 @@ fn find_desktop_file_by_filedata(app_id: &str, files: &[PathBuf]) -> Option<Path
     let files = files
         .iter()
         .filter_map(|file| {
-            let Some(parsed_desktop_file) = parse_desktop_file(file) else {
-                return None;
-            };
+            let parsed_desktop_file = parse_desktop_file(file)?;
 
             desktop_files_cache.insert(file.clone(), parsed_desktop_file.clone());
             Some((file.clone(), parsed_desktop_file))
@@ -165,9 +163,7 @@ fn parse_desktop_file(path: &Path) -> Option<DesktopFile> {
 
     file.lines()
         .filter_map(|line| {
-            let Some((key, value)) = line.split_once('=') else {
-                return None;
-            };
+            let (key, value) = line.split_once('=')?;
 
             let key = key.trim();
             let value = value.trim();
@@ -190,9 +186,7 @@ fn parse_desktop_file(path: &Path) -> Option<DesktopFile> {
 
 /// Attempts to get the icon name from the app's `.desktop` file.
 pub fn get_desktop_icon_name(app_id: &str) -> Option<String> {
-    let Some(path) = find_desktop_file(app_id) else {
-        return None;
-    };
+    let path = find_desktop_file(app_id)?;
 
     let mut desktop_files_cache = lock!(desktop_files());
 
