@@ -103,6 +103,23 @@ then add the following:
 rustflags = ["-C", "link-arg=-fuse-ld=mold"]
 ```
 
+## Caching
+
+To speed up subsequent rebuilds, Mozilla's [sccache](https://github.com/mozilla/sccache) tool can be used.
+This provides a cache of Rust modules which can be re-used when compiling any other crate.
+
+Install the package for your distro, create/modify the `.cargo/config.toml` file inside the project dir,
+then add the following:
+
+```toml
+[build]
+rustc-wrapper = "/usr/bin/sccache"
+```
+
+> [!TIP]
+> To get the most of out `sccache`, 
+> you can add this to `$HOME/.cargo/config.toml` to enable caching for all Cargo builds.
+
 ## Codegen Backend
 
 > [!WARNING]
