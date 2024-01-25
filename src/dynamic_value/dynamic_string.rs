@@ -29,7 +29,7 @@ pub fn dynamic_string<F>(input: &str, mut f: F)
 where
     F: FnMut(String) + 'static,
 {
-    let tokens = parse_input(input);
+    let (tokens, is_static) = parse_input(input);
 
     let label_parts = arc_mut!(vec![]);
     let (tx, rx) = mpsc::channel(32);
@@ -91,17 +91,17 @@ where
     glib_recv_mpsc!(rx , val => f(val));
 
     // initialize
-    {
+    if is_static {
         let label_parts = lock!(label_parts).join("");
         try_send!(tx, label_parts);
     }
 }
 
 /// Parses the input string into static and dynamic segments
-fn parse_input(input: &str) -> Vec<DynamicStringSegment> {
+fn parse_input(input: &str) -> (Vec<DynamicStringSegment>, bool) {
     // short-circuit parser if it's all static
     if !input.contains("{{") && !input.contains('#') {
-        return vec![DynamicStringSegment::Static(input.to_string())];
+        return (vec![DynamicStringSegment::Static(input.to_string())], true);
     }
 
     let mut tokens = vec![];
@@ -129,7 +129,7 @@ fn parse_input(input: &str) -> Vec<DynamicStringSegment> {
         chars.drain(..skip);
     }
 
-    tokens
+    (tokens, false)
 }
 
 fn parse_script(chars: &[char]) -> (DynamicStringSegment, usize) {
@@ -155,7 +155,7 @@ fn parse_variable(chars: &[char]) -> (DynamicStringSegment, usize) {
     let str = chars
         .iter()
         .skip(1)
-        .take_while(|&c| !c.is_whitespace())
+        .take_while(|&c| c.is_ascii_alphanumeric() || c == &'_' || c == &'-')
         .collect::<String>();
 
     let len = str.chars().count() + SKIP_HASH;
@@ -190,7 +190,7 @@ mod tests {
     #[test]
     fn test_static() {
         const INPUT: &str = "hello world";
-        let tokens = parse_input(INPUT);
+        let (tokens, _) = parse_input(INPUT);
 
         assert_eq!(tokens.len(), 1);
         assert!(matches!(&tokens[0], DynamicStringSegment::Static(value) if value == INPUT))
@@ -199,7 +199,7 @@ mod tests {
     #[test]
     fn test_static_odd_char_count() {
         const INPUT: &str = "hello";
-        let tokens = parse_input(INPUT);
+        let (tokens, _) = parse_input(INPUT);
 
         assert_eq!(tokens.len(), 1);
         assert!(matches!(&tokens[0], DynamicStringSegment::Static(value) if value == INPUT))
@@ -208,7 +208,7 @@ mod tests {
     #[test]
     fn test_script() {
         const INPUT: &str = "{{echo hello}}";
-        let tokens = parse_input(INPUT);
+        let (tokens, _) = parse_input(INPUT);
 
         assert_eq!(tokens.len(), 1);
         assert!(
@@ -219,7 +219,7 @@ mod tests {
     #[test]
     fn test_variable() {
         const INPUT: &str = "#variable";
-        let tokens = parse_input(INPUT);
+        let (tokens, _) = parse_input(INPUT);
 
         assert_eq!(tokens.len(), 1);
         assert!(
@@ -230,7 +230,7 @@ mod tests {
     #[test]
     fn test_static_script() {
         const INPUT: &str = "hello {{echo world}}";
-        let tokens = parse_input(INPUT);
+        let (tokens, _) = parse_input(INPUT);
 
         assert_eq!(tokens.len(), 2);
         assert!(matches!(&tokens[0], DynamicStringSegment::Static(str) if str == "hello "));
@@ -242,7 +242,7 @@ mod tests {
     #[test]
     fn test_static_variable() {
         const INPUT: &str = "hello #subject";
-        let tokens = parse_input(INPUT);
+        let (tokens, _) = parse_input(INPUT);
 
         assert_eq!(tokens.len(), 2);
         assert!(matches!(&tokens[0], DynamicStringSegment::Static(str) if str == "hello "));
@@ -254,7 +254,7 @@ mod tests {
     #[test]
     fn test_static_script_static() {
         const INPUT: &str = "hello {{echo world}} foo";
-        let tokens = parse_input(INPUT);
+        let (tokens, _) = parse_input(INPUT);
 
         assert_eq!(tokens.len(), 3);
         assert!(matches!(&tokens[0], DynamicStringSegment::Static(str) if str == "hello "));
@@ -267,7 +267,7 @@ mod tests {
     #[test]
     fn test_static_variable_static() {
         const INPUT: &str = "hello #subject foo";
-        let tokens = parse_input(INPUT);
+        let (tokens, _) = parse_input(INPUT);
 
         assert_eq!(tokens.len(), 3);
         assert!(matches!(&tokens[0], DynamicStringSegment::Static(str) if str == "hello "));
@@ -280,7 +280,7 @@ mod tests {
     #[test]
     fn test_static_script_variable() {
         const INPUT: &str = "hello {{echo world}} #foo";
-        let tokens = parse_input(INPUT);
+        let (tokens, _) = parse_input(INPUT);
 
         assert_eq!(tokens.len(), 4);
         assert!(matches!(&tokens[0], DynamicStringSegment::Static(str) if str == "hello "));
@@ -296,7 +296,7 @@ mod tests {
     #[test]
     fn test_escape_hash() {
         const INPUT: &str = "number ###num";
-        let tokens = parse_input(INPUT);
+        let (tokens, _) = parse_input(INPUT);
 
         assert_eq!(tokens.len(), 3);
         assert!(matches!(&tokens[0], DynamicStringSegment::Static(str) if str == "number "));
@@ -309,11 +309,25 @@ mod tests {
     #[test]
     fn test_script_with_hash() {
         const INPUT: &str = "{{echo #hello}}";
-        let tokens = parse_input(INPUT);
+        let (tokens, _) = parse_input(INPUT);
 
         assert_eq!(tokens.len(), 1);
         assert!(
             matches!(&tokens[0], DynamicStringSegment::Script(script) if script.cmd == "echo #hello")
         );
+    }
+
+    #[test]
+    fn test_pango_attribute() {
+        const INPUT: &str = "<span color='#color'>hello</span>";
+        let (tokens, _) = parse_input(INPUT);
+
+        assert_eq!(tokens.len(), 3);
+
+        assert!(matches!(&tokens[0], DynamicStringSegment::Static(str) if str == "<span color='"));
+        assert!(
+            matches!(&tokens[1], DynamicStringSegment::Variable(var) if var.to_string() == "color")
+        );
+        assert!(matches!(&tokens[2], DynamicStringSegment::Static(str) if str == "'>hello</span>"))
     }
 }
