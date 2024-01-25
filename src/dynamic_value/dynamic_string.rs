@@ -316,4 +316,18 @@ mod tests {
             matches!(&tokens[0], DynamicStringSegment::Script(script) if script.cmd == "echo #hello")
         );
     }
+
+    #[test]
+    fn test_pango_attribute() {
+        const INPUT: &str = "<span color='#color'>hello</span>";
+        let (tokens, _) = parse_input(INPUT);
+
+        assert_eq!(tokens.len(), 3);
+
+        assert!(matches!(&tokens[0], DynamicStringSegment::Static(str) if str == "<span color='"));
+        assert!(
+            matches!(&tokens[1], DynamicStringSegment::Variable(var) if var.to_string() == "color")
+        );
+        assert!(matches!(&tokens[2], DynamicStringSegment::Static(str) if str == "'>hello</span>"))
+    }
 }
