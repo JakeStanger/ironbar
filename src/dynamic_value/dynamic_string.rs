@@ -155,7 +155,7 @@ fn parse_variable(chars: &[char]) -> (DynamicStringSegment, usize) {
     let str = chars
         .iter()
         .skip(1)
-        .take_while(|&c| !c.is_whitespace())
+        .take_while(|&c| c.is_ascii_alphanumeric() || c == &'_' || c == &'-')
         .collect::<String>();
 
     let len = str.chars().count() + SKIP_HASH;
