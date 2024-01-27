@@ -9,7 +9,7 @@ use gtk::ffi::gtk_icon_theme_get_search_path;
 use gtk::gdk_pixbuf::{Colorspace, InterpType};
 use gtk::prelude::*;
 use gtk::{
-    gdk_pixbuf, IconLookupFlags, IconTheme, Image, Label, Menu, MenuBar, MenuItem,
+    gdk_pixbuf, CheckMenuItem, IconLookupFlags, IconTheme, Image, Label, Menu, MenuBar, MenuItem,
     SeparatorMenuItem,
 };
 use serde::Deserialize;
@@ -17,7 +17,7 @@ use std::collections::{HashMap, HashSet};
 use std::ffi::CStr;
 use std::os::raw::{c_char, c_int};
 use std::ptr;
-use system_tray::message::menu::{MenuItem as MenuItemInfo, MenuType};
+use system_tray::message::menu::{MenuItem as MenuItemInfo, MenuType, ToggleState, ToggleType};
 use system_tray::message::tray::StatusNotifierItem;
 use system_tray::message::{NotifierItemCommand, NotifierItemMessage};
 use tokio::sync::mpsc;
@@ -75,7 +75,7 @@ fn get_image_from_icon_name(item: &StatusNotifierItem, icon_theme: &IconTheme) -
 /// The pixmap is supplied in ARGB32 format,
 /// which has 8 bits per sample and a bit stride of `4*width`.
 fn get_image_from_pixmap(item: &StatusNotifierItem) -> Option<Image> {
-    const BITS_PER_SAMPLE: i32 = 8; //
+    const BITS_PER_SAMPLE: i32 = 8;
 
     let pixmap = item
         .icon_pixmap
@@ -109,46 +109,62 @@ fn get_menu_items(
     id: &str,
     path: &str,
 ) -> Vec<MenuItem> {
+    macro_rules! setup_menu_item {
+        ($builder:expr, $item_info:expr) => {{
+            if !$item_info.submenu.is_empty() {
+                let menu = Menu::new();
+                get_menu_items(&$item_info.submenu, &tx.clone(), id, path)
+                    .iter()
+                    .for_each(|item| menu.add(item));
+
+                $builder = $builder.submenu(&menu);
+            }
+
+            let item = $builder.build();
+
+            let info = $item_info.clone();
+            let id = id.to_string();
+            let path = path.to_string();
+
+            {
+                let tx = tx.clone();
+                item.connect_activate(move |_item| {
+                    try_send!(
+                        tx,
+                        NotifierItemCommand::MenuItemClicked {
+                            submenu_id: info.id,
+                            menu_path: path.clone(),
+                            notifier_address: id.clone(),
+                        }
+                    );
+                });
+            }
+
+            Box::new(item)
+        }};
+    }
+
     menu.iter()
         .map(|item_info| {
-            let item: Box<dyn AsRef<MenuItem>> = match item_info.menu_type {
-                MenuType::Separator => Box::new(SeparatorMenuItem::new()),
-                MenuType::Standard => {
+            let item: Box<dyn AsRef<MenuItem>> = match (item_info.menu_type, item_info.toggle_type)
+            {
+                (MenuType::Separator, _) => Box::new(SeparatorMenuItem::new()),
+                (MenuType::Standard, ToggleType::Checkmark) => {
+                    let mut builder = CheckMenuItem::builder()
+                        .label(item_info.label.as_str())
+                        .visible(item_info.visible)
+                        .sensitive(item_info.enabled)
+                        .active(item_info.toggle_state == ToggleState::On);
+
+                    setup_menu_item!(builder, item_info)
+                }
+                (MenuType::Standard, _) => {
                     let mut builder = MenuItem::builder()
                         .label(item_info.label.as_str())
                         .visible(item_info.visible)
                         .sensitive(item_info.enabled);
 
-                    if !item_info.submenu.is_empty() {
-                        let menu = Menu::new();
-                        get_menu_items(&item_info.submenu, &tx.clone(), id, path)
-                            .iter()
-                            .for_each(|item| menu.add(item));
-
-                        builder = builder.submenu(&menu);
-                    }
-
-                    let item = builder.build();
-
-                    let info = item_info.clone();
-                    let id = id.to_string();
-                    let path = path.to_string();
-
-                    {
-                        let tx = tx.clone();
-                        item.connect_activate(move |_item| {
-                            try_send!(
-                                tx,
-                                NotifierItemCommand::MenuItemClicked {
-                                    submenu_id: info.id,
-                                    menu_path: path.clone(),
-                                    notifier_address: id.clone(),
-                                }
-                            );
-                        });
-                    }
-
-                    Box::new(item)
+                    setup_menu_item!(builder, item_info)
                 }
             };
 
