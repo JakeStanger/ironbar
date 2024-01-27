@@ -25,7 +25,7 @@ impl TrayEventReceiver {
         let id = format!("ironbar-{}", Ironbar::unique_id());
 
         let (tx, rx) = mpsc::channel(16);
-        let (b_tx, b_rx) = broadcast::channel(16);
+        let (b_tx, b_rx) = broadcast::channel(64);
 
         let tray = StatusNotifierWatcher::new(rx).await?;
         let mut host = Box::pin(tray.create_notifier_host(&id)).await?;
@@ -48,7 +48,7 @@ impl TrayEventReceiver {
                             item,
                             menu,
                         } => {
-                            debug!("Adding item with address '{address}'");
+                            debug!("Adding/updating item with address '{address}'");
                             tray.insert(address, (item, menu));
                         }
                         NotifierItemMessage::Remove { address } => {
