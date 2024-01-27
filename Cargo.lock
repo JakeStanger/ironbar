@@ -3002,9 +3002,9 @@ dependencies = [
 
 [[package]]
 name = "system-tray"
-version = "0.1.4"
+version = "0.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3c8f7f19237d2149a8e4b56409c579b26a98748e3cfadba93762c4746c4c7ae2"
+checksum = "a456e3e6cbd396f1a3a91f8f74d1fdcf2bde85c97afe174442c367f4749fc09b"
 dependencies = [
  "anyhow",
  "byteorder",
