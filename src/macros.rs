@@ -62,8 +62,17 @@ macro_rules! glib_recv {
         glib::spawn_future_local(async move {
             // re-delcare in case ie `context.subscribe()` is passed directly
             let mut rx = $rx;
-            while let Ok($val) = rx.recv().await {
-                $expr
+            loop {
+                match rx.recv().await {
+                    Ok($val) => $expr,
+                    Err(tokio::sync::broadcast::error::RecvError::Lagged(count)) => {
+                        tracing::warn!("Channel lagged behind by {count}, this may result in unexpected or broken behaviour");
+                    }
+                    Err(err) => {
+                        tracing::error!("{err:?}");
+                        break;
+                    }
+                }
             }
         });
     }};
