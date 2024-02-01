@@ -60,7 +60,7 @@ impl DynamicBool {
                     let mut rx = crate::write_lock!(variable_manager).subscribe(variable_name);
 
                     while let Ok(value) = rx.recv().await {
-                        let has_value = value.map(|s| is_truthy(&s)).unwrap_or_default();
+                        let has_value = value.is_some_and(|s| is_truthy(&s));
                         send_async!(tx, has_value);
                     }
                 }

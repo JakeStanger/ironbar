@@ -123,20 +123,16 @@ fn find_desktop_file_by_filedata(app_id: &str, files: &[PathBuf]) -> Option<Path
         .find(|(_, desktop_file)| {
             desktop_file
                 .get("Name")
-                .map(|names| names.iter().any(|name| name.eq_ignore_ascii_case(app_id)))
-                .unwrap_or_default()
+                .is_some_and(|names| names.iter().any(|name| name.eq_ignore_ascii_case(app_id)))
         })
         // second pass - check name key for substring
         .or_else(|| {
             files.iter().find(|(_, desktop_file)| {
-                desktop_file
-                    .get("Name")
-                    .map(|names| {
-                        names
-                            .iter()
-                            .any(|name| name.to_lowercase().contains(app_id))
-                    })
-                    .unwrap_or_default()
+                desktop_file.get("Name").is_some_and(|names| {
+                    names
+                        .iter()
+                        .any(|name| name.to_lowercase().contains(app_id))
+                })
             })
         })
         // third pass - check all keys for substring

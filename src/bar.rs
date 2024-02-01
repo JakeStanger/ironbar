@@ -93,7 +93,7 @@ impl Bar {
             Propagation::Proceed
         });
 
-        Bar {
+        Self {
             name,
             monitor_name,
             position,
@@ -131,7 +131,9 @@ impl Bar {
             monitor,
         );
 
-        let start_hidden = config.start_hidden.unwrap_or(config.autohide.is_some());
+        let start_hidden = config
+            .start_hidden
+            .unwrap_or_else(|| config.autohide.is_some());
 
         if let Some(autohide) = config.autohide {
             let hotspot_window = Window::new(WindowType::Toplevel);
