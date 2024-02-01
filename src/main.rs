@@ -194,7 +194,7 @@ impl Ironbar {
                         OutputEventType::New => {
                             match load_output_bars(&instance, &app, event.output) {
                                 Ok(mut new_bars) => {
-                                    instance.bars.borrow_mut().append(&mut new_bars)
+                                    instance.bars.borrow_mut().append(&mut new_bars);
                                 }
                                 Err(err) => error!("{err:?}"),
                             }
@@ -326,7 +326,9 @@ fn load_output_bars(
     let display = get_display();
 
     let pos = output.logical_position.unwrap_or_default();
-    let monitor = display.monitor_at_point(pos.0, pos.1).unwrap();
+    let monitor = display
+        .monitor_at_point(pos.0, pos.1)
+        .expect("monitor to exist");
 
     let show_default_bar =
         config.start.is_some() || config.center.is_some() || config.end.is_some();

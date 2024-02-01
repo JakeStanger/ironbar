@@ -208,10 +208,10 @@ impl Client {
 
 impl WorkspaceClient for Client {
     fn focus(&self, id: String) -> Result<()> {
-        let identifier = match id.parse::<i32>() {
-            Ok(inum) => WorkspaceIdentifierWithSpecial::Id(inum),
-            Err(_) => WorkspaceIdentifierWithSpecial::Name(&id),
-        };
+        let identifier = id.parse::<i32>().map_or_else(
+            |_| WorkspaceIdentifierWithSpecial::Name(&id),
+            WorkspaceIdentifierWithSpecial::Id,
+        );
 
         Dispatch::call(DispatchType::Workspace(identifier))?;
         Ok(())

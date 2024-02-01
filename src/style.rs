@@ -50,12 +50,7 @@ pub fn load_css(style_path: PathBuf) {
         let mut watcher = recommended_watcher(move |res: Result<Event>| match res {
             Ok(event) if matches!(event.kind, EventKind::Modify(ModifyKind::Data(_))) => {
                 debug!("{event:?}");
-                if event
-                    .paths
-                    .first()
-                    .map(|p| p == &style_path2)
-                    .unwrap_or_default()
-                {
+                if event.paths.first().is_some_and(|p| p == &style_path2) {
                     try_send!(tx, style_path2.clone());
                 }
             }

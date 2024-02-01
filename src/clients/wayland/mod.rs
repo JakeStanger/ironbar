@@ -102,7 +102,7 @@ struct BroadcastChannel<T>(broadcast::Sender<T>, Arc<Mutex<broadcast::Receiver<T
 
 impl<T> From<(broadcast::Sender<T>, broadcast::Receiver<T>)> for BroadcastChannel<T> {
     fn from(value: (broadcast::Sender<T>, broadcast::Receiver<T>)) -> Self {
-        BroadcastChannel(value.0, arc_mut!(value.1))
+        Self(value.0, arc_mut!(value.1))
     }
 }
 
