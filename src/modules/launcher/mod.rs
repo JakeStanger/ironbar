@@ -204,7 +204,7 @@ impl Module<gtk::Box> for LauncherModule {
                                     item.unmerge_toplevel(&info);
 
                                     if item.windows.is_empty() {
-                                        items.remove(&info.app_id);
+                                        items.shift_remove(&info.app_id);
                                         Some(ItemOrWindowId::Item)
                                     } else {
                                         Some(ItemOrWindowId::Window)
@@ -364,7 +364,7 @@ impl Module<gtk::Box> for LauncherModule {
                                 }
                             } else {
                                 container.remove(&button.button);
-                                buttons.remove(&app_id);
+                                buttons.shift_remove(&app_id);
                             }
                         }
                     }
@@ -483,7 +483,7 @@ impl Module<gtk::Box> for LauncherModule {
                         debug!("Removing window from popup for '{app_id}': {win_id}");
 
                         if let Some(buttons) = buttons.get_mut(&app_id) {
-                            buttons.remove(&win_id);
+                            buttons.shift_remove(&win_id);
                         }
                     }
                     LauncherUpdate::Title(app_id, win_id, title) => {

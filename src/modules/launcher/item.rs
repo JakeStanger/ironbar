@@ -52,7 +52,7 @@ impl Item {
     }
 
     pub fn unmerge_toplevel(&mut self, info: &ToplevelInfo) {
-        self.windows.remove(&info.id);
+        self.windows.shift_remove(&info.id);
         self.recalculate_open_state();
     }
 
