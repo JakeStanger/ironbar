@@ -71,7 +71,7 @@ workspaces = ["futures-util"]
 # core
 gtk = "0.18.1"
 gtk-layer-shell = "0.8.0"
-glib = "0.18.5"
+glib = "0.19.0"
 tokio = { version = "1.35.1", features = [
   "macros",
   "rt-multi-thread",
