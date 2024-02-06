@@ -72,7 +72,7 @@ workspaces = ["futures-util"]
 gtk = "0.18.1"
 gtk-layer-shell = "0.8.0"
 glib = "0.18.5"
-tokio = { version = "1.35.1", features = [
+tokio = { version = "1.36.0", features = [
   "macros",
   "rt-multi-thread",
   "time",
