@@ -99,8 +99,10 @@ impl Module<Button> for ClockModule {
         info: &ModuleInfo,
     ) -> Result<ModuleParts<Button>> {
         let button = Button::new();
-        let label = Label::new(None);
-        label.set_angle(info.bar_position.get_angle());
+        let label = Label::builder()
+            .angle(info.bar_position.get_angle())
+            .use_markup(true)
+            .build();
         button.add(&label);
 
         let tx = context.tx.clone();
@@ -132,7 +134,10 @@ impl Module<Button> for ClockModule {
     ) -> Option<gtk::Box> {
         let container = gtk::Box::new(Orientation::Vertical, 0);
 
-        let clock = Label::builder().halign(Align::Center).build();
+        let clock = Label::builder()
+            .halign(Align::Center)
+            .use_markup(true)
+            .build();
         clock.add_class("calendar-clock");
 
         container.add(&clock);
