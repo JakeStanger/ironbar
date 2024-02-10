@@ -12,6 +12,8 @@ pub mod compositor;
 pub mod lua;
 #[cfg(feature = "music")]
 pub mod music;
+#[cfg(feature = "network_manager")]
+pub mod networkmanager;
 #[cfg(feature = "notifications")]
 pub mod swaync;
 #[cfg(feature = "tray")]
@@ -35,6 +37,8 @@ pub struct Clients {
     lua: Option<Rc<lua::LuaEngine>>,
     #[cfg(feature = "music")]
     music: std::collections::HashMap<music::ClientType, Arc<dyn music::MusicClient>>,
+    #[cfg(feature = "network_manager")]
+    network_manager: Option<Arc<networkmanager::Client>>,
     #[cfg(feature = "notifications")]
     notifications: Option<Arc<swaync::Client>>,
     #[cfg(feature = "tray")]
@@ -94,6 +98,18 @@ impl Clients {
             .entry(client_type.clone())
             .or_insert_with(|| music::create_client(client_type))
             .clone()
+    }
+
+    #[cfg(feature = "network_manager")]
+    pub fn network_manager(&mut self) -> ClientResult<networkmanager::Client> {
+        match &self.network_manager {
+            Some(client) => Ok(client.clone()),
+            None => {
+                let client = networkmanager::create_client()?;
+                self.network_manager = Some(client.clone());
+                Ok(client)
+            }
+        }
     }
 
     #[cfg(feature = "notifications")]
