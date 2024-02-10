@@ -100,7 +100,6 @@ impl Module<Button> for ClockModule {
     ) -> Result<ModuleParts<Button>> {
         let button = Button::new();
         let label = Label::builder()
-            .angle(info.bar_position.get_angle())
             .use_markup(true)
             .build();
         button.add(&label);
@@ -140,11 +139,11 @@ impl Module<Button> for ClockModule {
             .build();
         clock.add_class("calendar-clock");
 
-        container.add(&clock);
+        container.append(&clock);
 
         let calendar = Calendar::new();
         calendar.add_class("calendar");
-        container.add(&calendar);
+        container.append(&calendar);
 
         let format = self.format_popup;
         let locale = Locale::try_from(self.locale.as_str()).unwrap_or(Locale::POSIX);
@@ -153,8 +152,6 @@ impl Module<Button> for ClockModule {
             let date_string = format!("{}", date.format_localized(&format, locale));
             clock.set_label(&date_string);
         });
-
-        container.show_all();
 
         Some(container)
     }

@@ -11,6 +11,7 @@ use std::cmp::Ordering;
 use std::collections::{HashMap, HashSet};
 use tokio::sync::mpsc::{Receiver, Sender};
 use tracing::{debug, trace, warn};
+use crate::gtk_helpers::IronbarGtkExt;
 
 #[derive(Debug, Deserialize, Clone, Copy, Eq, PartialEq)]
 #[serde(rename_all = "snake_case")]
@@ -225,7 +226,7 @@ impl Module<gtk::Box> for WorkspacesModule {
                                     &context.controller_tx,
                                 );
 
-                                container.add(&item);
+                                container.append(&item);
                                 button_map.insert(name.to_string(), item);
                             };
 
@@ -261,7 +262,6 @@ impl Module<gtk::Box> for WorkspacesModule {
                                 reorder_workspaces(&container);
                             }
 
-                            container.show_all();
                             has_initialized = true;
                         }
                     }
@@ -299,7 +299,7 @@ impl Module<gtk::Box> for WorkspacesModule {
                                 &context.controller_tx,
                             );
 
-                            container.add(&item);
+                            container.append(&item);
                             if self.sort == SortOrder::Alphanumeric {
                                 reorder_workspaces(&container);
                             }
@@ -324,7 +324,7 @@ impl Module<gtk::Box> for WorkspacesModule {
                                     &context.controller_tx,
                                 );
 
-                                container.add(&item);
+                                container.append(&item);
 
                                 if self.sort == SortOrder::Alphanumeric {
                                     reorder_workspaces(&container);

@@ -1,5 +1,4 @@
 use gtk::pango::EllipsizeMode as GtkEllipsizeMode;
-use gtk::prelude::*;
 use serde::Deserialize;
 
 #[derive(Debug, Deserialize, Clone, Copy)]

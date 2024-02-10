@@ -262,8 +262,6 @@ impl ItemButton {
             });
         }
 
-        button.show_all();
-
         Self {
             button,
             persistent: item.favorite,

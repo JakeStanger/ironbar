@@ -3,7 +3,6 @@ use crate::modules::{Module, ModuleInfo, ModuleParts, ModuleUpdateEvent, WidgetC
 use crate::script::{OutputStream, Script, ScriptMode};
 use crate::{glib_recv, spawn, try_send};
 use color_eyre::{Help, Report, Result};
-use gtk::prelude::*;
 use gtk::Label;
 use serde::Deserialize;
 use tokio::sync::mpsc;
@@ -85,7 +84,6 @@ impl Module<Label> for ScriptModule {
         info: &ModuleInfo,
     ) -> Result<ModuleParts<Label>> {
         let label = Label::builder().use_markup(true).build();
-        label.set_angle(info.bar_position.get_angle());
 
         {
             let label = label.clone();

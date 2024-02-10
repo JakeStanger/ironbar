@@ -196,9 +196,8 @@ impl Module<gtk::Box> for SysInfoModule {
             let label = Label::builder().label(format).use_markup(true).build();
 
             label.add_class("item");
-            label.set_angle(info.bar_position.get_angle());
 
-            container.add(&label);
+            container.append(&label);
             labels.push(label);
         }
 

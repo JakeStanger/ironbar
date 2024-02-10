@@ -187,21 +187,19 @@ impl Module<Button> for MusicModule {
         let button_contents = gtk::Box::new(Orientation::Horizontal, 5);
         button_contents.add_class("contents");
 
-        button.add(&button_contents);
+        button.append(&button_contents);
 
         let icon_play = new_icon_label(&self.icons.play, info.icon_theme, self.icon_size);
         let icon_pause = new_icon_label(&self.icons.pause, info.icon_theme, self.icon_size);
         let label = Label::new(None);
 
-        label.set_angle(info.bar_position.get_angle());
-
         if let Some(truncate) = self.truncate {
             truncate.truncate_label(&label);
         }
 
-        button_contents.add(&icon_pause);
-        button_contents.add(&icon_play);
-        button_contents.add(&label);
+        button_contents.append(&icon_pause);
+        button_contents.append(&icon_play);
+        button_contents.append(&label);
 
         {
             let tx = context.tx.clone();
@@ -289,9 +287,9 @@ impl Module<Button> for MusicModule {
         album_label.container.add_class("album");
         artist_label.container.add_class("artist");
 
-        info_box.add(&title_label.container);
-        info_box.add(&album_label.container);
-        info_box.add(&artist_label.container);
+        info_box.append(&title_label.container);
+        info_box.append(&album_label.container);
+        info_box.append(&artist_label.container);
 
         let controls_box = gtk::Box::new(Orientation::Horizontal, 0);
         controls_box.add_class("controls");
@@ -308,12 +306,12 @@ impl Module<Button> for MusicModule {
         let btn_next = new_icon_button(&icons.next, icon_theme, self.icon_size);
         btn_next.add_class("btn-next");
 
-        controls_box.add(&btn_prev);
-        controls_box.add(&btn_play);
-        controls_box.add(&btn_pause);
-        controls_box.add(&btn_next);
+        controls_box.append(&btn_prev);
+        controls_box.append(&btn_play);
+        controls_box.append(&btn_pause);
+        controls_box.append(&btn_next);
 
-        info_box.add(&controls_box);
+        info_box.append(&controls_box);
 
         let volume_box = gtk::Box::new(Orientation::Vertical, 5);
         volume_box.add_class("volume");
@@ -328,9 +326,9 @@ impl Module<Button> for MusicModule {
         volume_box.pack_start(&volume_slider, true, true, 0);
         volume_box.pack_end(&volume_icon, false, false, 0);
 
-        main_container.add(&album_image);
-        main_container.add(&info_box);
-        main_container.add(&volume_box);
+        main_container.append(&album_image);
+        main_container.append(&info_box);
+        main_container.append(&volume_box);
         container.add(&main_container);
 
         let tx_prev = tx.clone();
@@ -395,8 +393,6 @@ impl Module<Button> for MusicModule {
                 Propagation::Proceed
             });
         }
-
-        container.show_all();
 
         {
             let icon_theme = icon_theme.clone();
@@ -550,8 +546,8 @@ impl IconLabel {
         icon.add_class("icon-box");
         label.add_class("label");
 
-        container.add(&icon);
-        container.add(&label);
+        container.append(&icon);
+        container.append(&label);
 
         Self { label, container }
     }

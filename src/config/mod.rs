@@ -17,8 +17,8 @@ use crate::modules::music::MusicModule;
 use crate::modules::script::ScriptModule;
 #[cfg(feature = "sys_info")]
 use crate::modules::sysinfo::SysInfoModule;
-#[cfg(feature = "tray")]
-use crate::modules::tray::TrayModule;
+// #[cfg(feature = "tray")]
+// use crate::modules::tray::TrayModule;
 #[cfg(feature = "upower")]
 use crate::modules::upower::UpowerModule;
 #[cfg(feature = "workspaces")]
@@ -48,8 +48,8 @@ pub enum ModuleConfig {
     Script(Box<ScriptModule>),
     #[cfg(feature = "sys_info")]
     SysInfo(Box<SysInfoModule>),
-    #[cfg(feature = "tray")]
-    Tray(Box<TrayModule>),
+    // #[cfg(feature = "tray")]
+    // Tray(Box<TrayModule>),
     #[cfg(feature = "upower")]
     Upower(Box<UpowerModule>),
     #[cfg(feature = "workspaces")]

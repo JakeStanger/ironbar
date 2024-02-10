@@ -3,7 +3,6 @@ use crate::dynamic_value::dynamic_string;
 use crate::modules::{Module, ModuleInfo, ModuleParts, ModuleUpdateEvent, WidgetContext};
 use crate::{glib_recv, try_send};
 use color_eyre::Result;
-use gtk::prelude::*;
 use gtk::Label;
 use serde::Deserialize;
 use tokio::sync::mpsc;

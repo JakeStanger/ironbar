@@ -151,7 +151,7 @@ impl Popup {
 
         if let Some(PopupCacheValue { content, .. }) = self.cache.get(&widget_id) {
             content.container.style_context().add_class("popup");
-            self.window.add(&content.container);
+            self.window.append(&content.container);
 
             self.window.show();
             self.set_pos(geometry);

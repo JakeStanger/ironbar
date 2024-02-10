@@ -39,7 +39,7 @@ pub fn new_icon_label(input: &str, icon_theme: &IconTheme, size: i32) -> gtk::Bo
         image.add_class("icon");
         image.add_class("image");
 
-        container.add(&image);
+        container.append(&image);
 
         ImageProvider::parse(input, icon_theme, false, size)
             .map(|provider| provider.load_into_image(image));
@@ -48,7 +48,7 @@ pub fn new_icon_label(input: &str, icon_theme: &IconTheme, size: i32) -> gtk::Bo
         label.add_class("icon");
         label.add_class("text-icon");
 
-        container.add(&label);
+        container.append(&label);
     }
 
     container

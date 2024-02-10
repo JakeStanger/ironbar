@@ -8,7 +8,7 @@ use gtk::{Orientation, Widget};
 pub struct WidgetGeometry {
     /// Position of the start edge of the widget
     /// from the start edge of the bar.
-    pub position: i32,
+    pub position: f64,
     /// The length of the widget.
     pub size: i32,
     /// The length of the bar.
@@ -25,6 +25,8 @@ pub trait IronbarGtkExt {
     fn get_tag<V: 'static>(&self, key: &str) -> Option<&V>;
     /// Sets a data tag on a widget.
     fn set_tag<V: 'static>(&self, key: &str, value: V);
+
+    fn children(&self) -> Vec<Box<dyn AsRef<Widget>>>;
 }
 
 impl<W: IsA<Widget>> IronbarGtkExt for W {
@@ -41,7 +43,7 @@ impl<W: IsA<Widget>> IronbarGtkExt for W {
             allocation.height()
         };
 
-        let top_level = self.toplevel().expect("Failed to get top-level widget");
+        let top_level = self.root().expect("Failed to get root widget");
         let top_level_allocation = top_level.allocation();
 
         let bar_size = if orientation == Orientation::Horizontal {
@@ -51,8 +53,8 @@ impl<W: IsA<Widget>> IronbarGtkExt for W {
         };
 
         let (widget_x, widget_y) = self
-            .translate_coordinates(&top_level, 0, 0)
-            .unwrap_or((0, 0));
+            .translate_coordinates(&top_level, 0.0, 0.0)
+            .unwrap_or((0.0, 0.0));
 
         let widget_pos = if orientation == Orientation::Horizontal {
             widget_x
@@ -74,4 +76,43 @@ impl<W: IsA<Widget>> IronbarGtkExt for W {
     fn set_tag<V: 'static>(&self, key: &str, value: V) {
         unsafe { self.set_data(key, value) }
     }
+
+    fn children(&self) -> Vec<Box<dyn AsRef<Widget>>> {
+        let mut widget = self.first_child();
+        let mut children = vec![];
+
+        while let Some(w) = widget {
+            children.push(Box::new(w));
+            widget = w.next_sibling();
+        }
+
+        children
+    }
 }
+
+// struct IteratorWrapper<W: IsA<Widget>>(W);
+//
+// impl<W> Iterator for IteratorWrapper<W> {
+//     type Item = Box<dyn AsRef<Widget>>;
+//
+//     fn next(&mut self) -> Option<Self::Item> {
+//         self.0
+//     }
+// }
+//
+// struct IntoIter<W: IsA<Widget>> {
+//     widget: W,
+//     next: Option<Box<dyn AsRef<Widget>>>
+// }
+//
+// impl<W: IsA<Widget>> IntoIterator for IteratorWrapper<W> {
+//     type Item = Box<dyn AsRef<Widget>>;
+//     type IntoIter = IntoIter<Self>;
+//
+//     fn into_iter(self) -> Self::IntoIter {
+//         IntoIter {
+//             widget: self,
+//             next: self.first_child().map(Box::new)
+//         }
+//     }
+// }

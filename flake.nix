@@ -115,8 +115,8 @@
           rust
           rust-analyzer-unwrapped
           gcc
-          gtk3
-          gtk-layer-shell
+          gtk4
+          gtk4-layer-shell
           pkg-config
           openssl
           gdk-pixbuf
@@ -127,6 +127,7 @@
           hicolor-icon-theme
           gsettings-desktop-schemas
           libxkbcommon
+          graphene
         ];
 
         RUST_SRC_PATH = "${rust}/lib/rustlib/src/rust/library";

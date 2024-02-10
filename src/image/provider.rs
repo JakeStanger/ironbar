@@ -4,11 +4,12 @@ use crate::{glib_recv_mpsc, send_async, spawn};
 use cfg_if::cfg_if;
 use color_eyre::{Help, Report, Result};
 use gtk::cairo::Surface;
-use gtk::gdk::ffi::gdk_cairo_surface_create_from_pixbuf;
 use gtk::gdk_pixbuf::Pixbuf;
 use gtk::prelude::*;
 use gtk::{IconLookupFlags, IconTheme};
 use std::path::{Path, PathBuf};
+use gtk::gdk::ffi::gdk_texture_new_for_pixbuf;
+use gtk::gdk::Texture;
 #[cfg(feature = "http")]
 use tokio::sync::mpsc;
 use tracing::warn;
@@ -205,22 +206,26 @@ impl<'a> ImageProvider<'a> {
         Self::create_and_load_surface(&pixbuf, image, scale)
     }
 
-    /// Attempts to create a Cairo surface from the provided `Pixbuf`,
-    /// using the provided scaling factor.
-    /// The surface is then loaded into the provided image.
-    ///
-    /// This is necessary for HiDPI since `Pixbuf`s are always treated as scale factor 1.
-    fn create_and_load_surface(pixbuf: &Pixbuf, image: &gtk::Image, scale: i32) -> Result<()> {
-        let surface = unsafe {
-            let ptr =
-                gdk_cairo_surface_create_from_pixbuf(pixbuf.as_ptr(), scale, std::ptr::null_mut());
-            Surface::from_raw_full(ptr)
-        }?;
-
-        image.set_from_surface(Some(&surface));
-
-        Ok(())
-    }
+    // /// Attempts to create a Cairo surface from the provided `Pixbuf`,
+    // /// using the provided scaling factor.
+    // /// The surface is then loaded into the provided image.
+    // ///
+    // /// This is necessary for HiDPI since `Pixbuf`s are always treated as scale factor 1.
+    // fn create_and_load_surface(pixbuf: &Pixbuf, image: &gtk::Image, scale: i32) -> Result<()> {
+    //     pixbuf.pai
+    //     let surface = unsafe {
+    //         let ptr = gdk_texture_new_for_pixbuf(pixbuf.as_ptr());
+    //             gdk_cairo_surface_create_from_pixbuf(pixbuf.as_ptr(), scale, std::ptr::null_mut());
+    //         Surface::from_raw_full(ptr)
+    //         Texture::from_
+    //     }?;
+    //
+    //     image.set_from_paintable()
+    //
+    //     image.set_from_surface(Some(&surface));
+    //
+    //     Ok(())
+    // }
 
     /// Attempts to get a `Pixbuf` from the GTK icon theme.
     fn get_from_icon(&self, name: &str, theme: &IconTheme, scale: i32) -> Result<Pixbuf> {
