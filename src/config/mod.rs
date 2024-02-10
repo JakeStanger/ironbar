@@ -14,6 +14,7 @@ use crate::modules::label::LabelModule;
 use crate::modules::launcher::LauncherModule;
 #[cfg(feature = "music")]
 use crate::modules::music::MusicModule;
+use crate::modules::networkmanager::NetworkmanagerModule;
 use crate::modules::script::ScriptModule;
 #[cfg(feature = "sys_info")]
 use crate::modules::sysinfo::SysInfoModule;
@@ -45,6 +46,7 @@ pub enum ModuleConfig {
     Launcher(Box<LauncherModule>),
     #[cfg(feature = "music")]
     Music(Box<MusicModule>),
+    Networkmanager(Box<NetworkmanagerModule>),
     Script(Box<ScriptModule>),
     #[cfg(feature = "sys_info")]
     SysInfo(Box<SysInfoModule>),
