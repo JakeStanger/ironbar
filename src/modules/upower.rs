@@ -15,7 +15,7 @@ use crate::modules::PopupButton;
 use crate::modules::{
     Module, ModuleInfo, ModuleParts, ModulePopup, ModuleUpdateEvent, WidgetContext,
 };
-use crate::{error, glib_recv, send_async, spawn, try_send};
+use crate::{glib_recv, send_async, spawn, try_send};
 
 const DAY: i64 = 24 * 60 * 60;
 const HOUR: i64 = 60 * 60;
@@ -45,7 +45,7 @@ const fn default_icon_size() -> i32 {
 pub struct UpowerProperties {
     percentage: f64,
     icon_name: String,
-    state: u32,
+    state: BatteryState,
     time_to_full: i64,
     time_to_empty: i64,
 }
@@ -84,9 +84,12 @@ impl Module<gtk::Button> for UpowerModule {
                 .downcast_ref::<str>()
                 .expect("expected IconName: str in HashMap of all properties")
                 .to_string();
-            let state = *properties["State"]
-                .downcast_ref::<u32>()
-                .expect("expected State: u32 in HashMap of all properties");
+            let state = u32_to_battery_state(
+                *properties["State"]
+                    .downcast_ref::<u32>()
+                    .expect("expected State: u32 in HashMap of all properties"),
+            )
+            .unwrap_or(BatteryState::Unknown);
             let time_to_full = *properties["TimeToFull"]
                 .downcast_ref::<i64>()
                 .expect("expected TimeToFull: i64 in HashMap of all properties");
@@ -123,9 +126,9 @@ impl Module<gtk::Button> for UpowerModule {
                                 .to_string();
                         }
                         "State" => {
-                            properties.state = changed_value
-                                .downcast::<u32>()
-                                .expect("expected State to be u32");
+                            properties.state =
+                                u32_to_battery_state(changed_value.downcast::<u32>().unwrap_or(0))
+                                    .expect("expected State to be BatteryState");
                         }
                         "TimeToFull" => {
                             properties.time_to_full = changed_value
@@ -185,7 +188,17 @@ impl Module<gtk::Button> for UpowerModule {
 
         let rx = context.subscribe();
         glib_recv!(rx, properties => {
-            let format = format.replace("{percentage}", &properties.percentage.to_string());
+            let state = properties.state;
+            let is_charging = state == BatteryState::Charging || state == BatteryState::PendingCharge;
+            let time_remaining = if is_charging {
+                seconds_to_string(properties.time_to_full)
+            }
+            else {
+                seconds_to_string(properties.time_to_empty)
+            };
+            let format = format.replace("{percentage}", &properties.percentage.to_string())
+                .replace("{time_remaining}", &time_remaining)
+                .replace("{state}", battery_state_to_string(state));
             let icon_name = String::from("icon:") + &properties.icon_name;
 
             ImageProvider::parse(&icon_name, &icon_theme, false, self.icon_size)
@@ -220,9 +233,9 @@ impl Module<gtk::Button> for UpowerModule {
         container.add(&label);
 
         glib_recv!(rx, properties => {
-            let state = u32_to_battery_state(properties.state);
+            let state = properties.state;
             let format = match state {
-                Ok(BatteryState::Charging | BatteryState::PendingCharge) => {
+                BatteryState::Charging | BatteryState::PendingCharge => {
                     let ttf = properties.time_to_full;
                     if ttf > 0 {
                         format!("Full in {}", seconds_to_string(ttf))
@@ -230,17 +243,13 @@ impl Module<gtk::Button> for UpowerModule {
                         String::new()
                     }
                 }
-                Ok(BatteryState::Discharging | BatteryState::PendingDischarge) => {
+                BatteryState::Discharging | BatteryState::PendingDischarge => {
                     let tte = properties.time_to_empty;
                     if tte > 0 {
                         format!("Empty in {}", seconds_to_string(tte))
                     } else {
                         String::new()
                     }
-                }
-                Err(state) => {
-                    error!("Invalid battery state: {state}");
-                    String::new()
                 }
                 _ => String::new(),
             };
@@ -288,5 +297,17 @@ const fn u32_to_battery_state(number: u32) -> Result<BatteryState, u32> {
         Ok(BatteryState::PendingDischarge)
     } else {
         Err(number)
+    }
+}
+
+fn battery_state_to_string(state: BatteryState) -> &'static str {
+    match state {
+        BatteryState::Unknown => "Unknown",
+        BatteryState::Charging => "Charging",
+        BatteryState::Discharging => "Discharging",
+        BatteryState::Empty => "Empty",
+        BatteryState::FullyCharged => "Fully charged",
+        BatteryState::PendingCharge => "Pending charge",
+        BatteryState::PendingDischarge => "Pending discharge",
     }
 }
