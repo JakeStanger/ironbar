@@ -6,7 +6,10 @@ Displays a fully interactive icon tray using the KDE `libappindicator` protocol.
 
 > Type: `tray`
 
-***This module provides no configuration options.***
+
+| Name        | Type     | Default                                                         | Description                                                                                                              |
+|-------------|----------|-----------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------|
+| `direction` | `string` | `left_to_right` if bar is horizontal, `top_to_bottom` otherwise | Direction to display the tray items. Possible values: `top_to_bottom`, `bottom_to_top`, `left_to_right`, `right_to_left` |
 
 <details>
 <summary>JSON</summary>
@@ -15,7 +18,8 @@ Displays a fully interactive icon tray using the KDE `libappindicator` protocol.
 {
   "end": [
     {
-      "type": "tray"
+      "type": "tray",
+      "direction": "top_to_bottom"
     }
   ]
 }
@@ -29,6 +33,7 @@ Displays a fully interactive icon tray using the KDE `libappindicator` protocol.
 ```toml
 [[end]]
 type = "tray"
+direction = "top_to_bottom"
 ```
 
 </details>
@@ -39,6 +44,7 @@ type = "tray"
 ```yaml
 end:
   - type: "tray"
+    direction: "top_to_bottom"
 ```
 
 </details>
@@ -49,7 +55,10 @@ end:
 ```corn
 {
   end = [
-    { type = "tray" }
+    {
+      type = "tray"
+      direction = "top_to_bottom"
+    }
   ]
 }
 ```
