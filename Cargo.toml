@@ -115,7 +115,7 @@ reqwest = { version = "0.11.24", optional = true }
 nix = { version = "0.27.1", optional = true, features = ["event"] }
 
 # clock
-chrono = { version = "0.4.31", optional = true, features = ["unstable-locales"] }
+chrono = { version = "0.4.34", optional = true, features = ["unstable-locales"] }
 
 # music
 mpd-utils = { version = "0.2.0", optional = true }
