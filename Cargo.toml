@@ -95,7 +95,7 @@ notify = { version = "6.1.1", default-features = false }
 wayland-client = "0.31.1"
 wayland-protocols = { version = "0.31.0", features = ["unstable", "client"] }
 wayland-protocols-wlr = { version = "0.2.0", features = ["client"] }
-smithay-client-toolkit = { version = "0.18.0", default-features = false, features = [
+smithay-client-toolkit = { version = "0.18.1", default-features = false, features = [
   "calloop",
 ] }
 universal-config = { version = "0.4.3", default_features = false }
