@@ -1,6 +1,6 @@
 [package]
 name = "ironbar"
-version = "0.14.1-pre"
+version = "0.15.0-pre"
 edition = "2021"
 license = "MIT"
 description = "Customisable GTK Layer Shell wlroots/sway bar"
@@ -88,14 +88,14 @@ tracing-appender = "0.2.3"
 strip-ansi-escapes = "0.2.0"
 color-eyre = "0.6.2"
 serde = { version = "1.0.196", features = ["derive"] }
-indexmap = "2.2.1"
+indexmap = "2.2.3"
 dirs = "5.0.1"
 walkdir = "2.4.0"
 notify = { version = "6.1.1", default-features = false }
 wayland-client = "0.31.1"
 wayland-protocols = { version = "0.31.0", features = ["unstable", "client"] }
 wayland-protocols-wlr = { version = "0.2.0", features = ["client"] }
-smithay-client-toolkit = { version = "0.18.0", default-features = false, features = [
+smithay-client-toolkit = { version = "0.18.1", default-features = false, features = [
   "calloop",
 ] }
 universal-config = { version = "0.4.3", default_features = false }
@@ -103,10 +103,10 @@ ctrlc = "3.4.2"
 cfg-if = "1.0.0"
 
 # cli
-clap = { version = "4.4.18", optional = true, features = ["derive"] }
+clap = { version = "4.5.0", optional = true, features = ["derive"] }
 
 # ipc
-serde_json = { version = "1.0.111", optional = true }
+serde_json = { version = "1.0.113", optional = true }
 
 # http
 reqwest = { version = "0.11.24", optional = true }
@@ -115,7 +115,7 @@ reqwest = { version = "0.11.24", optional = true }
 nix = { version = "0.27.1", optional = true, features = ["event"] }
 
 # clock
-chrono = { version = "0.4.31", optional = true, features = ["unstable-locales"] }
+chrono = { version = "0.4.34", optional = true, features = ["unstable-locales"] }
 
 # music
 mpd-utils = { version = "0.2.0", optional = true }

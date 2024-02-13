@@ -4,6 +4,33 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.14.1] - 2024-02-10
+### :bug: Bug Fixes
+- [`1c9c9bb`](https://github.com/JakeStanger/ironbar/commit/1c9c9bbece878286939abacfaec0daaecc559243) - **cli**: error when launched via `swaybar_command` *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`976dd6c`](https://github.com/JakeStanger/ironbar/commit/976dd6c55a5881b2b3c60c6d7e13b0e7d4301599) - **style**: file watcher not working for relative paths *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`4d9d78f`](https://github.com/JakeStanger/ironbar/commit/4d9d78f4caa998b4817de2d77c0f7362de318c52) - **dynamic string**: ironvar parser being too greedy *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`63304a9`](https://github.com/JakeStanger/ironbar/commit/63304a9ddd76b2274b8336eba7e1e5ef7c5d66e6) - **dynamic string**: always sending partial string on initialization *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`8016ec2`](https://github.com/JakeStanger/ironbar/commit/8016ec256de0c3d2290d1446cda45a769a3c5284) - **tray**: crash caused by excess updates *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`b3a70ce`](https://github.com/JakeStanger/ironbar/commit/b3a70ce8fa76b0ae8b06f423e7d5955c6d5d6920) - **tray**: not handling checkbox items *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`0616633`](https://github.com/JakeStanger/ironbar/commit/061663392e01503448fb44a064d172dbf10dc770) - do not panic on full channels *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`133632d`](https://github.com/JakeStanger/ironbar/commit/133632d1ad0778bb93e398e6d2bacf28c364f6c4) - **tray**: vastly improve rendering performance *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+
+### :recycle: Refactors
+- [`996ad7e`](https://github.com/JakeStanger/ironbar/commit/996ad7e27f3a397f4650a6a746155cd22d6ccdb7) - **desktop file**: simplify some none-type handling *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`aaef3bf`](https://github.com/JakeStanger/ironbar/commit/aaef3bf96cebb3540b3b020891f88d3c5515034b) - fix new strict clippy warnings *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`f3687c5`](https://github.com/JakeStanger/ironbar/commit/f3687c5f9e69452bbc9c1fa87089f3a8afd9bfc0) - replace deprecated indexmap method *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+
+### :white_check_mark: Tests
+- [`af7e037`](https://github.com/JakeStanger/ironbar/commit/af7e037dd5a24cff0959e2fd5f04e3eb49418b23) - **dynamic string**: test pango attributes with ironvars *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+
+### :memo: Documentation Changes
+- [`7d51155`](https://github.com/JakeStanger/ironbar/commit/7d51155a3e6e6e1d77f2e3d2b8e6c73831b15c0e) - update CHANGELOG.md for v0.14.0 [skip ci] *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`754e339`](https://github.com/JakeStanger/ironbar/commit/754e33952eaf7794d00c831c46aab007684ff0b2) - add info on speeding up compilation time *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`cb2f9b0`](https://github.com/JakeStanger/ironbar/commit/cb2f9b0aaff1519516664ab04a3a195d29983b4e) - **examples**: fix issues with example css *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`1b54276`](https://github.com/JakeStanger/ironbar/commit/1b54276bea6268131fca7c3f453284ca0aee4b9b) - **compilation**: add sccache section *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`9d7cb08`](https://github.com/JakeStanger/ironbar/commit/9d7cb08f41e7290959e17ccd725aeb6ccaeef1a7) - **ironvars**: correct allowed chars in keys *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+
+
 ## [v0.14.0] - 2024-01-20
 ### :sparkles: New Features
 - [`25c490b`](https://github.com/JakeStanger/ironbar/commit/25c490b8b426176c1a4c9d402aafd6783c9b6d48) - **workspaces**: visible CSS selector *(commit by [@malicean](https://github.com/malicean))*
@@ -477,3 +504,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [v0.12.1]: https://github.com/JakeStanger/ironbar/compare/v0.12.0...v0.12.1
 [v0.13.0]: https://github.com/JakeStanger/ironbar/compare/v0.12.1...v0.13.0
 [v0.14.0]: https://github.com/JakeStanger/ironbar/compare/v0.13.0...v0.14.0
+[v0.14.1]: https://github.com/JakeStanger/ironbar/compare/v0.14.0...v0.14.1
