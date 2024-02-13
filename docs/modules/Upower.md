@@ -74,11 +74,11 @@ end:
 The following tokens can be used in the `format` config option,
 and will be replaced with values from the current battery state:
 
-| Token          | Description                              |
-|----------------|------------------------------------------|
-| `{percentage}` | The battery charge percentage.           |
-| `{state}`      | The current battery (dis)charging state. |
-| `{remaining}`  | The ETA to battery empty or full.        |
+| Token               | Description                              |
+|---------------------|------------------------------------------|
+| `{percentage}`      | The battery charge percentage.           |
+| `{state}`           | The current battery (dis)charging state. |
+| `{time_remaining}`  | The ETA to battery empty or full.        |
 
 ## Styling
 
