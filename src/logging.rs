@@ -4,6 +4,7 @@ use std::{env, panic};
 use strip_ansi_escapes::Writer;
 use tracing::error;
 use tracing_appender::non_blocking::{NonBlocking, WorkerGuard};
+use tracing_appender::rolling::Rotation;
 use tracing_error::ErrorLayer;
 use tracing_subscriber::fmt::{Layer, MakeWriter};
 use tracing_subscriber::prelude::*;
@@ -67,7 +68,13 @@ fn install_tracing() -> Result<WorkerGuard> {
 
     let log_path = data_dir().unwrap_or(env::current_dir()?).join("ironbar");
 
-    let appender = tracing_appender::rolling::never(log_path, "error.log");
+    let appender = tracing_appender::rolling::Builder::new()
+        .rotation(Rotation::DAILY)
+        .filename_prefix("ironbar")
+        .filename_suffix("log")
+        .max_log_files(3)
+        .build(log_path)?;
+
     let (file_writer, guard) = tracing_appender::non_blocking(appender);
 
     tracing_subscriber::registry()
