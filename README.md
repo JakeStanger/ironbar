@@ -153,11 +153,14 @@ See the [Configuration Guide](https://github.com/JakeStanger/ironbar/wiki/config
 
 Ironbar can be launched using the `ironbar` binary.
 
-Log verbosity can be changed using `IRONBAR_LOG` or `IRONBAR_FILE_LOG`. You can use any of `error`, `warn`, `info`, `debug` or `trace`.
+The `IRONBAR_LOG` and `IRONBAR_FILE_LOG` environment variables can be set
+to change console and file log verbosity respectively.
+You can use any of `error`, `warn`, `info`, `debug` or `trace`.
 
-These default to `IRONBAR_LOG=info` and `IRONBAR_FILE_LOG=error`.
+These default to `IRONBAR_LOG=info` and `IRONBAR_FILE_LOG=warn`.
+Note that you cannot increase the file log verbosity above console verbosity.
 
-File output can be found at `~/.local/share/ironbar/error.log`.
+Log files can be found at `~/.local/share/ironbar/.log`.
 
 ## Status
 
