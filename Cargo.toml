@@ -19,6 +19,7 @@ default = [
     "ipc",
     "launcher",
     "music+all",
+    "networkmanager",
     "sys_info",
     "tray",
     "upower",
@@ -55,6 +56,8 @@ music = ["regex"]
 "music+all" = ["music", "music+mpris", "music+mpd"]
 "music+mpris" = ["music", "mpris"]
 "music+mpd" = ["music", "mpd-utils"]
+
+networkmanager = ["futures-lite", "zbus"]
 
 sys_info = ["sysinfo", "regex"]
 
@@ -129,8 +132,6 @@ system-tray = { version = "0.1.5", optional = true }
 
 # upower
 upower_dbus = { version = "0.3.2", optional = true }
-futures-lite = { version = "2.2.0", optional = true }
-zbus = { version = "3.15.0", optional = true }
 
 # workspaces
 swayipc-async = { version = "2.0.1", optional = true }
@@ -141,3 +142,5 @@ futures-util = { version = "0.3.30", optional = true }
 regex = { version = "1.10.3", default-features = false, features = [
   "std",
 ], optional = true } # music, sys_info
+futures-lite = { version = "2.2.0", optional = true } # networkmanager, upower
+zbus = { version = "3.15.0", optional = true } # networkmanager, upower
