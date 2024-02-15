@@ -9,6 +9,7 @@ use zbus::names::InterfaceName;
 use zbus::zvariant::ObjectPath;
 
 use crate::config::CommonConfig;
+use crate::gtk_helpers::IronbarGtkExt;
 use crate::image::ImageProvider;
 use crate::modules::{Module, ModuleInfo, ModuleParts, ModuleUpdateEvent, WidgetContext};
 use crate::{glib_recv, send_async, spawn};
@@ -16,16 +17,25 @@ use crate::{glib_recv, send_async, spawn};
 // TODO: Add icon size option
 #[derive(Debug, Deserialize, Clone)]
 pub struct NetworkmanagerModule {
+    #[serde(default = "default_icon_size")]
+    icon_size: i32,
+
     #[serde(flatten)]
     pub common: Option<CommonConfig>,
 }
 
+const fn default_icon_size() -> i32 {
+    24
+}
+
 #[derive(Clone, Debug)]
 pub enum NetworkmanagerState {
+    Cellular,
+    Offline,
+    Unknown,
+    Wired,
     Wireless,
     WirelessDisconnected,
-    Wired,
-    Offline,
 }
 
 impl Module<gtk::Box> for NetworkmanagerModule {
@@ -84,23 +94,26 @@ impl Module<gtk::Box> for NetworkmanagerModule {
     ) -> Result<ModuleParts<gtk::Box>> {
         let container = gtk::Box::new(Orientation::Horizontal, 0);
         let icon = Image::new();
+        icon.add_class("icon");
         container.add(&icon);
 
         let icon_theme = info.icon_theme.clone();
 
         let initial_icon_name = "icon:content-loading-symbolic";
-        ImageProvider::parse(initial_icon_name, &icon_theme, false, 18)
+        ImageProvider::parse(initial_icon_name, &icon_theme, false, self.icon_size)
             .map(|provider| provider.load_into_image(icon.clone()));
 
         let rx = context.subscribe();
         glib_recv!(rx, state => {
             let icon_name = match state {
+                NetworkmanagerState::Cellular => "network-cellular-symbolic",
+                NetworkmanagerState::Offline => "network-wireless-disabled-symbolic",
+                NetworkmanagerState::Unknown => "dialog-question-symbolic",
+                NetworkmanagerState::Wired => "network-wired-symbolic",
                 NetworkmanagerState::Wireless => "network-wireless-symbolic",
                 NetworkmanagerState::WirelessDisconnected => "network-wireless-acquiring-symbolic",
-                NetworkmanagerState::Wired => "network-wired-symbolic",
-                NetworkmanagerState::Offline => "network-wireless-disabled-symbolic",
             };
-            ImageProvider::parse(icon_name, &icon_theme, false, 18)
+            ImageProvider::parse(icon_name, &icon_theme, false, self.icon_size)
                 .map(|provider| provider.load_into_image(icon.clone()));
         });
 
@@ -125,9 +138,17 @@ async fn get_network_state(
             .to_string();
 
         match primary_connection_type.as_str() {
+            "802-11-olpc-mesh" => Ok(NetworkmanagerState::Wireless),
             "802-11-wireless" => Ok(NetworkmanagerState::Wireless),
             "802-3-ethernet" => Ok(NetworkmanagerState::Wired),
-            _ => panic!("Unknown primary connection type"),
+            "adsl" => Ok(NetworkmanagerState::Wired),
+            "cdma" => Ok(NetworkmanagerState::Cellular),
+            "gsm" => Ok(NetworkmanagerState::Cellular),
+            "pppoe" => Ok(NetworkmanagerState::Wired),
+            "wifi-p2p" => Ok(NetworkmanagerState::Wireless),
+            "wimax" => Ok(NetworkmanagerState::Cellular),
+            "wpan" => Ok(NetworkmanagerState::Wireless),
+            _ => Ok(NetworkmanagerState::Unknown),
         }
     } else {
         let wireless_enabled = *properties["WirelessEnabled"]
