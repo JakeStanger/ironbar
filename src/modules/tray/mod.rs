@@ -8,7 +8,7 @@ use crate::modules::tray::diff::get_diffs;
 use crate::modules::{Module, ModuleInfo, ModuleParts, ModuleUpdateEvent, WidgetContext};
 use crate::{glib_recv, spawn};
 use color_eyre::Result;
-use gtk::prelude::*;
+use gtk::{prelude::*, PackDirection};
 use gtk::{IconTheme, MenuBar};
 use interface::TrayMenu;
 use serde::Deserialize;
@@ -18,8 +18,26 @@ use tokio::sync::mpsc;
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct TrayModule {
+    #[serde(default, deserialize_with = "deserialize_orientation")]
+    pub direction: Option<PackDirection>,
     #[serde(flatten)]
     pub common: Option<CommonConfig>,
+}
+
+fn deserialize_orientation<'de, D>(deserializer: D) -> Result<Option<PackDirection>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    let value = Option::<String>::deserialize(deserializer)?;
+    value
+        .map(|v| match v.as_str() {
+            "left_to_right" => Ok(PackDirection::Ltr),
+            "right_to_left" => Ok(PackDirection::Rtl),
+            "top_to_bottom" => Ok(PackDirection::Ttb),
+            "bottom_to_top" => Ok(PackDirection::Btt),
+            _ => Err(serde::de::Error::custom("invalid value for orientation")),
+        })
+        .transpose()
 }
 
 impl Module<MenuBar> for TrayModule {
@@ -69,6 +87,17 @@ impl Module<MenuBar> for TrayModule {
         info: &ModuleInfo,
     ) -> Result<ModuleParts<MenuBar>> {
         let container = MenuBar::new();
+
+        let direction = self.direction.unwrap_or(
+            if info.bar_position.get_orientation() == gtk::Orientation::Vertical {
+                PackDirection::Ttb
+            } else {
+                PackDirection::Ltr
+            },
+        );
+
+        container.set_pack_direction(direction);
+        container.set_child_pack_direction(direction);
 
         {
             let container = container.clone();
