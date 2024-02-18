@@ -188,7 +188,7 @@ impl Module<gtk::Box> for SysInfoModule {
     ) -> Result<ModuleParts<gtk::Box>> {
         let re = Regex::new(r"\{([^}]+)}")?;
 
-        let container = gtk::Box::new(info.bar_position.get_orientation(), 10);
+        let container = gtk::Box::new(info.bar_position.orientation(), 10);
 
         let mut labels = Vec::new();
 

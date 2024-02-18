@@ -194,7 +194,7 @@ impl Module<gtk::Box> for CustomModule {
         context: WidgetContext<Self::SendMessage, Self::ReceiveMessage>,
         info: &ModuleInfo,
     ) -> Result<ModuleParts<gtk::Box>> {
-        let orientation = info.bar_position.get_orientation();
+        let orientation = info.bar_position.orientation();
         let container = gtk::Box::builder().orientation(orientation).build();
 
         let popup_buttons = Rc::new(RefCell::new(Vec::new()));
@@ -236,7 +236,7 @@ impl Module<gtk::Box> for CustomModule {
         if let Some(popup) = self.popup {
             let custom_context = CustomWidgetContext {
                 tx: &tx,
-                bar_orientation: info.bar_position.get_orientation(),
+                bar_orientation: info.bar_position.orientation(),
                 icon_theme: info.icon_theme,
                 popup_buttons: Rc::new(RefCell::new(vec![])),
             };

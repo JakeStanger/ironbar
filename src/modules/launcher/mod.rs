@@ -301,7 +301,7 @@ impl Module<gtk::Box> for LauncherModule {
     ) -> crate::Result<ModuleParts<gtk::Box>> {
         let icon_theme = info.icon_theme;
 
-        let container = gtk::Box::new(info.bar_position.get_orientation(), 0);
+        let container = gtk::Box::new(info.bar_position.orientation(), 0);
 
         {
             let container = container.clone();

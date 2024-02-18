@@ -38,7 +38,7 @@ impl<'de> Deserialize<'de> for MonitorConfig {
 impl BarPosition {
     /// Gets the orientation the bar and widgets should use
     /// based on this position.
-    pub fn get_orientation(self) -> Orientation {
+    pub fn orientation(self) -> Orientation {
         if self == Self::Top || self == Self::Bottom {
             Orientation::Horizontal
         } else {
