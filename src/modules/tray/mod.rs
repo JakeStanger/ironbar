@@ -89,7 +89,7 @@ impl Module<MenuBar> for TrayModule {
         let container = MenuBar::new();
 
         let direction = self.direction.unwrap_or(
-            if info.bar_position.get_orientation() == gtk::Orientation::Vertical {
+            if info.bar_position.orientation() == gtk::Orientation::Vertical {
                 PackDirection::Ttb
             } else {
                 PackDirection::Ltr

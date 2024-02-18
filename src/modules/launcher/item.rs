@@ -225,9 +225,7 @@ impl ItemButton {
 
                     try_send!(
                         tx,
-                        ModuleUpdateEvent::OpenPopupAt(
-                            button.geometry(bar_position.get_orientation())
-                        )
+                        ModuleUpdateEvent::OpenPopupAt(button.geometry(bar_position.orientation()))
                     );
                 } else {
                     try_send!(tx, ModuleUpdateEvent::ClosePopup);

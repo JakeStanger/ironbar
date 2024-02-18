@@ -60,7 +60,7 @@ impl Bar {
         window.set_widget_name(&name);
 
         let position = config.position;
-        let orientation = position.get_orientation();
+        let orientation = position.orientation();
 
         let content = gtk::Box::builder()
             .orientation(orientation)
@@ -187,7 +187,7 @@ impl Bar {
         win.set_layer_shell_margin(gtk_layer_shell::Edge::Left, margin.left);
         win.set_layer_shell_margin(gtk_layer_shell::Edge::Right, margin.right);
 
-        let bar_orientation = position.get_orientation();
+        let bar_orientation = position.orientation();
 
         win.set_anchor(
             gtk_layer_shell::Edge::Top,
@@ -351,7 +351,7 @@ fn add_modules(
     ironbar: &Rc<Ironbar>,
     popup: &Rc<RefCell<Popup>>,
 ) -> Result<()> {
-    let orientation = info.bar_position.get_orientation();
+    let orientation = info.bar_position.orientation();
 
     macro_rules! add_module {
         ($module:expr, $id:expr) => {{
