@@ -10,7 +10,6 @@ use gtk::gdk::Monitor;
 use gtk::prelude::*;
 use gtk::{Application, ApplicationWindow, IconTheme, Orientation, Window, WindowType};
 use gtk_layer_shell::LayerShell;
-use std::cell::RefCell;
 use std::rc::Rc;
 use std::time::Duration;
 use tracing::{debug, info};
@@ -18,7 +17,7 @@ use tracing::{debug, info};
 #[derive(Debug, Clone)]
 enum Inner {
     New { config: Option<Config> },
-    Loaded { popup: Rc<RefCell<Popup>> },
+    Loaded { popup: Rc<Popup> },
 }
 
 #[derive(Debug, Clone)]
@@ -269,7 +268,7 @@ impl Bar {
 
         // popup ignores module location so can bodge this for now
         let popup = Popup::new(&info!(ModuleLocation::Left), config.popup_gap);
-        let popup = Rc::new(RefCell::new(popup));
+        let popup = Rc::new(popup);
 
         if let Some(modules) = config.start {
             let info = info!(ModuleLocation::Left);
@@ -315,7 +314,7 @@ impl Bar {
         &self.monitor_name
     }
 
-    pub fn popup(&self) -> Rc<RefCell<Popup>> {
+    pub fn popup(&self) -> Rc<Popup> {
         match &self.inner {
             Inner::New { .. } => {
                 panic!("Attempted to get popup of uninitialized bar. This is a serious bug!")
@@ -339,7 +338,7 @@ fn create_container(name: &str, orientation: Orientation) -> gtk::Box {
 
 #[derive(Debug)]
 struct BarLoadResult {
-    popup: Rc<RefCell<Popup>>,
+    popup: Rc<Popup>,
 }
 
 /// Adds modules into a provided GTK box,
@@ -349,7 +348,7 @@ fn add_modules(
     modules: Vec<ModuleConfig>,
     info: &ModuleInfo,
     ironbar: &Rc<Ironbar>,
-    popup: &Rc<RefCell<Popup>>,
+    popup: &Rc<Popup>,
 ) -> Result<()> {
     let orientation = info.bar_position.orientation();
 

@@ -1,11 +1,13 @@
 use glib::Propagation;
+use std::cell::RefCell;
 use std::collections::HashMap;
+use std::rc::Rc;
 
 use gtk::gdk::Monitor;
 use gtk::prelude::*;
-use gtk::{ApplicationWindow, Orientation};
+use gtk::{ApplicationWindow, Button, Orientation};
 use gtk_layer_shell::LayerShell;
-use tracing::debug;
+use tracing::{debug, trace};
 
 use crate::config::BarPosition;
 use crate::gtk_helpers::{IronbarGtkExt, WidgetGeometry};
@@ -21,10 +23,10 @@ pub struct PopupCacheValue {
 #[derive(Debug, Clone)]
 pub struct Popup {
     pub window: ApplicationWindow,
-    pub cache: HashMap<usize, PopupCacheValue>,
+    pub cache: Rc<RefCell<HashMap<usize, PopupCacheValue>>>,
     monitor: Monitor,
     pos: BarPosition,
-    current_widget: Option<usize>,
+    current_widget: Rc<RefCell<Option<(usize, usize)>>>,
 }
 
 impl Popup {
@@ -33,7 +35,7 @@ impl Popup {
     /// and an empty `gtk::Box` container.
     pub fn new(module_info: &ModuleInfo, gap: i32) -> Self {
         let pos = module_info.bar_position;
-        let orientation = pos.get_orientation();
+        let orientation = pos.orientation();
 
         let win = ApplicationWindow::builder()
             .application(module_info.app)
@@ -104,14 +106,14 @@ impl Popup {
 
         Self {
             window: win,
-            cache: HashMap::new(),
+            cache: Rc::new(RefCell::new(HashMap::new())),
             monitor: module_info.monitor.clone(),
             pos,
-            current_widget: None,
+            current_widget: Rc::new(RefCell::new(None)),
         }
     }
 
-    pub fn register_content(&mut self, key: usize, name: String, content: ModulePopupParts) {
+    pub fn register_content(&self, key: usize, name: String, content: ModulePopupParts) {
         debug!("Registered popup content for #{}", key);
 
         for button in &content.buttons {
@@ -119,43 +121,92 @@ impl Popup {
             button.set_tag("popup-id", id);
         }
 
-        self.cache.insert(key, PopupCacheValue { name, content });
+        let orientation = self.pos.orientation();
+        let monitor = self.monitor.clone();
+        let window = self.window.clone();
+
+        let current_widget = self.current_widget.clone();
+        let cache = self.cache.clone();
+
+        content
+            .container
+            .connect_size_allocate(move |container, rect| {
+                if container.is_visible() {
+                    trace!("Resized:  {}x{}", rect.width(), rect.height());
+
+                    if let Some((widget_id, button_id)) = *current_widget.borrow() {
+                        if let Some(PopupCacheValue { content, .. }) =
+                            cache.borrow().get(&widget_id)
+                        {
+                            Self::set_position(
+                                &content.buttons,
+                                button_id,
+                                orientation,
+                                &monitor,
+                                &window,
+                            );
+                        }
+                    }
+                }
+            });
+
+        self.cache
+            .borrow_mut()
+            .insert(key, PopupCacheValue { name, content });
     }
 
-    pub fn show(&mut self, widget_id: usize, button_id: usize) {
+    pub fn show(&self, widget_id: usize, button_id: usize) {
         self.clear_window();
 
-        if let Some(PopupCacheValue { content, .. }) = self.cache.get(&widget_id) {
-            self.current_widget = Some(widget_id);
+        if let Some(PopupCacheValue { content, .. }) = self.cache.borrow().get(&widget_id) {
+            *self.current_widget.borrow_mut() = Some((widget_id, button_id));
 
             content.container.style_context().add_class("popup");
             self.window.add(&content.container);
 
             self.window.show();
 
-            let button = content
-                .buttons
-                .iter()
-                .find(|b| b.popup_id() == button_id)
-                .expect("to find valid button");
-
-            let orientation = self.pos.get_orientation();
-            let geometry = button.geometry(orientation);
-
-            self.set_pos(geometry);
+            Self::set_position(
+                &content.buttons,
+                button_id,
+                self.pos.orientation(),
+                &self.monitor,
+                &self.window,
+            );
         }
     }
 
     pub fn show_at(&self, widget_id: usize, geometry: WidgetGeometry) {
         self.clear_window();
 
-        if let Some(PopupCacheValue { content, .. }) = self.cache.get(&widget_id) {
+        if let Some(PopupCacheValue { content, .. }) = self.cache.borrow().get(&widget_id) {
             content.container.style_context().add_class("popup");
             self.window.add(&content.container);
 
             self.window.show();
-            self.set_pos(geometry);
+            Self::set_pos(
+                geometry,
+                self.pos.orientation(),
+                &self.monitor,
+                &self.window,
+            );
         }
+    }
+
+    fn set_position(
+        buttons: &[Button],
+        button_id: usize,
+        orientation: Orientation,
+        monitor: &Monitor,
+        window: &ApplicationWindow,
+    ) {
+        let button = buttons
+            .iter()
+            .find(|b| b.popup_id() == button_id)
+            .expect("to find valid button");
+
+        let geometry = button.geometry(orientation);
+        Self::set_pos(geometry, orientation, monitor, window);
     }
 
     fn clear_window(&self) {
@@ -166,8 +217,8 @@ impl Popup {
     }
 
     /// Hides the popover
-    pub fn hide(&mut self) {
-        self.current_widget = None;
+    pub fn hide(&self) {
+        *self.current_widget.borrow_mut() = None;
         self.window.hide();
     }
 
@@ -177,22 +228,25 @@ impl Popup {
     }
 
     pub fn current_widget(&self) -> Option<usize> {
-        self.current_widget
+        self.current_widget.borrow().map(|w| w.0)
     }
 
     /// Sets the popup's X/Y position relative to the left or border of the screen
     /// (depending on orientation).
-    fn set_pos(&self, geometry: WidgetGeometry) {
-        let orientation = self.pos.get_orientation();
-
-        let mon_workarea = self.monitor.workarea();
+    fn set_pos(
+        geometry: WidgetGeometry,
+        orientation: Orientation,
+        monitor: &Monitor,
+        window: &ApplicationWindow,
+    ) {
+        let mon_workarea = monitor.workarea();
         let screen_size = if orientation == Orientation::Horizontal {
             mon_workarea.width()
         } else {
             mon_workarea.height()
         };
 
-        let (popup_width, popup_height) = self.window.size();
+        let (popup_width, popup_height) = window.size();
         let popup_size = if orientation == Orientation::Horizontal {
             popup_width
         } else {
@@ -217,6 +271,6 @@ impl Popup {
             gtk_layer_shell::Edge::Top
         };
 
-        self.window.set_layer_shell_margin(edge, offset as i32);
+        window.set_layer_shell_margin(edge, offset as i32);
     }
 }

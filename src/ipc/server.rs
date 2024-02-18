@@ -167,13 +167,13 @@ impl Ipc {
                 match bar {
                     Some(bar) => {
                         let popup = bar.popup();
-                        let current_widget = popup.borrow().current_widget();
+                        let current_widget = popup.current_widget();
 
-                        popup.borrow_mut().hide();
+                        popup.hide();
 
                         let data = popup
-                            .borrow()
                             .cache
+                            .borrow()
                             .iter()
                             .find(|(_, value)| value.name == name)
                             .map(|(id, value)| (*id, value.content.buttons.first().cloned()));
@@ -181,7 +181,6 @@ impl Ipc {
                         match data {
                             Some((id, Some(button))) if current_widget != Some(id) => {
                                 let button_id = button.popup_id();
-                                let mut popup = popup.borrow_mut();
 
                                 if popup.is_visible() {
                                     popup.hide();
@@ -207,11 +206,11 @@ impl Ipc {
                         let popup = bar.popup();
 
                         // only one popup per bar, so hide if open for another widget
-                        popup.borrow_mut().hide();
+                        popup.hide();
 
                         let data = popup
-                            .borrow()
                             .cache
+                            .borrow()
                             .iter()
                             .find(|(_, value)| value.name == name)
                             .map(|(id, value)| (*id, value.content.buttons.first().cloned()));
@@ -219,7 +218,7 @@ impl Ipc {
                         match data {
                             Some((id, Some(button))) => {
                                 let button_id = button.popup_id();
-                                popup.borrow_mut().show(id, button_id);
+                                popup.show(id, button_id);
 
                                 Response::Ok
                             }
@@ -236,7 +235,7 @@ impl Ipc {
                 match bar {
                     Some(bar) => {
                         let popup = bar.popup();
-                        popup.borrow_mut().hide();
+                        popup.hide();
 
                         Response::Ok
                     }
