@@ -109,7 +109,7 @@ impl Ironbar {
 
     fn start(self) {
         info!("Ironbar version {}", VERSION);
-        info!("Starting application");
+        info!("Starting application222");
 
         let app = Application::builder().application_id(GTK_APP_ID).build();
 
