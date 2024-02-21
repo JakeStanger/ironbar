@@ -97,6 +97,8 @@ pub struct MusicModule {
     #[serde(default = "default_cover_image_size")]
     pub(crate) cover_image_size: i32,
 
+    pub(crate) cover_image_path: Option<PathBuf>,
+
     // -- Common --
     pub(crate) truncate: Option<TruncateMode>,
 
