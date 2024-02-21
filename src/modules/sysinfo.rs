@@ -9,7 +9,9 @@ use regex::{Captures, Regex};
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::time::Duration;
-use sysinfo::{ComponentExt, CpuExt, DiskExt, NetworkExt, RefreshKind, System, SystemExt};
+use sysinfo::{
+    ComponentExt, CpuExt, DiskExt, NetworkData, NetworkExt, RefreshKind, System, SystemExt,
+};
 use tokio::sync::mpsc;
 use tokio::time::sleep;
 
@@ -337,13 +339,14 @@ fn refresh_network_tokens(
     interval: u64,
 ) {
     sys.refresh_networks();
-
+    let mut total_up = 0;
+    let mut total_down = 0;
     for (iface, network) in sys.networks() {
         format_info.insert(
             format!("net_down:{iface}"),
             format!("{:0>2.0}", bytes_to_megabits(network.received()) / interval),
         );
-
+        total_down += network.received() / interval;
         format_info.insert(
             format!("net_up:{iface}"),
             format!(
@@ -351,7 +354,28 @@ fn refresh_network_tokens(
                 bytes_to_megabits(network.transmitted()) / interval
             ),
         );
+        total_up += network.transmitted() / interval;
     }
+    format_info.insert(format!("net_down"), format!("{:0>2.0}", total_down));
+    format_info.insert(format!("net_up"), format!("{:0>2.0}", total_up));
+
+    format_info.insert(
+        format!("net_down_kbps"),
+        format!("{:0>2.0}", bytes_to_kilobits(total_down)),
+    );
+    format_info.insert(
+        format!("net_up_kbps"),
+        format!("{:0>2.0}", bytes_to_kilobits(total_up)),
+    );
+
+    format_info.insert(
+        format!("net_down_kBps"),
+        format!("{:0>2.0}", bytes_to_kilobytes(total_down)),
+    );
+    format_info.insert(
+        format!("net_up_kBps"),
+        format!("{:0>2.0}", bytes_to_kilobytes(total_up)),
+    );
 }
 
 fn refresh_system_tokens(format_info: &mut HashMap<String, String>, sys: &System) {
@@ -393,5 +417,15 @@ const fn bytes_to_gigabytes(b: u64) -> u64 {
 
 const fn bytes_to_megabits(b: u64) -> u64 {
     const BYTES_IN_MEGABIT: u64 = 125_000;
+    b / BYTES_IN_MEGABIT
+}
+
+const fn bytes_to_kilobits(b: u64) -> u64 {
+    const BYTES_IN_MEGABIT: u64 = 125;
+    b / BYTES_IN_MEGABIT
+}
+
+const fn bytes_to_kilobytes(b: u64) -> u64 {
+    const BYTES_IN_MEGABIT: u64 = 1024;
     b / BYTES_IN_MEGABIT
 }
