@@ -127,7 +127,8 @@ A flake is included with the repo which can be used with Home Manager.
 
 </details>
 
-There is a Cachix cache available at `https://app.cachix.org/cache/jakestanger`.
+CI builds are automatically cached by Garnix.
+You can use their binary cache by following the steps [here](https://garnix.io/docs/caching).
 
 ### Source
 
