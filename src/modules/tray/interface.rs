@@ -188,7 +188,22 @@ enum TrayMenuWidget {
 
 impl TrayMenuItem {
     fn new(info: &MenuItemInfo, tx: mpsc::Sender<i32>) -> Self {
+        let mut submenu = HashMap::new();
         let menu = Menu::new();
+
+        macro_rules! add_submenu {
+            ($menu:expr, $widget:expr) => {
+                if !info.submenu.is_empty() {
+                    for sub_item in &info.submenu {
+                        let sub_item = TrayMenuItem::new(sub_item, tx.clone());
+                        call!($menu, add, sub_item.widget);
+                        submenu.insert(sub_item.id, sub_item);
+                    }
+
+                    $widget.set_submenu(Some(&menu));
+                }
+            };
+        }
 
         let widget = match (info.menu_type, info.toggle_type) {
             (MenuType::Separator, _) => TrayMenuWidget::Separator(SeparatorMenuItem::new()),
@@ -199,6 +214,8 @@ impl TrayMenuItem {
                     .sensitive(info.enabled)
                     .active(info.toggle_state == ToggleState::On)
                     .build();
+
+                add_submenu!(menu, widget);
 
                 {
                     let tx = tx.clone();
@@ -212,12 +229,13 @@ impl TrayMenuItem {
                 TrayMenuWidget::Checkbox(widget)
             }
             (MenuType::Standard, _) => {
-                let builder = MenuItem::builder()
+                let widget = MenuItem::builder()
                     .label(&info.label)
                     .visible(info.visible)
-                    .sensitive(info.enabled);
+                    .sensitive(info.enabled)
+                    .build();
 
-                let widget = builder.build();
+                add_submenu!(menu, widget);
 
                 {
                     let tx = tx.clone();
@@ -236,7 +254,7 @@ impl TrayMenuItem {
             id: info.id,
             widget,
             menu_widget: menu,
-            submenu: HashMap::new(),
+            submenu,
             tx,
         }
     }
