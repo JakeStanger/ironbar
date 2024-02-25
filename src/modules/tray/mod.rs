@@ -157,8 +157,7 @@ fn on_update(
                 }
 
                 if item.icon_name.as_ref() != menu_item.icon_name() {
-                    match icon::get_image(&item, icon_theme, icon_size)
-                    {
+                    match icon::get_image(&item, icon_theme, icon_size) {
                         Ok(image) => menu_item.set_image(&image),
                         Err(_) => menu_item.set_label(label),
                     };

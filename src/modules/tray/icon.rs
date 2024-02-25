@@ -39,8 +39,7 @@ fn get_icon_theme_search_paths(icon_theme: &IconTheme) -> HashSet<String> {
 }
 
 pub fn get_image(item: &StatusNotifierItem, icon_theme: &IconTheme, size: u32) -> Result<Image> {
-    get_image_from_icon_name(item, icon_theme, size)
-        .or_else(|_| get_image_from_pixmap(item, size))
+    get_image_from_icon_name(item, icon_theme, size).or_else(|_| get_image_from_pixmap(item, size))
 }
 
 /// Attempts to get a GTK `Image` component
@@ -77,10 +76,11 @@ fn get_image_from_pixmap(item: &StatusNotifierItem, size: u32) -> Result<Image> 
     let pixmap = item
         .icon_pixmap
         .as_ref()
-        .and_then(|pixmap| pixmap.first())?;
+        .and_then(|pixmap| pixmap.first())
+        .ok_or_else(|| Report::msg("Failed to get pixmap from tray icon"))?;
 
     let bytes = glib::Bytes::from(&pixmap.pixels);
-    let row_stride = pixmap.width * 4; //
+    let row_stride = pixmap.width * 4;
 
     let pixbuf = gdk_pixbuf::Pixbuf::from_bytes(
         &bytes,
@@ -95,5 +95,8 @@ fn get_image_from_pixmap(item: &StatusNotifierItem, size: u32) -> Result<Image> 
     let pixbuf = pixbuf
         .scale_simple(size as i32, size as i32, InterpType::Bilinear)
         .unwrap_or(pixbuf);
-    Some(Image::from_pixbuf(Some(&pixbuf)))
+
+    let image = Image::new();
+    ImageProvider::create_and_load_surface(&pixbuf, &image)?;
+    Ok(image)
 }
