@@ -106,7 +106,7 @@ cfg-if = "1.0.0"
 clap = { version = "4.5.1", optional = true, features = ["derive"] }
 
 # ipc
-serde_json = { version = "1.0.113", optional = true }
+serde_json = { version = "1.0.114", optional = true }
 
 # http
 reqwest = { version = "0.11.24", optional = true }
