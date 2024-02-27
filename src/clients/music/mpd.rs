@@ -4,11 +4,19 @@ use super::{
 use crate::{await_sync, send, spawn, Ironbar};
 use color_eyre::Report;
 use color_eyre::Result;
+use futures_util::SinkExt;
+use image::EncodableLayout;
 use mpd_client::client::{ConnectionEvent, Subsystem};
 use mpd_client::commands::{self, SeekMode};
 use mpd_client::responses::{PlayState, Song};
 use mpd_client::tag::Tag;
+use mpd_utils::mpd_client::commands::Command;
+use mpd_utils::mpd_client::responses::TypedResponseError;
 use mpd_utils::{mpd_client, PersistentClient};
+use std::io::BufReader;
+use std::io::BufWriter;
+use std::io::Bytes;
+use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::Duration;
@@ -93,7 +101,7 @@ impl Client {
         let status = client.command(commands::Status).await;
 
         if let (Ok(current_song), Ok(status)) = (current_song, status) {
-            let track = current_song.map(|s| convert_song(&s.song, music_dir));
+            let track = current_song.map(|s| convert_song(client, &s.song, music_dir));
             let status = Status::from(status);
 
             let update = PlayerUpdate::Update(Box::new(track), status);
@@ -117,6 +125,69 @@ impl Client {
             }
         }
     }
+}
+
+fn convert_song(client: &PersistentClient, song: &Song, music_dir: &Path) -> Track {
+    let (track, disc) = song.number();
+
+    let cover_image = get_picture(client, song.url.as_str()).ok();
+
+    Track {
+        title: song.title().map(ToString::to_string),
+        album: song.album().map(ToString::to_string),
+        artist: Some(song.artists().join(", ")),
+        date: try_get_first_tag(song, &Tag::Date).map(ToString::to_string),
+        genre: try_get_first_tag(song, &Tag::Genre).map(ToString::to_string),
+        disc: Some(disc),
+        track: Some(track),
+        cover_image,
+    }
+}
+fn get_picture(
+    client: &PersistentClient,
+    uri: &str,
+) -> Result<image::DynamicImage, TypedResponseError> {
+    let mut offset = 0;
+
+    let mut slice = await_sync(async move {
+        client
+            .command(ReadPicture {
+                uri: uri.to_string(),
+                offset,
+            })
+            .await
+            .map_err(Report::new)
+    })
+    .map_err(|e| {
+        tracing::error!("{e:#?}");
+        TypedResponseError::missing("cover art")
+    })?;
+    let total_length = slice.0;
+    let mut buffer = Vec::with_capacity(total_length as usize);
+    offset += slice.1.len();
+    buffer.write(slice.1.as_slice()).unwrap();
+    while offset < total_length as usize {
+        let mut slice = await_sync(async move {
+            client
+                .command(ReadPicture {
+                    uri: uri.to_string(),
+                    offset,
+                })
+                .await
+                .map_err(Report::new)
+        })
+        .map_err(|e| {
+            tracing::error!("{e:#?}");
+            TypedResponseError::missing("cover art")
+        })?;
+        offset += slice.1.len();
+        buffer.write(slice.1.as_slice()).unwrap();
+    }
+    Write::flush(&mut buffer).unwrap();
+    Ok(image::load_from_memory(buffer.as_slice()).map_err(|e| {
+        tracing::error!("{e:?}");
+        TypedResponseError::invalid_value("binary", "Unable to decode image".to_string())
+    })?)
 }
 
 impl MusicClient for Client {
@@ -155,32 +226,6 @@ impl MusicClient for Client {
     }
 }
 
-fn convert_song(song: &Song, music_dir: &Path) -> Track {
-    let (track, disc) = song.number();
-
-    let cover_path = music_dir
-        .join(
-            song.file_path()
-                .parent()
-                .expect("Song path should not be root")
-                .join("cover.jpg"),
-        )
-        .into_os_string()
-        .into_string()
-        .ok();
-
-    Track {
-        title: song.title().map(ToString::to_string),
-        album: song.album().map(ToString::to_string),
-        artist: Some(song.artists().join(", ")),
-        date: try_get_first_tag(song, &Tag::Date).map(ToString::to_string),
-        genre: try_get_first_tag(song, &Tag::Genre).map(ToString::to_string),
-        disc: Some(disc),
-        track: Some(track),
-        cover_path,
-    }
-}
-
 /// Attempts to read the first value for a tag
 /// (since the MPD client returns a vector of tags, or None)
 pub fn try_get_first_tag<'a>(song: &'a Song, tag: &'a Tag) -> Option<&'a str> {
@@ -206,6 +251,55 @@ impl From<PlayState> for PlayerState {
             PlayState::Stopped => Self::Stopped,
             PlayState::Playing => Self::Playing,
             PlayState::Paused => Self::Paused,
+        }
+    }
+}
+
+pub struct ReadPicture {
+    pub uri: String,
+    pub offset: usize,
+}
+
+impl Command for ReadPicture {
+    type Response = (u32, Vec<u8>);
+
+    fn command(&self) -> mpd_client::protocol::Command {
+        mpd_client::protocol::Command::new("readpicture")
+            .argument(self.uri.clone())
+            .argument(self.offset)
+    }
+
+    fn response(
+        self,
+        frame: mpd_client::protocol::response::Frame,
+    ) -> Result<Self::Response, mpd_client::responses::TypedResponseError> {
+        if frame.is_empty() || !frame.has_binary() {
+            Err(TypedResponseError::missing("id3v2 thumbnail"))
+        } else {
+            Ok((
+                frame
+                    .find("size")
+                    .expect("Having a size field")
+                    .parse()
+                    .expect("Getting a unsigned int for the size field"),
+                frame.binary().map(|b| b.to_vec()).unwrap(),
+            ))
+            // let format = image::guess_format(album_art).unwrap();
+            // dbg.unwrap()!(format);
+            // // For debugging
+            // {
+            //     let mut temp_file = std::fs::File::create("/tmp/current_thumb").unwrap();
+            //     temp_file.write(album_art).unwrap();
+            // }
+            // Ok(
+            //     image::load_from_memory_with_format(album_art, format).map_err(|e| {
+            //         tracing::error!("{e:?}");
+            //         TypedResponseError::invalid_value(
+            //             "binary",
+            //             "Unable to decode image".to_string(),
+            //         )
+            //     })?,
+            // )
         }
     }
 }

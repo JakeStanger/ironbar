@@ -1,11 +1,15 @@
 use std::cell::RefMut;
+use std::io::Read;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
 
 use color_eyre::Result;
+use glib::subclass::types::FromObject;
+use glib::translate::FromGlibPtrBorrow;
 use glib::{Propagation, PropertySet};
+use gtk::gdk_pixbuf::{Colorspace, Pixbuf};
 use gtk::prelude::*;
 use gtk::{Button, IconTheme, Label, Orientation, Scale};
 use regex::Regex;
@@ -402,28 +406,18 @@ impl Module<Button> for MusicModule {
             let icon_theme = icon_theme.clone();
             let image_size = self.cover_image_size;
 
-            let mut prev_cover = None;
             glib_recv!(rx, event =>  {
                 match event {
                     ControllerEvent::Update(Some(update)) => {
                         // only update art when album changes
-                        let new_cover = update.song.cover_path;
-                        if prev_cover != new_cover {
-                            prev_cover = new_cover.clone();
-                            let res = if let Some(image) = new_cover.and_then(|cover_path| {
-                                ImageProvider::parse(&cover_path, &icon_theme, false, image_size)
-                            }) {
-                                album_image.show();
-                                image.load_into_image(album_image.clone())
-                            } else {
-                                album_image.set_from_pixbuf(None);
-                                album_image.hide();
-                                Ok(())
-                            };
-
-                            if let Err(err) = res {
-                                error!("{err:?}");
-                            }
+                        if let Some(new_cover) = update.song.cover_image {
+                            let width = new_cover.width() as i32;
+                            let height = new_cover.height() as i32;
+                            album_image.show();
+                            album_image.set_from_pixbuf(Some(&Pixbuf::from_bytes( &glib::Bytes::from_owned(new_cover.into_rgb8().into_vec()), Colorspace::Rgb, false, 8, width, height, width * 3)))
+                        } else {
+                            album_image.set_from_pixbuf(None);
+                            album_image.hide();
                         }
 
                         update_popup_metadata_label(update.song.title, &title_label);

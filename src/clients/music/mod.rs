@@ -31,7 +31,7 @@ pub struct Track {
     pub disc: Option<u64>,
     pub genre: Option<String>,
     pub track: Option<u64>,
-    pub cover_path: Option<String>,
+    pub cover_image: Option<image::DynamicImage>,
 }
 
 #[derive(Clone, Copy, Debug)]
