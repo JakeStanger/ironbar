@@ -1,8 +1,6 @@
 use super::{MusicClient, PlayerState, PlayerUpdate, Status, Track, TICK_INTERVAL_MS};
 use crate::clients::music::ProgressTick;
-use crate::image::ImageProvider;
 use crate::{arc_mut, lock, send, spawn_blocking};
-use color_eyre::owo_colors::OwoColorize;
 use color_eyre::Result;
 use mpris::{DBusError, Event, Metadata, PlaybackStatus, Player, PlayerFinder};
 use std::cmp;
@@ -314,7 +312,7 @@ impl From<Metadata> for Track {
                 .and_then(mpris::MetadataValue::as_str_array)
                 .and_then(|arr| arr.first().map(|val| (*val).to_string())),
             track: value.track_number().map(|track| track as u64),
-            cover_image: value.art_url().map(|url| image::open(url).ok()).flatten(),
+            cover_image: value.art_url().and_then(|url| image::open(url).ok()),
         }
     }
 }

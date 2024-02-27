@@ -4,8 +4,6 @@ use super::{
 use crate::{await_sync, send, spawn, Ironbar};
 use color_eyre::Report;
 use color_eyre::Result;
-use futures_util::SinkExt;
-use image::EncodableLayout;
 use mpd_client::client::{ConnectionEvent, Subsystem};
 use mpd_client::commands::{self, SeekMode};
 use mpd_client::responses::{PlayState, Song};
@@ -13,9 +11,6 @@ use mpd_client::tag::Tag;
 use mpd_utils::mpd_client::commands::Command;
 use mpd_utils::mpd_client::responses::TypedResponseError;
 use mpd_utils::{mpd_client, PersistentClient};
-use std::io::BufReader;
-use std::io::BufWriter;
-use std::io::Bytes;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -127,7 +122,7 @@ impl Client {
     }
 }
 
-fn convert_song(client: &PersistentClient, song: &Song, music_dir: &Path) -> Track {
+fn convert_song(client: &PersistentClient, song: &Song, _music_dir: &Path) -> Track {
     let (track, disc) = song.number();
 
     let cover_image = get_picture(client, song.url.as_str()).ok();
@@ -165,9 +160,9 @@ fn get_picture(
     let total_length = slice.0;
     let mut buffer = Vec::with_capacity(total_length as usize);
     offset += slice.1.len();
-    buffer.write(slice.1.as_slice()).unwrap();
+    buffer.write_all(slice.1.as_slice()).unwrap();
     while offset < total_length as usize {
-        let mut slice = await_sync(async move {
+        slice = await_sync(async move {
             client
                 .command(ReadPicture {
                     uri: uri.to_string(),
@@ -181,13 +176,13 @@ fn get_picture(
             TypedResponseError::missing("cover art")
         })?;
         offset += slice.1.len();
-        buffer.write(slice.1.as_slice()).unwrap();
+        buffer.write_all(slice.1.as_slice()).unwrap();
     }
     Write::flush(&mut buffer).unwrap();
-    Ok(image::load_from_memory(buffer.as_slice()).map_err(|e| {
+    image::load_from_memory(buffer.as_slice()).map_err(|e| {
         tracing::error!("{e:?}");
         TypedResponseError::invalid_value("binary", "Unable to decode image".to_string())
-    })?)
+    })
 }
 
 impl MusicClient for Client {

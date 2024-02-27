@@ -1,13 +1,10 @@
 use std::cell::RefMut;
-use std::io::Read;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
 
 use color_eyre::Result;
-use glib::subclass::types::FromObject;
-use glib::translate::FromGlibPtrBorrow;
 use glib::{Propagation, PropertySet};
 use gtk::gdk_pixbuf::{Colorspace, Pixbuf};
 use gtk::prelude::*;
@@ -21,7 +18,7 @@ use crate::clients::music::{
 };
 use crate::clients::Clients;
 use crate::gtk_helpers::IronbarGtkExt;
-use crate::image::{new_icon_button, new_icon_label, ImageProvider};
+use crate::image::{new_icon_button, new_icon_label};
 use crate::modules::PopupButton;
 use crate::modules::{
     Module, ModuleInfo, ModuleParts, ModulePopup, ModuleUpdateEvent, WidgetContext,
@@ -403,9 +400,6 @@ impl Module<Button> for MusicModule {
         container.show_all();
 
         {
-            let icon_theme = icon_theme.clone();
-            let image_size = self.cover_image_size;
-
             glib_recv!(rx, event =>  {
                 match event {
                     ControllerEvent::Update(Some(update)) => {
