@@ -143,5 +143,3 @@ regex = { version = "1.10.3", default-features = false, features = [
 ], optional = true } # music, sys_info
 image = "0.24.9"
 
-[patch.crates-io]
-ahash = {version = "0.8.8", git = "https://github.com/tkaitchuck/ahash"}
