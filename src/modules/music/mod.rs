@@ -9,6 +9,7 @@ use glib::{Propagation, PropertySet};
 use gtk::gdk_pixbuf::{Colorspace, Pixbuf};
 use gtk::prelude::*;
 use gtk::{Button, IconTheme, Label, Orientation, Scale};
+use image::imageops::FilterType;
 use regex::Regex;
 use tokio::sync::{broadcast, mpsc};
 use tracing::error;
@@ -18,7 +19,7 @@ use crate::clients::music::{
 };
 use crate::clients::Clients;
 use crate::gtk_helpers::IronbarGtkExt;
-use crate::image::{new_icon_button, new_icon_label};
+use crate::image::{new_icon_button, new_icon_label, ImageProvider};
 use crate::modules::PopupButton;
 use crate::modules::{
     Module, ModuleInfo, ModuleParts, ModulePopup, ModuleUpdateEvent, WidgetContext,
@@ -61,6 +62,7 @@ fn get_tokens(re: &Regex, format_string: &str) -> Vec<String> {
 pub enum ControllerEvent {
     Update(Option<SongUpdate>),
     UpdateProgress(ProgressTick),
+    UpdateImage(Option<image::DynamicImage>),
 }
 
 #[derive(Clone, Debug)]
@@ -150,6 +152,12 @@ impl Module<Button> for MusicModule {
                                     progress_tick
                                 ))
                             ),
+                            PlayerUpdate::UpdateImage(img) => {
+                                send_async!(
+                                    tx,
+                                    ModuleUpdateEvent::Update(ControllerEvent::UpdateImage(img))
+                                )
+                            }
                         }
                     }
                 }
@@ -400,19 +408,33 @@ impl Module<Button> for MusicModule {
         container.show_all();
 
         {
+            let icon_theme = info.icon_theme.clone();
+            let image_size = self.cover_image_size;
+            let mut prev_cover = None;
             glib_recv!(rx, event =>  {
                 match event {
                     ControllerEvent::Update(Some(update)) => {
                         // only update art when album changes
-                        if let Some(new_cover) = update.song.cover_image {
-                            let width = new_cover.width() as i32;
-                            let height = new_cover.height() as i32;
-                            album_image.show();
-                            album_image.set_from_pixbuf(Some(&Pixbuf::from_bytes( &glib::Bytes::from_owned(new_cover.into_rgb8().into_vec()), Colorspace::Rgb, false, 8, width, height, width * 3)))
-                        } else {
-                            album_image.set_from_pixbuf(None);
-                            album_image.hide();
+                        let new_cover_path = update.song.cover_path;
+                        if prev_cover != new_cover_path {
+                prev_cover = new_cover_path.clone();
+                            let res = if let Some(image) = new_cover_path.and_then(|cover_path| {
+                                ImageProvider::parse(&cover_path, &icon_theme, false, image_size as i32)
+                            }) {
+                                album_image.show();
+                                image.load_into_image(album_image.clone())
+                            } else {
+                    album_image.set_from_pixbuf(
+                        None
+                    );
+                    album_image.show();
+                    Ok(())
+                };
+                            if let Err(err) = res {
+                                error!("{err:?}");
+                            }
                         }
+
 
                         update_popup_metadata_label(update.song.title, &title_label);
                         update_popup_metadata_label(update.song.album, &album_label);
@@ -473,6 +495,17 @@ impl Module<Button> for MusicModule {
                         } else {
                             progress_box.hide();
                         }
+                    }
+                    ControllerEvent::UpdateImage(Some(img)) => {
+                            let width = img.width() ;
+                            let height = img.height() ;
+                            let processed_image = if width > height {
+                                img.crop_imm(width / 2 - height / 2, 0, height, height)
+                            } else {
+                                img.crop_imm(0, height / 2 - width / 2, width, width)
+                            }.resize(image_size, image_size, FilterType::Lanczos3);
+                            album_image.show();
+                            album_image.set_from_pixbuf(Some(&Pixbuf::from_bytes( &glib::Bytes::from_owned(processed_image.into_rgb8().into_vec()), Colorspace::Rgb, false, 8, image_size as i32, image_size as i32, image_size as i32 * 3  )));
                     }
                     _ => {}
                 };

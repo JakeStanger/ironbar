@@ -96,11 +96,17 @@ impl Client {
         let status = client.command(commands::Status).await;
 
         if let (Ok(current_song), Ok(status)) = (current_song, status) {
-            let track = current_song.map(|s| convert_song(client, &s.song, music_dir));
+            let track = current_song
+                .clone()
+                .map(|s| convert_song(&s.song, music_dir));
+            let cover_image =
+                current_song.and_then(|s| get_picture(client, s.song.url.as_str()).ok());
             let status = Status::from(status);
 
-            let update = PlayerUpdate::Update(Box::new(track), status);
-            send!(tx, update);
+            let update_info = PlayerUpdate::Update(Box::new(track), status);
+            let update_image = PlayerUpdate::UpdateImage(cover_image);
+            send!(tx, update_image);
+            send!(tx, update_info);
         }
 
         Ok(())
@@ -122,10 +128,19 @@ impl Client {
     }
 }
 
-fn convert_song(client: &PersistentClient, song: &Song, _music_dir: &Path) -> Track {
+fn convert_song(song: &Song, music_dir: &Path) -> Track {
     let (track, disc) = song.number();
 
-    let cover_image = get_picture(client, song.url.as_str()).ok();
+    let cover_path = music_dir
+        .join(
+            song.file_path()
+                .parent()
+                .expect("Song Path should not be the root")
+                .join("cover.jpg"),
+        )
+        .into_os_string()
+        .into_string()
+        .ok();
 
     Track {
         title: song.title().map(ToString::to_string),
@@ -135,10 +150,10 @@ fn convert_song(client: &PersistentClient, song: &Song, _music_dir: &Path) -> Tr
         genre: try_get_first_tag(song, &Tag::Genre).map(ToString::to_string),
         disc: Some(disc),
         track: Some(track),
-        cover_image,
+        cover_path,
     }
 }
-fn get_picture(
+pub fn get_picture(
     client: &PersistentClient,
     uri: &str,
 ) -> Result<image::DynamicImage, TypedResponseError> {
@@ -176,7 +191,9 @@ fn get_picture(
             TypedResponseError::missing("cover art")
         })?;
         offset += slice.1.len();
-        buffer.write_all(slice.1.as_slice()).unwrap();
+        buffer
+            .write_all(slice.1.as_slice())
+            .expect("Writing to an in memory buffer");
     }
     Write::flush(&mut buffer).unwrap();
     image::load_from_memory(buffer.as_slice()).map_err(|e| {
@@ -279,22 +296,6 @@ impl Command for ReadPicture {
                     .expect("Getting a unsigned int for the size field"),
                 frame.binary().map(|b| b.to_vec()).unwrap(),
             ))
-            // let format = image::guess_format(album_art).unwrap();
-            // dbg.unwrap()!(format);
-            // // For debugging
-            // {
-            //     let mut temp_file = std::fs::File::create("/tmp/current_thumb").unwrap();
-            //     temp_file.write(album_art).unwrap();
-            // }
-            // Ok(
-            //     image::load_from_memory_with_format(album_art, format).map_err(|e| {
-            //         tracing::error!("{e:?}");
-            //         TypedResponseError::invalid_value(
-            //             "binary",
-            //             "Unable to decode image".to_string(),
-            //         )
-            //     })?,
-            // )
         }
     }
 }

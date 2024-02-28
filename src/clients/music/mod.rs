@@ -20,6 +20,7 @@ pub enum PlayerUpdate {
     /// Triggered at regular intervals while a track is playing.
     /// Used to keep track of the progress through the current track.
     ProgressTick(ProgressTick),
+    UpdateImage(Option<image::DynamicImage>),
 }
 
 #[derive(Clone, Debug)]
@@ -31,7 +32,7 @@ pub struct Track {
     pub disc: Option<u64>,
     pub genre: Option<String>,
     pub track: Option<u64>,
-    pub cover_image: Option<image::DynamicImage>,
+    pub cover_path: Option<String>,
 }
 
 #[derive(Clone, Copy, Debug)]

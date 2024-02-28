@@ -312,7 +312,7 @@ impl From<Metadata> for Track {
                 .and_then(mpris::MetadataValue::as_str_array)
                 .and_then(|arr| arr.first().map(|val| (*val).to_string())),
             track: value.track_number().map(|track| track as u64),
-            cover_image: value.art_url().and_then(|url| image::open(url).ok()),
+            cover_path: value.art_url().map(ToString::to_string),
         }
     }
 }
