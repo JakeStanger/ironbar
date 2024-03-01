@@ -157,21 +157,9 @@ impl<'a> ImageProvider<'a> {
             {
                 let size = self.size;
                 glib_recv_mpsc!(rx, bytes => {
-                    let stream = MemoryInputStream::from_bytes(&bytes);
-
-                    let scale = image.scale_factor();
-                    let scaled_size = size * scale;
-
-                    let pixbuf = Pixbuf::from_stream_at_scale(
-                        &stream,
-                        scaled_size,
-                        scaled_size,
-                        true,
-                        Some(&Cancellable::new()),
-                    );
 
                     // Different error types makes this a bit awkward
-                    match pixbuf.map(|pixbuf| Self::create_and_load_surface(&pixbuf, &image, scale))
+                    match Self::load_into_image_from_encoded(size,&bytes, &image)
                     {
                         Ok(Err(err)) => error!("{err:?}"),
                         Err(err) => error!("{err:?}"),
@@ -187,6 +175,28 @@ impl<'a> ImageProvider<'a> {
         self.load_into_image_sync(&image)?;
 
         Ok(())
+    }
+
+    pub fn load_into_image_from_encoded(
+        size: i32,
+        bytes: &glib::Bytes,
+        image: &gtk::Image,
+    ) -> Result<Result<()>, glib::Error> {
+        let stream = MemoryInputStream::from_bytes(bytes);
+
+        let scale = image.scale_factor();
+        let scaled_size = size * scale;
+
+        let pixbuf = Pixbuf::from_stream_at_scale(
+            &stream,
+            scaled_size,
+            scaled_size,
+            true,
+            Some(&Cancellable::new()),
+        );
+
+        // Different error types makes this a bit awkward
+        pixbuf.map(|pixbuf| Self::create_and_load_surface(&pixbuf, &image, scale))
     }
 
     /// Attempts to synchronously fetch an image from location

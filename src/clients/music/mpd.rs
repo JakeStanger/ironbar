@@ -153,10 +153,7 @@ fn convert_song(song: &Song, music_dir: &Path) -> Track {
         cover_path,
     }
 }
-pub fn get_picture(
-    client: &PersistentClient,
-    uri: &str,
-) -> Result<image::DynamicImage, TypedResponseError> {
+pub fn get_picture(client: &PersistentClient, uri: &str) -> Result<Vec<u8>, TypedResponseError> {
     let mut offset = 0;
 
     let mut slice = await_sync(async move {
@@ -196,10 +193,7 @@ pub fn get_picture(
             .expect("Writing to an in memory buffer");
     }
     Write::flush(&mut buffer).unwrap();
-    image::load_from_memory(buffer.as_slice()).map_err(|e| {
-        tracing::error!("{e:?}");
-        TypedResponseError::invalid_value("binary", "Unable to decode image".to_string())
-    })
+    Ok(buffer)
 }
 
 impl MusicClient for Client {

@@ -20,7 +20,7 @@ pub enum PlayerUpdate {
     /// Triggered at regular intervals while a track is playing.
     /// Used to keep track of the progress through the current track.
     ProgressTick(ProgressTick),
-    UpdateImage(Option<image::DynamicImage>),
+    UpdateImage(Option<Vec<u8>>),
 }
 
 #[derive(Clone, Debug)]

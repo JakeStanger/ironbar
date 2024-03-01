@@ -141,5 +141,4 @@ futures-util = { version = "0.3.30", optional = true }
 regex = { version = "1.10.3", default-features = false, features = [
   "std",
 ], optional = true } # music, sys_info
-image = "0.24.9"
 

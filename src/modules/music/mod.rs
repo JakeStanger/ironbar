@@ -6,10 +6,8 @@ use std::time::Duration;
 
 use color_eyre::Result;
 use glib::{Propagation, PropertySet};
-use gtk::gdk_pixbuf::{Colorspace, Pixbuf};
 use gtk::prelude::*;
 use gtk::{Button, IconTheme, Label, Orientation, Scale};
-use image::imageops::FilterType;
 use regex::Regex;
 use tokio::sync::{broadcast, mpsc};
 use tracing::error;
@@ -62,7 +60,7 @@ fn get_tokens(re: &Regex, format_string: &str) -> Vec<String> {
 pub enum ControllerEvent {
     Update(Option<SongUpdate>),
     UpdateProgress(ProgressTick),
-    UpdateImage(Option<image::DynamicImage>),
+    UpdateImage(Option<Vec<u8>>),
 }
 
 #[derive(Clone, Debug)]
@@ -497,15 +495,11 @@ impl Module<Button> for MusicModule {
                         }
                     }
                     ControllerEvent::UpdateImage(Some(img)) => {
-                            let width = img.width() ;
-                            let height = img.height() ;
-                            let processed_image = if width > height {
-                                img.crop_imm(width / 2 - height / 2, 0, height, height)
-                            } else {
-                                img.crop_imm(0, height / 2 - width / 2, width, width)
-                            }.resize(image_size, image_size, FilterType::Lanczos3);
-                            album_image.show();
-                            album_image.set_from_pixbuf(Some(&Pixbuf::from_bytes( &glib::Bytes::from_owned(processed_image.into_rgb8().into_vec()), Colorspace::Rgb, false, 8, image_size as i32, image_size as i32, image_size as i32 * 3  )));
+                        match ImageProvider::load_into_image_from_encoded(image_size as i32,&glib::Bytes::from_owned(img), &album_image) {
+                            Ok(Err(err)) => {error!("{err:#?}")},
+                            Err(err) => {error!("{err:#?}")},
+                            _ => {}
+                        };
                     }
                     _ => {}
                 };
