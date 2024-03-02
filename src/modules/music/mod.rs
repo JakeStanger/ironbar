@@ -37,6 +37,7 @@ pub enum PlayerCommand {
     Next,
     Volume(u8),
     Seek(Duration),
+    GetAlbumArt(String),
 }
 
 /// Formats a duration given in seconds
@@ -173,6 +174,7 @@ impl Module<Button> for MusicModule {
                         PlayerCommand::Next => client.next(),
                         PlayerCommand::Volume(vol) => client.set_volume_percent(vol),
                         PlayerCommand::Seek(duration) => client.seek(duration),
+                        PlayerCommand::GetAlbumArt(uri) => client.send_album_art(uri),
                     };
 
                     if let Err(err) = res {
@@ -392,11 +394,12 @@ impl Module<Button> for MusicModule {
             });
         }
 
+        let tx_seek = tx.clone();
         {
             let drag_lock = drag_lock.clone();
             progress.connect_button_release_event(move |scale, _| {
                 let value = scale.value();
-                try_send!(tx, PlayerCommand::Seek(Duration::from_secs_f64(value)));
+                try_send!(tx_seek, PlayerCommand::Seek(Duration::from_secs_f64(value)));
 
                 drag_lock.set(false);
                 Propagation::Proceed
@@ -404,36 +407,40 @@ impl Module<Button> for MusicModule {
         }
 
         container.show_all();
-
         {
+            let tx_art = tx.clone();
             let icon_theme = info.icon_theme.clone();
             let image_size = self.cover_image_size;
             let mut prev_cover = None;
+            let mut prev_track_name = None;
             glib_recv!(rx, event =>  {
                 match event {
                     ControllerEvent::Update(Some(update)) => {
                         // only update art when album changes
-                        let new_cover_path = update.song.cover_path;
+                        let new_cover_path = update.song.cover_path.clone();
                         if prev_cover != new_cover_path {
-                prev_cover = new_cover_path.clone();
-                            let res = if let Some(image) = new_cover_path.and_then(|cover_path| {
+                            prev_cover = new_cover_path.clone();
+                            let res = if let Some(image) = new_cover_path.clone().and_then(|cover_path| {
                                 ImageProvider::parse(&cover_path, &icon_theme, false, image_size as i32)
                             }) {
                                 album_image.show();
                                 image.load_into_image(album_image.clone())
                             } else {
-                    album_image.set_from_pixbuf(
-                        None
-                    );
-                    album_image.show();
-                    Ok(())
-                };
+                                Ok(())
+                            };
                             if let Err(err) = res {
                                 error!("{err:?}");
                             }
                         }
-
-
+                        if update.song.title != prev_track_name {
+                            let path = new_cover_path.unwrap_or_default();
+                            if !std::path::PathBuf::from(path).try_exists().unwrap_or(false) {
+                                if let Some(uri) = update.song.uri {
+                                    try_send!(tx_art, PlayerCommand::GetAlbumArt(uri));
+                                }
+                            }
+                        }
+                        prev_track_name = update.song.title.clone();
                         update_popup_metadata_label(update.song.title, &title_label);
                         update_popup_metadata_label(update.song.album, &album_label);
                         update_popup_metadata_label(update.song.artist, &artist_label);

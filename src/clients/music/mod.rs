@@ -33,6 +33,7 @@ pub struct Track {
     pub genre: Option<String>,
     pub track: Option<u64>,
     pub cover_path: Option<String>,
+    pub uri: Option<String>,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -66,6 +67,8 @@ pub trait MusicClient: Debug + Send + Sync {
     fn seek(&self, duration: Duration) -> Result<()>;
 
     fn subscribe_change(&self) -> broadcast::Receiver<PlayerUpdate>;
+
+    fn send_album_art(&self, uri: String) -> Result<()>;
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]

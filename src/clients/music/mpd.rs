@@ -99,13 +99,9 @@ impl Client {
             let track = current_song
                 .clone()
                 .map(|s| convert_song(&s.song, music_dir));
-            let cover_image =
-                current_song.and_then(|s| get_picture(client, s.song.url.as_str()).ok());
             let status = Status::from(status);
 
             let update_info = PlayerUpdate::Update(Box::new(track), status);
-            let update_image = PlayerUpdate::UpdateImage(cover_image);
-            send!(tx, update_image);
             send!(tx, update_info);
         }
 
@@ -150,43 +146,45 @@ fn convert_song(song: &Song, music_dir: &Path) -> Track {
         genre: try_get_first_tag(song, &Tag::Genre).map(ToString::to_string),
         disc: Some(disc),
         track: Some(track),
+        uri: Some(song.file_path().display().to_string()),
         cover_path,
     }
 }
-pub fn get_picture(client: &PersistentClient, uri: &str) -> Result<Vec<u8>, TypedResponseError> {
+pub async fn get_picture(
+    client: &PersistentClient,
+    uri: &str,
+) -> Result<Vec<u8>, TypedResponseError> {
     let mut offset = 0;
 
-    let mut slice = await_sync(async move {
-        client
+    let mut slice = client
+        .command(ReadPicture {
+            uri: uri.to_string(),
+            offset,
+        })
+        .await
+        .map_err(Report::new)
+        .map_err(|e| {
+            tracing::error!("{e:#?}");
+            TypedResponseError::missing("cover art")
+        })?;
+    let total_length = slice.0;
+    let mut buffer = Vec::with_capacity(total_length as usize);
+    offset += slice.1.len();
+    buffer
+        .write_all(slice.1.as_slice())
+        .expect("Writing to in memory buffer");
+    while offset < total_length as usize {
+        slice = client
             .command(ReadPicture {
                 uri: uri.to_string(),
                 offset,
             })
             .await
             .map_err(Report::new)
-    })
-    .map_err(|e| {
-        tracing::error!("{e:#?}");
-        TypedResponseError::missing("cover art")
-    })?;
-    let total_length = slice.0;
-    let mut buffer = Vec::with_capacity(total_length as usize);
-    offset += slice.1.len();
-    buffer.write_all(slice.1.as_slice()).unwrap();
-    while offset < total_length as usize {
-        slice = await_sync(async move {
-            client
-                .command(ReadPicture {
-                    uri: uri.to_string(),
-                    offset,
-                })
-                .await
-                .map_err(Report::new)
-        })
-        .map_err(|e| {
-            tracing::error!("{e:#?}");
-            TypedResponseError::missing("cover art")
-        })?;
+            .map_err(|e| {
+                tracing::error!("{e:#?}");
+                TypedResponseError::missing("cover art")
+            })?;
         offset += slice.1.len();
         buffer
             .write_all(slice.1.as_slice())
@@ -229,6 +227,13 @@ impl MusicClient for Client {
                 .expect("to be able to send update");
         });
         rx
+    }
+
+    fn send_album_art(&self, uri: String) -> Result<()> {
+        let cover_image = await_sync(get_picture(self.client.as_ref(), uri.as_str())).ok();
+        let update_image = PlayerUpdate::UpdateImage(cover_image);
+        send!(self.tx, update_image);
+        Ok(())
     }
 }
 
