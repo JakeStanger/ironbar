@@ -283,12 +283,17 @@ impl MusicClient for Client {
 
         rx
     }
+
+    fn send_album_art(&self, _uri: String) -> Result<()> {
+        Ok(())
+    }
 }
 
 impl From<Metadata> for Track {
     fn from(value: Metadata) -> Self {
         const KEY_DATE: &str = "xesam:contentCreated";
         const KEY_GENRE: &str = "xesam:genre";
+        const KEY_URL: &str = "xesam:url";
 
         Self {
             title: value
@@ -314,6 +319,10 @@ impl From<Metadata> for Track {
                 .and_then(|arr| arr.first().map(|val| (*val).to_string())),
             track: value.track_number().map(|track| track as u64),
             cover_path: value.art_url().map(ToString::to_string),
+            uri: value
+                .get(KEY_URL)
+                .and_then(mpris::MetadataValue::as_str_array)
+                .and_then(|arr| arr.first().map(|val| (*val).to_string())),
         }
     }
 }

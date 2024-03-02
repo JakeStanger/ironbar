@@ -95,7 +95,7 @@ pub struct MusicModule {
     pub(crate) icon_size: i32,
 
     #[serde(default = "default_cover_image_size")]
-    pub(crate) cover_image_size: i32,
+    pub(crate) cover_image_size: u32,
 
     // -- Common --
     pub(crate) truncate: Option<TruncateMode>,
@@ -152,6 +152,6 @@ const fn default_icon_size() -> i32 {
     24
 }
 
-const fn default_cover_image_size() -> i32 {
+const fn default_cover_image_size() -> u32 {
     128
 }

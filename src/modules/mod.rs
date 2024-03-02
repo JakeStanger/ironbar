@@ -3,7 +3,6 @@ use std::rc::Rc;
 use std::sync::Arc;
 
 use color_eyre::Result;
-use glib::IsA;
 use gtk::gdk::{EventMask, Monitor};
 use gtk::prelude::*;
 use gtk::{Application, Button, EventBox, IconTheme, Orientation, Revealer, Widget};

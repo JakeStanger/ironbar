@@ -8,7 +8,10 @@ use mpd_client::client::{ConnectionEvent, Subsystem};
 use mpd_client::commands::{self, SeekMode};
 use mpd_client::responses::{PlayState, Song};
 use mpd_client::tag::Tag;
+use mpd_utils::mpd_client::commands::Command;
+use mpd_utils::mpd_client::responses::TypedResponseError;
 use mpd_utils::{mpd_client, PersistentClient};
+use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::Duration;
@@ -93,11 +96,13 @@ impl Client {
         let status = client.command(commands::Status).await;
 
         if let (Ok(current_song), Ok(status)) = (current_song, status) {
-            let track = current_song.map(|s| convert_song(&s.song, music_dir));
+            let track = current_song
+                .clone()
+                .map(|s| convert_song(&s.song, music_dir));
             let status = Status::from(status);
 
-            let update = PlayerUpdate::Update(Box::new(track), status);
-            send!(tx, update);
+            let update_info = PlayerUpdate::Update(Box::new(track), status);
+            send!(tx, update_info);
         }
 
         Ok(())
@@ -117,6 +122,76 @@ impl Client {
             }
         }
     }
+}
+
+fn convert_song(song: &Song, music_dir: &Path) -> Track {
+    let (track, disc) = song.number();
+
+    let cover_path = music_dir
+        .join(
+            song.file_path()
+                .parent()
+                .expect("Song Path should not be the root")
+                .join("cover.jpg"),
+        )
+        .into_os_string()
+        .into_string()
+        .ok();
+
+    Track {
+        title: song.title().map(ToString::to_string),
+        album: song.album().map(ToString::to_string),
+        artist: Some(song.artists().join(", ")),
+        date: try_get_first_tag(song, &Tag::Date).map(ToString::to_string),
+        genre: try_get_first_tag(song, &Tag::Genre).map(ToString::to_string),
+        disc: Some(disc),
+        track: Some(track),
+        uri: Some(song.file_path().display().to_string()),
+        cover_path,
+    }
+}
+pub async fn get_picture(
+    client: &PersistentClient,
+    uri: &str,
+) -> Result<Vec<u8>, TypedResponseError> {
+    let mut offset = 0;
+
+    let mut slice = client
+        .command(ReadPicture {
+            uri: uri.to_string(),
+            offset,
+        })
+        .await
+        .map_err(Report::new)
+        .map_err(|e| {
+            tracing::error!("{e:#?}");
+            TypedResponseError::missing("cover art")
+        })?;
+    let total_length = slice.0;
+    let mut buffer = Vec::with_capacity(total_length as usize);
+    offset += slice.1.len();
+    buffer
+        .write_all(slice.1.as_slice())
+        .expect("Writing to in memory buffer");
+    while offset < total_length as usize {
+        slice = client
+            .command(ReadPicture {
+                uri: uri.to_string(),
+                offset,
+            })
+            .await
+            .map_err(Report::new)
+            .map_err(|e| {
+                tracing::error!("{e:#?}");
+                TypedResponseError::missing("cover art")
+            })?;
+        offset += slice.1.len();
+        buffer
+            .write_all(slice.1.as_slice())
+            .expect("Writing to an in memory buffer");
+    }
+    Write::flush(&mut buffer).unwrap();
+    Ok(buffer)
 }
 
 impl MusicClient for Client {
@@ -153,31 +228,12 @@ impl MusicClient for Client {
         });
         rx
     }
-}
 
-fn convert_song(song: &Song, music_dir: &Path) -> Track {
-    let (track, disc) = song.number();
-
-    let cover_path = music_dir
-        .join(
-            song.file_path()
-                .parent()
-                .expect("Song path should not be root")
-                .join("cover.jpg"),
-        )
-        .into_os_string()
-        .into_string()
-        .ok();
-
-    Track {
-        title: song.title().map(ToString::to_string),
-        album: song.album().map(ToString::to_string),
-        artist: Some(song.artists().join(", ")),
-        date: try_get_first_tag(song, &Tag::Date).map(ToString::to_string),
-        genre: try_get_first_tag(song, &Tag::Genre).map(ToString::to_string),
-        disc: Some(disc),
-        track: Some(track),
-        cover_path,
+    fn send_album_art(&self, uri: String) -> Result<()> {
+        let cover_image = await_sync(get_picture(self.client.as_ref(), uri.as_str())).ok();
+        let update_image = PlayerUpdate::UpdateImage(cover_image);
+        send!(self.tx, update_image);
+        Ok(())
     }
 }
 
@@ -206,6 +262,39 @@ impl From<PlayState> for PlayerState {
             PlayState::Stopped => Self::Stopped,
             PlayState::Playing => Self::Playing,
             PlayState::Paused => Self::Paused,
+        }
+    }
+}
+
+pub struct ReadPicture {
+    pub uri: String,
+    pub offset: usize,
+}
+
+impl Command for ReadPicture {
+    type Response = (u32, Vec<u8>);
+
+    fn command(&self) -> mpd_client::protocol::Command {
+        mpd_client::protocol::Command::new("readpicture")
+            .argument(self.uri.clone())
+            .argument(self.offset)
+    }
+
+    fn response(
+        self,
+        frame: mpd_client::protocol::response::Frame,
+    ) -> Result<Self::Response, mpd_client::responses::TypedResponseError> {
+        if frame.is_empty() || !frame.has_binary() {
+            Err(TypedResponseError::missing("id3v2 thumbnail"))
+        } else {
+            Ok((
+                frame
+                    .find("size")
+                    .expect("Having a size field")
+                    .parse()
+                    .expect("Getting a unsigned int for the size field"),
+                frame.binary().map(|b| b.to_vec()).unwrap(),
+            ))
         }
     }
 }
