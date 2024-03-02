@@ -1,7 +1,6 @@
 use crate::desktop_file::get_desktop_icon_name;
 #[cfg(feature = "http")]
 use crate::{glib_recv_mpsc, send_async, spawn};
-use cfg_if::cfg_if;
 use color_eyre::{Help, Report, Result};
 use gtk::cairo::Surface;
 use gtk::gdk::ffi::gdk_cairo_surface_create_from_pixbuf;
@@ -13,12 +12,8 @@ use std::path::{Path, PathBuf};
 use tokio::sync::mpsc;
 use tracing::warn;
 
-cfg_if!(
-    if #[cfg(feature = "http")] {
-        use gtk::gio::{Cancellable, MemoryInputStream};
-        use tracing::error;
-    }
-);
+use gtk::gio::{Cancellable, MemoryInputStream};
+use tracing::error;
 
 #[derive(Debug)]
 enum ImageLocation<'a> {
@@ -196,7 +191,7 @@ impl<'a> ImageProvider<'a> {
         );
 
         // Different error types makes this a bit awkward
-        pixbuf.map(|pixbuf| Self::create_and_load_surface(&pixbuf, &image, scale))
+        pixbuf.map(|pixbuf| Self::create_and_load_surface(&pixbuf, image, scale))
     }
 
     /// Attempts to synchronously fetch an image from location
