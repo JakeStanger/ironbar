@@ -59,8 +59,8 @@ fn get_tokens(re: &Regex, format_string: &str) -> Vec<String> {
 
 #[derive(Clone, Debug)]
 pub enum ControllerEvent {
-    Update(Option<SongUpdate>),
-    UpdateProgress(ProgressTick),
+    Update(Box<Option<SongUpdate>>),
+    UpdateProgress(Box<ProgressTick>),
     UpdateImage(Option<Vec<u8>>),
 }
 
@@ -135,20 +135,22 @@ impl Module<Button> for MusicModule {
 
                                     send_async!(
                                         tx,
-                                        ModuleUpdateEvent::Update(ControllerEvent::Update(Some(
-                                            update
-                                        )))
+                                        ModuleUpdateEvent::Update(ControllerEvent::Update(
+                                            Box::new(Some(update))
+                                        ))
                                     );
                                 }
                                 None => send_async!(
                                     tx,
-                                    ModuleUpdateEvent::Update(ControllerEvent::Update(None))
+                                    ModuleUpdateEvent::Update(ControllerEvent::Update(Box::new(
+                                        None
+                                    )))
                                 ),
                             },
                             PlayerUpdate::ProgressTick(progress_tick) => send_async!(
                                 tx,
                                 ModuleUpdateEvent::Update(ControllerEvent::UpdateProgress(
-                                    progress_tick
+                                    Box::new(progress_tick)
                                 ))
                             ),
                             PlayerUpdate::UpdateImage(img) => {
@@ -415,71 +417,73 @@ impl Module<Button> for MusicModule {
             let mut prev_track_name = None;
             glib_recv!(rx, event =>  {
                 match event {
-                    ControllerEvent::Update(Some(update)) => {
-                        // only update art when album changes
-                        let new_cover_path = update.song.cover_path.clone();
-                        if prev_cover != new_cover_path {
-                            prev_cover = new_cover_path.clone();
-                            let res = if let Some(image) = new_cover_path.clone().and_then(|cover_path| {
-                                ImageProvider::parse(&cover_path, &icon_theme, false, image_size as i32)
-                            }) {
-                                album_image.show();
-                                image.load_into_image(album_image.clone())
-                            } else {
-                                Ok(())
-                            };
-                            if let Err(err) = res {
-                                error!("{err:?}");
-                            }
-                        }
-                        if update.song.title != prev_track_name {
-                            let path = new_cover_path.unwrap_or_default();
-                            if !std::path::PathBuf::from(path).try_exists().unwrap_or(false) {
-                                if let Some(uri) = update.song.uri {
-                                    try_send!(tx_art, PlayerCommand::GetAlbumArt(uri));
+                    ControllerEvent::Update(update) => {
+                        if let Some(update) = *update {
+                            // only update art when album changes
+                            let new_cover_path = update.song.cover_path.clone();
+                            if prev_cover != new_cover_path {
+                                prev_cover = new_cover_path.clone();
+                                let res = if let Some(image) = new_cover_path.clone().and_then(|cover_path| {
+                                    ImageProvider::parse(&cover_path, &icon_theme, false, image_size as i32)
+                                }) {
+                                    album_image.show();
+                                    image.load_into_image(album_image.clone())
+                                } else {
+                                    Ok(())
+                                };
+                                if let Err(err) = res {
+                                    error!("{err:?}");
                                 }
                             }
-                        }
-                        prev_track_name = update.song.title.clone();
-                        update_popup_metadata_label(update.song.title, &title_label);
-                        update_popup_metadata_label(update.song.album, &album_label);
-                        update_popup_metadata_label(update.song.artist, &artist_label);
-
-                        match update.status.state {
-                            PlayerState::Stopped => {
-                                btn_pause.hide();
-                                btn_play.show();
-                                btn_play.set_sensitive(false);
+                            if update.song.title != prev_track_name {
+                                let path = new_cover_path.unwrap_or_default();
+                                if !std::path::PathBuf::from(path).try_exists().unwrap_or(false) {
+                                    if let Some(uri) = update.song.uri {
+                                        try_send!(tx_art, PlayerCommand::GetAlbumArt(uri));
+                                    }
+                                }
                             }
-                            PlayerState::Playing => {
-                                btn_play.set_sensitive(false);
-                                btn_play.hide();
+                            prev_track_name = update.song.title.clone();
+                            update_popup_metadata_label(update.song.title, &title_label);
+                            update_popup_metadata_label(update.song.album, &album_label);
+                            update_popup_metadata_label(update.song.artist, &artist_label);
 
-                                btn_pause.set_sensitive(true);
-                                btn_pause.show();
+                            match update.status.state {
+                                PlayerState::Stopped => {
+                                    btn_pause.hide();
+                                    btn_play.show();
+                                    btn_play.set_sensitive(false);
+                                }
+                                PlayerState::Playing => {
+                                    btn_play.set_sensitive(false);
+                                    btn_play.hide();
+
+                                    btn_pause.set_sensitive(true);
+                                    btn_pause.show();
+                                }
+                                PlayerState::Paused => {
+                                    btn_pause.set_sensitive(false);
+                                    btn_pause.hide();
+
+                                    btn_play.set_sensitive(true);
+                                    btn_play.show();
+                                }
                             }
-                            PlayerState::Paused => {
-                                btn_pause.set_sensitive(false);
-                                btn_pause.hide();
 
-                                btn_play.set_sensitive(true);
-                                btn_play.show();
+                            let enable_prev = update.status.playlist_position > 0;
+
+                            let enable_next =
+                                update.status.playlist_position < update.status.playlist_length;
+
+                            btn_prev.set_sensitive(enable_prev);
+                            btn_next.set_sensitive(enable_next);
+
+                            if let Some(volume) = update.status.volume_percent {
+                                volume_slider.set_value(f64::from(volume));
+                                volume_box.show();
+                            } else {
+                                volume_box.hide();
                             }
-                        }
-
-                        let enable_prev = update.status.playlist_position > 0;
-
-                        let enable_next =
-                            update.status.playlist_position < update.status.playlist_length;
-
-                        btn_prev.set_sensitive(enable_prev);
-                        btn_next.set_sensitive(enable_next);
-
-                        if let Some(volume) = update.status.volume_percent {
-                            volume_slider.set_value(f64::from(volume));
-                            volume_box.show();
-                        } else {
-                            volume_box.hide();
                         }
                     }
                     ControllerEvent::UpdateProgress(progress_tick)
