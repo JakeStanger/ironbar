@@ -6,6 +6,8 @@ pub mod clipboard;
 pub mod compositor;
 #[cfg(feature = "music")]
 pub mod music;
+#[cfg(feature = "notifications")]
+pub mod swaync;
 #[cfg(feature = "tray")]
 pub mod system_tray;
 #[cfg(feature = "upower")]
@@ -25,6 +27,8 @@ pub struct Clients {
     clipboard: Option<Arc<clipboard::Client>>,
     #[cfg(feature = "music")]
     music: std::collections::HashMap<music::ClientType, Arc<dyn music::MusicClient>>,
+    #[cfg(feature = "notifications")]
+    notifications: Option<Arc<swaync::Client>>,
     #[cfg(feature = "tray")]
     tray: Option<Arc<system_tray::TrayEventReceiver>>,
     #[cfg(feature = "upower")]
@@ -68,6 +72,15 @@ impl Clients {
         self.music
             .entry(client_type.clone())
             .or_insert_with(|| music::create_client(client_type))
+            .clone()
+    }
+
+    #[cfg(feature = "notifications")]
+    pub fn notifications(&mut self) -> Arc<swaync::Client> {
+        self.notifications
+            .get_or_insert_with(|| {
+                Arc::new(crate::await_sync(async { swaync::Client::new().await }))
+            })
             .clone()
     }
 
@@ -122,7 +135,7 @@ macro_rules! register_client {
         where
             TSend: Clone,
         {
-            fn provide(&self) -> Arc<$ty> {
+            fn provide(&self) -> std::sync::Arc<$ty> {
                 self.ironbar.clients.borrow_mut().$method()
             }
         }

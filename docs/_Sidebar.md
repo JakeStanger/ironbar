@@ -30,6 +30,7 @@
 - [Label](label)
 - [Launcher](launcher)
 - [Music](music)
+- [Notifications](notifications)
 - [Script](script)
 - [Sys_Info](sys-info)
 - [Tray](tray)
