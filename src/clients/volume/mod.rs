@@ -1,7 +1,7 @@
 mod sink;
 mod sink_input;
 
-use crate::{arc_mut, lock, register_client, send, spawn_blocking};
+use crate::{arc_mut, lock, register_client, send, spawn_blocking, APP_ID};
 use libpulse_binding::callbacks::ListResult;
 use libpulse_binding::context::introspect::{Introspector, ServerInfo};
 use libpulse_binding::context::subscribe::{Facility, InterestMaskSet, Operation};
@@ -88,10 +88,7 @@ impl Client {
             return;
         };
 
-        if proplist
-            .set_str("APPLICATION_NAME", "dev.jstanger.ironbar")
-            .is_err()
-        {
+        if proplist.set_str("APPLICATION_NAME", APP_ID).is_err() {
             error!("Failed to update PA proplist");
         }
 

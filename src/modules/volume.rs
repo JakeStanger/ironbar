@@ -1,5 +1,4 @@
-use crate::clients::volume;
-use crate::clients::volume::Event;
+use crate::clients::volume::{self, Event};
 use crate::config::CommonConfig;
 use crate::gtk_helpers::IronbarGtkExt;
 use crate::modules::{
