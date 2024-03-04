@@ -4,7 +4,7 @@ the default playback device, and control application volume levels individually.
 
 This requires PulseAudio to function (`pipewire-pulse` is supported).
 
-[!The volume widget, with its popup open. A single stream is playing audio.](https://f.jstanger.dev/github/ironbar/volume.png)
+![The volume widget, with its popup open. A single stream is playing audio.](https://f.jstanger.dev/github/ironbar/volume.png)
 
 ## Configuration
 

@@ -1,9 +1,9 @@
 Displays information about the current SwayNC state such as notification count and DnD.
 Clicking the widget opens the SwayNC panel.
 
-[!Notifications widget in its closed state showing 3 notifications](https://f.jstanger.dev/github/ironbar/notifications.png)
+![Notifications widget in its closed state showing 3 notifications](https://f.jstanger.dev/github/ironbar/notifications.png)
 
-> ![NOTE]
+> [!NOTE]
 > This widget requires the [SwayNC](https://github.com/ErikReider/SwayNotificationCenter) 
 > daemon to be running to use.
 
