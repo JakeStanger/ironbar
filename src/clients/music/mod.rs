@@ -34,14 +34,15 @@ pub struct Track {
     pub cover_path: Option<String>,
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Default)]
 pub enum PlayerState {
+    #[default]
+    Stopped,
     Playing,
     Paused,
-    Stopped,
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Default)]
 pub struct Status {
     pub state: PlayerState,
     pub volume_percent: Option<u8>,
