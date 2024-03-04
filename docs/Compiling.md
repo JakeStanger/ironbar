@@ -20,6 +20,8 @@ You also need rust; only the latest stable version is supported.
 pacman -S gtk3 gtk-layer-shell
 # for http support
 pacman -S openssl
+# for volume support
+pacman -S libpulse
 ```
 
 ### Ubuntu/Debian
@@ -28,6 +30,8 @@ pacman -S openssl
 apt install build-essential libgtk-3-dev libgtk-layer-shell-dev
 # for http support
 apt install libssl-dev
+# for volume support
+apt install libpulse-dev
 ```
 
 ### Fedora
@@ -36,6 +40,8 @@ apt install libssl-dev
 dnf install gtk3-devel gtk-layer-shell-devel
 # for http support
 dnf install openssl-devel
+# for volume support
+dnf install libpulseaudio-devel
 ```
 
 ## Features
@@ -81,6 +87,7 @@ cargo build --release --no-default-features \
 | sys_info            | Enables the `sys_info` module.                                                    |
 | tray                | Enables the `tray` module.                                                        |
 | upower              | Enables the `upower` module.                                                      |
+| volume              | Enables the `volume` module.                                                      |
 | workspaces+all      | Enables the `workspaces` module with support for all compositors.                 |
 | workspaces+sway     | Enables the `workspaces` module with support for Sway.                            |
 | workspaces+hyprland | Enables the `workspaces` module with support for Hyprland.                        |

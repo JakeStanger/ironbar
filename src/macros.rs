@@ -180,3 +180,10 @@ macro_rules! arc_rw {
         std::sync::Arc::new(std::sync::RwLock::new($val))
     };
 }
+
+#[macro_export]
+macro_rules! rc_mut {
+    ($val:expr) => {
+        std::rc::Rc::new(std::cell::RefCell::new($val))
+    };
+}

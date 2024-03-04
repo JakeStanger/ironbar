@@ -34,7 +34,7 @@ jobs:
       - name: Install build deps
         run: |
           sudo apt-get update
-          sudo apt-get install libgtk-3-dev libgtk-layer-shell-dev
+          sudo apt-get install libgtk-3-dev libgtk-layer-shell-dev libpulse-dev
 
       - name: Clippy
         run: cargo clippy --no-default-features --features config+json
@@ -55,7 +55,7 @@ jobs:
       - name: Install build deps
         run: |
           sudo apt-get update
-          sudo apt-get install libgtk-3-dev libgtk-layer-shell-dev
+          sudo apt-get install libgtk-3-dev libgtk-layer-shell-dev libpulse-dev
 
       - name: Clippy
         run: cargo clippy --all-targets --all-features
@@ -74,7 +74,7 @@ jobs:
       - name: Install build deps
         run: |
           sudo apt-get update
-          sudo apt-get install libgtk-3-dev libgtk-layer-shell-dev
+          sudo apt-get install libgtk-3-dev libgtk-layer-shell-dev libpulse-dev
 
       - name: Build
         run: cargo build --verbose

@@ -34,4 +34,5 @@
 - [Sys_Info](sys-info)
 - [Tray](tray)
 - [Upower](upower)
+- [Volume](volume)
 - [Workspaces](workspaces)

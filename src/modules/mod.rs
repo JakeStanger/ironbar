@@ -41,6 +41,8 @@ pub mod sysinfo;
 pub mod tray;
 #[cfg(feature = "upower")]
 pub mod upower;
+#[cfg(feature = "volume")]
+pub mod volume;
 #[cfg(feature = "workspaces")]
 pub mod workspaces;
 
