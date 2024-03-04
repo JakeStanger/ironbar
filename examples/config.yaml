@@ -92,4 +92,13 @@ end:
       label: 'Uptime: {{30000:uptime -p | cut -d '' '' -f2-}}'
   tooltip: 'Up: {{30000:uptime -p | cut -d '' '' -f2-}}'
 - type: clock
+- type: notifications
+  show_count: true
+  icons:
+    closed_none: 󰍥
+    closed_some: 󱥂
+    closed_dnd: 󱅯
+    open_none: 󰍡
+    open_some: 󱥁
+    open_dnd: 󱅮
 

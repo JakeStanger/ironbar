@@ -34,6 +34,8 @@ pub mod label;
 pub mod launcher;
 #[cfg(feature = "music")]
 pub mod music;
+#[cfg(feature = "notifications")]
+pub mod notifications;
 pub mod script;
 #[cfg(feature = "sys_info")]
 pub mod sysinfo;
