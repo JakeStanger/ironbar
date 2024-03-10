@@ -2,6 +2,8 @@ mod common;
 mod r#impl;
 mod truncate;
 
+#[cfg(feature = "cairo")]
+use crate::modules::cairo::CairoModule;
 #[cfg(feature = "clipboard")]
 use crate::modules::clipboard::ClipboardModule;
 #[cfg(feature = "clock")]
@@ -40,6 +42,8 @@ pub use self::truncate::TruncateMode;
 #[derive(Debug, Deserialize, Clone)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum ModuleConfig {
+    #[cfg(feature = "cairo")]
+    Cairo(Box<CairoModule>),
     #[cfg(feature = "clipboard")]
     Clipboard(Box<ClipboardModule>),
     #[cfg(feature = "clock")]
@@ -81,6 +85,8 @@ impl ModuleConfig {
         }
 
         match self {
+            #[cfg(feature = "cairo")]
+            Self::Cairo(module) => create!(module),
             #[cfg(feature = "clipboard")]
             Self::Clipboard(module) => create!(module),
             #[cfg(feature = "clock")]
