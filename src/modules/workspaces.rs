@@ -239,10 +239,11 @@ impl Module<gtk::Box> for WorkspacesModule {
 
                             let mut add_favourites = |names: &Vec<String>| {
                                 for name in names {
+                                    fav_names.push(name.to_string());
+
                                     if !added.contains(name) {
                                         add_workspace(name, Visibility::Hidden);
                                         added.insert(name.to_string());
-                                        fav_names.push(name.to_string());
                                     }
                                 }
                             };
