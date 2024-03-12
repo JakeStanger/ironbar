@@ -386,6 +386,7 @@ fn add_modules(
             ModuleConfig::Launcher(mut module) => add_module!(module, id),
             #[cfg(feature = "music")]
             ModuleConfig::Music(mut module) => add_module!(module, id),
+            #[cfg(feature = "networkmanager")]
             ModuleConfig::Networkmanager(mut module) => add_module!(module, id),
             ModuleConfig::Script(mut module) => add_module!(module, id),
             #[cfg(feature = "sys_info")]
