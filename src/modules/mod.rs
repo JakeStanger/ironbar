@@ -1,4 +1,3 @@
-use std::cell::RefCell;
 use std::fmt::Debug;
 use std::rc::Rc;
 use std::sync::Arc;
@@ -37,6 +36,8 @@ pub mod launcher;
 pub mod music;
 #[cfg(feature = "networkmanager")]
 pub mod networkmanager;
+#[cfg(feature = "notifications")]
+pub mod notifications;
 pub mod script;
 #[cfg(feature = "sys_info")]
 pub mod sysinfo;
@@ -44,6 +45,8 @@ pub mod sysinfo;
 pub mod tray;
 #[cfg(feature = "upower")]
 pub mod upower;
+#[cfg(feature = "volume")]
+pub mod volume;
 #[cfg(feature = "workspaces")]
 pub mod workspaces;
 
@@ -217,7 +220,7 @@ pub fn create_module<TModule, TWidget, TSend, TRec>(
     ironbar: Rc<Ironbar>,
     name: Option<String>,
     info: &ModuleInfo,
-    popup: &Rc<RefCell<Popup>>,
+    popup: &Rc<Popup>,
 ) -> Result<ModuleParts<TWidget>>
 where
     TModule: Module<TWidget, SendMessage = TSend, ReceiveMessage = TRec>,
@@ -253,22 +256,12 @@ where
             .style_context()
             .add_class(&format!("popup-{module_name}"));
 
-        register_popup_content(popup, id, instance_name, popup_content);
+        popup.register_content(id, instance_name, popup_content);
     }
 
     setup_receiver(tx, ui_rx, popup.clone(), module_name, id);
 
     Ok(module_parts)
-}
-
-/// Registers the popup content with the popup.
-fn register_popup_content(
-    popup: &Rc<RefCell<Popup>>,
-    id: usize,
-    name: String,
-    popup_content: ModulePopupParts,
-) {
-    popup.borrow_mut().register_content(id, name, popup_content);
 }
 
 /// Sets up the bridge channel receiver
@@ -279,7 +272,7 @@ fn register_popup_content(
 fn setup_receiver<TSend>(
     tx: broadcast::Sender<TSend>,
     rx: mpsc::Receiver<ModuleUpdateEvent<TSend>>,
-    popup: Rc<RefCell<Popup>>,
+    popup: Rc<Popup>,
     name: &'static str,
     id: usize,
 ) where
@@ -296,7 +289,6 @@ fn setup_receiver<TSend>(
             }
             ModuleUpdateEvent::TogglePopup(button_id) => {
                 debug!("Toggling popup for {} [#{}]", name, id);
-                let mut popup = popup.borrow_mut();
                 if popup.is_visible() {
                     popup.hide();
                 } else {
@@ -311,8 +303,6 @@ fn setup_receiver<TSend>(
             }
             ModuleUpdateEvent::OpenPopup(button_id) => {
                 debug!("Opening popup for {} [#{}]", name, id);
-
-                let mut popup = popup.borrow_mut();
                 popup.hide();
                 popup.show(id, button_id);
 
@@ -326,7 +316,6 @@ fn setup_receiver<TSend>(
             ModuleUpdateEvent::OpenPopupAt(geometry) => {
                 debug!("Opening popup for {} [#{}]", name, id);
 
-                let mut popup = popup.borrow_mut();
                 popup.hide();
                 popup.show_at(id, geometry);
 
@@ -338,8 +327,6 @@ fn setup_receiver<TSend>(
             }
             ModuleUpdateEvent::ClosePopup => {
                 debug!("Closing popup for {} [#{}]", name, id);
-
-                let mut popup = popup.borrow_mut();
                 popup.hide();
             }
         }

@@ -179,6 +179,9 @@ impl Environment {
             MimeTypeCategory::Image => {
                 let mut bytes = vec![];
                 file.read_to_end(&mut bytes)?;
+
+                debug!("Read bytes: {}", bytes.len());
+
                 let bytes = Bytes::from(&bytes);
 
                 ClipboardValue::Image(bytes)
@@ -233,6 +236,8 @@ impl DataControlDeviceHandler for Environment {
                 );
                 return;
             };
+
+            debug!("Receiving mime type: {}", mime_type.value);
 
             if let Ok(read_pipe) = cur_offer.offer.receive(mime_type.value.clone()) {
                 let offer_clone = cur_offer.offer.clone();
@@ -331,9 +336,9 @@ impl DataControlSourceHandler for Environment {
 
                 let pipe_size = set_pipe_size(fd.as_raw_fd(), bytes.len())
                     .expect("Failed to increase pipe size");
-                let mut file = File::from(fd.try_clone().expect("Failed to clone fd"));
+                let mut file = File::from(fd.try_clone().expect("to be able to clone"));
 
-                trace!("Num bytes: {}", bytes.len());
+                debug!("Writing {} bytes", bytes.len());
 
                 let mut events = (0..16).map(|_| EpollEvent::empty()).collect::<Vec<_>>();
                 let epoll_event = EpollEvent::new(EpollFlags::EPOLLOUT, 0);
@@ -347,20 +352,23 @@ impl DataControlSourceHandler for Environment {
                 while !bytes.is_empty() {
                     let chunk = &bytes[..min(pipe_size as usize, bytes.len())];
 
-                    trace!("Writing {} bytes ({} remain)", chunk.len(), bytes.len());
-
                     epoll_fd
                         .wait(&mut events, 100)
                         .expect("Failed to wait to epoll");
 
                     match file.write(chunk) {
-                        Ok(_) => bytes = &bytes[chunk.len()..],
+                        Ok(written) => {
+                            trace!("Wrote {} bytes ({} remain)", written, bytes.len());
+                            bytes = &bytes[written..];
+                        }
                         Err(err) => {
                             error!("{err:?}");
                             break;
                         }
                     }
                 }
+
+                debug!("Done writing");
             } else {
                 error!("Failed to find source");
             }
@@ -388,7 +396,7 @@ impl DataControlSourceHandler for Environment {
 /// If the requested size is larger than the kernel max (normally 1MB),
 /// it will be clamped at this.
 ///
-/// Returns the new size if succeeded
+/// Returns the new size if succeeded.
 fn set_pipe_size(fd: RawFd, size: usize) -> io::Result<i32> {
     // clamp size at kernel max
     let max_pipe_size = fs::read_to_string("/proc/sys/fs/pipe-max-size")

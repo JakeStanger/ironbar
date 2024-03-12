@@ -166,8 +166,12 @@ impl ItemButton {
 
         if appearance.show_icons {
             let gtk_image = gtk::Image::new();
-            let image =
-                ImageProvider::parse(&item.app_id.clone(), icon_theme, true, appearance.icon_size);
+            let input = if item.app_id.is_empty() {
+                item.name.clone()
+            } else {
+                item.app_id.clone()
+            };
+            let image = ImageProvider::parse(&input, icon_theme, true, appearance.icon_size);
             if let Some(image) = image {
                 button.set_image(Some(&gtk_image));
                 button.set_always_show_image(true);
@@ -225,9 +229,7 @@ impl ItemButton {
 
                     try_send!(
                         tx,
-                        ModuleUpdateEvent::OpenPopupAt(
-                            button.geometry(bar_position.get_orientation())
-                        )
+                        ModuleUpdateEvent::OpenPopupAt(button.geometry(bar_position.orientation()))
                     );
                 } else {
                     try_send!(tx, ModuleUpdateEvent::ClosePopup);

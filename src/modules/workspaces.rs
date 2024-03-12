@@ -189,7 +189,7 @@ impl Module<gtk::Box> for WorkspacesModule {
         context: WidgetContext<Self::SendMessage, Self::ReceiveMessage>,
         info: &ModuleInfo,
     ) -> Result<ModuleParts<gtk::Box>> {
-        let container = gtk::Box::new(info.bar_position.get_orientation(), 0);
+        let container = gtk::Box::new(info.bar_position.orientation(), 0);
 
         let name_map = self.name_map.clone().unwrap_or_default();
         let favs = self.favorites.clone();
@@ -239,10 +239,11 @@ impl Module<gtk::Box> for WorkspacesModule {
 
                             let mut add_favourites = |names: &Vec<String>| {
                                 for name in names {
+                                    fav_names.push(name.to_string());
+
                                     if !added.contains(name) {
                                         add_workspace(name, Visibility::Hidden);
                                         added.insert(name.to_string());
-                                        fav_names.push(name.to_string());
                                     }
                                 }
                             };

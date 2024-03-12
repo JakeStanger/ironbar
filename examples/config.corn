@@ -33,6 +33,18 @@ let {
     $mpd_local = { type = "music" player_type = "mpd" music_dir = "/home/jake/Music" truncate.mode = "end" truncate.max_length = 100 }
     $mpd_server = { type = "music" player_type = "mpd" host = "chloe:6600" truncate = "end" }
 
+    $notifications = {
+        type = "notifications"
+        show_count = true
+
+        icons.closed_none = "󰍥"
+        icons.closed_some = "󱥂"
+        icons.closed_dnd = "󱅯"
+        icons.open_none = "󰍡"
+        icons.open_some = "󱥁"
+        icons.open_dnd = "󱅮"
+    }
+
     $sys_info = {
         type = "sys_info"
 
@@ -67,6 +79,16 @@ let {
 
     $clipboard = { type = "clipboard" max_items = 3 truncate.mode = "end" truncate.length = 50 }
 
+    $volume = {
+        type = "volume"
+        format = "{icon} {volume}%"
+        max_volume = 100
+        icons.volume_high = "󰕾"
+        icons.volume_medium = "󰖀"
+        icons.volume_low = "󰕿"
+        icons.muted = "󰝟"
+    }
+
     $label = { type = "label" label = "random num: {{500:echo FIXME}}" }
 
     // -- begin custom --
@@ -100,7 +122,7 @@ let {
     // -- end custom --
 
     $left = [ $workspaces $launcher $label ]
-    $right = [ $mpd_local $mpd_server $phone_battery $sys_info $clipboard $power_menu $clock ]
+    $right = [ $mpd_local $mpd_server $phone_battery $sys_info $volume $clipboard $power_menu $clock $notifications ]
 }
 in {
     anchor_to_edges = true

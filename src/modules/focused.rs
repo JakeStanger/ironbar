@@ -113,7 +113,7 @@ impl Module<gtk::Box> for FocusedModule {
     ) -> Result<ModuleParts<gtk::Box>> {
         let icon_theme = info.icon_theme;
 
-        let container = gtk::Box::new(info.bar_position.get_orientation(), 5);
+        let container = gtk::Box::new(info.bar_position.orientation(), 5);
 
         let icon = gtk::Image::new();
         if self.show_icon {

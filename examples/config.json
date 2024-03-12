@@ -1,30 +1,67 @@
 {
   "anchor_to_edges": true,
+  "position": "bottom",
+  "icon_theme": "Paper",
+  "start": [
+    {
+      "type": "workspaces",
+      "all_monitors": false,
+      "name_map": {
+        "1": "󰙯",
+        "2": "icon:firefox",
+        "3": "",
+        "Games": "icon:steam",
+        "Code": ""
+      }
+    },
+    {
+      "type": "launcher",
+      "favorites": [
+        "firefox",
+        "discord",
+        "steam"
+      ],
+      "show_names": false,
+      "show_icons": true
+    },
+    {
+      "type": "label",
+      "label": "random num: {{500:echo FIXME}}"
+    }
+  ],
   "end": [
     {
+      "type": "music",
+      "player_type": "mpd",
       "music_dir": "/home/jake/Music",
-      "player_type": "mpd",
       "truncate": {
-        "max_length": 100,
-        "mode": "end"
-      },
-      "type": "music"
+        "mode": "end",
+        "max_length": 100
+      }
     },
     {
-      "host": "chloe:6600",
+      "type": "music",
       "player_type": "mpd",
-      "truncate": "end",
-      "type": "music"
+      "host": "chloe:6600",
+      "truncate": "end"
     },
     {
+      "type": "script",
       "cmd": "/home/jake/bin/phone-battery",
       "show_if": {
         "cmd": "/home/jake/bin/phone-connected",
         "interval": 500
-      },
-      "type": "script"
+      }
     },
     {
+      "type": "sys_info",
+      "interval": {
+        "memory": 30,
+        "cpu": 1,
+        "temps": 5,
+        "disks": 300,
+        "networks": 3
+      },
       "format": [
         " {cpu_percent}% | {temp_c:k10temp_Tccd1}°C",
         " {memory_used} / {memory_total} GB ({memory_percent}%)",
@@ -33,103 +70,89 @@
         "󰓢 {net_down:enp39s0} / {net_up:enp39s0} Mbps",
         "󰖡 {load_average:1} | {load_average:5} | {load_average:15}",
         "󰥔 {uptime}"
-      ],
-      "interval": {
-        "cpu": 1,
-        "disks": 300,
-        "memory": 30,
-        "networks": 3,
-        "temps": 5
-      },
-      "type": "sys_info"
+      ]
     },
     {
+      "type": "volume",
+      "format": "{icon} {volume}%",
+      "max_volume": 100,
+      "icons": {
+        "volume_high": "󰕾",
+        "volume_medium": "󰖀",
+        "volume_low": "󰕿",
+        "muted": "󰝟"
+      }
+    },
+    {
+      "type": "clipboard",
       "max_items": 3,
       "truncate": {
-        "length": 50,
-        "mode": "end"
-      },
-      "type": "clipboard"
+        "mode": "end",
+        "length": 50
+      }
     },
     {
+      "type": "custom",
+      "class": "power-menu",
       "bar": [
         {
-          "label": "",
+          "type": "button",
           "name": "power-btn",
-          "on_click": "popup:toggle",
-          "type": "button"
+          "label": "",
+          "on_click": "popup:toggle"
         }
       ],
-      "class": "power-menu",
       "popup": [
         {
-          "orientation": "vertical",
           "type": "box",
+          "orientation": "vertical",
           "widgets": [
             {
-              "label": "Power menu",
+              "type": "label",
               "name": "header",
-              "type": "label"
+              "label": "Power menu"
             },
             {
               "type": "box",
               "widgets": [
                 {
+                  "type": "button",
                   "class": "power-btn",
                   "label": "<span font-size='40pt'></span>",
-                  "on_click": "!shutdown now",
-                  "type": "button"
+                  "on_click": "!shutdown now"
                 },
                 {
+                  "type": "button",
                   "class": "power-btn",
                   "label": "<span font-size='40pt'></span>",
-                  "on_click": "!reboot",
-                  "type": "button"
+                  "on_click": "!reboot"
                 }
               ]
             },
             {
-              "label": "Uptime: {{30000:uptime -p | cut -d ' ' -f2-}}",
+              "type": "label",
               "name": "uptime",
-              "type": "label"
+              "label": "Uptime: {{30000:uptime -p | cut -d ' ' -f2-}}"
             }
           ]
         }
       ],
-      "tooltip": "Up: {{30000:uptime -p | cut -d ' ' -f2-}}",
-      "type": "custom"
+      "tooltip": "Up: {{30000:uptime -p | cut -d ' ' -f2-}}"
     },
     {
       "type": "clock"
-    }
-  ],
-  "icon_theme": "Paper",
-  "position": "bottom",
-  "start": [
-    {
-      "all_monitors": false,
-      "name_map": {
-        "1": "󰙯",
-        "2": "icon:firefox",
-        "3": "",
-        "Code": "",
-        "Games": "icon:steam"
-      },
-      "type": "workspaces"
     },
     {
-      "favorites": [
-        "firefox",
-        "discord",
-        "steam"
-      ],
-      "show_icons": true,
-      "show_names": false,
-      "type": "launcher"
-    },
-    {
-      "label": "random num: {{500:echo FIXME}}",
-      "type": "label"
+      "type": "notifications",
+      "show_count": true,
+      "icons": {
+        "closed_none": "󰍥",
+        "closed_some": "󱥂",
+        "closed_dnd": "󱅯",
+        "open_none": "󰍡",
+        "open_some": "󱥁",
+        "open_dnd": "󱅮"
+      }
     }
   ]
 }

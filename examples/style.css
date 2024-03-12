@@ -150,6 +150,20 @@ scale trough {
     border-radius: 100%;
 }
 
+/* notifications */
+
+.notifications .count {
+    font-size: 0.6rem;
+    background-color: @color_text;
+    color: @color_bg;
+    border-radius: 100%;
+    margin-right: 3px;
+    margin-top: 3px;
+    padding-left: 4px;
+    padding-right: 4px;
+    opacity: 0.7;
+}
+
 /* -- script -- */
 
 .script {
@@ -174,6 +188,11 @@ scale trough {
     margin-left: 10px;
 }
 
+/* -- volume -- */
+
+.popup-volume .device-box {
+    border-right: 1px solid @color_border;
+}
 
 /* -- workspaces -- */
 

@@ -57,7 +57,7 @@ mod popup;
 mod script;
 mod style;
 
-const GTK_APP_ID: &str = "dev.jstanger.ironbar";
+pub const APP_ID: &str = "dev.jstanger.ironbar";
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 
 fn main() {
@@ -111,7 +111,7 @@ impl Ironbar {
         info!("Ironbar version {}", VERSION);
         info!("Starting application");
 
-        let app = Application::builder().application_id(GTK_APP_ID).build();
+        let app = Application::builder().application_id(APP_ID).build();
 
         let running = AtomicBool::new(false);
 

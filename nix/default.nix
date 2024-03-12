@@ -12,6 +12,7 @@
   gtk-layer-shell,
   gnome,
   libxkbcommon,
+  libpulseaudio,
   openssl,
   pkg-config,
   hicolor-icon-theme,
@@ -30,7 +31,7 @@
       path = lib.cleanSource ../.;
     };
     nativeBuildInputs = [pkg-config wrapGAppsHook gobject-introspection];
-    buildInputs = [gtk3 gdk-pixbuf glib gtk-layer-shell glib-networking shared-mime-info gnome.adwaita-icon-theme hicolor-icon-theme gsettings-desktop-schemas libxkbcommon openssl];
+    buildInputs = [gtk3 gdk-pixbuf glib gtk-layer-shell glib-networking shared-mime-info gnome.adwaita-icon-theme hicolor-icon-theme gsettings-desktop-schemas libxkbcommon libpulseaudio openssl];
     propagatedBuildInputs = [
       gtk3
     ];

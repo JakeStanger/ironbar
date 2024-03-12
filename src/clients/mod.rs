@@ -6,10 +6,14 @@ pub mod clipboard;
 pub mod compositor;
 #[cfg(feature = "music")]
 pub mod music;
+#[cfg(feature = "notifications")]
+pub mod swaync;
 #[cfg(feature = "tray")]
 pub mod system_tray;
 #[cfg(feature = "upower")]
 pub mod upower;
+#[cfg(feature = "volume")]
+pub mod volume;
 pub mod wayland;
 
 /// Singleton wrapper consisting of
@@ -23,10 +27,14 @@ pub struct Clients {
     clipboard: Option<Arc<clipboard::Client>>,
     #[cfg(feature = "music")]
     music: std::collections::HashMap<music::ClientType, Arc<dyn music::MusicClient>>,
+    #[cfg(feature = "notifications")]
+    notifications: Option<Arc<swaync::Client>>,
     #[cfg(feature = "tray")]
     tray: Option<Arc<system_tray::TrayEventReceiver>>,
     #[cfg(feature = "upower")]
     upower: Option<Arc<zbus::fdo::PropertiesProxy<'static>>>,
+    #[cfg(feature = "volume")]
+    volume: Option<Arc<volume::Client>>,
 }
 
 impl Clients {
@@ -67,6 +75,15 @@ impl Clients {
             .clone()
     }
 
+    #[cfg(feature = "notifications")]
+    pub fn notifications(&mut self) -> Arc<swaync::Client> {
+        self.notifications
+            .get_or_insert_with(|| {
+                Arc::new(crate::await_sync(async { swaync::Client::new().await }))
+            })
+            .clone()
+    }
+
     #[cfg(feature = "tray")]
     pub fn tray(&mut self) -> Arc<system_tray::TrayEventReceiver> {
         self.tray
@@ -84,6 +101,13 @@ impl Clients {
             .get_or_insert_with(|| {
                 crate::await_sync(async { upower::create_display_proxy().await })
             })
+            .clone()
+    }
+
+    #[cfg(feature = "volume")]
+    pub fn volume(&mut self) -> Arc<volume::Client> {
+        self.volume
+            .get_or_insert_with(volume::create_client)
             .clone()
     }
 }
@@ -111,7 +135,7 @@ macro_rules! register_client {
         where
             TSend: Clone,
         {
-            fn provide(&self) -> Arc<$ty> {
+            fn provide(&self) -> std::sync::Arc<$ty> {
                 self.ironbar.clients.borrow_mut().$method()
             }
         }
