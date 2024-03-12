@@ -14,7 +14,6 @@ use crate::image::ImageProvider;
 use crate::modules::{Module, ModuleInfo, ModuleParts, ModuleUpdateEvent, WidgetContext};
 use crate::{glib_recv, send_async, spawn};
 
-// TODO: Add icon size option
 #[derive(Debug, Deserialize, Clone)]
 pub struct NetworkmanagerModule {
     #[serde(default = "default_icon_size")]
