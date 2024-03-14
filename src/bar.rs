@@ -1,7 +1,5 @@
 use crate::config::{BarConfig, BarPosition, MarginConfig, ModuleConfig};
-use crate::modules::{
-    create_module, set_widget_identifiers, wrap_widget, ModuleInfo, ModuleLocation,
-};
+use crate::modules::{BarModuleFactory, ModuleInfo, ModuleLocation};
 use crate::popup::Popup;
 use crate::Ironbar;
 use color_eyre::Result;
@@ -350,55 +348,10 @@ fn add_modules(
     ironbar: &Rc<Ironbar>,
     popup: &Rc<Popup>,
 ) -> Result<()> {
-    let orientation = info.bar_position.orientation();
-
-    macro_rules! add_module {
-        ($module:expr, $id:expr) => {{
-            let common = $module.common.take().expect("common config to exist");
-            let widget_parts = create_module(
-                *$module,
-                $id,
-                ironbar.clone(),
-                common.name.clone(),
-                &info,
-                &Rc::clone(&popup),
-            )?;
-            set_widget_identifiers(&widget_parts, &common);
-
-            let container = wrap_widget(&widget_parts.widget, common, orientation);
-            content.add(&container);
-        }};
-    }
+    let module_factory = BarModuleFactory::new(ironbar.clone(), popup.clone()).into();
 
     for config in modules {
-        let id = Ironbar::unique_id();
-        match config {
-            #[cfg(feature = "clipboard")]
-            ModuleConfig::Clipboard(mut module) => add_module!(module, id),
-            #[cfg(feature = "clock")]
-            ModuleConfig::Clock(mut module) => add_module!(module, id),
-            ModuleConfig::Custom(mut module) => add_module!(module, id),
-            #[cfg(feature = "focused")]
-            ModuleConfig::Focused(mut module) => add_module!(module, id),
-            ModuleConfig::Label(mut module) => add_module!(module, id),
-            #[cfg(feature = "launcher")]
-            ModuleConfig::Launcher(mut module) => add_module!(module, id),
-            #[cfg(feature = "music")]
-            ModuleConfig::Music(mut module) => add_module!(module, id),
-            #[cfg(feature = "notifications")]
-            ModuleConfig::Notifications(mut module) => add_module!(module, id),
-            ModuleConfig::Script(mut module) => add_module!(module, id),
-            #[cfg(feature = "sys_info")]
-            ModuleConfig::SysInfo(mut module) => add_module!(module, id),
-            #[cfg(feature = "tray")]
-            ModuleConfig::Tray(mut module) => add_module!(module, id),
-            #[cfg(feature = "upower")]
-            ModuleConfig::Upower(mut module) => add_module!(module, id),
-            #[cfg(feature = "volume")]
-            ModuleConfig::Volume(mut module) => add_module!(module, id),
-            #[cfg(feature = "workspaces")]
-            ModuleConfig::Workspaces(mut module) => add_module!(module, id),
-        }
+        config.create(&module_factory, content, info)?;
     }
 
     Ok(())

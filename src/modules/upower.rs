@@ -15,7 +15,7 @@ use crate::modules::PopupButton;
 use crate::modules::{
     Module, ModuleInfo, ModuleParts, ModulePopup, ModuleUpdateEvent, WidgetContext,
 };
-use crate::{glib_recv, send_async, spawn, try_send};
+use crate::{glib_recv, module_impl, send_async, spawn, try_send};
 
 const DAY: i64 = 24 * 60 * 60;
 const HOUR: i64 = 60 * 60;
@@ -54,9 +54,7 @@ impl Module<gtk::Button> for UpowerModule {
     type SendMessage = UpowerProperties;
     type ReceiveMessage = ();
 
-    fn name() -> &'static str {
-        "upower"
-    }
+    module_impl!("upower");
 
     fn spawn_controller(
         &self,
@@ -211,7 +209,7 @@ impl Module<gtk::Button> for UpowerModule {
 
         let rx = context.subscribe();
         let popup = self
-            .into_popup(context.controller_tx, rx, info)
+            .into_popup(context.controller_tx.clone(), rx, context, info)
             .into_popup_parts(vec![&button]);
 
         Ok(ModuleParts::new(button, popup))
@@ -221,6 +219,7 @@ impl Module<gtk::Button> for UpowerModule {
         self,
         _tx: mpsc::Sender<Self::ReceiveMessage>,
         rx: broadcast::Receiver<Self::SendMessage>,
+        _context: WidgetContext<Self::SendMessage, Self::ReceiveMessage>,
         _info: &ModuleInfo,
     ) -> Option<gtk::Box>
     where

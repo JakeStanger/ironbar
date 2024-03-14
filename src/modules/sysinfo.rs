@@ -1,7 +1,7 @@
 use crate::config::CommonConfig;
 use crate::gtk_helpers::IronbarGtkExt;
 use crate::modules::{Module, ModuleInfo, ModuleParts, ModuleUpdateEvent, WidgetContext};
-use crate::{glib_recv, send_async, spawn};
+use crate::{glib_recv, module_impl, send_async, spawn};
 use color_eyre::Result;
 use gtk::prelude::*;
 use gtk::Label;
@@ -116,9 +116,7 @@ impl Module<gtk::Box> for SysInfoModule {
     type SendMessage = HashMap<String, String>;
     type ReceiveMessage = ();
 
-    fn name() -> &'static str {
-        "sysinfo"
-    }
+    module_impl!("sysinfo");
 
     fn spawn_controller(
         &self,

@@ -6,7 +6,7 @@ use crate::clients::tray;
 use crate::config::CommonConfig;
 use crate::modules::tray::diff::get_diffs;
 use crate::modules::{Module, ModuleInfo, ModuleParts, ModuleUpdateEvent, WidgetContext};
-use crate::{glib_recv, lock, send_async, spawn};
+use crate::{glib_recv, lock, module_impl, send_async, spawn};
 use color_eyre::{Report, Result};
 use gtk::{prelude::*, PackDirection};
 use gtk::{IconTheme, MenuBar};
@@ -57,9 +57,7 @@ impl Module<MenuBar> for TrayModule {
     type SendMessage = Event;
     type ReceiveMessage = ActivateRequest;
 
-    fn name() -> &'static str {
-        "tray"
-    }
+    module_impl!("tray");
 
     fn spawn_controller(
         &self,
