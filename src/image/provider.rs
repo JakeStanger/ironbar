@@ -11,7 +11,7 @@ use gtk::{IconLookupFlags, IconTheme};
 use std::path::{Path, PathBuf};
 #[cfg(feature = "http")]
 use tokio::sync::mpsc;
-use tracing::warn;
+use tracing::{debug, warn};
 
 cfg_if!(
     if #[cfg(feature = "http")] {
@@ -45,6 +45,7 @@ impl<'a> ImageProvider<'a> {
     /// but no other check is performed.
     pub fn parse(input: &str, theme: &'a IconTheme, use_fallback: bool, size: i32) -> Option<Self> {
         let location = Self::get_location(input, theme, size, use_fallback, 0)?;
+        debug!("Resolved {input} --> {location:?} (size: {size})");
 
         Some(Self { location, size })
     }
