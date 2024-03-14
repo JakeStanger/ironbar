@@ -120,7 +120,7 @@ impl Module<Button> for ClockModule {
         });
 
         let popup = self
-            .into_popup(context.controller_tx.clone(), context.subscribe(), info)
+            .into_popup(context.controller_tx.clone(), context.subscribe(), context, info)
             .into_popup_parts(vec![&button]);
 
         Ok(ModuleParts::new(button, popup))
@@ -130,6 +130,7 @@ impl Module<Button> for ClockModule {
         self,
         _tx: mpsc::Sender<Self::ReceiveMessage>,
         rx: broadcast::Receiver<Self::SendMessage>,
+        _context: WidgetContext<Self::SendMessage, Self::ReceiveMessage>,
         _info: &ModuleInfo,
     ) -> Option<gtk::Box> {
         let container = gtk::Box::new(Orientation::Vertical, 0);

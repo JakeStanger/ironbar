@@ -9,14 +9,14 @@ use self::image::ImageWidget;
 use self::label::LabelWidget;
 use self::r#box::BoxWidget;
 use self::slider::SliderWidget;
-use crate::config::CommonConfig;
+use crate::config::{CommonConfig, ModuleConfig};
 use crate::modules::custom::button::ButtonWidget;
 use crate::modules::custom::progress::ProgressWidget;
 use crate::modules::{
     wrap_widget, Module, ModuleInfo, ModuleParts, ModulePopup, ModuleUpdateEvent, WidgetContext,
 };
 use crate::script::Script;
-use crate::{send_async, spawn};
+use crate::{send_async, spawn, Ironbar};
 use color_eyre::{Report, Result};
 use gtk::prelude::*;
 use gtk::{Button, IconTheme, Orientation};
@@ -25,6 +25,7 @@ use std::cell::RefCell;
 use std::rc::Rc;
 use tokio::sync::{broadcast, mpsc};
 use tracing::{debug, error};
+use crate::popup::Popup;
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct CustomModule {
@@ -40,9 +41,16 @@ pub struct CustomModule {
 #[derive(Debug, Deserialize, Clone)]
 pub struct WidgetConfig {
     #[serde(flatten)]
-    widget: Widget,
+    widget: WidgetOrModule,
     #[serde(flatten)]
     common: CommonConfig,
+}
+
+#[derive(Debug, Deserialize, Clone)]
+#[serde(untagged)]
+pub enum WidgetOrModule {
+    Widget(Widget),
+    Module(ModuleConfig),
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -58,6 +66,9 @@ pub enum Widget {
 
 #[derive(Clone)]
 struct CustomWidgetContext<'a> {
+    ironbar: Rc<Ironbar>,
+    info: &'a ModuleInfo<'a>,
+    popup: Rc<Popup>,
     tx: &'a mpsc::Sender<ExecEvent>,
     bar_orientation: Orientation,
     icon_theme: &'a IconTheme,
@@ -111,6 +122,78 @@ fn try_get_orientation(orientation: &str) -> Result<Orientation> {
         "horizontal" | "h" => Ok(Orientation::Horizontal),
         "vertical" | "v" => Ok(Orientation::Vertical),
         _ => Err(Report::msg("Invalid orientation string in config")),
+    }
+}
+
+impl WidgetOrModule {
+    fn add_to(self, parent: &gtk::Box, context: &CustomWidgetContext, common: CommonConfig) {
+        match self {
+            WidgetOrModule::Widget(widget) => widget.add_to(parent, context, common),
+            WidgetOrModule::Module(config) => {
+                let ironbar = &context.ironbar;
+                let popup = &context.popup;
+                let orientation = context.bar_orientation;
+                let info = context.info;
+
+                macro_rules! add_module {
+                    ($module:expr, $id:expr) => {{
+                        let common = $module.common.take().expect("common config to exist");
+
+                        let widget_parts = crate::modules::create_module(
+                            *$module,
+                            $id,
+                            ironbar.clone(),
+                            common.name.clone(),
+                            &info,
+                            &popup,
+                        );
+
+                        match widget_parts {
+                            Ok(widget_parts) => {
+                                crate::modules::set_widget_identifiers(&widget_parts, &common);
+
+                                let container = wrap_widget(&widget_parts.widget, common, orientation);
+                                parent.add(&container);
+                            }
+                            Err(err) => error!("{err:?}")
+                        }
+
+
+                    }};
+                }
+
+                let id = Ironbar::unique_id();
+                match config {
+                    #[cfg(feature = "clipboard")]
+                    ModuleConfig::Clipboard(mut module) => add_module!(module, id),
+                    #[cfg(feature = "clock")]
+                    ModuleConfig::Clock(mut module) => add_module!(module, id),
+                    ModuleConfig::Custom(mut module) => add_module!(module, id),
+                    #[cfg(feature = "focused")]
+                    ModuleConfig::Focused(mut module) => add_module!(module, id),
+                    ModuleConfig::Label(mut module) => add_module!(module, id),
+                    #[cfg(feature = "launcher")]
+                    ModuleConfig::Launcher(mut module) => add_module!(module, id),
+                    #[cfg(feature = "lua")]
+                    ModuleConfig::Lua(mut module) => add_module!(module, id),
+                    #[cfg(feature = "music")]
+                    ModuleConfig::Music(mut module) => add_module!(module, id),
+                    #[cfg(feature = "notifications")]
+                    ModuleConfig::Notifications(mut module) => add_module!(module, id),
+                    ModuleConfig::Script(mut module) => add_module!(module, id),
+                    #[cfg(feature = "sys_info")]
+                    ModuleConfig::SysInfo(mut module) => add_module!(module, id),
+                    #[cfg(feature = "tray")]
+                    ModuleConfig::Tray(mut module) => add_module!(module, id),
+                    #[cfg(feature = "upower")]
+                    ModuleConfig::Upower(mut module) => add_module!(module, id),
+                    #[cfg(feature = "volume")]
+                    ModuleConfig::Volume(mut module) => add_module!(module, id),
+                    #[cfg(feature = "workspaces")]
+                    ModuleConfig::Workspaces(mut module) => add_module!(module, id),
+                }
+            }
+        }
     }
 }
 
@@ -200,6 +283,9 @@ impl Module<gtk::Box> for CustomModule {
         let popup_buttons = Rc::new(RefCell::new(Vec::new()));
 
         let custom_context = CustomWidgetContext {
+            ironbar: context.ironbar.clone(),
+            popup: context.popup.clone(),
+            info,
             tx: &context.controller_tx,
             bar_orientation: orientation,
             icon_theme: info.icon_theme,
@@ -213,7 +299,7 @@ impl Module<gtk::Box> for CustomModule {
         });
 
         let popup = self
-            .into_popup(context.controller_tx.clone(), context.subscribe(), info)
+            .into_popup(context.controller_tx.clone(), context.subscribe(), context, info)
             .into_popup_parts_owned(popup_buttons.take());
 
         Ok(ModuleParts {
@@ -226,6 +312,7 @@ impl Module<gtk::Box> for CustomModule {
         self,
         tx: mpsc::Sender<Self::ReceiveMessage>,
         _rx: broadcast::Receiver<Self::SendMessage>,
+        context: WidgetContext<Self::SendMessage, Self::ReceiveMessage>,
         info: &ModuleInfo,
     ) -> Option<gtk::Box>
     where
@@ -235,6 +322,9 @@ impl Module<gtk::Box> for CustomModule {
 
         if let Some(popup) = self.popup {
             let custom_context = CustomWidgetContext {
+                ironbar: context.ironbar.clone(),
+                popup: context.popup,
+                info,
                 tx: &tx,
                 bar_orientation: info.bar_position.orientation(),
                 icon_theme: info.icon_theme,

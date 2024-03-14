@@ -137,7 +137,7 @@ impl Module<Button> for ClipboardModule {
 
         let rx = context.subscribe();
         let popup = self
-            .into_popup(context.controller_tx, rx, info)
+            .into_popup(context.controller_tx.clone(), rx, context, info)
             .into_popup_parts(vec![&button]);
 
         Ok(ModuleParts::new(button, popup))
@@ -147,6 +147,7 @@ impl Module<Button> for ClipboardModule {
         self,
         tx: mpsc::Sender<Self::ReceiveMessage>,
         rx: broadcast::Receiver<Self::SendMessage>,
+        _context: WidgetContext<Self::SendMessage, Self::ReceiveMessage>,
         _info: &ModuleInfo,
     ) -> Option<gtk::Box>
     where
