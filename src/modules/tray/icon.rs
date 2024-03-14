@@ -1,9 +1,9 @@
 use glib::ffi::g_strfreev;
 use glib::translate::ToGlibPtr;
 use gtk::ffi::gtk_icon_theme_get_search_path;
-use gtk::gdk_pixbuf::{Colorspace, InterpType};
+use gtk::gdk_pixbuf::{Colorspace, InterpType, Pixbuf};
 use gtk::prelude::IconThemeExt;
-use gtk::{gdk_pixbuf, IconLookupFlags, IconTheme, Image};
+use gtk::{IconLookupFlags, IconTheme, Image};
 use std::collections::HashSet;
 use std::ffi::CStr;
 use std::os::raw::{c_char, c_int};
@@ -69,7 +69,7 @@ pub(crate) fn get_image_from_pixmap(item: &StatusNotifierItem) -> Option<Image> 
     let bytes = glib::Bytes::from(&pixmap.pixels);
     let row_stride = pixmap.width * 4; //
 
-    let pixbuf = gdk_pixbuf::Pixbuf::from_bytes(
+    let pixbuf = Pixbuf::from_bytes(
         &bytes,
         Colorspace::Rgb,
         true,
