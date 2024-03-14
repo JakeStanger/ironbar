@@ -199,7 +199,9 @@ impl Module<gtk::Button> for UpowerModule {
             let format = format.replace("{percentage}", &properties.percentage.to_string())
                 .replace("{time_remaining}", &time_remaining)
                 .replace("{state}", battery_state_to_string(state));
-            let icon_name = String::from("icon:") + &properties.icon_name;
+
+            let mut icon_name = String::from("icon:");
+            icon_name.push_str(&properties.icon_name);
 
             ImageProvider::parse(&icon_name, &icon_theme, false, self.icon_size)
                     .map(|provider| provider.load_into_image(icon.clone()));
