@@ -18,10 +18,18 @@ use tokio::sync::mpsc;
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct TrayModule {
+    #[serde(default = "default_icon_size")]
+    icon_size: u32,
+
     #[serde(default, deserialize_with = "deserialize_orientation")]
-    pub direction: Option<PackDirection>,
+    direction: Option<PackDirection>,
+
     #[serde(flatten)]
     pub common: Option<CommonConfig>,
+}
+
+const fn default_icon_size() -> u32 {
+    16
 }
 
 fn deserialize_orientation<'de, D>(deserializer: D) -> Result<Option<PackDirection>, D::Error>
@@ -106,7 +114,7 @@ impl Module<MenuBar> for TrayModule {
 
             // listen for UI updates
             glib_recv!(context.subscribe(), update =>
-                on_update(update, &container, &mut menus, &icon_theme, &context.controller_tx)
+                on_update(update, &container, &mut menus, &icon_theme, self.icon_size, &context.controller_tx)
             );
         };
 
@@ -124,6 +132,7 @@ fn on_update(
     container: &MenuBar,
     menus: &mut HashMap<Box<str>, TrayMenu>,
     icon_theme: &IconTheme,
+    icon_size: u32,
     tx: &mpsc::Sender<NotifierItemCommand>,
 ) {
     match update {
@@ -148,11 +157,9 @@ fn on_update(
                 }
 
                 if item.icon_name.as_ref() != menu_item.icon_name() {
-                    match icon::get_image_from_icon_name(&item, icon_theme)
-                        .or_else(|| icon::get_image_from_pixmap(&item))
-                    {
-                        Some(image) => menu_item.set_image(&image),
-                        None => menu_item.set_label(label),
+                    match icon::get_image(&item, icon_theme, icon_size) {
+                        Ok(image) => menu_item.set_image(&image),
+                        Err(_) => menu_item.set_label(label),
                     };
                 }
 

@@ -1,3 +1,5 @@
+use crate::image::ImageProvider;
+use color_eyre::{Report, Result};
 use glib::ffi::g_strfreev;
 use glib::translate::ToGlibPtr;
 use gtk::ffi::gtk_icon_theme_get_search_path;
@@ -36,38 +38,49 @@ fn get_icon_theme_search_paths(icon_theme: &IconTheme) -> HashSet<String> {
     paths
 }
 
+pub fn get_image(item: &StatusNotifierItem, icon_theme: &IconTheme, size: u32) -> Result<Image> {
+    get_image_from_icon_name(item, icon_theme, size).or_else(|_| get_image_from_pixmap(item, size))
+}
+
 /// Attempts to get a GTK `Image` component
 /// for the status notifier item's icon.
-pub(crate) fn get_image_from_icon_name(
+fn get_image_from_icon_name(
     item: &StatusNotifierItem,
     icon_theme: &IconTheme,
-) -> Option<Image> {
+    size: u32,
+) -> Result<Image> {
     if let Some(path) = item.icon_theme_path.as_ref() {
         if !path.is_empty() && !get_icon_theme_search_paths(icon_theme).contains(path) {
             icon_theme.append_search_path(path);
         }
     }
 
-    item.icon_name.as_ref().and_then(|icon_name| {
-        let icon_info = icon_theme.lookup_icon(icon_name, 16, IconLookupFlags::empty());
-        icon_info.map(|icon_info| Image::from_pixbuf(icon_info.load_icon().ok().as_ref()))
-    })
+    let icon_info = item.icon_name.as_ref().and_then(|icon_name| {
+        icon_theme.lookup_icon(icon_name, size as i32, IconLookupFlags::empty())
+    });
+
+    let pixbuf = icon_info.unwrap().load_icon()?;
+
+    let image = Image::new();
+    ImageProvider::create_and_load_surface(&pixbuf, &image)?;
+    Ok(image)
 }
 
 /// Attempts to get an image from the item pixmap.
 ///
 /// The pixmap is supplied in ARGB32 format,
 /// which has 8 bits per sample and a bit stride of `4*width`.
-pub(crate) fn get_image_from_pixmap(item: &StatusNotifierItem) -> Option<Image> {
+fn get_image_from_pixmap(item: &StatusNotifierItem, size: u32) -> Result<Image> {
     const BITS_PER_SAMPLE: i32 = 8;
 
     let pixmap = item
         .icon_pixmap
         .as_ref()
-        .and_then(|pixmap| pixmap.first())?;
+        .and_then(|pixmap| pixmap.first())
+        .ok_or_else(|| Report::msg("Failed to get pixmap from tray icon"))?;
 
     let bytes = glib::Bytes::from(&pixmap.pixels);
-    let row_stride = pixmap.width * 4; //
+    let row_stride = pixmap.width * 4;
 
     let pixbuf = Pixbuf::from_bytes(
         &bytes,
@@ -80,7 +93,10 @@ pub(crate) fn get_image_from_pixmap(item: &StatusNotifierItem) -> Option<Image> 
     );
 
     let pixbuf = pixbuf
-        .scale_simple(16, 16, InterpType::Bilinear)
+        .scale_simple(size as i32, size as i32, InterpType::Bilinear)
         .unwrap_or(pixbuf);
-    Some(Image::from_pixbuf(Some(&pixbuf)))
+
+    let image = Image::new();
+    ImageProvider::create_and_load_surface(&pixbuf, &image)?;
+    Ok(image)
 }
