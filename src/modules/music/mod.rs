@@ -416,6 +416,7 @@ impl Module<Button> for MusicModule {
             let mut prev_cover = None;
             let mut prev_track_name = None;
             glib_recv!(rx, event =>  {
+<<<<<<< HEAD
                 match event {
                     ControllerEvent::Update(update) => {
                         if let Some(update) = *update {
@@ -515,6 +516,103 @@ impl Module<Button> for MusicModule {
                     _ => {}
                 };
             });
+                            match event {
+                                ControllerEvent::Update(Some(update)) => {
+                                    // only update art when album changes
+                                    dbg!("{:#?}", self.cover_image_path.clone());
+                                    if let Some(ref static_cover_image_path) = self.cover_image_path {
+                                        match ImageProvider::parse(static_cover_image_path.to_str().unwrap(), &icon_theme,false,image_size) {
+                                            Some(image) => {
+                                                match image.load_into_image(album_image.clone()) {
+                                            Ok(_) => {},
+                                            Err(e) => { error!("{e:?}");},
+                                        }
+                                            },
+                                            None => {error!("Could not parse the static image path, it may not exist or may not be accessible at {static_cover_image_path:?}")},
+                                        };
+                                    } else {
+                                    let new_cover = update.song.cover_path;
+                                    if prev_cover != new_cover {
+                                        prev_cover = new_cover.clone();
+                                        let res = if let Some(image) = new_cover.and_then(|cover_path| {
+                                            ImageProvider::parse(&cover_path, &icon_theme, false, image_size)
+                                        }) {
+                                            album_image.show();
+                                            image.load_into_image(album_image.clone())
+                                        } else {
+                                            album_image.set_from_pixbuf(None);
+                                            album_image.hide();
+                                            Ok(())
+                                        };
+
+                                        if let Err(err) = res {
+                                            error!("{err:?}");
+                                        }
+                                    }
+            }
+                                    update_popup_metadata_label(update.song.title, &title_label);
+                                    update_popup_metadata_label(update.song.album, &album_label);
+                                    update_popup_metadata_label(update.song.artist, &artist_label);
+
+                                    match update.status.state {
+                                        PlayerState::Stopped => {
+                                            btn_pause.hide();
+                                            btn_play.show();
+                                            btn_play.set_sensitive(false);
+                                        }
+                                        PlayerState::Playing => {
+                                            btn_play.set_sensitive(false);
+                                            btn_play.hide();
+
+                                            btn_pause.set_sensitive(true);
+                                            btn_pause.show();
+                                        }
+                                        PlayerState::Paused => {
+                                            btn_pause.set_sensitive(false);
+                                            btn_pause.hide();
+
+                                            btn_play.set_sensitive(true);
+                                            btn_play.show();
+                                        }
+                                    }
+
+                                    let enable_prev = update.status.playlist_position > 0;
+
+                                    let enable_next =
+                                        update.status.playlist_position < update.status.playlist_length;
+
+                                    btn_prev.set_sensitive(enable_prev);
+                                    btn_next.set_sensitive(enable_next);
+
+                                    if let Some(volume) = update.status.volume_percent {
+                                        volume_slider.set_value(f64::from(volume));
+                                        volume_box.show();
+                                    } else {
+                                        volume_box.hide();
+                                    }
+                                }
+                                ControllerEvent::UpdateProgress(progress_tick)
+                                    if !drag_lock.load(Ordering::Relaxed) =>
+                                {
+                                    if let (Some(elapsed), Some(duration)) =
+                                        (progress_tick.elapsed, progress_tick.duration)
+                                    {
+                                        progress_label.set_label(&format!(
+                                            "{}/{}",
+                                            format_time(elapsed),
+                                            format_time(duration)
+                                        ));
+
+                                        progress.set_value(elapsed.as_secs_f64());
+                                        progress.set_range(0.0, duration.as_secs_f64());
+                                        progress_box.show_all();
+                                    } else {
+                                        progress_box.hide();
+                                    }
+                                }
+                                _ => {}
+                            };
+                        });
         }
 
         Some(container)
