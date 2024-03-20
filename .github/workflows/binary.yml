@@ -1,0 +1,32 @@
+# .github/workflows/binary.yml
+
+name: Binary
+on:
+  release:
+    types: [created]
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        platform:
+          - {target: x86_64-unknown-linux-gnu, zipext: ".tar.gz"}
+          - {target: aarch64-unknown-linux-gnu, zipext: ".tar.gz"}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cross
+      - run: cargo add openssl --features vendored
+      - run: cross build --locked --release --target=${{ matrix.platform.target }}
+      - run: echo "BINARY_NAME=$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[].targets[] | select( .kind | map(. == "bin") | any ) | .name')" >> $GITHUB_ENV
+
+      - if: ${{ matrix.platform.zipext == '.tar.gz' }}
+        run: tar -zcvf ${{env.BINARY_NAME}}-${{github.ref_name}}-${{matrix.platform.target}}.tar.gz -C target/${{matrix.platform.target}}/release ${{env.BINARY_NAME}}
+
+      - name: Release
+        run: gh release upload ${GITHUB_REF#refs/*/} ${{env.BINARY_NAME}}-${{github.ref_name}}-${{matrix.platform.target}}${{matrix.platform.zipext}}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
