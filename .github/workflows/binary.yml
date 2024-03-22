@@ -19,14 +19,21 @@ jobs:
       - uses: taiki-e/install-action@v2
         with:
           tool: cross
-      - run: cargo add openssl --features vendored
-      - run: cross build --locked --release --target=${{ matrix.platform.target }}
-      - run: echo "BINARY_NAME=$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[].targets[] | select( .kind | map(. == "bin") | any ) | .name')" >> $GITHUB_ENV
 
-      - if: ${{ matrix.platform.zipext == '.tar.gz' }}
+      - name: Add OpenSSL crate (vendored)
+        run: cargo add openssl --features vendored
+
+      - name: Cross Build Release
+        run: cross build --locked --release --target=${{ matrix.platform.target }}
+
+      - name: Get name of Binary from metadata
+        run: echo "BINARY_NAME=$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[].targets[] | select( .kind | map(. == "bin") | any ) | .name')" >> $GITHUB_ENV
+
+      - name: Compress the built binary
+        if: ${{ matrix.platform.zipext == '.tar.gz' }}
         run: tar -zcvf ${{env.BINARY_NAME}}-${{github.ref_name}}-${{matrix.platform.target}}.tar.gz -C target/${{matrix.platform.target}}/release ${{env.BINARY_NAME}}
 
-      - name: Release
+      - name: Upload to release
         run: gh release upload ${GITHUB_REF#refs/*/} ${{env.BINARY_NAME}}-${{github.ref_name}}-${{matrix.platform.target}}${{matrix.platform.zipext}}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -32,9 +32,7 @@ jobs:
         name: Cache dependencies
 
       - name: Install build deps
-        run: |
-          sudo apt-get update
-          sudo apt-get install libgtk-3-dev libgtk-layer-shell-dev libpulse-dev
+        run: ./.github/scripts/ubuntu_setup.sh
 
       - name: Clippy
         run: cargo clippy --no-default-features --features config+json
@@ -53,9 +51,7 @@ jobs:
         name: Cache dependencies
 
       - name: Install build deps
-        run: |
-          sudo apt-get update
-          sudo apt-get install libgtk-3-dev libgtk-layer-shell-dev libpulse-dev
+        run: ./.github/scripts/ubuntu_setup.sh
 
       - name: Clippy
         run: cargo clippy --all-targets --all-features
@@ -72,9 +68,7 @@ jobs:
         name: Cache dependencies
 
       - name: Install build deps
-        run: |
-          sudo apt-get update
-          sudo apt-get install libgtk-3-dev libgtk-layer-shell-dev libpulse-dev
+        run: ./.github/scripts/ubuntu_setup.sh
 
       - name: Build
         run: cargo build --verbose
