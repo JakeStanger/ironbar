@@ -147,7 +147,7 @@ hyprland = { version = "0.3.13", features = ["silent"], optional = true }
 futures-util = { version = "0.3.30", optional = true }
 
 # shared
-regex = { version = "1.10.3", default-features = false, features = [
+regex = { version = "1.10.4", default-features = false, features = [
   "std",
 ], optional = true } # music, sys_info
 zbus = { version = "3.15.2", optional = true } # notifications, upower
