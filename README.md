@@ -130,6 +130,14 @@ A flake is included with the repo which can be used with Home Manager.
 CI builds are automatically cached by Garnix.
 You can use their binary cache by following the steps [here](https://garnix.io/docs/caching).
 
+### Void Linux
+
+[void package](https://github.com/void-linux/void-packages/tree/master/srcpkgs/ironbar)
+
+```sh
+xbps-install ironbar
+```
+
 ### Source
 
 [repo](https://github.com/jakestanger/ironbar)
