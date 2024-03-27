@@ -85,6 +85,7 @@ where
 {
     pub id: usize,
     pub ironbar: Rc<Ironbar>,
+    pub popup: Rc<Popup>,
     pub tx: mpsc::Sender<ModuleUpdateEvent<TSend>>,
     pub update_tx: broadcast::Sender<TSend>,
     pub controller_tx: mpsc::Sender<TReceive>,
@@ -201,10 +202,12 @@ where
         self,
         _tx: mpsc::Sender<Self::ReceiveMessage>,
         _rx: broadcast::Receiver<Self::SendMessage>,
+        _context: WidgetContext<Self::SendMessage, Self::ReceiveMessage>,
         _info: &ModuleInfo,
     ) -> Option<gtk::Box>
     where
         Self: Sized,
+        <Self as Module<W>>::SendMessage: Clone,
     {
         None
     }
@@ -233,6 +236,7 @@ where
     let context = WidgetContext {
         id,
         ironbar,
+        popup: popup.clone(),
         tx: ui_tx,
         update_tx: tx.clone(),
         controller_tx,
@@ -276,10 +280,6 @@ fn setup_receiver<TSend>(
 ) where
     TSend: Debug + Clone + Send + 'static,
 {
-    // some rare cases can cause the popup to incorrectly calculate its size on first open.
-    // we can fix that by just force re-rendering it on its first open.
-    let mut has_popup_opened = false;
-
     glib_recv_mpsc!(rx, ev => {
         match ev {
             ModuleUpdateEvent::Update(update) => {
@@ -287,28 +287,16 @@ fn setup_receiver<TSend>(
             }
             ModuleUpdateEvent::TogglePopup(button_id) => {
                 debug!("Toggling popup for {} [#{}]", name, id);
-                if popup.is_visible() {
+                if popup.is_visible() && popup.current_widget().unwrap_or_default() == id {
                     popup.hide();
                 } else {
                     popup.show(id, button_id);
-
-                    // force re-render on initial open to try and fix size issue
-                    if !has_popup_opened {
-                        popup.show(id, button_id);
-                        has_popup_opened = true;
-                    }
                 }
             }
             ModuleUpdateEvent::OpenPopup(button_id) => {
                 debug!("Opening popup for {} [#{}]", name, id);
                 popup.hide();
                 popup.show(id, button_id);
-
-                // force re-render on initial open to try and fix size issue
-                if !has_popup_opened {
-                    popup.show(id, button_id);
-                    has_popup_opened = true;
-                }
             }
             #[cfg(feature = "launcher")]
             ModuleUpdateEvent::OpenPopupAt(geometry) => {
@@ -316,12 +304,6 @@ fn setup_receiver<TSend>(
 
                 popup.hide();
                 popup.show_at(id, geometry);
-
-                // force re-render on initial open to try and fix size issue
-                if !has_popup_opened {
-                    popup.show_at(id, geometry);
-                    has_popup_opened = true;
-                }
             }
             ModuleUpdateEvent::ClosePopup => {
                 debug!("Closing popup for {} [#{}]", name, id);

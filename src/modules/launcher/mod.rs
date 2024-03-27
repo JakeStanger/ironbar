@@ -401,7 +401,7 @@ impl Module<gtk::Box> for LauncherModule {
 
         let rx = context.subscribe();
         let popup = self
-            .into_popup(context.controller_tx, rx, info)
+            .into_popup(context.controller_tx.clone(), rx, context, info)
             .into_popup_parts(vec![]); // since item buttons are dynamic, they pass their geometry directly
 
         Ok(ModuleParts {
@@ -414,6 +414,7 @@ impl Module<gtk::Box> for LauncherModule {
         self,
         controller_tx: mpsc::Sender<Self::ReceiveMessage>,
         rx: broadcast::Receiver<Self::SendMessage>,
+        _context: WidgetContext<Self::SendMessage, Self::ReceiveMessage>,
         _info: &ModuleInfo,
     ) -> Option<gtk::Box> {
         const MAX_WIDTH: i32 = 250;
