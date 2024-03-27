@@ -57,6 +57,8 @@ Ironbar is designed to support anything from a lightweight bar to a full desktop
 
 ## Installation
 
+[![Packaging status](https://repology.org/badge/vertical-allrepos/ironbar.svg)](https://repology.org/project/ironbar/versions)
+
 ### Cargo
 
 [crate](https://crates.io/crates/ironbar)
