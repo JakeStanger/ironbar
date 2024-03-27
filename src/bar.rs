@@ -383,6 +383,8 @@ fn add_modules(
             ModuleConfig::Label(mut module) => add_module!(module, id),
             #[cfg(feature = "launcher")]
             ModuleConfig::Launcher(mut module) => add_module!(module, id),
+            #[cfg(feature = "cairo")]
+            ModuleConfig::Cairo(mut module) => add_module!(module, id),
             #[cfg(feature = "music")]
             ModuleConfig::Music(mut module) => add_module!(module, id),
             #[cfg(feature = "notifications")]
