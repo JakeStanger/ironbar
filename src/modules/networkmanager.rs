@@ -54,7 +54,10 @@ impl Module<gtk::Box> for NetworkmanagerModule {
         let tx = context.tx.clone();
 
         spawn(async move {
-            // TODO: Maybe move this into a `client` à la `upower`?
+            /* TODO: This should be moved into a client à la the upower module, however that
+               requires additional refactoring as both would request a PropertyProxy but on
+               different buses. The proper solution will be to rewrite both to use trait-derived
+               proxies. */
             let nm_proxy = {
                 let dbus = zbus::Connection::system().await?;
                 PropertiesProxy::builder(&dbus)
