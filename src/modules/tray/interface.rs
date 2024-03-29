@@ -1,5 +1,6 @@
 use super::diff::{Diff, MenuItemDiff};
 use crate::{spawn, try_send};
+use glib::Propagation;
 use gtk::prelude::*;
 use gtk::{CheckMenuItem, Image, Label, Menu, MenuItem, SeparatorMenuItem};
 use std::collections::HashMap;
@@ -251,8 +252,9 @@ impl TrayMenuItem {
                     let tx = tx.clone();
                     let id = info.id;
 
-                    widget.connect_activate(move |_item| {
+                    widget.connect_button_press_event(move |_item, _button| {
                         try_send!(tx, id);
+                        Propagation::Proceed
                     });
                 }
 
