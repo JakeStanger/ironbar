@@ -1,3 +1,4 @@
+use crate::Ironbar;
 use std::sync::Arc;
 
 #[cfg(feature = "clipboard")]
@@ -9,7 +10,7 @@ pub mod music;
 #[cfg(feature = "notifications")]
 pub mod swaync;
 #[cfg(feature = "tray")]
-pub mod system_tray;
+pub mod tray;
 #[cfg(feature = "upower")]
 pub mod upower;
 #[cfg(feature = "volume")]
@@ -30,7 +31,7 @@ pub struct Clients {
     #[cfg(feature = "notifications")]
     notifications: Option<Arc<swaync::Client>>,
     #[cfg(feature = "tray")]
-    tray: Option<Arc<system_tray::TrayEventReceiver>>,
+    tray: Option<Arc<tray::Client>>,
     #[cfg(feature = "upower")]
     upower: Option<Arc<zbus::fdo::PropertiesProxy<'static>>>,
     #[cfg(feature = "volume")]
@@ -85,11 +86,17 @@ impl Clients {
     }
 
     #[cfg(feature = "tray")]
-    pub fn tray(&mut self) -> Arc<system_tray::TrayEventReceiver> {
+    pub fn tray(&mut self) -> Arc<tray::Client> {
+        // TODO: Error handling here isn't great - should throw a user-friendly error
         self.tray
             .get_or_insert_with(|| {
                 Arc::new(crate::await_sync(async {
-                    system_tray::create_client().await
+                    let service_name =
+                        format!("{}-{}", env!("CARGO_CRATE_NAME"), Ironbar::unique_id());
+
+                    tray::Client::new(&service_name)
+                        .await
+                        .expect("to be able to start client")
                 }))
             })
             .clone()
