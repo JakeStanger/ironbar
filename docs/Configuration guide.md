@@ -271,26 +271,42 @@ Check [here](config) for an example config file for a fully configured bar in ea
 
 The following table lists each of the top-level bar config options:
 
-| Name               | Type                                   | Default                              | Description                                                                                                                |
-|--------------------|----------------------------------------|--------------------------------------|----------------------------------------------------------------------------------------------------------------------------|
-| `name`             | `string`                               | `bar-<n>`                            | A unique identifier for the bar, used for controlling it over IPC. If not set, uses a generated integer suffix.            |
-| `position`         | `top` or `bottom` or `left` or `right` | `bottom`                             | The bar's position on screen.                                                                                              |
-| `anchor_to_edges`  | `boolean`                              | `false`                              | Whether to anchor the bar to the edges of the screen. Setting to false centres the bar.                                    |
-| `height`           | `integer`                              | `42`                                 | The bar's height in pixels.                                                                                                |
-| `popup_gap`        | `integer`                              | `5`                                  | The gap between the bar and popup window.                                                                                  |
-| `margin.top`       | `integer`                              | `0`                                  | The margin on the top of the bar                                                                                           |
-| `margin.bottom`    | `integer`                              | `0`                                  | The margin on the bottom of the bar                                                                                        |
-| `margin.left`      | `integer`                              | `0`                                  | The margin on the left of the bar                                                                                          |
-| `margin.right`     | `integer`                              | `0`                                  | The margin on the right of the bar                                                                                         |
-| `icon_theme`       | `string`                               | `null`                               | Name of the GTK icon theme to use. Leave blank to use default.                                                             |
-| `ironvar_defaults` | `Map<string, string>`                  | `{}`                                 | Map of [ironvar](ironvars) keys against their default values.                                                              |
-| `start_hidden`     | `boolean`                              | `false`, or `true` if `autohide` set | Whether the bar should be hidden when the application starts. Enabled by default when `autohide` is set.                   |
-| `autohide`         | `integer`                              | `null`                               | The duration in milliseconds before the bar is hidden after the cursor leaves. Leave unset to disable auto-hide behaviour. |
-| `start`            | `Module[]`                             | `[]`                                 | Array of left or top modules.                                                                                              |
-| `center`           | `Module[]`                             | `[]`                                 | Array of center modules.                                                                                                   |
-| `end`              | `Module[]`                             | `[]`                                 | Array of right or bottom modules.                                                                                          |
+| Name               | Type                                    | Default | Description                                                   |
+|--------------------|-----------------------------------------|---------|---------------------------------------------------------------|
+| `ironvar_defaults` | `Map<string, string>`                   | `{}`    | Map of [ironvar](ironvars) keys against their default values. |
+| `monitors`         | `Map<string, BarConfig or BarConfig[]>` | `null`  | Map of monitor names against bar configs.                     |
+
+> [!TIP]
+> `monitors` is only required if you are following **2b** or **2c** (ie not the same bar across all monitors).
+
+> [!Note]
+> All bar-level options listed in the below section can also be defined at the top-level.
+
+# 3.2 Bar-level options
+
+The following table lists each of the bar-level bar config options:
+
+| Name              | Type                                   | Default                              | Description                                                                                                                |
+|-------------------|----------------------------------------|--------------------------------------|----------------------------------------------------------------------------------------------------------------------------|
+| `name`            | `string`                               | `bar-<n>`                            | A unique identifier for the bar, used for controlling it over IPC. If not set, uses a generated integer suffix.            |
+| `position`        | `top` or `bottom` or `left` or `right` | `bottom`                             | The bar's position on screen.                                                                                              |
+| `anchor_to_edges` | `boolean`                              | `false`                              | Whether to anchor the bar to the edges of the screen. Setting to false centres the bar.                                    |
+| `height`          | `integer`                              | `42`                                 | The bar's height in pixels.                                                                                                |
+| `popup_gap`       | `integer`                              | `5`                                  | The gap between the bar and popup window.                                                                                  |
+| `margin.top`      | `integer`                              | `0`                                  | The margin on the top of the bar                                                                                           |
+| `margin.bottom`   | `integer`                              | `0`                                  | The margin on the bottom of the bar                                                                                        |
+| `margin.left`     | `integer`                              | `0`                                  | The margin on the left of the bar                                                                                          |
+| `margin.right`    | `integer`                              | `0`                                  | The margin on the right of the bar                                                                                         |
+| `icon_theme`      | `string`                               | `null`                               | Name of the GTK icon theme to use. Leave blank to use default.                                                             |
+| `start_hidden`    | `boolean`                              | `false`, or `true` if `autohide` set | Whether the bar should be hidden when the application starts. Enabled by default when `autohide` is set.                   |
+| `autohide`        | `integer`                              | `null`                               | The duration in milliseconds before the bar is hidden after the cursor leaves. Leave unset to disable auto-hide behaviour. |
+| `start`           | `Module[]`                             | `[]`                                 | Array of left or top modules.                                                                                              |
+| `center`          | `Module[]`                             | `[]`                                 | Array of center modules.                                                                                                   |
+| `end`             | `Module[]`                             | `[]`                                 | Array of right or bottom modules.                                                                                          |
 
 ### 3.2 Module-level options
+
+Each module must include a `type` key.
 
 The following table lists each of the module-level options that are present on **all** modules.
 For details on available modules and each of their config options, check the sidebar.
@@ -299,18 +315,17 @@ For information on the `Script` type, and embedding scripts in strings, see [her
 
 #### Events
 
-| Name              | Type               | Default | Description                                                                                                        |
-|-------------------|--------------------|---------|--------------------------------------------------------------------------------------------------------------------|
-| `on_click_left`   | `Script [oneshot]` | `null`  | Runs the script when the module is left clicked.                                                                   |
-| `on_click_middle` | `Script [oneshot]` | `null`  | Runs the script when the module is middle clicked.                                                                 |
-| `on_click_right`  | `Script [oneshot]` | `null`  | Runs the script when the module is right clicked.                                                                  |
-| `on_scroll_up`    | `Script [oneshot]` | `null`  | Runs the script when the module is scroll up on.                                                                   |
-| `on_scroll_down`  | `Script [oneshot]` | `null`  | Runs the script when the module is scrolled down on.                                                               |
-| `on_mouse_enter`  | `Script [oneshot]` | `null`  | Runs the script when the module is hovered over.                                                                   |
-| `on_mouse_exit`   | `Script [oneshot]` | `null`  | Runs the script when the module is no longer hovered over.                                                         |
+| Name              | Type               | Default | Description                                                |
+|-------------------|--------------------|---------|------------------------------------------------------------|
+| `on_click_left`   | `Script [oneshot]` | `null`  | Runs the script when the module is left clicked.           |
+| `on_click_middle` | `Script [oneshot]` | `null`  | Runs the script when the module is middle clicked.         |
+| `on_click_right`  | `Script [oneshot]` | `null`  | Runs the script when the module is right clicked.          |
+| `on_scroll_up`    | `Script [oneshot]` | `null`  | Runs the script when the module is scroll up on.           |
+| `on_scroll_down`  | `Script [oneshot]` | `null`  | Runs the script when the module is scrolled down on.       |
+| `on_mouse_enter`  | `Script [oneshot]` | `null`  | Runs the script when the module is hovered over.           |
+| `on_mouse_exit`   | `Script [oneshot]` | `null`  | Runs the script when the module is no longer hovered over. |
 
 #### Visibility
-
 
 | Name                  | Type                                                  | Default       | Description                                                                                                        |
 |-----------------------|-------------------------------------------------------|---------------|--------------------------------------------------------------------------------------------------------------------|
@@ -320,10 +335,10 @@ For information on the `Script` type, and embedding scripts in strings, see [her
 
 #### Appearance
 
-| Name      | Type               | Default | Description                                                                       |
-|-----------|--------------------|---------|-----------------------------------------------------------------------------------|
-| `tooltip` | `string`           | `null`  | Shows this text on hover. Supports embedding scripts between `{{double braces}}`. |
-| `name`    | `string`           | `null`  | Sets the unique widget name, allowing you to style it using `#name`.              |
-| `class`   | `string`           | `null`  | Sets one or more CSS classes, allowing you to style it using `.class`.            |
+| Name      | Type     | Default | Description                                                                       |
+|-----------|----------|---------|-----------------------------------------------------------------------------------|
+| `tooltip` | `string` | `null`  | Shows this text on hover. Supports embedding scripts between `{{double braces}}`. |
+| `name`    | `string` | `null`  | Sets the unique widget name, allowing you to style it using `#name`.              |
+| `class`   | `string` | `null`  | Sets one or more CSS classes, allowing you to style it using `.class`.            |
 
 For more information on styling, please see the [styling guide](styling-guide).
