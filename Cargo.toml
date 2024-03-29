@@ -139,7 +139,6 @@ futures-lite = { version = "2.3.0", optional = true }
 
 # volume
 libpulse-binding = { version = "2.28.1", optional = true }
-# libpulse-glib-binding = { version = "2.27.1", optional = true }
 
 # workspaces
 swayipc-async = { version = "2.0.1", optional = true }
