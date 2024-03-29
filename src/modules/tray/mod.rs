@@ -20,6 +20,9 @@ use tracing::{debug, error, warn};
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct TrayModule {
+    #[serde(default = "crate::config::default_true")]
+    prefer_theme_icons: bool,
+
     #[serde(default = "default_icon_size")]
     icon_size: u32,
 
