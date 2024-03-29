@@ -1,12 +1,14 @@
+use std::collections::HashMap;
+
 use color_eyre::Result;
 use futures_lite::StreamExt;
-use gtk::prelude::*;
+use gtk::prelude::ContainerExt;
 use gtk::{Image, Orientation};
 use serde::Deserialize;
 use tokio::sync::mpsc::Receiver;
-use zbus::fdo::PropertiesProxy;
+use zbus::dbus_proxy;
 use zbus::names::InterfaceName;
-use zbus::zvariant::ObjectPath;
+use zbus::zvariant::{ObjectPath, Value};
 
 use crate::config::CommonConfig;
 use crate::gtk_helpers::IronbarGtkExt;
@@ -37,6 +39,76 @@ pub enum NetworkmanagerState {
     WirelessDisconnected,
 }
 
+#[dbus_proxy(
+    default_service = "org.freedesktop.NetworkManager",
+    interface = "org.freedesktop.NetworkManager",
+    default_path = "/org/freedesktop/NetworkManager"
+)]
+trait NetworkmanagerDBus {
+    #[dbus_proxy(property)]
+    fn active_connections(&self) -> Result<Vec<ObjectPath>>;
+
+    #[dbus_proxy(property)]
+    fn devices(&self) -> Result<Vec<ObjectPath>>;
+
+    #[dbus_proxy(property)]
+    fn networking_enabled(&self) -> Result<bool>;
+
+    #[dbus_proxy(property)]
+    fn primary_connection(&self) -> Result<ObjectPath>;
+
+    #[dbus_proxy(property)]
+    fn primary_connection_type(&self) -> Result<String>;
+
+    #[dbus_proxy(property)]
+    fn wireless_enabled(&self) -> Result<bool>;
+}
+
+#[dbus_proxy(
+    default_service = "org.freedesktop.NetworkManager",
+    interface = "org.freedesktop.DBus.Properties",
+    default_path = "/org/freedesktop/NetworkManager"
+)]
+trait NetworkmanagerPropsDBus {
+    #[dbus_proxy(signal)]
+    fn properties_changed(
+        &self,
+        interface_name: InterfaceName<'s>,
+        changed_properties: HashMap<&'s str, Value<'s>>,
+        invalidated_properties: Vec<&'s str>,
+    ) -> Result<()>;
+}
+
+#[dbus_proxy(
+    default_service = "org.freedesktop.NetworkManager",
+    interface = "org.freedesktop.NetworkManager.Connection.Active"
+)]
+trait ActiveConnectionDBus {
+    #[dbus_proxy(property)]
+    fn connection(&self) -> Result<ObjectPath>;
+
+    #[dbus_proxy(property)]
+    fn default(&self) -> Result<bool>;
+
+    #[dbus_proxy(property)]
+    fn default6(&self) -> Result<bool>;
+
+    #[dbus_proxy(property)]
+    fn devices(&self) -> Result<Vec<ObjectPath>>;
+
+    #[dbus_proxy(property)]
+    fn id(&self) -> Result<String>;
+
+    #[dbus_proxy(property)]
+    fn specific_object(&self) -> Result<ObjectPath>;
+
+    #[dbus_proxy(property)]
+    fn type_(&self) -> Result<String>;
+
+    #[dbus_proxy(property)]
+    fn vpn(&self) -> Result<bool>;
+}
+
 impl Module<gtk::Box> for NetworkmanagerModule {
     type SendMessage = NetworkmanagerState;
     type ReceiveMessage = ();
@@ -55,28 +127,16 @@ impl Module<gtk::Box> for NetworkmanagerModule {
 
         spawn(async move {
             // TODO: Maybe move this into a `client` à la `upower`?
-            let nm_proxy = {
-                let dbus = zbus::Connection::system().await?;
-                PropertiesProxy::builder(&dbus)
-                    .destination("org.freedesktop.NetworkManager")?
-                    .path("/org/freedesktop/NetworkManager")?
-                    .build()
-                    .await?
-            };
-            let device_interface_name =
-                InterfaceName::from_static_str("org.freedesktop.NetworkManager")?;
+            let dbus = zbus::Connection::system().await?;
+            let nm_proxy = NetworkmanagerDBusProxy::new(&dbus).await?;
+            let nm_props_proxy = NetworkmanagerPropsDBusProxy::new(&dbus).await?;
 
-            let state = get_network_state(&nm_proxy, &device_interface_name).await?;
+            let state = get_network_state(&nm_proxy).await?;
             send_async!(tx, ModuleUpdateEvent::Update(state));
 
-            let mut prop_changed_stream = nm_proxy.receive_properties_changed().await?;
-            while let Some(signal) = prop_changed_stream.next().await {
-                let args = signal.args()?;
-                if args.interface_name != device_interface_name {
-                    continue;
-                }
-
-                let state = get_network_state(&nm_proxy, &device_interface_name).await?;
+            let mut prop_changed_stream = nm_props_proxy.receive_properties_changed().await?;
+            while prop_changed_stream.next().await.is_some() {
+                let state = get_network_state(&nm_proxy).await?;
                 send_async!(tx, ModuleUpdateEvent::Update(state));
             }
 
@@ -120,22 +180,10 @@ impl Module<gtk::Box> for NetworkmanagerModule {
     }
 }
 
-async fn get_network_state(
-    nm_proxy: &PropertiesProxy<'_>,
-    device_interface_name: &InterfaceName<'_>,
-) -> Result<NetworkmanagerState> {
-    let properties = nm_proxy.get_all(device_interface_name.clone()).await?;
-
-    let primary_connection_path = properties["PrimaryConnection"]
-        .downcast_ref::<ObjectPath>()
-        .unwrap();
-
+async fn get_network_state(nm_proxy: &NetworkmanagerDBusProxy<'_>) -> Result<NetworkmanagerState> {
+    let primary_connection_path = nm_proxy.primary_connection().await?;
     if primary_connection_path != "/" {
-        let primary_connection_type = properties["PrimaryConnectionType"]
-            .downcast_ref::<str>()
-            .unwrap()
-            .to_string();
-
+        let primary_connection_type = nm_proxy.primary_connection_type().await?;
         match primary_connection_type.as_str() {
             "802-11-olpc-mesh" => Ok(NetworkmanagerState::Wireless),
             "802-11-wireless" => Ok(NetworkmanagerState::Wireless),
@@ -150,9 +198,7 @@ async fn get_network_state(
             _ => Ok(NetworkmanagerState::Unknown),
         }
     } else {
-        let wireless_enabled = *properties["WirelessEnabled"]
-            .downcast_ref::<bool>()
-            .unwrap();
+        let wireless_enabled = nm_proxy.wireless_enabled().await?;
         if wireless_enabled {
             Ok(NetworkmanagerState::WirelessDisconnected)
         } else {
