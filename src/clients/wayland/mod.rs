@@ -98,6 +98,7 @@ pub enum Response {
 }
 
 #[derive(Debug)]
+#[allow(dead_code)]
 struct BroadcastChannel<T>(broadcast::Sender<T>, Arc<Mutex<broadcast::Receiver<T>>>);
 
 impl<T> From<(broadcast::Sender<T>, broadcast::Receiver<T>)> for BroadcastChannel<T> {

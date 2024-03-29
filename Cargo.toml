@@ -95,9 +95,9 @@ tracing-subscriber = { version = "0.3.17", features = ["env-filter"] }
 tracing-error = "0.2.0"
 tracing-appender = "0.2.3"
 strip-ansi-escapes = "0.2.0"
-color-eyre = "0.6.2"
+color-eyre = "0.6.3"
 serde = { version = "1.0.197", features = ["derive"] }
-indexmap = "2.2.5"
+indexmap = "2.2.6"
 dirs = "5.0.1"
 walkdir = "2.5.0"
 notify = { version = "6.1.1", default-features = false }
@@ -112,13 +112,13 @@ ctrlc = "3.4.2"
 cfg-if = "1.0.0"
 
 # cli
-clap = { version = "4.5.2", optional = true, features = ["derive"] }
+clap = { version = "4.5.3", optional = true, features = ["derive"] }
 
 # ipc
 serde_json = { version = "1.0.114", optional = true }
 
 # http
-reqwest = { version = "0.11.25", optional = true }
+reqwest = { version = "0.12.2", optional = true }
 
 # clipboard
 nix = { version = "0.27.1", optional = true, features = ["event"] }
@@ -134,14 +134,13 @@ mpris = { version = "2.0.1", optional = true }
 sysinfo = { version = "0.29.11", optional = true }
 
 # tray
-system-tray = { version = "0.1.5", optional = true }
+ system-tray = { version = "0.2.0", optional = true }
 
 # upower
 upower_dbus = { version = "0.3.2", optional = true }
 
 # volume
 libpulse-binding = { version = "2.28.1", optional = true }
-# libpulse-glib-binding = { version = "2.27.1", optional = true }
 
 # workspaces
 swayipc-async = { version = "2.0.1", optional = true }
@@ -149,8 +148,8 @@ hyprland = { version = "0.3.13", features = ["silent"], optional = true }
 futures-util = { version = "0.3.30", optional = true }
 
 # shared
-regex = { version = "1.10.3", default-features = false, features = [
+regex = { version = "1.10.4", default-features = false, features = [
   "std",
 ], optional = true } # music, sys_info
-futures-lite = { version = "2.2.0", optional = true } # networkmanager, upower
+futures-lite = { version = "2.3.0", optional = true } # networkmanager, upower
 zbus = { version = "3.15.2", optional = true } # networkmanager, notifications, upower

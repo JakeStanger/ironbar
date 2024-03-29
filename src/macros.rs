@@ -181,6 +181,13 @@ macro_rules! arc_rw {
     };
 }
 
+/// Wraps `val` in a new `Rc<RefCell<T>>`.
+///
+/// # Usage
+///
+/// ```rs
+/// let val = rc_mut!(MyService::new())
+/// ```
 #[macro_export]
 macro_rules! rc_mut {
     ($val:expr) => {

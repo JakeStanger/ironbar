@@ -1,9 +1,9 @@
-use system_tray::message::menu::{MenuItem as MenuItemInfo, ToggleState};
+use system_tray::menu::{MenuItem, ToggleState};
 
 /// Diff change type and associated info.
 #[derive(Debug, Clone)]
 pub enum Diff {
-    Add(MenuItemInfo),
+    Add(MenuItem),
     Update(i32, MenuItemDiff),
     Remove(i32),
 }
@@ -12,7 +12,7 @@ pub enum Diff {
 #[derive(Debug, Clone)]
 pub struct MenuItemDiff {
     /// Text of the item,
-    pub label: Option<String>,
+    pub label: Option<Option<String>>,
     /// Whether the item can be activated or not.
     pub enabled: Option<bool>,
     /// True if the item is visible in the menu.
@@ -29,7 +29,7 @@ pub struct MenuItemDiff {
 }
 
 impl MenuItemDiff {
-    fn new(old: &MenuItemInfo, new: &MenuItemInfo) -> Self {
+    fn new(old: &MenuItem, new: &MenuItem) -> Self {
         macro_rules! diff {
             ($field:ident) => {
                 if old.$field == new.$field {
@@ -70,7 +70,7 @@ impl MenuItemDiff {
 }
 
 /// Gets a diff set between old and new state.
-pub fn get_diffs(old: &[MenuItemInfo], new: &[MenuItemInfo]) -> Vec<Diff> {
+pub fn get_diffs(old: &[MenuItem], new: &[MenuItem]) -> Vec<Diff> {
     let mut diffs = vec![];
 
     for new_item in new {

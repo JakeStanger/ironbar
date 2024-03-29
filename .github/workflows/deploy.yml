@@ -18,9 +18,7 @@ jobs:
           override: true
 
       - name: Install build deps
-        run: |
-          sudo apt-get update
-          sudo apt-get install libgtk-3-dev libgtk-layer-shell-dev libpulse-dev
+        run: ./.github/scripts/ubuntu_setup.sh
 
       - name: Update CHANGELOG
         id: changelog

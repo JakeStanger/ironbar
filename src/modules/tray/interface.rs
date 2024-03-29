@@ -1,10 +1,12 @@
-use crate::modules::tray::diff::{Diff, MenuItemDiff};
+use super::diff::{Diff, MenuItemDiff};
 use crate::{spawn, try_send};
+use glib::Propagation;
 use gtk::prelude::*;
 use gtk::{CheckMenuItem, Image, Label, Menu, MenuItem, SeparatorMenuItem};
 use std::collections::HashMap;
-use system_tray::message::menu::{MenuItem as MenuItemInfo, MenuType, ToggleState, ToggleType};
-use system_tray::message::NotifierItemCommand;
+use system_tray::client::ActivateRequest;
+use system_tray::item::{IconPixmap, StatusNotifierItem};
+use system_tray::menu::{MenuItem as MenuItemInfo, MenuType, ToggleState, ToggleType};
 use tokio::sync::mpsc;
 
 /// Calls a method on the underlying widget,
@@ -49,37 +51,47 @@ macro_rules! call {
 
 /// Main tray icon to show on the bar
 pub(crate) struct TrayMenu {
-    pub(crate) widget: MenuItem,
+    pub widget: MenuItem,
     menu_widget: Menu,
     image_widget: Option<Image>,
     label_widget: Option<Label>,
 
     menu: HashMap<i32, TrayMenuItem>,
     state: Vec<MenuItemInfo>,
-    icon_name: Option<String>,
+
+    pub title: Option<String>,
+    pub icon_name: Option<String>,
+    pub icon_theme_path: Option<String>,
+    pub icon_pixmap: Option<Vec<IconPixmap>>,
 
     tx: mpsc::Sender<i32>,
 }
 
 impl TrayMenu {
-    pub fn new(tx: mpsc::Sender<NotifierItemCommand>, address: String, path: String) -> Self {
+    pub fn new(
+        tx: mpsc::Sender<ActivateRequest>,
+        address: String,
+        item: StatusNotifierItem,
+    ) -> Self {
         let widget = MenuItem::new();
         widget.style_context().add_class("item");
 
         let (item_tx, mut item_rx) = mpsc::channel(8);
 
-        spawn(async move {
-            while let Some(id) = item_rx.recv().await {
-                try_send!(
-                    tx,
-                    NotifierItemCommand::MenuItemClicked {
-                        submenu_id: id,
-                        menu_path: path.clone(),
-                        notifier_address: address.clone(),
-                    }
-                );
-            }
-        });
+        if let Some(menu) = item.menu {
+            spawn(async move {
+                while let Some(id) = item_rx.recv().await {
+                    try_send!(
+                        tx,
+                        ActivateRequest {
+                            submenu_id: id,
+                            menu_path: menu.clone(),
+                            address: address.clone(),
+                        }
+                    );
+                }
+            });
+        }
 
         let menu = Menu::new();
         widget.set_submenu(Some(&menu));
@@ -90,7 +102,10 @@ impl TrayMenu {
             image_widget: None,
             label_widget: None,
             state: vec![],
-            icon_name: None,
+            title: item.title,
+            icon_name: item.icon_name,
+            icon_theme_path: item.icon_theme_path,
+            icon_pixmap: item.icon_pixmap,
             menu: HashMap::new(),
             tx: item_tx,
         }
@@ -110,6 +125,18 @@ impl TrayMenu {
                 label
             })
             .set_label(text);
+    }
+
+    /// Shows the label, using its current text.
+    /// The image is hidden if present.
+    pub fn show_label(&self) {
+        if let Some(image) = &self.image_widget {
+            image.hide();
+        }
+
+        if let Some(label) = &self.label_widget {
+            label.show();
+        }
     }
 
     /// Updates the image, and shows it in favour of the label.
@@ -134,6 +161,7 @@ impl TrayMenu {
                     let item = TrayMenuItem::new(&info, self.tx.clone());
                     call!(self.menu_widget, add, item.widget);
                     self.menu.insert(item.id, item);
+                    // self.widget.show_all();
                 }
                 Diff::Update(id, info) => {
                     if let Some(item) = self.menu.get_mut(&id) {
@@ -188,36 +216,61 @@ enum TrayMenuWidget {
 
 impl TrayMenuItem {
     fn new(info: &MenuItemInfo, tx: mpsc::Sender<i32>) -> Self {
+        let mut submenu = HashMap::new();
         let menu = Menu::new();
+
+        macro_rules! add_submenu {
+            ($menu:expr, $widget:expr) => {
+                if !info.submenu.is_empty() {
+                    for sub_item in &info.submenu {
+                        let sub_item = TrayMenuItem::new(sub_item, tx.clone());
+                        call!($menu, add, sub_item.widget);
+                        submenu.insert(sub_item.id, sub_item);
+                    }
+
+                    $widget.set_submenu(Some(&menu));
+                }
+            };
+        }
 
         let widget = match (info.menu_type, info.toggle_type) {
             (MenuType::Separator, _) => TrayMenuWidget::Separator(SeparatorMenuItem::new()),
             (MenuType::Standard, ToggleType::Checkmark) => {
                 let widget = CheckMenuItem::builder()
-                    .label(info.label.as_str())
                     .visible(info.visible)
                     .sensitive(info.enabled)
                     .active(info.toggle_state == ToggleState::On)
                     .build();
 
+                if let Some(label) = &info.label {
+                    widget.set_label(label);
+                }
+
+                add_submenu!(menu, widget);
+
                 {
                     let tx = tx.clone();
                     let id = info.id;
 
-                    widget.connect_activate(move |_item| {
+                    widget.connect_button_press_event(move |_item, _button| {
                         try_send!(tx, id);
+                        Propagation::Proceed
                     });
                 }
 
                 TrayMenuWidget::Checkbox(widget)
             }
             (MenuType::Standard, _) => {
-                let builder = MenuItem::builder()
-                    .label(&info.label)
+                let widget = MenuItem::builder()
                     .visible(info.visible)
-                    .sensitive(info.enabled);
+                    .sensitive(info.enabled)
+                    .build();
 
-                let widget = builder.build();
+                if let Some(label) = &info.label {
+                    widget.set_label(label);
+                }
+
+                add_submenu!(menu, widget);
 
                 {
                     let tx = tx.clone();
@@ -236,7 +289,7 @@ impl TrayMenuItem {
             id: info.id,
             widget,
             menu_widget: menu,
-            submenu: HashMap::new(),
+            submenu,
             tx,
         }
     }
@@ -247,6 +300,7 @@ impl TrayMenuItem {
     /// applying the submenu diffs to any further submenu items.
     fn apply_diff(&mut self, diff: MenuItemDiff) {
         if let Some(label) = diff.label {
+            let label = label.unwrap_or_default();
             match &self.widget {
                 TrayMenuWidget::Separator(widget) => widget.set_label(&label),
                 TrayMenuWidget::Standard(widget) => widget.set_label(&label),

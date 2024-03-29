@@ -18,6 +18,11 @@ pub struct Client {
     _rx: broadcast::Receiver<PlayerUpdate>,
 }
 
+const NO_ACTIVE_PLAYER: &str = "com.github.altdesktop.playerctld.NoActivePlayer";
+const NO_REPLY: &str = "org.freedesktop.DBus.Error.NoReply";
+const NO_SERVICE: &str = "org.freedesktop.DBus.Error.ServiceUnknown";
+const NO_METHOD: &str = "org.freedesktop.DBus.Error.UnknownMethod";
+
 impl Client {
     pub(crate) fn new() -> Self {
         let (tx, rx) = broadcast::channel(32);
@@ -35,44 +40,48 @@ impl Client {
                 // D-Bus gives no event for new players,
                 // so we have to keep polling the player list
                 loop {
-                    let players = player_finder
-                        .find_all()
-                        .expect("Failed to connect to D-Bus");
+                    // mpris-rs does not filter NoActivePlayer errors, so we have to do it ourselves
+                    let players = player_finder.find_all().unwrap_or_else(|e| match e {
+                        mpris::FindingError::DBusError(DBusError::TransportError(
+                            transport_error,
+                        )) if transport_error.name() == Some(NO_ACTIVE_PLAYER)
+                            || transport_error.name() == Some(NO_REPLY) =>
+                        {
+                            Vec::new()
+                        }
+                        _ => panic!("Failed to connect to D-Bus"),
+                    });
+                    // Acquire the lock of current_player before players to avoid deadlock.
+                    // There are places where we lock on current_player and players, but we always lock on current_player first.
+                    // This is because we almost never need to lock on players without locking on current_player.
+                    {
+                        let mut current_player_lock = lock!(current_player);
 
-                    let mut players_list_val = lock!(players_list);
-                    for player in players {
-                        let identity = player.identity();
+                        let mut players_list_val = lock!(players_list);
+                        for player in players {
+                            let identity = player.identity();
 
-                        if !players_list_val.contains(identity) {
-                            debug!("Adding MPRIS player '{identity}'");
-                            players_list_val.insert(identity.to_string());
+                            if current_player_lock.is_none() {
+                                debug!("Setting active player to '{identity}'");
+                                current_player_lock.replace(identity.to_string());
 
-                            let status = player
-                                .get_playback_status()
-                                .expect("Failed to connect to D-Bus");
-
-                            {
-                                let mut current_player = lock!(current_player);
-
-                                if status == PlaybackStatus::Playing || current_player.is_none() {
-                                    debug!("Setting active player to '{identity}'");
-
-                                    current_player.replace(identity.to_string());
-                                    if let Err(err) = Self::send_update(&player, &tx) {
-                                        error!("{err:?}");
-                                    }
+                                if let Err(err) = Self::send_update(&player, &tx) {
+                                    error!("{err:?}");
                                 }
                             }
+                            if !players_list_val.contains(identity) {
+                                debug!("Adding MPRIS player '{identity}'");
+                                players_list_val.insert(identity.to_string());
 
-                            Self::listen_player_events(
-                                identity.to_string(),
-                                players_list.clone(),
-                                current_player.clone(),
-                                tx.clone(),
-                            );
+                                Self::listen_player_events(
+                                    identity.to_string(),
+                                    players_list.clone(),
+                                    current_player.clone(),
+                                    tx.clone(),
+                                );
+                            }
                         }
                     }
-
                     // wait 1 second before re-checking players
                     sleep(Duration::from_secs(1));
                 }
@@ -111,28 +120,56 @@ impl Client {
 
             if let Ok(player) = player_finder.find_by_name(&player_id) {
                 let identity = player.identity();
+                let handle_shutdown = |current_player_lock_option: Option<
+                    std::sync::MutexGuard<'_, Option<String>>,
+                >| {
+                    debug!("Player '{identity}' shutting down");
+                    // Lock of player before players (see new() to make sure order is consistent)
+                    if let Some(mut guard) = current_player_lock_option {
+                        guard.take();
+                    } else {
+                        lock!(current_player).take();
+                    }
+                    let mut players_locked = lock!(players);
+                    players_locked.remove(identity);
+                    if players_locked.is_empty() {
+                        send!(tx, PlayerUpdate::Update(Box::new(None), Status::default()));
+                    }
+                };
 
                 for event in player.events()? {
                     trace!("Received player event from '{identity}': {event:?}");
                     match event {
                         Ok(Event::PlayerShutDown) => {
-                            lock!(current_player).take();
-                            lock!(players).remove(identity);
+                            handle_shutdown(None);
                             break;
                         }
-                        Ok(Event::Playing) => {
-                            lock!(current_player).replace(identity.to_string());
-
-                            if let Err(err) = Self::send_update(&player, &tx) {
-                                error!("{err:?}");
-                            }
+                        Err(mpris::EventError::DBusError(DBusError::TransportError(
+                            transport_error,
+                        ))) if transport_error.name() == Some(NO_ACTIVE_PLAYER)
+                            || transport_error.name() == Some(NO_REPLY)
+                            || transport_error.name() == Some(NO_METHOD)
+                            || transport_error.name() == Some(NO_SERVICE) =>
+                        {
+                            handle_shutdown(None);
+                            break;
                         }
                         Ok(_) => {
-                            let current_player = lock!(current_player);
-                            let current_player = current_player.as_ref();
-                            if let Some(current_player) = current_player {
-                                if current_player == identity {
+                            let mut current_player_lock = lock!(current_player);
+                            if matches!(event, Ok(Event::Playing)) {
+                                current_player_lock.replace(identity.to_string());
+                            }
+                            if let Some(current_identity) = current_player_lock.as_ref() {
+                                if current_identity == identity {
                                     if let Err(err) = Self::send_update(&player, &tx) {
+                                        if let Some(DBusError::TransportError(transport_error)) =
+                                            err.downcast_ref::<DBusError>()
+                                        {
+                                            if transport_error.name() == Some(NO_SERVICE) {
+                                                handle_shutdown(Some(current_player_lock));
+                                                break;
+                                            }
+                                        }
                                         error!("{err:?}");
                                     }
                                 }
