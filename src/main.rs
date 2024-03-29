@@ -331,7 +331,7 @@ fn load_output_bars(
         .expect("monitor to exist");
 
     let show_default_bar =
-        config.start.is_some() || config.center.is_some() || config.end.is_some();
+        config.bar.start.is_some() || config.bar.center.is_some() || config.bar.end.is_some();
 
     let bars = match config
         .monitors
@@ -363,7 +363,7 @@ fn load_output_bars(
             app,
             &monitor,
             monitor_name.to_string(),
-            config.clone(),
+            config.bar.clone(),
             ironbar.clone(),
         )?],
         None => vec![],
