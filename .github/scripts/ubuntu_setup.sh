@@ -17,4 +17,5 @@ $SUDO apt-get update && $SUDO apt-get install --assume-yes \
 	libssl-dev${CROSS_DEB_ARCH:+:$CROSS_DEB_ARCH} \
 	libgtk-3-dev${CROSS_DEB_ARCH:+:$CROSS_DEB_ARCH} \
 	libgtk-layer-shell-dev${CROSS_DEB_ARCH:+:$CROSS_DEB_ARCH} \
-	libpulse-dev${CROSS_DEB_ARCH:+:$CROSS_DEB_ARCH}
+	libpulse-dev${CROSS_DEB_ARCH:+:$CROSS_DEB_ARCH} \
+	libluajit-5.1-dev${CROSS_DEB_ARCH:+:$CROSS_DEB_ARCH}
