@@ -1,9 +1,9 @@
-use crate::config::{BarPosition, MarginConfig, ModuleConfig};
+use crate::config::{BarConfig, BarPosition, MarginConfig, ModuleConfig};
 use crate::modules::{
     create_module, set_widget_identifiers, wrap_widget, ModuleInfo, ModuleLocation,
 };
 use crate::popup::Popup;
-use crate::{Config, Ironbar};
+use crate::Ironbar;
 use color_eyre::Result;
 use glib::Propagation;
 use gtk::gdk::Monitor;
@@ -16,7 +16,7 @@ use tracing::{debug, info};
 
 #[derive(Debug, Clone)]
 enum Inner {
-    New { config: Option<Config> },
+    New { config: Option<BarConfig> },
     Loaded { popup: Rc<Popup> },
 }
 
@@ -43,7 +43,7 @@ impl Bar {
     pub fn new(
         app: &Application,
         monitor_name: String,
-        config: Config,
+        config: BarConfig,
         ironbar: Rc<Ironbar>,
     ) -> Self {
         let window = ApplicationWindow::builder()
@@ -245,7 +245,7 @@ impl Bar {
     }
 
     /// Loads the configured modules onto a bar.
-    fn load_modules(&self, config: Config, monitor: &Monitor) -> Result<BarLoadResult> {
+    fn load_modules(&self, config: BarConfig, monitor: &Monitor) -> Result<BarLoadResult> {
         let icon_theme = IconTheme::new();
         if let Some(ref theme) = config.icon_theme {
             icon_theme.set_custom_theme(Some(theme));
@@ -410,7 +410,7 @@ pub fn create_bar(
     app: &Application,
     monitor: &Monitor,
     monitor_name: String,
-    config: Config,
+    config: BarConfig,
     ironbar: Rc<Ironbar>,
 ) -> Result<Bar> {
     let bar = Bar::new(app, monitor_name, config, ironbar);

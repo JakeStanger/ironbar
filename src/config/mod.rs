@@ -68,10 +68,16 @@ pub enum ModuleConfig {
     Workspaces(Box<WorkspacesModule>),
 }
 
+#[derive(Debug, Deserialize, Clone)]
+pub enum BarEntryConfig {
+    Single(BarConfig),
+    Monitors(HashMap<String, MonitorConfig>),
+}
+
 #[derive(Debug, Clone)]
 pub enum MonitorConfig {
-    Single(Config),
-    Multiple(Vec<Config>),
+    Single(BarConfig),
+    Multiple(Vec<BarConfig>),
 }
 
 #[derive(Debug, Deserialize, Copy, Clone, PartialEq, Eq)]
@@ -102,7 +108,7 @@ pub struct MarginConfig {
 }
 
 #[derive(Debug, Deserialize, Clone)]
-pub struct Config {
+pub struct BarConfig {
     #[serde(default)]
     pub position: BarPosition,
     #[serde(default = "default_true")]
@@ -111,8 +117,6 @@ pub struct Config {
     pub height: i32,
     #[serde(default)]
     pub margin: MarginConfig,
-    #[serde(default = "default_popup_gap")]
-    pub popup_gap: i32,
     pub name: Option<String>,
 
     #[serde(default)]
@@ -123,16 +127,15 @@ pub struct Config {
     /// GTK icon theme to use.
     pub icon_theme: Option<String>,
 
-    pub ironvar_defaults: Option<HashMap<Box<str>, String>>,
-
     pub start: Option<Vec<ModuleConfig>>,
     pub center: Option<Vec<ModuleConfig>>,
     pub end: Option<Vec<ModuleConfig>>,
 
-    pub monitors: Option<HashMap<String, MonitorConfig>>,
+    #[serde(default = "default_popup_gap")]
+    pub popup_gap: i32,
 }
 
-impl Default for Config {
+impl Default for BarConfig {
     fn default() -> Self {
         cfg_if! {
             if #[cfg(feature = "clock")] {
@@ -159,18 +162,25 @@ impl Default for Config {
             name: None,
             start_hidden: None,
             autohide: None,
-            popup_gap: default_popup_gap(),
             icon_theme: None,
-            ironvar_defaults: None,
             start: Some(vec![ModuleConfig::Label(
                 LabelModule::new("ℹ️ Using default config".to_string()).into(),
             )]),
             center,
             end,
             anchor_to_edges: default_true(),
-            monitors: None,
+            popup_gap: default_popup_gap(),
         }
     }
+}
+
+#[derive(Debug, Deserialize, Clone, Default)]
+pub struct Config {
+    pub ironvar_defaults: Option<HashMap<Box<str>, String>>,
+
+    #[serde(flatten)]
+    pub bar: BarConfig,
+    pub monitors: Option<HashMap<String, MonitorConfig>>,
 }
 
 const fn default_bar_height() -> i32 {
