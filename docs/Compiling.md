@@ -84,6 +84,7 @@ cargo build --release --no-default-features \
 | music+all           | Enables the `music` module with support for all player types.                     |
 | music+mpris         | Enables the `music` module with MPRIS support.                                    |
 | music+mpd           | Enables the `music` module with MPD support.                                      |
+| notifications       | Enables the `notiications` module.                                                |
 | sys_info            | Enables the `sys_info` module.                                                    |
 | tray                | Enables the `tray` module.                                                        |
 | upower              | Enables the `upower` module.                                                      |
