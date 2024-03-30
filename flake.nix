@@ -106,9 +106,11 @@
         program = "${pkgs.ironbar}/bin/ironbar";
       };
     });
+
     devShells = genSystems (system: let
       pkgs = pkgsFor system;
       rust = mkRustToolchain pkgs;
+
     in {
       default = pkgs.mkShell {
         packages = with pkgs; [
@@ -128,11 +130,15 @@
           gsettings-desktop-schemas
           libxkbcommon
           libpulseaudio
+          luajit
+          luajitPackages.lgi
         ];
 
         RUST_SRC_PATH = "${rust}/lib/rustlib/src/rust/library";
       };
+
     });
+
     homeManagerModules.default = {
       config,
       lib,
