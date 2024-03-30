@@ -216,7 +216,7 @@ impl Popup {
         }
     }
 
-    /// Hides the popover
+    /// Hides the popup
     pub fn hide(&self) {
         *self.current_widget.borrow_mut() = None;
         self.window.hide();
