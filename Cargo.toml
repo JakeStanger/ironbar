@@ -104,7 +104,7 @@ wayland-protocols-wlr = { version = "0.2.0", features = ["client"] }
 smithay-client-toolkit = { version = "0.18.1", default-features = false, features = [
   "calloop",
 ] }
-universal-config = { version = "0.4.3", default_features = false }
+universal-config = { version = "0.5.0", default_features = false }
 ctrlc = "3.4.2"
 cfg-if = "1.0.0"
 
