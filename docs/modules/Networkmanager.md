@@ -1,10 +1,10 @@
-Displays the current network connection state of NetworkManager. Supports wired ethernet, wifi,
-cellular data and VPN connections among others.
+Displays the current network connection state of NetworkManager.
+Supports wired ethernet, wifi, cellular data and VPN connections among others.
 
-This module uses NetworkManager's so-called primary connection, and therefore inherits its
-limitation of only being able to display the "top-level" connection. For example, if we have a VPN
-connection over a wifi connection it will only display the former, until it is disconnected, at
-which point it will display the latter. A solution to this is currently in the works.
+> [!NOTE]
+> This module uses NetworkManager's so-called primary connection, and therefore inherits its limitation of only being able to display the "top-level" connection.
+> For example, if we have a VPN connection over a wifi connection it will only display the former, until it is disconnected, at which point it will display the latter.
+> A solution to this is currently in the works.
 
 ## Configuration
 
