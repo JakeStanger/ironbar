@@ -52,7 +52,7 @@ pub enum ModuleConfig {
     #[cfg(feature = "music")]
     Music(Box<MusicModule>),
     #[cfg(feature = "networkmanager")]
-    Networkmanager(Box<NetworkManagerModule>),
+    NetworkManager(Box<NetworkManagerModule>),
     #[cfg(feature = "notifications")]
     Notifications(Box<NotificationsModule>),
     Script(Box<ScriptModule>),
