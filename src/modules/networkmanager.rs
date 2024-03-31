@@ -15,7 +15,7 @@ use crate::modules::{Module, ModuleInfo, ModuleParts, ModuleUpdateEvent, WidgetC
 use crate::{glib_recv, send_async, spawn};
 
 #[derive(Debug, Deserialize, Clone)]
-pub struct NetworkmanagerModule {
+pub struct NetworkManagerModule {
     #[serde(default = "default_icon_size")]
     icon_size: i32,
 
@@ -28,7 +28,7 @@ const fn default_icon_size() -> i32 {
 }
 
 #[derive(Clone, Debug)]
-pub enum NetworkmanagerState {
+pub enum NetworkManagerState {
     Cellular,
     Offline,
     Unknown,
@@ -38,8 +38,8 @@ pub enum NetworkmanagerState {
     WirelessDisconnected,
 }
 
-impl Module<gtk::Box> for NetworkmanagerModule {
-    type SendMessage = NetworkmanagerState;
+impl Module<gtk::Box> for NetworkManagerModule {
+    type SendMessage = NetworkManagerState;
     type ReceiveMessage = ();
 
     fn name() -> &'static str {
@@ -49,7 +49,7 @@ impl Module<gtk::Box> for NetworkmanagerModule {
     fn spawn_controller(
         &self,
         _: &ModuleInfo,
-        context: &WidgetContext<NetworkmanagerState, ()>,
+        context: &WidgetContext<NetworkManagerState, ()>,
         _: Receiver<()>,
     ) -> Result<()> {
         let tx = context.tx.clone();
@@ -92,7 +92,7 @@ impl Module<gtk::Box> for NetworkmanagerModule {
 
     fn into_widget(
         self,
-        context: WidgetContext<NetworkmanagerState, ()>,
+        context: WidgetContext<NetworkManagerState, ()>,
         info: &ModuleInfo,
     ) -> Result<ModuleParts<gtk::Box>> {
         let container = gtk::Box::new(Orientation::Horizontal, 0);
@@ -109,13 +109,13 @@ impl Module<gtk::Box> for NetworkmanagerModule {
         let rx = context.subscribe();
         glib_recv!(rx, state => {
             let icon_name = match state {
-                NetworkmanagerState::Cellular => "network-cellular-symbolic",
-                NetworkmanagerState::Offline => "network-wireless-disabled-symbolic",
-                NetworkmanagerState::Unknown => "dialog-question-symbolic",
-                NetworkmanagerState::Vpn => "network-vpn-symbolic",
-                NetworkmanagerState::Wired => "network-wired-symbolic",
-                NetworkmanagerState::Wireless => "network-wireless-symbolic",
-                NetworkmanagerState::WirelessDisconnected => "network-wireless-acquiring-symbolic",
+                NetworkManagerState::Cellular => "network-cellular-symbolic",
+                NetworkManagerState::Offline => "network-wireless-disabled-symbolic",
+                NetworkManagerState::Unknown => "dialog-question-symbolic",
+                NetworkManagerState::Vpn => "network-vpn-symbolic",
+                NetworkManagerState::Wired => "network-wired-symbolic",
+                NetworkManagerState::Wireless => "network-wireless-symbolic",
+                NetworkManagerState::WirelessDisconnected => "network-wireless-acquiring-symbolic",
             };
             ImageProvider::parse(icon_name, &icon_theme, false, self.icon_size)
                 .map(|provider| provider.load_into_image(icon.clone()));
@@ -128,7 +128,7 @@ impl Module<gtk::Box> for NetworkmanagerModule {
 async fn get_network_state(
     nm_proxy: &PropertiesProxy<'_>,
     device_interface_name: &InterfaceName<'_>,
-) -> Result<NetworkmanagerState> {
+) -> Result<NetworkManagerState> {
     let properties = nm_proxy.get_all(device_interface_name.clone()).await?;
 
     let primary_connection_path = properties["PrimaryConnection"]
@@ -142,28 +142,28 @@ async fn get_network_state(
             .to_string();
 
         match primary_connection_type.as_str() {
-            "802-11-olpc-mesh" => Ok(NetworkmanagerState::Wireless),
-            "802-11-wireless" => Ok(NetworkmanagerState::Wireless),
-            "802-3-ethernet" => Ok(NetworkmanagerState::Wired),
-            "adsl" => Ok(NetworkmanagerState::Wired),
-            "cdma" => Ok(NetworkmanagerState::Cellular),
-            "gsm" => Ok(NetworkmanagerState::Cellular),
-            "pppoe" => Ok(NetworkmanagerState::Wired),
-            "vpn" => Ok(NetworkmanagerState::Vpn),
-            "wifi-p2p" => Ok(NetworkmanagerState::Wireless),
-            "wimax" => Ok(NetworkmanagerState::Cellular),
-            "wireguard" => Ok(NetworkmanagerState::Vpn),
-            "wpan" => Ok(NetworkmanagerState::Wireless),
-            _ => Ok(NetworkmanagerState::Unknown),
+            "802-11-olpc-mesh" => Ok(NetworkManagerState::Wireless),
+            "802-11-wireless" => Ok(NetworkManagerState::Wireless),
+            "802-3-ethernet" => Ok(NetworkManagerState::Wired),
+            "adsl" => Ok(NetworkManagerState::Wired),
+            "cdma" => Ok(NetworkManagerState::Cellular),
+            "gsm" => Ok(NetworkManagerState::Cellular),
+            "pppoe" => Ok(NetworkManagerState::Wired),
+            "vpn" => Ok(NetworkManagerState::Vpn),
+            "wifi-p2p" => Ok(NetworkManagerState::Wireless),
+            "wimax" => Ok(NetworkManagerState::Cellular),
+            "wireguard" => Ok(NetworkManagerState::Vpn),
+            "wpan" => Ok(NetworkManagerState::Wireless),
+            _ => Ok(NetworkManagerState::Unknown),
         }
     } else {
         let wireless_enabled = *properties["WirelessEnabled"]
             .downcast_ref::<bool>()
             .unwrap();
         if wireless_enabled {
-            Ok(NetworkmanagerState::WirelessDisconnected)
+            Ok(NetworkManagerState::WirelessDisconnected)
         } else {
-            Ok(NetworkmanagerState::Offline)
+            Ok(NetworkManagerState::Offline)
         }
     }
 }

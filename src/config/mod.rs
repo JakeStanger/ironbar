@@ -15,7 +15,7 @@ use crate::modules::launcher::LauncherModule;
 #[cfg(feature = "music")]
 use crate::modules::music::MusicModule;
 #[cfg(feature = "networkmanager")]
-use crate::modules::networkmanager::NetworkmanagerModule;
+use crate::modules::networkmanager::NetworkManagerModule;
 #[cfg(feature = "notifications")]
 use crate::modules::notifications::NotificationsModule;
 use crate::modules::script::ScriptModule;
@@ -52,7 +52,7 @@ pub enum ModuleConfig {
     #[cfg(feature = "music")]
     Music(Box<MusicModule>),
     #[cfg(feature = "networkmanager")]
-    Networkmanager(Box<NetworkmanagerModule>),
+    Networkmanager(Box<NetworkManagerModule>),
     #[cfg(feature = "notifications")]
     Notifications(Box<NotificationsModule>),
     Script(Box<ScriptModule>),
