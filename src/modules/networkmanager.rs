@@ -56,9 +56,9 @@ impl Module<gtk::Box> for NetworkManagerModule {
 
         spawn(async move {
             /* TODO: This should be moved into a client à la the upower module, however that
-               requires additional refactoring as both would request a PropertyProxy but on
-               different buses. The proper solution will be to rewrite both to use trait-derived
-               proxies. */
+            requires additional refactoring as both would request a PropertyProxy but on
+            different buses. The proper solution will be to rewrite both to use trait-derived
+            proxies. */
             let nm_proxy = {
                 let dbus = zbus::Connection::system().await?;
                 PropertiesProxy::builder(&dbus)
@@ -133,12 +133,12 @@ async fn get_network_state(
 
     let primary_connection_path = properties["PrimaryConnection"]
         .downcast_ref::<ObjectPath>()
-        .unwrap();
+        .expect("PrimaryConnection was not an object path, violation of NetworkManager D-Bus interface");
 
     if primary_connection_path != "/" {
         let primary_connection_type = properties["PrimaryConnectionType"]
             .downcast_ref::<str>()
-            .unwrap()
+            .expect("PrimaryConnectionType was not a string, violation of NetworkManager D-Bus interface")
             .to_string();
 
         match primary_connection_type.as_str() {
@@ -159,7 +159,7 @@ async fn get_network_state(
     } else {
         let wireless_enabled = *properties["WirelessEnabled"]
             .downcast_ref::<bool>()
-            .unwrap();
+            .expect("WirelessEnabled was not a boolean, violation of NetworkManager D-Bus interface");
         if wireless_enabled {
             Ok(NetworkManagerState::WirelessDisconnected)
         } else {
