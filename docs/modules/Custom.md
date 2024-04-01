@@ -207,6 +207,7 @@ to help get your head around what's going on:
                 <button class="power-btn" label="" on_click="!reboot" />
             </box>
             <label name="uptime" label="Uptime: {{30000:uptime -p | cut -d ' ' -f2-}}" />
+            <clock disable_popup="true" />
         </box>
     </popup>
 </custom>
@@ -262,6 +263,10 @@ to help get your head around what's going on:
               "label": "Uptime: {{30000:uptime -p | cut -d ' ' -f2-}}",
               "name": "uptime",
               "type": "label"
+            },
+            {
+              "type": "clock",
+              "disable_popup": true
             }
           ]
         }
@@ -319,6 +324,10 @@ type = 'button'
 label = '''Uptime: {{30000:uptime -p | cut -d ' ' -f2-}}'''
 name = 'uptime'
 type = 'label'
+
+[[end.popup.widgets]]
+type = 'clock'
+disable_popup = true
 ```
 
 </details>
@@ -355,6 +364,8 @@ end:
     - label: 'Uptime: {{30000:uptime -p | cut -d '' '' -f2-}}'
       name: uptime
       type: label
+    - type: clock
+      disable_popup: true
   type: custom
 ```
 
@@ -380,6 +391,7 @@ let {
                 ]
             }
             { type = "label" name = "uptime" label = "Uptime: {{30000:uptime -p | cut -d ' ' -f2-}}" }
+            { type = "clock" disable_popup = true }
         ]
     }
 
