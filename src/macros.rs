@@ -21,7 +21,7 @@ macro_rules! module_impl {
         }
 
         fn take_common(&mut self) -> $crate::config::CommonConfig {
-            self.common.take().expect("common config to exist")
+            self.common.take().unwrap_or_default()
         }
     };
 }

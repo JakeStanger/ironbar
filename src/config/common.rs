@@ -27,6 +27,7 @@ pub struct CommonConfig {
     pub on_mouse_exit: Option<ScriptInput>,
 
     pub tooltip: Option<String>,
+    #[serde(default)]
     pub disable_popup: bool,
 }
 
