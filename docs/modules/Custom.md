@@ -1,5 +1,10 @@
-Allows you to compose custom modules consisting of multiple widgets, including popups. 
+Allows you to compose custom modules consisting of multiple modules and widgets, including popups. 
 Labels can display dynamic content from scripts, and buttons can interact with the bar or execute commands on click.
+
+The module provides a set of utility widgets, such as containers, labels and buttons. 
+In addition to these, you can also add any native module. 
+Paired with the other custom modules such as Cairo, 
+this provides a powerful declarative interface for constructing your own interfaces.
 
 If you only intend to run a single script, prefer the [script](script) module, 
 or [label](label) if you only need a single text label.
@@ -12,6 +17,11 @@ or [label](label) if you only need a single text label.
 
 This module can be quite fiddly to configure as you effectively have to build a tree of widgets by hand.
 It is well worth looking at the examples.
+
+| Name    | Type                   | Default    | Description                              |
+|---------|------------------------|------------|------------------------------------------|
+| `bar`   | `(Module or Widget)[]` | `[]`    | Modules and widgets to add to the bar.   |
+| `popup` | `(Module or Widget)[]`               | `null`     | Modules and widgets to add to the popup. |
 
 ### `Widget`
 
@@ -36,7 +46,7 @@ A container to place nested widgets inside.
 | Name          | Type                                                       | Default        | Description                                                       |
 |---------------|------------------------------------------------------------|----------------|-------------------------------------------------------------------|
 | `orientation` | `'horizontal'` or `'vertical'` (shorthand: `'h'` or `'v'`) | `'horizontal'` | Whether child widgets should be horizontally or vertically added. |
-| `widgets`     | `Widget[]`                                                 | `[]`           | List of widgets to add to this box.                               |
+| `widgets`     | `(Module or Widget)[]`                                     | `[]`           | List of widgets to add to this box.                               |
 
 #### Label
 
@@ -197,6 +207,7 @@ to help get your head around what's going on:
                 <button class="power-btn" label="" on_click="!reboot" />
             </box>
             <label name="uptime" label="Uptime: {{30000:uptime -p | cut -d ' ' -f2-}}" />
+            <clock disable_popup="true" />
         </box>
     </popup>
 </custom>
@@ -252,6 +263,10 @@ to help get your head around what's going on:
               "label": "Uptime: {{30000:uptime -p | cut -d ' ' -f2-}}",
               "name": "uptime",
               "type": "label"
+            },
+            {
+              "type": "clock",
+              "disable_popup": true
             }
           ]
         }
@@ -309,6 +324,10 @@ type = 'button'
 label = '''Uptime: {{30000:uptime -p | cut -d ' ' -f2-}}'''
 name = 'uptime'
 type = 'label'
+
+[[end.popup.widgets]]
+type = 'clock'
+disable_popup = true
 ```
 
 </details>
@@ -345,6 +364,8 @@ end:
     - label: 'Uptime: {{30000:uptime -p | cut -d '' '' -f2-}}'
       name: uptime
       type: label
+    - type: clock
+      disable_popup: true
   type: custom
 ```
 
@@ -370,6 +391,7 @@ let {
                 ]
             }
             { type = "label" name = "uptime" label = "Uptime: {{30000:uptime -p | cut -d ' ' -f2-}}" }
+            { type = "clock" disable_popup = true }
         ]
     }
 

@@ -27,6 +27,7 @@ pub struct CommonConfig {
     pub on_mouse_exit: Option<ScriptInput>,
 
     pub tooltip: Option<String>,
+    pub disable_popup: bool,
 }
 
 #[derive(Debug, Deserialize, Clone)]

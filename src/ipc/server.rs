@@ -172,7 +172,7 @@ impl Ipc {
                         popup.hide();
 
                         let data = popup
-                            .cache
+                            .container_cache
                             .borrow()
                             .iter()
                             .find(|(_, value)| value.name == name)
@@ -209,7 +209,7 @@ impl Ipc {
                         popup.hide();
 
                         let data = popup
-                            .cache
+                            .container_cache
                             .borrow()
                             .iter()
                             .find(|(_, value)| value.name == name)

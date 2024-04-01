@@ -2,7 +2,7 @@ use crate::clients::swaync;
 use crate::config::CommonConfig;
 use crate::gtk_helpers::IronbarGtkExt;
 use crate::modules::{Module, ModuleInfo, ModuleParts, ModuleUpdateEvent, WidgetContext};
-use crate::{glib_recv, send_async, spawn, try_send};
+use crate::{glib_recv, module_impl, send_async, spawn, try_send};
 use gtk::prelude::*;
 use gtk::{Align, Button, Label, Overlay};
 use serde::Deserialize;
@@ -97,9 +97,7 @@ impl Module<Overlay> for NotificationsModule {
     type SendMessage = swaync::Event;
     type ReceiveMessage = UiEvent;
 
-    fn name() -> &'static str {
-        "notifications"
-    }
+    module_impl!("notifications");
 
     fn spawn_controller(
         &self,
