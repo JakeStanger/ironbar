@@ -73,7 +73,7 @@ in
   then
     builder.buildPackage (basePkg
       // {
-        cargoOptions = old: old ++ flags;
+        cargoBuildOptions = old: old ++ flags;
       })
   else if builderName == "crane"
   then
