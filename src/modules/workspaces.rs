@@ -153,7 +153,7 @@ impl Module<gtk::Box> for WorkspacesModule {
         mut rx: Receiver<Self::ReceiveMessage>,
     ) -> Result<()> {
         let tx = context.tx.clone();
-        let client = context.ironbar.clients.borrow_mut().workspaces();
+        let client = context.ironbar.clients.borrow_mut().workspaces()?;
         // Subscribe & send events
         spawn(async move {
             let mut srx = client.subscribe_workspace_change();
@@ -166,7 +166,7 @@ impl Module<gtk::Box> for WorkspacesModule {
             }
         });
 
-        let client = context.client::<dyn WorkspaceClient>();
+        let client = context.try_client::<dyn WorkspaceClient>()?;
 
         // Change workspace focus
         spawn(async move {

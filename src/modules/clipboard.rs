@@ -13,7 +13,6 @@ use gtk::prelude::*;
 use gtk::{Button, EventBox, Image, Label, Orientation, RadioButton, Widget};
 use serde::Deserialize;
 use std::collections::HashMap;
-use std::sync::Arc;
 use tokio::sync::{broadcast, mpsc};
 use tracing::{debug, error};
 
@@ -76,7 +75,7 @@ impl Module<Button> for ClipboardModule {
         let max_items = self.max_items;
 
         let tx = context.tx.clone();
-        let client: Arc<clipboard::Client> = context.client();
+        let client = context.client::<clipboard::Client>();
 
         // listen to clipboard events
         spawn(async move {

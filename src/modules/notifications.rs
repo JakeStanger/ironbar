@@ -108,7 +108,7 @@ impl Module<Overlay> for NotificationsModule {
     where
         <Self as Module<Overlay>>::SendMessage: Clone,
     {
-        let client = context.client::<swaync::Client>();
+        let client = context.try_client::<swaync::Client>()?;
 
         {
             let client = client.clone();

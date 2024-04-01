@@ -1,4 +1,5 @@
-use crate::Ironbar;
+use crate::{await_sync, Ironbar};
+use color_eyre::Result;
 use std::sync::Arc;
 
 #[cfg(feature = "clipboard")]
@@ -38,6 +39,8 @@ pub struct Clients {
     volume: Option<Arc<volume::Client>>,
 }
 
+pub type ClientResult<T> = Result<Arc<T>>;
+
 impl Clients {
     pub(crate) fn new() -> Self {
         Self::default()
@@ -59,13 +62,17 @@ impl Clients {
     }
 
     #[cfg(feature = "workspaces")]
-    pub fn workspaces(&mut self) -> Arc<dyn compositor::WorkspaceClient> {
-        // TODO: Error handling here isn't great - should throw a user-friendly error & exit
-        self.workspaces
-            .get_or_insert_with(|| {
-                compositor::Compositor::create_workspace_client().expect("to be valid compositor")
-            })
-            .clone()
+    pub fn workspaces(&mut self) -> ClientResult<dyn compositor::WorkspaceClient> {
+        let client = match &self.workspaces {
+            Some(workspaces) => workspaces.clone(),
+            None => {
+                let client = compositor::Compositor::create_workspace_client()?;
+                self.workspaces.replace(client.clone());
+                client
+            }
+        };
+
+        Ok(client)
     }
 
     #[cfg(feature = "music")]
@@ -77,29 +84,35 @@ impl Clients {
     }
 
     #[cfg(feature = "notifications")]
-    pub fn notifications(&mut self) -> Arc<swaync::Client> {
-        self.notifications
-            .get_or_insert_with(|| {
-                Arc::new(crate::await_sync(async { swaync::Client::new().await }))
-            })
-            .clone()
+    pub fn notifications(&mut self) -> ClientResult<swaync::Client> {
+        let client = match &self.notifications {
+            Some(client) => client.clone(),
+            None => {
+                let client = await_sync(async { swaync::Client::new().await })?;
+                let client = Arc::new(client);
+                self.notifications.replace(client.clone());
+                client
+            }
+        };
+
+        Ok(client)
     }
 
     #[cfg(feature = "tray")]
-    pub fn tray(&mut self) -> Arc<tray::Client> {
-        // TODO: Error handling here isn't great - should throw a user-friendly error
-        self.tray
-            .get_or_insert_with(|| {
-                Arc::new(crate::await_sync(async {
-                    let service_name =
-                        format!("{}-{}", env!("CARGO_CRATE_NAME"), Ironbar::unique_id());
+    pub fn tray(&mut self) -> ClientResult<tray::Client> {
+        let client = match &self.tray {
+            Some(client) => client.clone(),
+            None => {
+                let service_name = format!("{}-{}", env!("CARGO_CRATE_NAME"), Ironbar::unique_id());
 
-                    tray::Client::new(&service_name)
-                        .await
-                        .expect("to be able to start client")
-                }))
-            })
-            .clone()
+                let client = await_sync(async { tray::Client::new(&service_name).await })?;
+                let client = Arc::new(client);
+                self.tray.replace(client.clone());
+                client
+            }
+        };
+
+        Ok(client)
     }
 
     #[cfg(feature = "upower")]
@@ -126,6 +139,14 @@ pub trait ProvidesClient<T: ?Sized> {
     fn provide(&self) -> Arc<T>;
 }
 
+/// Types implementing this trait
+/// indicate that they provide a singleton client instance of type `T`,
+/// which may fail to be created.
+pub trait ProvidesFallibleClient<T: ?Sized> {
+    /// Returns a singleton client instance of type `T`.
+    fn try_provide(&self) -> ClientResult<T>;
+}
+
 /// Generates a `ProvidesClient` impl block on `WidgetContext`
 /// for the provided `$ty` (first argument) client type.
 ///
@@ -143,6 +164,29 @@ macro_rules! register_client {
             TSend: Clone,
         {
             fn provide(&self) -> std::sync::Arc<$ty> {
+                self.ironbar.clients.borrow_mut().$method()
+            }
+        }
+    };
+}
+
+/// Generates a `ProvidesClient` impl block on `WidgetContext`
+/// for the provided `$ty` (first argument) client type.
+///
+/// The implementation calls `$method` (second argument)
+/// on the `Clients` struct to obtain the client instance.
+///
+/// # Example
+/// `register_client!(Client, clipboard);`
+#[macro_export]
+macro_rules! register_fallible_client {
+    ($ty:ty, $method:ident) => {
+        impl<TSend, TReceive> $crate::clients::ProvidesFallibleClient<$ty>
+            for $crate::modules::WidgetContext<TSend, TReceive>
+        where
+            TSend: Clone,
+        {
+            fn try_provide(&self) -> color_eyre::Result<std::sync::Arc<$ty>> {
                 self.ironbar.clients.borrow_mut().$method()
             }
         }

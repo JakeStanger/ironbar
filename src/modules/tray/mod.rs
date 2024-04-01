@@ -67,7 +67,7 @@ impl Module<MenuBar> for TrayModule {
     ) -> Result<()> {
         let tx = context.tx.clone();
 
-        let client = context.client::<tray::Client>();
+        let client = context.try_client::<tray::Client>()?;
         let mut tray_rx = client.subscribe();
 
         let initial_items = lock!(client.items()).clone();

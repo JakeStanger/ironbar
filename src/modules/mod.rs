@@ -10,7 +10,7 @@ use gtk::{Application, Button, EventBox, IconTheme, Orientation, Revealer, Widge
 use tokio::sync::{broadcast, mpsc};
 use tracing::debug;
 
-use crate::clients::ProvidesClient;
+use crate::clients::{ClientResult, ProvidesClient, ProvidesFallibleClient};
 use crate::config::{BarPosition, CommonConfig, TransitionType};
 use crate::gtk_helpers::{IronbarGtkExt, WidgetGeometry};
 use crate::popup::Popup;
@@ -113,6 +113,13 @@ where
         WidgetContext<TSend, TReceive>: ProvidesClient<T>,
     {
         ProvidesClient::provide(self)
+    }
+
+    pub fn try_client<T: ?Sized>(&self) -> ClientResult<T>
+    where
+        WidgetContext<TSend, TReceive>: ProvidesFallibleClient<T>,
+    {
+        ProvidesFallibleClient::try_provide(self)
     }
 
     /// Subscribes to events sent from this widget.
