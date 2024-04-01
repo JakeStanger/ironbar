@@ -75,7 +75,7 @@ fn default_icon_open_dnd() -> String {
 }
 
 impl Icons {
-    fn icon(&self, value: &swaync::Event) -> &str {
+    fn icon(&self, value: swaync::Event) -> &str {
         match (value.cc_open, value.count > 0, value.dnd) {
             (true, _, true) => &self.open_dnd,
             (true, true, false) => &self.open_some,
@@ -172,7 +172,7 @@ impl Module<Overlay> for NotificationsModule {
             let button = button.clone();
 
             glib_recv!(context.subscribe(), ev => {
-                let icon = self.icons.icon(&ev);
+                let icon = self.icons.icon(ev);
                 button.set_label(icon);
 
                 label.set_label(&ev.count.to_string());

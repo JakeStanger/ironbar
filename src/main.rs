@@ -192,7 +192,7 @@ impl Ironbar {
                 while let Ok(event) = rx_outputs.recv().await {
                     match event.event_type {
                         OutputEventType::New => {
-                            match load_output_bars(&instance, &app, event.output) {
+                            match load_output_bars(&instance, &app, &event.output) {
                                 Ok(mut new_bars) => {
                                     instance.bars.borrow_mut().append(&mut new_bars);
                                 }
@@ -316,7 +316,7 @@ fn get_display() -> Display {
 fn load_output_bars(
     ironbar: &Rc<Ironbar>,
     app: &Application,
-    output: OutputInfo,
+    output: &OutputInfo,
 ) -> Result<Vec<Bar>> {
     let Some(monitor_name) = &output.name else {
         return Err(Report::msg("Output missing monitor name"));

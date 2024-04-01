@@ -243,7 +243,7 @@ impl Module<gtk::Box> for CustomModule {
         context.button_id = popup_buttons
             .borrow()
             .first()
-            .map_or(usize::MAX, |button| button.popup_id());
+            .map_or(usize::MAX, PopupButton::popup_id);
 
         let popup = self
             .into_popup(
