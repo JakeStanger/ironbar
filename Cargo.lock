@@ -1909,9 +1909,9 @@ dependencies = [
 
 [[package]]
 name = "mpd-utils"
-version = "0.2.0"
+version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7081a86d39a604868a671b0166febc1f31a4c4801d9436ab733f2664baabf8a4"
+checksum = "8fe50e71b3206a46eff95e96549aa60953dc072baffaa04b71415024f8f254d2"
 dependencies = [
  "futures",
  "mpd_client",

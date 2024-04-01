@@ -124,7 +124,7 @@ nix = { version = "0.27.1", optional = true, features = ["event"] }
 chrono = { version = "0.4.35", optional = true, features = ["unstable-locales"] }
 
 # music
-mpd-utils = { version = "0.2.0", optional = true }
+mpd-utils = { version = "0.2.1", optional = true }
 mpris = { version = "2.0.1", optional = true }
 
 # sys_info
