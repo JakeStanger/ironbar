@@ -1,12 +1,12 @@
 use gtk::prelude::*;
-use gtk::{Button, Label};
+use gtk::{Button, Label, Orientation};
 use serde::Deserialize;
 
 use crate::dynamic_value::dynamic_string;
 use crate::modules::PopupButton;
 use crate::{build, try_send};
 
-use super::{CustomWidget, CustomWidgetContext, ExecEvent};
+use super::{CustomWidget, CustomWidgetContext, ExecEvent, WidgetConfig};
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct ButtonWidget {
@@ -14,6 +14,7 @@ pub struct ButtonWidget {
     class: Option<String>,
     label: Option<String>,
     on_click: Option<String>,
+    widgets: Option<Vec<WidgetConfig>>,
 }
 
 impl CustomWidget for ButtonWidget {
@@ -23,7 +24,15 @@ impl CustomWidget for ButtonWidget {
         let button = build!(self, Self::Widget);
         context.popup_buttons.borrow_mut().push(button.clone());
 
-        if let Some(text) = self.label {
+        if let Some(widgets) = self.widgets {
+            let container = gtk::Box::new(Orientation::Horizontal, 0);
+
+            for widget in widgets {
+                widget.widget.add_to(&container, &context, widget.common);
+            }
+
+            button.add(&container);
+        } else if let Some(text) = self.label {
             let label = Label::new(None);
             label.set_use_markup(true);
             button.add(&label);
