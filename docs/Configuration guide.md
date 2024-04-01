@@ -332,6 +332,7 @@ For information on the `Script` type, and embedding scripts in strings, see [her
 | `show_if`             | [Dynamic Boolean](dynamic-values#dynamic-boolean)     | `null`        | Polls the script to check its exit code. If exit code is zero, the module is shown. For other codes, it is hidden. |
 | `transition_type`     | `slide_start` or `slide_end` or `crossfade` or `none` | `slide_start` | The transition animation to use when showing/hiding the widget.                                                    |
 | `transition_duration` | `integer`                                             | `250`         | The length of the transition animation to use when showing/hiding the widget.                                      |
+| `disable_popup`       | `boolean`                                             | `false`       | Prevents the popup from opening on-click for this widget.                                                          |
 
 #### Appearance
 

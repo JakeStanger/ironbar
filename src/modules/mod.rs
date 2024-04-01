@@ -314,7 +314,7 @@ pub trait ModuleFactory {
                 .register_content(id, instance_name, popup_content);
         }
 
-        self.setup_receiver(tx, ui_rx, module_name, id);
+        self.setup_receiver(tx, ui_rx, module_name, id, common.disable_popup);
 
         module_parts.setup_identifiers(&common);
 
@@ -334,6 +334,7 @@ pub trait ModuleFactory {
         rx: mpsc::Receiver<ModuleUpdateEvent<TSend>>,
         name: &'static str,
         id: usize,
+        disable_popup: bool,
     ) where
         TSend: Debug + Clone + Send + 'static;
 
@@ -360,6 +361,7 @@ impl ModuleFactory for BarModuleFactory {
         rx: mpsc::Receiver<ModuleUpdateEvent<TSend>>,
         name: &'static str,
         id: usize,
+        disable_popup: bool,
     ) where
         TSend: Debug + Clone + Send + 'static,
     {
@@ -369,7 +371,7 @@ impl ModuleFactory for BarModuleFactory {
                 ModuleUpdateEvent::Update(update) => {
                     send!(tx, update);
                 }
-                ModuleUpdateEvent::TogglePopup(button_id) => {
+                ModuleUpdateEvent::TogglePopup(button_id) if !disable_popup => {
                     debug!("Toggling popup for {} [#{}] (button id: {button_id})", name, id);
                     if popup.is_visible() && popup.current_widget().unwrap_or_default() == id {
                         popup.hide();
@@ -377,22 +379,23 @@ impl ModuleFactory for BarModuleFactory {
                         popup.show(id, button_id);
                     }
                 }
-                ModuleUpdateEvent::OpenPopup(button_id) => {
+                ModuleUpdateEvent::OpenPopup(button_id) if !disable_popup => {
                     debug!("Opening popup for {} [#{}] (button id: {button_id})", name, id);
                     popup.hide();
                     popup.show(id, button_id);
                 }
                 #[cfg(feature = "launcher")]
-                ModuleUpdateEvent::OpenPopupAt(geometry) => {
+                ModuleUpdateEvent::OpenPopupAt(geometry) if !disable_popup => {
                     debug!("Opening popup for {} [#{}]", name, id);
 
                     popup.hide();
                     popup.show_at(id, geometry);
                 }
-                ModuleUpdateEvent::ClosePopup => {
+                ModuleUpdateEvent::ClosePopup if !disable_popup => {
                     debug!("Closing popup for {} [#{}]", name, id);
                     popup.hide();
-                }
+                },
+                _ => {}
             }
         });
     }
@@ -430,6 +433,7 @@ impl ModuleFactory for PopupModuleFactory {
         rx: mpsc::Receiver<ModuleUpdateEvent<TSend>>,
         name: &'static str,
         id: usize,
+        disable_popup: bool,
     ) where
         TSend: Debug + Clone + Send + 'static,
     {
@@ -440,7 +444,7 @@ impl ModuleFactory for PopupModuleFactory {
                 ModuleUpdateEvent::Update(update) => {
                     send!(tx, update);
                 }
-                ModuleUpdateEvent::TogglePopup(_) => {
+                ModuleUpdateEvent::TogglePopup(_) if !disable_popup => {
                     debug!("Toggling popup for {} [#{}] (button id: {button_id})", name, id);
                     if popup.is_visible() && popup.current_widget().unwrap_or_default() == id {
                         popup.hide();
@@ -448,22 +452,23 @@ impl ModuleFactory for PopupModuleFactory {
                         popup.show(id, button_id);
                     }
                 }
-                ModuleUpdateEvent::OpenPopup(_) => {
+                ModuleUpdateEvent::OpenPopup(_) if !disable_popup => {
                     debug!("Opening popup for {} [#{}] (button id: {button_id})", name, id);
                     popup.hide();
                     popup.show(id, button_id);
                 }
                 #[cfg(feature = "launcher")]
-                ModuleUpdateEvent::OpenPopupAt(geometry) => {
+                ModuleUpdateEvent::OpenPopupAt(geometry) if !disable_popup => {
                     debug!("Opening popup for {} [#{}]", name, id);
 
                     popup.hide();
                     popup.show_at(id, geometry);
                 }
-                ModuleUpdateEvent::ClosePopup => {
+                ModuleUpdateEvent::ClosePopup if !disable_popup => {
                     debug!("Closing popup for {} [#{}]", name, id);
                     popup.hide();
-                }
+                },
+                _ => {}
             }
         });
     }
@@ -490,12 +495,13 @@ impl ModuleFactory for AnyModuleFactory {
         rx: mpsc::Receiver<ModuleUpdateEvent<TSend>>,
         name: &'static str,
         id: usize,
+        disable_popup: bool,
     ) where
         TSend: Debug + Clone + Send + 'static,
     {
         match self {
-            AnyModuleFactory::Bar(bar) => bar.setup_receiver(tx, rx, name, id),
-            AnyModuleFactory::Popup(popup) => popup.setup_receiver(tx, rx, name, id),
+            AnyModuleFactory::Bar(bar) => bar.setup_receiver(tx, rx, name, id, disable_popup),
+            AnyModuleFactory::Popup(popup) => popup.setup_receiver(tx, rx, name, id, disable_popup),
         }
     }
 
