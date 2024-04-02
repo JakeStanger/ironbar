@@ -1,7 +1,7 @@
 use super::{Visibility, Workspace, WorkspaceClient, WorkspaceUpdate};
 use crate::{await_sync, send, spawn};
 use color_eyre::{Report, Result};
-use futures_util::StreamExt;
+use futures_lite::StreamExt;
 use std::sync::Arc;
 use swayipc_async::{Connection, Event, EventType, Node, WorkspaceChange, WorkspaceEvent};
 use tokio::sync::broadcast::{channel, Receiver, Sender};
