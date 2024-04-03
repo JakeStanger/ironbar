@@ -40,6 +40,19 @@ pub enum TransitionType {
     SlideEnd,
 }
 
+#[derive(Debug, Deserialize, Clone)]
+#[serde(rename_all = "snake_case")]
+pub enum ModuleOrientation {
+    Horizontal,
+    Vertical,
+}
+
+impl Default for ModuleOrientation {
+    fn default() -> Self {
+        ModuleOrientation::Horizontal
+    }
+}
+
 impl TransitionType {
     pub const fn to_revealer_transition_type(
         &self,
