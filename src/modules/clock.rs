@@ -101,15 +101,10 @@ impl Module<Button> for ClockModule {
         info: &ModuleInfo,
     ) -> Result<ModuleParts<Button>> {
         let button = Button::new();
-        let label = if matches!(self.orientation, ModuleOrientation::Vertical) {
-            Label::builder()
-                .angle(info.bar_position.get_angle())
-                .use_markup(true)
-        } else {
-            Label::builder()
-                .use_markup(true)
-            
-        }.build();
+        let label = Label::builder()
+            .angle(self.orientation.to_angle())
+            .use_markup(true)
+            .build();
         button.add(&label);
 
         let tx = context.tx.clone();

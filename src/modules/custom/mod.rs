@@ -113,17 +113,6 @@ pub fn set_length<W: WidgetExt>(widget: &W, length: i32, bar_orientation: Orient
     };
 }
 
-/// Attempts to parse an `Orientation` from `String`.
-/// Will accept `horizontal`, `vertical`, `h` or `v`.
-/// Ignores case.
-fn try_get_orientation(orientation: &str) -> Result<Orientation> {
-    match orientation.to_lowercase().as_str() {
-        "horizontal" | "h" => Ok(Orientation::Horizontal),
-        "vertical" | "v" => Ok(Orientation::Vertical),
-        _ => Err(Report::msg("Invalid orientation string in config")),
-    }
-}
-
 impl WidgetOrModule {
     fn add_to(self, parent: &gtk::Box, context: &CustomWidgetContext, common: CommonConfig) {
         match self {

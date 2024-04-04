@@ -1,15 +1,15 @@
-use super::{try_get_orientation, CustomWidget, CustomWidgetContext};
+use super::{CustomWidget, CustomWidgetContext};
 use crate::build;
+use crate::config::ModuleOrientation;
 use crate::modules::custom::WidgetConfig;
-use gtk::prelude::*;
-use gtk::Orientation;
+use gtk::{prelude::*, Orientation};
 use serde::Deserialize;
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct BoxWidget {
     name: Option<String>,
     class: Option<String>,
-    orientation: Option<String>,
+    orientation: Option<ModuleOrientation>,
     widgets: Option<Vec<WidgetConfig>>,
 }
 
@@ -21,7 +21,7 @@ impl CustomWidget for BoxWidget {
 
         if let Some(orientation) = self.orientation {
             container.set_orientation(
-                try_get_orientation(&orientation).unwrap_or(Orientation::Horizontal),
+                Orientation::from(orientation),
             );
         }
 

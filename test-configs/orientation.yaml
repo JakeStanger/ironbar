@@ -1,0 +1,82 @@
+position: "left"
+start:
+  - type: clock
+    format: "%H:%M"
+  - type: clock
+    format: "%H:%M"
+    orientation: horizontal
+  - type: clock
+    format: "%H:%M"
+    orientation: h
+  - type: clock
+    format: "%H:%M"
+    orientation: vertical
+  - type: clock
+    format: "%H:%M"
+    orientation: v
+  - type: custom
+    bar:
+    - type: label
+      label: "label"
+    - type: label
+      label: "label"
+      orientation: horizontal
+    - type: label
+      label: "label"
+      orientation: h
+    - type: label
+      label: "label"
+      orientation: vertical
+    - type: label
+      label: "label"
+      orientation: v
+  - type: custom
+    bar:
+    - type: button
+      label: "label"
+    - type: button
+      label: "label"
+      orientation: horizontal
+    - type: button
+      label: "label"
+      orientation: h
+    - type: button
+      label: "label"
+      orientation: vertical
+    - type: button
+      label: "label"
+      orientation: v
+  - type: custom
+    bar:
+    - type: progress
+      value: "echo 50"
+    - type: progress
+      value: "echo 50"
+      orientation: horizontal
+    - type: progress
+      value: "echo 50"
+      orientation: h
+    - type: progress
+      value: "echo 50"
+      orientation: vertical
+    - type: progress
+      value: "echo 50"
+      orientation: v
+  - type: custom
+    bar:
+    - type: slider
+      value: "echo 50"
+    - type: slider
+      value: "echo 50"
+      orientation: horizontal
+    - type: slider
+      value: "echo 50"
+      orientation: h
+    - type: slider
+      value: "echo 50"
+      length: 100
+      orientation: vertical
+    - type: slider
+      value: "echo 50"
+      length: 100
+      orientation: v

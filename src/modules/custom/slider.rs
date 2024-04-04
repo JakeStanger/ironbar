@@ -1,4 +1,5 @@
 use glib::Propagation;
+use gtk::Orientation;
 use std::cell::Cell;
 use std::ops::Neg;
 
@@ -8,17 +9,19 @@ use serde::Deserialize;
 use tokio::sync::mpsc;
 use tracing::error;
 
+use crate::config::ModuleOrientation;
 use crate::modules::custom::set_length;
 use crate::script::{OutputStream, Script, ScriptInput};
 use crate::{build, glib_recv_mpsc, spawn, try_send};
 
-use super::{try_get_orientation, CustomWidget, CustomWidgetContext, ExecEvent};
+use super::{CustomWidget, CustomWidgetContext, ExecEvent};
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct SliderWidget {
     name: Option<String>,
     class: Option<String>,
-    orientation: Option<String>,
+    #[serde(default)]
+    orientation: ModuleOrientation,
     value: Option<ScriptInput>,
     on_change: Option<String>,
     #[serde(default = "default_min")]
@@ -45,11 +48,9 @@ impl CustomWidget for SliderWidget {
     fn into_widget(self, context: CustomWidgetContext) -> Self::Widget {
         let scale = build!(self, Self::Widget);
 
-        if let Some(orientation) = self.orientation {
-            scale.set_orientation(
-                try_get_orientation(&orientation).unwrap_or(context.bar_orientation),
-            );
-        }
+        scale.set_orientation(
+            Orientation::from(self.orientation),
+        );
 
         if let Some(length) = self.length {
             set_length(&scale, length, context.bar_orientation);
