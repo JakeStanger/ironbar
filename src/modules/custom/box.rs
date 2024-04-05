@@ -2,7 +2,7 @@ use super::{CustomWidget, CustomWidgetContext};
 use crate::build;
 use crate::config::ModuleOrientation;
 use crate::modules::custom::WidgetConfig;
-use gtk::{prelude::*, Orientation};
+use gtk::prelude::*;
 use serde::Deserialize;
 
 #[derive(Debug, Deserialize, Clone)]
@@ -20,9 +20,7 @@ impl CustomWidget for BoxWidget {
         let container = build!(self, Self::Widget);
 
         if let Some(orientation) = self.orientation {
-            container.set_orientation(
-                Orientation::from(orientation),
-            );
+            container.set_orientation(orientation.into());
         }
 
         if let Some(widgets) = self.widgets {

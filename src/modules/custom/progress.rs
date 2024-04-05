@@ -1,5 +1,4 @@
 use gtk::prelude::*;
-use gtk::Orientation;
 use gtk::ProgressBar;
 use serde::Deserialize;
 use tokio::sync::mpsc;
@@ -36,9 +35,7 @@ impl CustomWidget for ProgressWidget {
     fn into_widget(self, context: CustomWidgetContext) -> Self::Widget {
         let progress = build!(self, Self::Widget);
 
-        progress.set_orientation(
-            Orientation::from(self.orientation),
-        );
+        progress.set_orientation(self.orientation.into());
 
         if let Some(length) = self.length {
             set_length(&progress, length, context.bar_orientation);

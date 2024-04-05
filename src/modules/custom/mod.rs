@@ -18,7 +18,7 @@ use crate::modules::{
 };
 use crate::script::Script;
 use crate::{module_impl, send_async, spawn};
-use color_eyre::{Report, Result};
+use color_eyre::Result;
 use gtk::prelude::*;
 use gtk::{Button, IconTheme, Orientation};
 use serde::Deserialize;

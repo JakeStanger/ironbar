@@ -40,9 +40,10 @@ pub enum TransitionType {
     SlideEnd,
 }
 
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Default, Deserialize, Clone, Copy)]
 #[serde(rename_all = "snake_case")]
 pub enum ModuleOrientation {
+    #[default]
     #[serde(alias = "h")]
     Horizontal,
     #[serde(alias = "v")]
@@ -50,10 +51,10 @@ pub enum ModuleOrientation {
 }
 
 impl ModuleOrientation {
-    pub const fn to_angle(&self) -> f64 {
+    pub const fn to_angle(self) -> f64 {
         match self {
             Self::Horizontal => 0.0,
-            Self::Vertical => 90.0
+            Self::Vertical => 90.0,
         }
     }
 }
@@ -61,15 +62,9 @@ impl ModuleOrientation {
 impl From<ModuleOrientation> for Orientation {
     fn from(o: ModuleOrientation) -> Self {
         match o {
-            ModuleOrientation::Horizontal => Orientation::Horizontal,
-            ModuleOrientation::Vertical => Orientation::Vertical
+            ModuleOrientation::Horizontal => Self::Horizontal,
+            ModuleOrientation::Vertical => Self::Vertical,
         }
-    }
-}
-
-impl Default for ModuleOrientation {
-    fn default() -> Self {
-        ModuleOrientation::Horizontal
     }
 }
 

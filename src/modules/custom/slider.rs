@@ -1,5 +1,4 @@
 use glib::Propagation;
-use gtk::Orientation;
 use std::cell::Cell;
 use std::ops::Neg;
 
@@ -48,9 +47,7 @@ impl CustomWidget for SliderWidget {
     fn into_widget(self, context: CustomWidgetContext) -> Self::Widget {
         let scale = build!(self, Self::Widget);
 
-        scale.set_orientation(
-            Orientation::from(self.orientation),
-        );
+        scale.set_orientation(self.orientation.into());
 
         if let Some(length) = self.length {
             set_length(&scale, length, context.bar_orientation);

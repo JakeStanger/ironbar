@@ -39,9 +39,7 @@ impl CustomWidget for ButtonWidget {
             let label = Label::new(None);
             label.set_use_markup(true);
 
-            label.set_angle(
-                self.orientation.to_angle(),
-            );
+            label.set_angle(self.orientation.to_angle());
 
             button.add(&label);
 
