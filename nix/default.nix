@@ -42,6 +42,9 @@
         --prefix XDG_DATA_DIRS : "${librsvg}/share"
         --prefix XDG_DATA_DIRS : "${webp-pixbuf-loader}/share"
         --prefix XDG_DATA_DIRS : "${shared-mime-info}/share"
+
+        # gtk-launch
+        --suffix PATH : "${lib.makeBinPath [ gtk3 ]}"
       )
     '';
     passthru = {
