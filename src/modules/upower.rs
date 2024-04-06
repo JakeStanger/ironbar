@@ -181,7 +181,6 @@ impl Module<gtk::Button> for UpowerModule {
             try_send!(tx, ModuleUpdateEvent::TogglePopup(button.popup_id()));
         });
 
-        label.set_angle(info.bar_position.get_angle());
         let format = self.format.clone();
 
         let rx = context.subscribe();
