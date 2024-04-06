@@ -2,6 +2,7 @@ use gtk::prelude::*;
 use gtk::{Button, Label, Orientation};
 use serde::Deserialize;
 
+use crate::config::ModuleOrientation;
 use crate::dynamic_value::dynamic_string;
 use crate::modules::PopupButton;
 use crate::{build, try_send};
@@ -15,6 +16,8 @@ pub struct ButtonWidget {
     label: Option<String>,
     on_click: Option<String>,
     widgets: Option<Vec<WidgetConfig>>,
+    #[serde(default)]
+    orientation: ModuleOrientation,
 }
 
 impl CustomWidget for ButtonWidget {
@@ -35,6 +38,9 @@ impl CustomWidget for ButtonWidget {
         } else if let Some(text) = self.label {
             let label = Label::new(None);
             label.set_use_markup(true);
+
+            label.set_angle(self.orientation.to_angle());
+
             button.add(&label);
 
             dynamic_string(&text, move |string| {

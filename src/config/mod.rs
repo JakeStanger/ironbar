@@ -34,7 +34,7 @@ use color_eyre::Result;
 use serde::Deserialize;
 use std::collections::HashMap;
 
-pub use self::common::{CommonConfig, TransitionType};
+pub use self::common::{CommonConfig, ModuleOrientation, TransitionType};
 pub use self::truncate::TruncateMode;
 
 #[derive(Debug, Deserialize, Clone)]

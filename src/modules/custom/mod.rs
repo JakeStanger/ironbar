@@ -18,7 +18,7 @@ use crate::modules::{
 };
 use crate::script::Script;
 use crate::{module_impl, send_async, spawn};
-use color_eyre::{Report, Result};
+use color_eyre::Result;
 use gtk::prelude::*;
 use gtk::{Button, IconTheme, Orientation};
 use serde::Deserialize;
@@ -111,17 +111,6 @@ pub fn set_length<W: WidgetExt>(widget: &W, length: i32, bar_orientation: Orient
         Orientation::Vertical => widget.set_height_request(length),
         _ => {}
     };
-}
-
-/// Attempts to parse an `Orientation` from `String`.
-/// Will accept `horizontal`, `vertical`, `h` or `v`.
-/// Ignores case.
-fn try_get_orientation(orientation: &str) -> Result<Orientation> {
-    match orientation.to_lowercase().as_str() {
-        "horizontal" | "h" => Ok(Orientation::Horizontal),
-        "vertical" | "v" => Ok(Orientation::Vertical),
-        _ => Err(Report::msg("Invalid orientation string in config")),
-    }
 }
 
 impl WidgetOrModule {
