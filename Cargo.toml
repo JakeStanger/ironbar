@@ -23,6 +23,7 @@ default = [
     "keyboard+all",
     "launcher",
     "label",
+    "menu",
     "music+all",
     "network_manager",
     "notifications",
@@ -75,6 +76,8 @@ keyboard = ["dep:colpetto", "dep:evdev-rs", "dep:rustix", "futures-lite"]
 label = []
 
 launcher = []
+
+menu = []
 
 music = ["dep:regex"]
 "music+all" = ["music", "music+mpris", "music+mpd"]

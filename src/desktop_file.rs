@@ -53,6 +53,8 @@ impl DesktopFileRef {
         let mut has_wm_class = false;
         let mut has_exec = false;
         let mut has_icon = false;
+        let mut has_categories = false;
+        let mut has_no_display = false;
 
         while let Ok(Some(line)) = lines.next_line().await {
             let Some((key, value)) = line.split_once('=') else {
@@ -60,31 +62,46 @@ impl DesktopFileRef {
             };
 
             match key {
-                "Name" => {
+                "Name" if !has_name => {
                     desktop_file.name = Some(value.to_string());
                     has_name = true;
                 }
-                "Type" => {
+                "Type" if !has_type => {
                     desktop_file.app_type = Some(value.to_string());
                     has_type = true;
                 }
-                "StartupWMClass" => {
+                "StartupWMClass" if !has_wm_class => {
                     desktop_file.startup_wm_class = Some(value.to_string());
                     has_wm_class = true;
                 }
-                "Exec" => {
+                "Exec" if !has_exec => {
                     desktop_file.exec = Some(value.to_string());
                     has_exec = true;
                 }
-                "Icon" => {
+                "Icon" if !has_icon => {
                     desktop_file.icon = Some(value.to_string());
                     has_icon = true;
+                }
+                "Categories" if !has_categories => {
+                    desktop_file.categories = value.split(';').map(|s| s.to_string()).collect();
+                    has_categories = true;
+                }
+                "NoDisplay" if !has_no_display => {
+                    desktop_file.no_display = Some(value.parse()?);
+                    has_no_display = true;
                 }
                 _ => {}
             }
 
             // parsing complete - don't bother with the rest of the lines
-            if has_name && has_type && has_wm_class && has_exec && has_icon {
+            if has_name
+                && has_type
+                && has_wm_class
+                && has_exec
+                && has_icon
+                && has_categories
+                && has_no_display
+            {
                 break;
             }
         }
@@ -101,6 +118,8 @@ pub struct DesktopFile {
     pub startup_wm_class: Option<String>,
     pub exec: Option<String>,
     pub icon: Option<String>,
+    pub categories: Vec<String>,
+    pub no_display: Option<bool>,
 }
 
 impl DesktopFile {
@@ -112,6 +131,8 @@ impl DesktopFile {
             startup_wm_class: None,
             exec: None,
             icon: None,
+            categories: vec![],
+            no_display: None,
         }
     }
 }
@@ -157,6 +178,18 @@ impl DesktopFiles {
         Self {
             files: Arc::new(Mutex::new(desktop_files)),
         }
+    }
+
+    pub async fn get_all(&self) -> Result<Vec<DesktopFile>> {
+        let mut files = self.files.lock().await;
+
+        let mut res = Vec::with_capacity(files.len());
+        for file in files.values_mut() {
+            let file = file.get().await?;
+            res.push(file);
+        }
+
+        Ok(res)
     }
 
     /// Attempts to locate a applications file by file name or contents.
