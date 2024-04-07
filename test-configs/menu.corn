@@ -1,0 +1,30 @@
+{
+  icon_theme = "Moka"
+  position = "bottom"
+  start = [
+    {
+      type = "menu"
+      label = null
+      label_icon = "archlinux"
+      label_icon_size = 48
+      height = 500
+      width = 440
+      start = [
+        {
+            type = "custom"
+            label = "Terminal"
+            icon = "xfce4-terminal"
+            on_click = "xfce4-terminal"
+        }
+      ]
+      end = [
+        {
+            type = "custom"
+            label = "Logout"
+            icon = "logout"
+            on_click = "wlogout"
+        }
+      ]
+    }
+  ]
+}
