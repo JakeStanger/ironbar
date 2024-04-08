@@ -114,7 +114,7 @@ clap = { version = "4.5.4", optional = true, features = ["derive"] }
 serde_json = { version = "1.0.114", optional = true }
 
 # http
-reqwest = { version = "0.12.2", default_features = false, features = ["default-tls", "http2"], optional = true }
+reqwest = { version = "0.12.3", default_features = false, features = ["default-tls", "http2"], optional = true }
 
 # clipboard
 nix = { version = "0.27.1", optional = true, features = ["event"] }
