@@ -20,6 +20,7 @@
 ## Custom
 
 - [Power Menu](power-menu)
+- [Weather](weather)
 
 # Modules
 
