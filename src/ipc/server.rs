@@ -153,6 +153,20 @@ impl Ipc {
                     None => Response::error("Variable not found"),
                 }
             }
+            Command::List => {
+                let variable_manager = Ironbar::variable_manager();
+
+                let mut values = read_lock!(variable_manager)
+                    .get_all()
+                    .iter()
+                    .map(|(k, v)| format!("{k}: {}", v.get().unwrap_or_default()))
+                    .collect::<Vec<_>>();
+
+                values.sort();
+                let value = values.join("\n");
+
+                Response::OkValue { value }
+            }
             Command::LoadCss { path } => {
                 if path.exists() {
                     load_css(path);

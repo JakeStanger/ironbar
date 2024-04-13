@@ -32,6 +32,9 @@ pub enum Command {
         key: Box<str>,
     },
 
+    /// Gets the current value of all `ironvar`s.
+    List,
+
     /// Load an additional CSS stylesheet.
     /// The sheet is automatically hot-reloaded.
     LoadCss {
