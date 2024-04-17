@@ -97,16 +97,13 @@
 
       apps = genSystems (system:
         let pkgs = pkgsFor system;
-        in {
-          default = {
-            type = "app";
-            program = "${pkgs.ironbar}/bin/ironbar";
-          };
-
+        in rec {
           ironbar = {
             type = "app";
             program = "${pkgs.ironbar}/bin/ironbar";
           };
+
+          default = ironbar;
         });
 
       devShells = genSystems (system:
