@@ -196,6 +196,7 @@
             Install.WantedBy = [
               (lib.mkIf config.wayland.windowManager.hyprland.systemd.enable "hyprland-session.target")
               (lib.mkIf config.wayland.windowManager.sway.systemd.enable "sway-session.target")
+              (lib.mkIf config.wayland.windowManager.river.systemd.enable "river-session.target")
             ];
           };
         };
