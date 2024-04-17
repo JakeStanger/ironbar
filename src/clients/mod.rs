@@ -7,6 +7,8 @@ pub mod clipboard;
 pub mod compositor;
 #[cfg(feature = "music")]
 pub mod music;
+#[cfg(feature = "networkmanager")]
+pub mod networkmanager;
 #[cfg(feature = "notifications")]
 pub mod swaync;
 #[cfg(feature = "tray")]
@@ -28,6 +30,8 @@ pub struct Clients {
     clipboard: Option<Arc<clipboard::Client>>,
     #[cfg(feature = "music")]
     music: std::collections::HashMap<music::ClientType, Arc<dyn music::MusicClient>>,
+    #[cfg(feature = "networkmanager")]
+    networkmanager: Option<Arc<networkmanager::Client>>,
     #[cfg(feature = "notifications")]
     notifications: Option<Arc<swaync::Client>>,
     #[cfg(feature = "tray")]
@@ -73,6 +77,13 @@ impl Clients {
         self.music
             .entry(client_type.clone())
             .or_insert_with(|| music::create_client(client_type))
+            .clone()
+    }
+
+    #[cfg(feature = "networkmanager")]
+    pub fn networkmanager(&mut self) -> Arc<networkmanager::Client> {
+        self.networkmanager
+            .get_or_insert_with(networkmanager::create_client)
             .clone()
     }
 
