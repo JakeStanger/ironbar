@@ -24,6 +24,7 @@
 
 # Modules
 
+- [Cairo](cairo)
 - [Clipboard](clipboard)
 - [Clock](clock)
 - [Custom](custom)

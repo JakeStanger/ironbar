@@ -14,6 +14,8 @@
   libxkbcommon,
   libpulseaudio,
   openssl,
+  luajit,
+  luajitPackages,
   pkg-config,
   hicolor-icon-theme,
   rustPlatform,
@@ -30,11 +32,28 @@
       name = "ironbar";
       path = lib.cleanSource ../.;
     };
-    nativeBuildInputs = [pkg-config wrapGAppsHook gobject-introspection];
-    buildInputs = [gtk3 gdk-pixbuf glib gtk-layer-shell glib-networking shared-mime-info gnome.adwaita-icon-theme hicolor-icon-theme gsettings-desktop-schemas libxkbcommon libpulseaudio openssl];
-    propagatedBuildInputs = [
+    nativeBuildInputs = [ pkg-config wrapGAppsHook gobject-introspection ];
+
+    buildInputs = [
       gtk3
+      gdk-pixbuf
+      glib
+      gtk-layer-shell
+      glib-networking
+      shared-mime-info
+      gnome.adwaita-icon-theme
+      hicolor-icon-theme
+      gsettings-desktop-schemas
+      libxkbcommon
+      libpulseaudio
+      openssl
+      luajit
     ];
+
+    propagatedBuildInputs = [  gtk3 ];
+
+    lgi = luajitPackages.lgi;
+
     preFixup = ''
       gappsWrapperArgs+=(
         # Thumbnailers
@@ -45,6 +64,10 @@
 
         # gtk-launch
         --suffix PATH : "${lib.makeBinPath [ gtk3 ]}"
+
+        # cairo
+        --prefix LUA_PATH : "./?.lua;${lgi}/share/lua/5.1/?.lua;${lgi}/share/lua/5.1/?/init.lua;${luajit}/share/lua/5.1/\?.lua;${luajit}/share/lua/5.1/?/init.lua"
+        --prefix LUA_CPATH : "./?.so;${lgi}/lib/lua/5.1/?.so;${luajit}/lib/lua/5.1/?.so;${luajit}/lib/lua/5.1/loadall.so"
       )
     '';
     passthru = {

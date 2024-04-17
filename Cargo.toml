@@ -11,6 +11,7 @@ keywords = ["gtk", "bar", "wayland", "wlroots", "gtk-layer-shell"]
 [features]
 default = [
     "cli",
+    "cairo",
     "clipboard",
     "clock",
     "config+all",
@@ -44,6 +45,8 @@ http = ["dep:reqwest"]
 "config+toml" = ["universal-config/toml"]
 "config+corn" = ["universal-config/corn"]
 "config+ron" = ["universal-config/ron"]
+
+cairo = ["lua-src", "mlua", "cairo-rs"]
 
 clipboard = ["nix"]
 
@@ -115,6 +118,11 @@ serde_json = { version = "1.0.114", optional = true }
 
 # http
 reqwest = { version = "0.12.3", default_features = false, features = ["default-tls", "http2"], optional = true }
+
+# cairo
+lua-src =  {  version = "546.0.2", optional = true }
+mlua = { version = "0.9.6", optional = true, features = ["luajit"] }
+cairo-rs = { version = "0.18.5", optional = true, features = ["png"] }
 
 # clipboard
 nix = { version = "0.27.1", optional = true, features = ["event"] }

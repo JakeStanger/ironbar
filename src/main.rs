@@ -96,14 +96,18 @@ pub struct Ironbar {
     bars: Rc<RefCell<Vec<Bar>>>,
     clients: Rc<RefCell<Clients>>,
     config: Rc<RefCell<Config>>,
+    config_dir: PathBuf,
 }
 
 impl Ironbar {
     fn new() -> Self {
+        let (config, config_dir) = load_config();
+
         Self {
             bars: Rc::new(RefCell::new(vec![])),
             clients: Rc::new(RefCell::new(Clients::new())),
-            config: Rc::new(RefCell::new(load_config())),
+            config: Rc::new(RefCell::new(config)),
+            config_dir,
         }
     }
 
@@ -260,7 +264,7 @@ impl Ironbar {
     /// Note this does *not* reload bars, which must be performed separately.
     #[cfg(feature = "ipc")]
     fn reload_config(&self) {
-        self.config.replace(load_config());
+        self.config.replace(load_config().0);
     }
 }
 
@@ -270,20 +274,37 @@ fn start_ironbar() {
 }
 
 /// Loads the config file from disk.
-fn load_config() -> Config {
-    let mut config = env::var("IRONBAR_CONFIG")
-        .map_or_else(
-            |_| ConfigLoader::new("ironbar").find_and_load(),
-            ConfigLoader::load,
-        )
-        .unwrap_or_else(|err| {
-            error!("Failed to load config: {}", err);
-            warn!("Falling back to the default config");
-            info!("If this is your first time using Ironbar, you should create a config in ~/.config/ironbar/");
-            info!("More info here: https://github.com/JakeStanger/ironbar/wiki/configuration-guide");
+fn load_config() -> (Config, PathBuf) {
+    let config_path = env::var("IRONBAR_CONFIG");
 
-            Config::default()
-        });
+    let (config, directory) = if let Ok(config_path) = config_path {
+        let path = PathBuf::from(config_path);
+        (
+            ConfigLoader::load(&path),
+            path.parent()
+                .map(PathBuf::from)
+                .ok_or_else(|| Report::msg("Specified path has no parent")),
+        )
+    } else {
+        let config_loader = ConfigLoader::new("ironbar");
+        (
+            config_loader.find_and_load(),
+            config_loader.config_dir().map_err(Report::new),
+        )
+    };
+
+    let mut config = config.unwrap_or_else(|err| {
+        error!("Failed to load config: {}", err);
+        warn!("Falling back to the default config");
+        info!("If this is your first time using Ironbar, you should create a config in ~/.config/ironbar/");
+        info!("More info here: https://github.com/JakeStanger/ironbar/wiki/configuration-guide");
+
+        Config::default()
+    });
+
+    let directory = directory
+        .and_then(|dir| dir.canonicalize().map_err(Report::new))
+        .unwrap_or_else(|_| env::current_dir().expect("to have current working directory"));
 
     debug!("Loaded config file");
 
@@ -297,7 +318,7 @@ fn load_config() -> Config {
         }
     }
 
-    config
+    (config, directory)
 }
 
 /// Gets the GDK `Display` instance.

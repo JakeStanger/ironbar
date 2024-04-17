@@ -1,11 +1,15 @@
 use crate::{await_sync, Ironbar};
 use color_eyre::Result;
+use std::path::Path;
+use std::rc::Rc;
 use std::sync::Arc;
 
 #[cfg(feature = "clipboard")]
 pub mod clipboard;
 #[cfg(feature = "workspaces")]
 pub mod compositor;
+#[cfg(feature = "cairo")]
+pub mod lua;
 #[cfg(feature = "music")]
 pub mod music;
 #[cfg(feature = "notifications")]
@@ -27,6 +31,8 @@ pub struct Clients {
     workspaces: Option<Arc<dyn compositor::WorkspaceClient>>,
     #[cfg(feature = "clipboard")]
     clipboard: Option<Arc<clipboard::Client>>,
+    #[cfg(feature = "cairo")]
+    lua: Option<Rc<lua::LuaEngine>>,
     #[cfg(feature = "music")]
     music: std::collections::HashMap<music::ClientType, Arc<dyn music::MusicClient>>,
     #[cfg(feature = "notifications")]
@@ -73,6 +79,13 @@ impl Clients {
         };
 
         Ok(client)
+    }
+
+    #[cfg(feature = "cairo")]
+    pub fn lua(&mut self, config_dir: &Path) -> Rc<lua::LuaEngine> {
+        self.lua
+            .get_or_insert_with(|| Rc::new(lua::LuaEngine::new(config_dir)))
+            .clone()
     }
 
     #[cfg(feature = "music")]

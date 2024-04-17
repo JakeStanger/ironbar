@@ -16,6 +16,8 @@ use crate::gtk_helpers::{IronbarGtkExt, WidgetGeometry};
 use crate::popup::Popup;
 use crate::{glib_recv_mpsc, send, Ironbar};
 
+#[cfg(feature = "cairo")]
+pub mod cairo;
 #[cfg(feature = "clipboard")]
 pub mod clipboard;
 /// Displays the current date and time.
