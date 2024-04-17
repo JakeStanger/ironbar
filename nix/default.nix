@@ -27,12 +27,19 @@
 }: let
   basePkg = rec {
     inherit version;
+
     pname = "ironbar";
+
     src = builtins.path {
       name = "ironbar";
       path = lib.cleanSource ../.;
     };
-    nativeBuildInputs = [ pkg-config wrapGAppsHook gobject-introspection ];
+
+    nativeBuildInputs = [
+        pkg-config
+        wrapGAppsHook
+        gobject-introspection
+    ];
 
     buildInputs = [
       gtk3
@@ -50,7 +57,7 @@
       luajit
     ];
 
-    propagatedBuildInputs = [  gtk3 ];
+    propagatedBuildInputs = [ gtk3 ];
 
     lgi = luajitPackages.lgi;
 
@@ -70,53 +77,48 @@
         --prefix LUA_CPATH : "./?.so;${lgi}/lib/lua/5.1/?.so;${luajit}/lib/lua/5.1/?.so;${luajit}/lib/lua/5.1/loadall.so"
       )
     '';
+
     passthru = {
       updateScript = gnome.updateScript {
         packageName = pname;
         attrPath = "gnome.${pname}";
       };
     };
+
     meta = with lib; {
       homepage = "https://github.com/JakeStanger/ironbar";
-      description = "Customisable gtk-layer-shell wlroots/sway bar written in rust.";
+      description =
+        "Customisable gtk-layer-shell wlroots/sway bar written in rust.";
       license = licenses.mit;
       platforms = platforms.linux;
       mainProgram = "ironbar";
     };
+
   };
+
   flags = let
-    noDefault =
-      if features == []
-      then ""
-      else "--no-default-features";
-    featuresStr =
-      if features == []
-      then ""
-      else ''-F "${builtins.concatStringsSep "," features}"'';
-  in [noDefault featuresStr];
-in
-  if builderName == "naersk"
-  then
-    builder.buildPackage (basePkg
-      // {
-        cargoBuildOptions = old: old ++ flags;
-      })
-  else if builderName == "crane"
-  then
-    builder.buildPackage (basePkg
-      // {
-        cargoExtraArgs = builtins.concatStringsSep " " flags;
-        doCheck = false;
-      })
-  else
-    rustPlatform.buildRustPackage (basePkg
-      // {
-        buildNoDefaultFeatures =
-          if features == []
-          then false
-          else true;
-        buildFeatures = features;
-        cargoDeps = rustPlatform.importCargoLock {lockFile = ../Cargo.lock;};
-        cargoLock.lockFile = ../Cargo.lock;
-        cargoLock.outputHashes."stray-0.1.3" = "sha256-7mvsWZFmPWti9AiX67h6ZlWiVVRZRWIxq3pVaviOUtc=";
-      })
+    noDefault = if features == [ ] then "" else "--no-default-features";
+
+    featuresStr = if features == [ ] then
+      ""
+    else
+      ''-F "${builtins.concatStringsSep "," features}"'';
+
+  in [ noDefault featuresStr ];
+in if builderName == "naersk" then
+  builder.buildPackage (basePkg // { cargoBuildOptions = old: old ++ flags; })
+else if builderName == "crane" then
+  builder.buildPackage (basePkg // {
+    cargoExtraArgs = builtins.concatStringsSep " " flags;
+    doCheck = false;
+  })
+else
+  rustPlatform.buildRustPackage (basePkg // {
+    buildNoDefaultFeatures = features != [ ];
+
+    buildFeatures = features;
+    cargoDeps = rustPlatform.importCargoLock { lockFile = ../Cargo.lock; };
+    cargoLock.lockFile = ../Cargo.lock;
+    cargoLock.outputHashes."stray-0.1.3" =
+      "sha256-7mvsWZFmPWti9AiX67h6ZlWiVVRZRWIxq3pVaviOUtc=";
+  })
