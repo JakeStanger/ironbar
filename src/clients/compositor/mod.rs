@@ -1,4 +1,4 @@
-use crate::{await_sync, register_client};
+use crate::{await_sync, register_fallible_client};
 use cfg_if::cfg_if;
 use color_eyre::{Help, Report, Result};
 use std::fmt::{Debug, Display, Formatter};
@@ -141,4 +141,4 @@ pub trait WorkspaceClient: Debug + Send + Sync {
     fn subscribe_workspace_change(&self) -> broadcast::Receiver<WorkspaceUpdate>;
 }
 
-register_client!(dyn WorkspaceClient, workspaces);
+register_fallible_client!(dyn WorkspaceClient, workspaces);

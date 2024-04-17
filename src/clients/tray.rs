@@ -1,4 +1,4 @@
-use crate::register_client;
+use crate::register_fallible_client;
 pub use system_tray::client::Client;
 
-register_client!(Client, tray);
+register_fallible_client!(Client, tray);

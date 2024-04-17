@@ -27,6 +27,8 @@ pub struct CommonConfig {
     pub on_mouse_exit: Option<ScriptInput>,
 
     pub tooltip: Option<String>,
+    #[serde(default)]
+    pub disable_popup: bool,
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -36,6 +38,34 @@ pub enum TransitionType {
     Crossfade,
     SlideStart,
     SlideEnd,
+}
+
+#[derive(Debug, Default, Deserialize, Clone, Copy)]
+#[serde(rename_all = "snake_case")]
+pub enum ModuleOrientation {
+    #[default]
+    #[serde(alias = "h")]
+    Horizontal,
+    #[serde(alias = "v")]
+    Vertical,
+}
+
+impl ModuleOrientation {
+    pub const fn to_angle(self) -> f64 {
+        match self {
+            Self::Horizontal => 0.0,
+            Self::Vertical => 90.0,
+        }
+    }
+}
+
+impl From<ModuleOrientation> for Orientation {
+    fn from(o: ModuleOrientation) -> Self {
+        match o {
+            ModuleOrientation::Horizontal => Self::Horizontal,
+            ModuleOrientation::Vertical => Self::Vertical,
+        }
+    }
 }
 
 impl TransitionType {

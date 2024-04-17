@@ -1,6 +1,6 @@
 mod dbus;
 
-use crate::{register_client, send, spawn};
+use crate::{register_fallible_client, send, spawn};
 use color_eyre::{Report, Result};
 use dbus::SwayNcProxy;
 use serde::Deserialize;
@@ -24,9 +24,9 @@ type GetSubscribeData = (bool, bool, u32, bool);
 impl From<GetSubscribeData> for Event {
     fn from((dnd, cc_open, count, inhibited): (bool, bool, u32, bool)) -> Self {
         Self {
+            count,
             dnd,
             cc_open,
-            count,
             inhibited,
         }
     }
@@ -40,15 +40,13 @@ pub struct Client {
 }
 
 impl Client {
-    pub async fn new() -> Self {
-        let dbus = Box::pin(zbus::Connection::session())
-            .await
-            .expect("failed to create connection to system bus");
+    pub async fn new() -> Result<Self> {
+        let dbus = Box::pin(zbus::Connection::session()).await?;
 
-        let proxy = SwayNcProxy::new(&dbus).await.unwrap();
+        let proxy = SwayNcProxy::new(&dbus).await?;
         let (tx, rx) = broadcast::channel(8);
 
-        let mut stream = proxy.receive_subscribe_v2().await.unwrap();
+        let mut stream = proxy.receive_subscribe_v2().await?;
 
         {
             let tx = tx.clone();
@@ -62,7 +60,7 @@ impl Client {
             });
         }
 
-        Self { proxy, tx, _rx: rx }
+        Ok(Self { proxy, tx, _rx: rx })
     }
 
     pub fn subscribe(&self) -> broadcast::Receiver<Event> {
@@ -85,4 +83,4 @@ impl Client {
     }
 }
 
-register_client!(Client, notifications);
+register_fallible_client!(Client, notifications);

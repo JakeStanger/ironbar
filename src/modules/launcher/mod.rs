@@ -7,7 +7,7 @@ use super::{Module, ModuleInfo, ModuleParts, ModulePopup, ModuleUpdateEvent, Wid
 use crate::clients::wayland::{self, ToplevelEvent};
 use crate::config::CommonConfig;
 use crate::desktop_file::find_desktop_file;
-use crate::{arc_mut, glib_recv, lock, send_async, spawn, try_send, write_lock};
+use crate::{arc_mut, glib_recv, lock, module_impl, send_async, spawn, try_send, write_lock};
 use color_eyre::{Help, Report};
 use gtk::prelude::*;
 use gtk::{Button, Orientation};
@@ -80,9 +80,7 @@ impl Module<gtk::Box> for LauncherModule {
     type SendMessage = LauncherUpdate;
     type ReceiveMessage = ItemEvent;
 
-    fn name() -> &'static str {
-        "launcher"
-    }
+    module_impl!("launcher");
 
     fn spawn_controller(
         &self,
@@ -401,7 +399,7 @@ impl Module<gtk::Box> for LauncherModule {
 
         let rx = context.subscribe();
         let popup = self
-            .into_popup(context.controller_tx, rx, info)
+            .into_popup(context.controller_tx.clone(), rx, context, info)
             .into_popup_parts(vec![]); // since item buttons are dynamic, they pass their geometry directly
 
         Ok(ModuleParts {
@@ -414,6 +412,7 @@ impl Module<gtk::Box> for LauncherModule {
         self,
         controller_tx: mpsc::Sender<Self::ReceiveMessage>,
         rx: broadcast::Receiver<Self::SendMessage>,
+        _context: WidgetContext<Self::SendMessage, Self::ReceiveMessage>,
         _info: &ModuleInfo,
     ) -> Option<gtk::Box> {
         const MAX_WIDTH: i32 = 250;

@@ -1,7 +1,7 @@
-use crate::config::CommonConfig;
+use crate::config::{CommonConfig, ModuleOrientation};
 use crate::gtk_helpers::IronbarGtkExt;
 use crate::modules::{Module, ModuleInfo, ModuleParts, ModuleUpdateEvent, WidgetContext};
-use crate::{glib_recv, send_async, spawn};
+use crate::{glib_recv, module_impl, send_async, spawn};
 use color_eyre::Result;
 use gtk::prelude::*;
 use gtk::Label;
@@ -20,6 +20,11 @@ pub struct SysInfoModule {
     /// Number of seconds between refresh
     #[serde(default = "Interval::default")]
     interval: Interval,
+
+    #[serde(default)]
+    orientation: ModuleOrientation,
+
+    direction: Option<ModuleOrientation>,
 
     #[serde(flatten)]
     pub common: Option<CommonConfig>,
@@ -116,9 +121,7 @@ impl Module<gtk::Box> for SysInfoModule {
     type SendMessage = HashMap<String, String>;
     type ReceiveMessage = ();
 
-    fn name() -> &'static str {
-        "sysinfo"
-    }
+    module_impl!("sysinfo");
 
     fn spawn_controller(
         &self,
@@ -184,11 +187,16 @@ impl Module<gtk::Box> for SysInfoModule {
     fn into_widget(
         self,
         context: WidgetContext<Self::SendMessage, Self::ReceiveMessage>,
-        info: &ModuleInfo,
+        _info: &ModuleInfo,
     ) -> Result<ModuleParts<gtk::Box>> {
         let re = Regex::new(r"\{([^}]+)}")?;
 
-        let container = gtk::Box::new(info.bar_position.orientation(), 10);
+        let layout = match self.direction {
+            Some(orientation) => orientation,
+            None => self.orientation,
+        };
+
+        let container = gtk::Box::new(layout.into(), 10);
 
         let mut labels = Vec::new();
 
@@ -196,7 +204,7 @@ impl Module<gtk::Box> for SysInfoModule {
             let label = Label::builder().label(format).use_markup(true).build();
 
             label.add_class("item");
-            label.set_angle(info.bar_position.get_angle());
+            label.set_angle(self.orientation.to_angle());
 
             container.add(&label);
             labels.push(label);

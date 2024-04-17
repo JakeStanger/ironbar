@@ -8,12 +8,12 @@ use serde::Deserialize;
 use tokio::sync::{broadcast, mpsc};
 use tokio::time::sleep;
 
-use crate::config::CommonConfig;
+use crate::config::{CommonConfig, ModuleOrientation};
 use crate::gtk_helpers::IronbarGtkExt;
 use crate::modules::{
     Module, ModuleInfo, ModuleParts, ModulePopup, ModuleUpdateEvent, PopupButton, WidgetContext,
 };
-use crate::{glib_recv, send_async, spawn, try_send};
+use crate::{glib_recv, module_impl, send_async, spawn, try_send};
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct ClockModule {
@@ -31,6 +31,9 @@ pub struct ClockModule {
     #[serde(default = "default_locale")]
     locale: String,
 
+    #[serde(default)]
+    orientation: ModuleOrientation,
+
     #[serde(flatten)]
     pub common: Option<CommonConfig>,
 }
@@ -41,6 +44,7 @@ impl Default for ClockModule {
             format: default_format(),
             format_popup: default_popup_format(),
             locale: default_locale(),
+            orientation: ModuleOrientation::Horizontal,
             common: Some(CommonConfig::default()),
         }
     }
@@ -71,9 +75,7 @@ impl Module<Button> for ClockModule {
     type SendMessage = DateTime<Local>;
     type ReceiveMessage = ();
 
-    fn name() -> &'static str {
-        "clock"
-    }
+    module_impl!("clock");
 
     fn spawn_controller(
         &self,
@@ -100,7 +102,7 @@ impl Module<Button> for ClockModule {
     ) -> Result<ModuleParts<Button>> {
         let button = Button::new();
         let label = Label::builder()
-            .angle(info.bar_position.get_angle())
+            .angle(self.orientation.to_angle())
             .use_markup(true)
             .build();
         button.add(&label);
@@ -120,7 +122,12 @@ impl Module<Button> for ClockModule {
         });
 
         let popup = self
-            .into_popup(context.controller_tx.clone(), context.subscribe(), info)
+            .into_popup(
+                context.controller_tx.clone(),
+                context.subscribe(),
+                context,
+                info,
+            )
             .into_popup_parts(vec![&button]);
 
         Ok(ModuleParts::new(button, popup))
@@ -130,6 +137,7 @@ impl Module<Button> for ClockModule {
         self,
         _tx: mpsc::Sender<Self::ReceiveMessage>,
         rx: broadcast::Receiver<Self::SendMessage>,
+        _context: WidgetContext<Self::SendMessage, Self::ReceiveMessage>,
         _info: &ModuleInfo,
     ) -> Option<gtk::Box> {
         let container = gtk::Box::new(Orientation::Vertical, 0);
