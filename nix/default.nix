@@ -25,6 +25,8 @@
   builderName ? "nix",
   builder ? {},
 }: let
+  hasFeature = f: features == [ ] || builtins.elem f features;
+
   basePkg = rec {
     inherit version;
 
@@ -51,30 +53,33 @@
       gnome.adwaita-icon-theme
       hicolor-icon-theme
       gsettings-desktop-schemas
-      libxkbcommon
-      libpulseaudio
-      openssl
-      luajit
-    ];
+      libxkbcommon ]
+      ++ (if hasFeature "http" then [ openssl ] else [])
+      ++ (if hasFeature "volume" then [ libpulseaudio ] else [])
+      ++ (if hasFeature "cairo" then [ luajit ] else []);
 
     propagatedBuildInputs = [ gtk3 ];
 
     lgi = luajitPackages.lgi;
 
-    preFixup = ''
-      gappsWrapperArgs+=(
+    gappsWrapperArgs = ''
         # Thumbnailers
-        --prefix XDG_DATA_DIRS : "${gdk-pixbuf}/share"
-        --prefix XDG_DATA_DIRS : "${librsvg}/share"
-        --prefix XDG_DATA_DIRS : "${webp-pixbuf-loader}/share"
-        --prefix XDG_DATA_DIRS : "${shared-mime-info}/share"
+            --prefix XDG_DATA_DIRS : "${gdk-pixbuf}/share"
+            --prefix XDG_DATA_DIRS : "${librsvg}/share"
+            --prefix XDG_DATA_DIRS : "${webp-pixbuf-loader}/share"
+            --prefix XDG_DATA_DIRS : "${shared-mime-info}/share"
 
-        # gtk-launch
-        --suffix PATH : "${lib.makeBinPath [ gtk3 ]}"
-
-        # cairo
+            # gtk-launch
+            --suffix PATH : "${lib.makeBinPath [ gtk3 ]}"
+    ''
+    + (if hasFeature "cairo" then ''
         --prefix LUA_PATH : "./?.lua;${lgi}/share/lua/5.1/?.lua;${lgi}/share/lua/5.1/?/init.lua;${luajit}/share/lua/5.1/\?.lua;${luajit}/share/lua/5.1/?/init.lua"
         --prefix LUA_CPATH : "./?.so;${lgi}/lib/lua/5.1/?.so;${luajit}/lib/lua/5.1/?.so;${luajit}/lib/lua/5.1/loadall.so"
+    '' else "");
+
+    preFixup = ''
+      gappsWrapperArgs+=(
+        ${gappsWrapperArgs}
       )
     '';
 
