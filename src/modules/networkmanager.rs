@@ -37,12 +37,11 @@ impl Module<gtk::Box> for NetworkManagerModule {
         _: Receiver<()>,
     ) -> Result<()> {
         let client = context.client::<Client>();
-        let client_signal = client.subscribe();
-        let mut client_signal_stream = client_signal.to_stream();
+        let mut client_signal = client.subscribe().to_stream();
         let widget_transmitter = context.tx.clone();
 
         spawn(async move {
-            while let Some(state) = client_signal_stream.next().await {
+            while let Some(state) = client_signal.next().await {
                 send_async!(widget_transmitter, ModuleUpdateEvent::Update(state));
             }
         });
