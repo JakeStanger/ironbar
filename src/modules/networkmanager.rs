@@ -1,6 +1,6 @@
 use color_eyre::Result;
+use futures_lite::StreamExt;
 use futures_signals::signal::SignalExt;
-use futures_util::StreamExt;
 use gtk::prelude::ContainerExt;
 use gtk::{Image, Orientation};
 use serde::Deserialize;
@@ -11,7 +11,7 @@ use crate::config::CommonConfig;
 use crate::gtk_helpers::IronbarGtkExt;
 use crate::image::ImageProvider;
 use crate::modules::{Module, ModuleInfo, ModuleParts, ModuleUpdateEvent, WidgetContext};
-use crate::{glib_recv, send_async, spawn};
+use crate::{glib_recv, module_impl, send_async, spawn};
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct NetworkManagerModule {
@@ -29,10 +29,6 @@ const fn default_icon_size() -> i32 {
 impl Module<gtk::Box> for NetworkManagerModule {
     type SendMessage = ClientState;
     type ReceiveMessage = ();
-
-    fn name() -> &'static str {
-        "networkmanager"
-    }
 
     fn spawn_controller(
         &self,
@@ -87,4 +83,6 @@ impl Module<gtk::Box> for NetworkManagerModule {
 
         Ok(ModuleParts::new(container, None))
     }
+
+    module_impl!("networkmanager");
 }

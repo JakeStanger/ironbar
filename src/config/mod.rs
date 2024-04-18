@@ -103,6 +103,8 @@ impl ModuleConfig {
             Self::Launcher(module) => create!(module),
             #[cfg(feature = "music")]
             Self::Music(module) => create!(module),
+            #[cfg(feature = "networkmanager")]
+            Self::NetworkManager(module) => create!(module),
             #[cfg(feature = "notifications")]
             Self::Notifications(module) => create!(module),
             Self::Script(module) => create!(module),
