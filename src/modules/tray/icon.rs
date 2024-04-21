@@ -79,6 +79,8 @@ fn get_image_from_icon_name(item: &TrayMenu, icon_theme: &IconTheme, size: u32) 
 ///
 /// The pixmap is supplied in ARGB32 format,
 /// which has 8 bits per sample and a bit stride of `4*width`.
+/// The Pixbuf expects RGBA32 format, so some channel shuffling
+/// is required.
 fn get_image_from_pixmap(item: &TrayMenu, size: u32) -> Result<Image> {
     const BITS_PER_SAMPLE: i32 = 8;
 
@@ -88,8 +90,18 @@ fn get_image_from_pixmap(item: &TrayMenu, size: u32) -> Result<Image> {
         .and_then(|pixmap| pixmap.first())
         .ok_or_else(|| Report::msg("Failed to get pixmap from tray icon"))?;
 
-    let bytes = glib::Bytes::from(&pixmap.pixels);
+    let mut pixels = pixmap.pixels.to_vec();
+
+    for i in (0..pixels.len()).step_by(4) {
+        let alpha = pixels[i]; 
+        pixels[i] = pixels[i+1];
+        pixels[i+1] = pixels[i+2];
+        pixels[i+2] = pixels[i+3];
+        pixels[i+3] = alpha;
+    }
+
     let row_stride = pixmap.width * 4;
+    let bytes = glib::Bytes::from(&pixels);
 
     let pixbuf = Pixbuf::from_bytes(
         &bytes,
