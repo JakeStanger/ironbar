@@ -36,7 +36,7 @@ impl Module<gtk::Box> for NetworkManagerModule {
         context: &WidgetContext<ClientState, ()>,
         _: Receiver<()>,
     ) -> Result<()> {
-        let client = context.client::<Client>();
+        let client = context.try_client::<Client>()?;
         let mut client_signal = client.subscribe().to_stream();
         let widget_transmitter = context.tx.clone();
 

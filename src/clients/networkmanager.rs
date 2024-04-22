@@ -1,14 +1,16 @@
 use std::sync::Arc;
 
+use color_eyre::Result;
 use futures_signals::signal::{Mutable, MutableSignalCloned};
 use tracing::error;
 use zbus::{
     blocking::{fdo::PropertiesProxy, Connection},
     names::InterfaceName,
-    zvariant::{ObjectPath, Str},
+    zvariant::{Error as ZVariantError, ObjectPath, Str},
+    Error as ZBusError,
 };
 
-use crate::{register_client, spawn_blocking};
+use crate::{register_fallible_client, spawn_blocking};
 
 static DBUS_BUS: &str = "org.freedesktop.NetworkManager";
 static DBUS_PATH: &str = "/org/freedesktop/NetworkManager";
@@ -17,6 +19,8 @@ static DBUS_INTERFACE: &str = "org.freedesktop.NetworkManager";
 #[derive(Debug)]
 pub struct Client {
     client_state: Mutable<ClientState>,
+    interface_name: InterfaceName<'static>,
+    props_proxy: PropertiesProxy<'static>,
 }
 
 #[derive(Clone, Debug)]
@@ -31,104 +35,64 @@ pub enum ClientState {
 }
 
 impl Client {
-    fn new() -> Self {
+    fn new() -> Result<Self> {
         let client_state = Mutable::new(ClientState::Unknown);
-        Self { client_state }
+        let dbus_connection = Connection::system()?;
+        let props_proxy = PropertiesProxy::builder(&dbus_connection)
+            .destination(DBUS_BUS)?
+            .path(DBUS_PATH)?
+            .build()?;
+        let interface_name = InterfaceName::from_static_str(DBUS_INTERFACE)?;
+
+        Ok(Self {
+            client_state,
+            interface_name,
+            props_proxy,
+        })
     }
 
-    fn run(&self) {
-        let Ok(dbus_connection) = Connection::system() else {
-            error!("Failed to create D-Bus system connection");
-            return;
-        };
-        let builder = PropertiesProxy::builder(&dbus_connection);
-        let Ok(builder) = builder.destination(DBUS_BUS) else {
-            error!("Failed to connect to NetworkManager D-Bus bus");
-            return;
-        };
-        let Ok(builder) = builder.path(DBUS_PATH) else {
-            error!("Failed to set to NetworkManager D-Bus path");
-            return;
-        };
-        let Ok(props_proxy) = builder.build() else {
-            error!("Failed to create NetworkManager D-Bus properties proxy");
-            return;
-        };
-        let Ok(interface_name) = InterfaceName::from_static_str(DBUS_INTERFACE) else {
-            error!("Failed to create NetworkManager D-Bus interface name");
-            return;
-        };
-        let Ok(changed_props_stream) = props_proxy.receive_properties_changed() else {
-            error!("Failed to create NetworkManager D-Bus changed properties stream");
-            return;
-        };
-        let Ok(props) = props_proxy.get_all(interface_name.clone()) else {
-            error!("Failed to get NetworkManager D-Bus properties");
-            return;
-        };
-
-        let mut primary_connection = {
-            let Some(primary_connection) = props["PrimaryConnection"].downcast_ref::<ObjectPath>()
-            else {
-                error!("PrimaryConnection D-Bus property is not a path");
-                return;
-            };
-            primary_connection.to_string()
-        };
-        let mut primary_connection_type = {
-            let Some(primary_connection_type) =
-                props["PrimaryConnectionType"].downcast_ref::<Str>()
-            else {
-                error!("PrimaryConnectionType D-Bus property is not a string");
-                return;
-            };
-            primary_connection_type.to_string()
-        };
-        let mut wireless_enabled = {
-            let Some(wireless_enabled) = props["WirelessEnabled"].downcast_ref::<bool>() else {
-                error!("WirelessEnabled D-Bus property is not a boolean");
-                return;
-            };
-            *wireless_enabled
-        };
+    fn run(&self) -> Result<()> {
+        let props = self.props_proxy.get_all(self.interface_name.clone())?;
+        let mut primary_connection = props["PrimaryConnection"]
+            .downcast_ref::<ObjectPath>()
+            .ok_or(ZBusError::Variant(ZVariantError::IncorrectType))?
+            .to_string();
+        let mut primary_connection_type = props["PrimaryConnectionType"]
+            .downcast_ref::<Str>()
+            .ok_or(ZBusError::Variant(ZVariantError::IncorrectType))?
+            .to_string();
+        let mut wireless_enabled = *props["WirelessEnabled"]
+            .downcast_ref::<bool>()
+            .ok_or(ZBusError::Variant(ZVariantError::IncorrectType))?;
         self.client_state.set(determine_state(
             &primary_connection,
             &primary_connection_type,
             wireless_enabled,
         ));
 
+        let changed_props_stream = self.props_proxy.receive_properties_changed()?;
         for signal in changed_props_stream {
-            let Ok(args) = signal.args() else {
-                error!("Failed to obtain NetworkManager D-Bus changed properties signal arguments");
-                return;
-            };
-            if args.interface_name != interface_name {
+            let args = signal.args()?;
+            if args.interface_name != self.interface_name {
                 continue;
             }
             let changed_props = args.changed_properties;
             if let Some(new_primary_connection) = changed_props.get("PrimaryConnection") {
-                let Some(new_primary_connection) =
-                    new_primary_connection.downcast_ref::<ObjectPath>()
-                else {
-                    error!("PrimaryConnection D-Bus property is not a path");
-                    return;
-                };
+                let new_primary_connection = new_primary_connection
+                    .downcast_ref::<ObjectPath>()
+                    .ok_or(ZBusError::Variant(ZVariantError::IncorrectType))?;
                 primary_connection = new_primary_connection.to_string();
             }
             if let Some(new_primary_connection_type) = changed_props.get("PrimaryConnectionType") {
-                let Some(new_primary_connection_type) =
-                    new_primary_connection_type.downcast_ref::<Str>()
-                else {
-                    error!("PrimaryConnectionType D-Bus property is not a string");
-                    return;
-                };
+                let new_primary_connection_type = new_primary_connection_type
+                    .downcast_ref::<Str>()
+                    .ok_or(ZBusError::Variant(ZVariantError::IncorrectType))?;
                 primary_connection_type = new_primary_connection_type.to_string();
             }
             if let Some(new_wireless_enabled) = changed_props.get("WirelessEnabled") {
-                let Some(new_wireless_enabled) = new_wireless_enabled.downcast_ref::<bool>() else {
-                    error!("WirelessEnabled D-Bus property is not a string");
-                    return;
-                };
+                let new_wireless_enabled = new_wireless_enabled
+                    .downcast_ref::<bool>()
+                    .ok_or(ZBusError::Variant(ZVariantError::IncorrectType))?;
                 wireless_enabled = *new_wireless_enabled;
             }
             self.client_state.set(determine_state(
@@ -137,6 +101,8 @@ impl Client {
                 wireless_enabled,
             ));
         }
+
+        Ok(())
     }
 
     pub fn subscribe(&self) -> MutableSignalCloned<ClientState> {
@@ -144,15 +110,17 @@ impl Client {
     }
 }
 
-pub fn create_client() -> Arc<Client> {
-    let client = Arc::new(Client::new());
+pub fn create_client() -> Result<Arc<Client>> {
+    let client = Arc::new(Client::new()?);
     {
         let client = client.clone();
         spawn_blocking(move || {
-            client.run();
+            if let Err(error) = client.run() {
+                error!("{}", error)
+            };
         });
     }
-    client
+    Ok(client)
 }
 
 fn determine_state(
@@ -184,4 +152,4 @@ fn determine_state(
     }
 }
 
-register_client!(Client, networkmanager);
+register_fallible_client!(Client, networkmanager);

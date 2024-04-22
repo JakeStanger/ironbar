@@ -101,10 +101,15 @@ impl Clients {
     }
 
     #[cfg(feature = "networkmanager")]
-    pub fn networkmanager(&mut self) -> Arc<networkmanager::Client> {
-        self.networkmanager
-            .get_or_insert_with(networkmanager::create_client)
-            .clone()
+    pub fn networkmanager(&mut self) -> ClientResult<networkmanager::Client> {
+        match &self.networkmanager {
+            Some(client) => Ok(client.clone()),
+            None => {
+                let client = networkmanager::create_client()?;
+                self.networkmanager = Some(client.clone());
+                Ok(client)
+            }
+        }
     }
 
     #[cfg(feature = "notifications")]
