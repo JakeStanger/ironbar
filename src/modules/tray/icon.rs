@@ -93,11 +93,11 @@ fn get_image_from_pixmap(item: &TrayMenu, size: u32) -> Result<Image> {
     let mut pixels = pixmap.pixels.to_vec();
 
     for i in (0..pixels.len()).step_by(4) {
-        let alpha = pixels[i]; 
-        pixels[i] = pixels[i+1];
-        pixels[i+1] = pixels[i+2];
-        pixels[i+2] = pixels[i+3];
-        pixels[i+3] = alpha;
+        let alpha = pixels[i];
+        pixels[i] = pixels[i + 1];
+        pixels[i + 1] = pixels[i + 2];
+        pixels[i + 2] = pixels[i + 3];
+        pixels[i + 3] = alpha;
     }
 
     let row_stride = pixmap.width * 4;
