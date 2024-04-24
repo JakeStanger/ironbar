@@ -2,7 +2,7 @@ use color_eyre::Result;
 use futures_lite::StreamExt;
 use futures_signals::signal::SignalExt;
 use gtk::prelude::ContainerExt;
-use gtk::{Image, Orientation};
+use gtk::{Box, Image, Orientation};
 use serde::Deserialize;
 use tokio::sync::mpsc::Receiver;
 
@@ -26,7 +26,7 @@ const fn default_icon_size() -> i32 {
     24
 }
 
-impl Module<gtk::Box> for NetworkManagerModule {
+impl Module<Box> for NetworkManagerModule {
     type SendMessage = ClientState;
     type ReceiveMessage = ();
 
@@ -53,28 +53,28 @@ impl Module<gtk::Box> for NetworkManagerModule {
         self,
         context: WidgetContext<ClientState, ()>,
         info: &ModuleInfo,
-    ) -> Result<ModuleParts<gtk::Box>> {
-        let container = gtk::Box::new(Orientation::Horizontal, 0);
+    ) -> Result<ModuleParts<Box>> {
+        let container = Box::new(Orientation::Horizontal, 0);
         let icon = Image::new();
         icon.add_class("icon");
         container.add(&icon);
 
         let icon_theme = info.icon_theme.clone();
 
-        let initial_icon_name = "icon:content-loading-symbolic";
+        let initial_icon_name = "content-loading-symbolic";
         ImageProvider::parse(initial_icon_name, &icon_theme, false, self.icon_size)
             .map(|provider| provider.load_into_image(icon.clone()));
 
         let widget_receiver = context.subscribe();
         glib_recv!(widget_receiver, state => {
             let icon_name = match state {
-                ClientState::Unknown => "dialog-question-symbolic",
                 ClientState::WiredConnected => "network-wired-symbolic",
                 ClientState::WifiConnected => "network-wireless-symbolic",
                 ClientState::CellularConnected => "network-cellular-symbolic",
                 ClientState::VpnConnected => "network-vpn-symbolic",
                 ClientState::WifiDisconnected => "network-wireless-acquiring-symbolic",
                 ClientState::Offline => "network-wireless-disabled-symbolic",
+                ClientState::Unknown => "dialog-question-symbolic",
             };
             ImageProvider::parse(icon_name, &icon_theme, false, self.icon_size)
                 .map(|provider| provider.load_into_image(icon.clone()));

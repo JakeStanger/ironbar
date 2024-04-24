@@ -25,13 +25,13 @@ pub struct Client {
 
 #[derive(Clone, Debug)]
 pub enum ClientState {
-    Unknown,
     WiredConnected,
     WifiConnected,
     CellularConnected,
     VpnConnected,
     WifiDisconnected,
     Offline,
+    Unknown,
 }
 
 impl Client {
@@ -116,7 +116,7 @@ pub fn create_client() -> Result<Arc<Client>> {
         let client = client.clone();
         spawn_blocking(move || {
             if let Err(error) = client.run() {
-                error!("{}", error)
+                error!("{}", error);
             };
         });
     }
@@ -136,17 +136,10 @@ fn determine_state(
         }
     } else {
         match primary_connection_type {
-            "802-11-olpc-mesh" => ClientState::WifiConnected,
-            "802-11-wireless" => ClientState::WifiConnected,
-            "802-3-ethernet" => ClientState::WiredConnected,
-            "adsl" => ClientState::WiredConnected,
-            "cdma" => ClientState::CellularConnected,
-            "gsm" => ClientState::CellularConnected,
-            "pppoe" => ClientState::WiredConnected,
-            "vpn" => ClientState::VpnConnected,
-            "wifi-p2p" => ClientState::WifiConnected,
-            "wimax" => ClientState::CellularConnected,
-            "wireguard" => ClientState::VpnConnected,
+            "802-3-ethernet" | "adsl" | "pppoe" => ClientState::WiredConnected,
+            "802-11-olpc-mesh" | "802-11-wireless" | "wifi-p2p" => ClientState::WifiConnected,
+            "cdma" | "gsm" | "wimax" => ClientState::CellularConnected,
+            "vpn" | "wireguard" => ClientState::VpnConnected,
             _ => ClientState::Unknown,
         }
     }
