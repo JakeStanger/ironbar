@@ -99,7 +99,7 @@ tracing-error = { version = "0.2.0" , default-features = false }
 tracing-appender = "0.2.3"
 strip-ansi-escapes = "0.2.0"
 color-eyre = "0.6.3"
-serde = { version = "1.0.197", features = ["derive"] }
+serde = { version = "1.0.198", features = ["derive"] }
 indexmap = "2.2.6"
 dirs = "5.0.1"
 walkdir = "2.5.0"
@@ -117,14 +117,14 @@ cfg-if = "1.0.0"
 clap = { version = "4.5.4", optional = true, features = ["derive"] }
 
 # ipc
-serde_json = { version = "1.0.114", optional = true }
+serde_json = { version = "1.0.116", optional = true }
 
 # http
-reqwest = { version = "0.12.3", default_features = false, features = ["default-tls", "http2"], optional = true }
+reqwest = { version = "0.12.4", default_features = false, features = ["default-tls", "http2"], optional = true }
 
 # cairo
 lua-src =  {  version = "546.0.2", optional = true }
-mlua = { version = "0.9.6", optional = true, features = ["luajit"] }
+mlua = { version = "0.9.7", optional = true, features = ["luajit"] }
 cairo-rs = { version = "0.18.5", optional = true, features = ["png"] }
 
 # clipboard
