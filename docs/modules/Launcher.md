@@ -32,7 +32,8 @@ Optionally displays a launchable set of favourites.
         "discord"
       ],
       "show_names": false,
-      "show_icons": true
+      "show_icons": true,
+      "reversed": false
     }
   ]
 }
@@ -51,6 +52,7 @@ type = "launcher"
 favorites = ["firefox", "discord"]
 show_names = false
 show_icons = true
+reversed = false
 ```
 
 </details>
@@ -66,6 +68,7 @@ start:
       - discord
     show_names: false
     show_icons: true
+    reversed: false
 ```
 
 </details>
@@ -81,7 +84,7 @@ start:
       favorites = [ "firefox" "discord" ]
       show_names = false
       show_icons = true
-
+      reversed = false
     }
   ]
 }
