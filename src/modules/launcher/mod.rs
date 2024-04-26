@@ -340,12 +340,13 @@ impl Module<gtk::Box> for LauncherModule {
                                 &tx,
                                 &controller_tx,
                             );
-                            
+
                             if self.reversed {
                                 container.pack_end(&button.button, false, false, 0);
                             } else {
                                 container.add(&button.button);
                             }
+
                             buttons.insert(item.app_id, button);
                         }
                     }
