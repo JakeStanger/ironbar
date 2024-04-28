@@ -33,6 +33,9 @@ pub struct LauncherModule {
     #[serde(default = "default_icon_size")]
     icon_size: i32,
 
+    #[serde(default = "crate::config::default_false")]
+    reversed: bool,
+
     #[serde(flatten)]
     pub common: Option<CommonConfig>,
 }
@@ -338,7 +341,12 @@ impl Module<gtk::Box> for LauncherModule {
                                 &controller_tx,
                             );
 
-                            container.add(&button.button);
+                            if self.reversed {
+                                container.pack_end(&button.button, false, false, 0);
+                            } else {
+                                container.add(&button.button);
+                            }
+
                             buttons.insert(item.app_id, button);
                         }
                     }

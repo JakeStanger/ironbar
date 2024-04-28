@@ -18,7 +18,7 @@ Optionally displays a launchable set of favourites.
 | `show_names` | `boolean`  | `false` | Whether to show app names on the button label. Names will still show on tooltips when set to false. |
 | `show_icons` | `boolean`  | `true`  | Whether to show app icons on the button.                                                            |
 | `icon_size`  | `integer`  | `32`    | Size to render icon at (image icons only).                                                          |
-
+| `reversed`   | `boolean`  | `false` | Whether to reverse the order of favorites/items                                                     |
 <details>
 <summary>JSON</summary>
 
@@ -32,7 +32,8 @@ Optionally displays a launchable set of favourites.
         "discord"
       ],
       "show_names": false,
-      "show_icons": true
+      "show_icons": true,
+      "reversed": false
     }
   ]
 }
@@ -51,6 +52,7 @@ type = "launcher"
 favorites = ["firefox", "discord"]
 show_names = false
 show_icons = true
+reversed = false
 ```
 
 </details>
@@ -66,6 +68,7 @@ start:
       - discord
     show_names: false
     show_icons: true
+    reversed: false
 ```
 
 </details>
@@ -81,7 +84,7 @@ start:
       favorites = [ "firefox" "discord" ]
       show_names = false
       show_icons = true
-
+      reversed = false
     }
   ]
 }
