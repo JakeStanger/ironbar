@@ -43,6 +43,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [`dffb3e5`](https://github.com/JakeStanger/ironbar/commit/dffb3e5d543d33c10146d43384b8a3c03ef3aab7) - **workspaces**: fix typo that results in a non working config *(commit by [@nyadiia](https://github.com/nyadiia))*
 - [`782b955`](https://github.com/JakeStanger/ironbar/commit/782b9554a2a24123acfebcc80401abf051c7dc06) - fix issues with several more toml examples *(commit by [@JakeStanger](https://github.com/JakeStanger))*
 
+### Note for maintainers
+
+The addition of new modules requires the following new build dependencies:
+
+- `libpulse`
+- `luajit`
+
+It also requires `lua-lgi` as a runtime dependency.
 
 ## [v0.14.1] - 2024-02-10
 ### :bug: Bug Fixes
