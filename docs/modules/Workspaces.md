@@ -48,7 +48,7 @@ type = "workspaces"
 all_monitors = false
 favorites = ["1", "2", "3"]
 
-[[end.name_map]]
+[end.name_map]
 1 = ""
 2 = ""
 3 = ""

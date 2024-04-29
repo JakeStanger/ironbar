@@ -22,6 +22,8 @@ pacman -S gtk3 gtk-layer-shell
 pacman -S openssl
 # for volume support
 pacman -S libpulse
+# for lua/cairo support
+pacman -S luajit lua51-lgi
 ```
 
 ### Ubuntu/Debian
@@ -32,6 +34,8 @@ apt install build-essential libgtk-3-dev libgtk-layer-shell-dev
 apt install libssl-dev
 # for volume support
 apt install libpulse-dev
+# for lua/cairo support
+apt install luajit-dev lua-lgi
 ```
 
 ### Fedora
@@ -42,6 +46,8 @@ dnf install gtk3-devel gtk-layer-shell-devel
 dnf install openssl-devel
 # for volume support
 dnf install libpulseaudio-devel
+# for lua/cairo support
+dnf install luajit-devel lua-lgi
 ```
 
 ## Features

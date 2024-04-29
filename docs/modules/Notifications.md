@@ -54,7 +54,7 @@ Clicking the widget opens the SwayNC panel.
 type = "notifications"
 show_count = true
 
-[[end.icons]]
+[end.icons]
 closed_none = "󰍥"
 closed_some = "󱥂"
 closed_dnd = "󱅯"

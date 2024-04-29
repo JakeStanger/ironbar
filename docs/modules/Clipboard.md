@@ -47,7 +47,7 @@ Supports plain text and images.
 type = "clipboard"
 max_items = 3
 
-[[end.truncate]]
+[end.truncate]
 mode = "end"
 length = 50
 ```
