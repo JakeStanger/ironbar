@@ -44,7 +44,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [`a55ba8c`](https://github.com/JakeStanger/ironbar/commit/a55ba8c523ff19fa607a31bac589a55b48db39ad) - rename `get_orientation` method to `orientation` *(commit by [@JakeStanger](https://github.com/JakeStanger))*
 - [`86c5b69`](https://github.com/JakeStanger/ironbar/commit/86c5b69f18356201db5c3a314f36e0f68e74c357) - **tray**: tidy imports *(commit by [@JakeStanger](https://github.com/JakeStanger))*
 - [`00a6a84`](https://github.com/JakeStanger/ironbar/commit/00a6a84ca6af6f3c64183ec08fdff7430770d39b) - **upower**: cheaper string building *(commit by [@JakeStanger](https://github.com/JakeStanger))*
-- [`b912619d61a74921c854ea6464e0922e5c107a27`](https://github.com/JakeStanger/ironbar/commit/b912619d61a74921c854ea6464e0922e5c107a27) - **image**: add debug logging
+- [`b912619`](https://github.com/JakeStanger/ironbar/commit/b912619d61a74921c854ea6464e0922e5c107a27) - **image**: add debug logging *(commit by [@JakeStanger](https://github.com/JakeStanger))*
 - [`c7b6ee8`](https://github.com/JakeStanger/ironbar/commit/c7b6ee8bc00e92d075b8c66105c29e3df0906145) - add dead_code allow to fix build warning *(commit by [@JakeStanger](https://github.com/JakeStanger))*
 - [`004ea76`](https://github.com/JakeStanger/ironbar/commit/004ea76da5af3e8750e5a02a8780f62337b06844) - **tray**: complete client rewrite *(commit by [@JakeStanger](https://github.com/JakeStanger))*
 - [`706e040`](https://github.com/JakeStanger/ironbar/commit/706e040e25b54c128b0364a8e6982f2372da0b99) - split bar/top-level config structs *(commit by [@JakeStanger](https://github.com/JakeStanger))*
