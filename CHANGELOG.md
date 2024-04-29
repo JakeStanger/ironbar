@@ -6,6 +6,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [v0.15.0] - 2024-04-28
 ### :sparkles: New Features
+- [`f4384b6`](https://github.com/JakeStanger/ironbar/commit/f4384b6252e86d4e2558e1c36810d4ef903bd58c) -  enable use of markup in clock module format and format_popup, and update documentation to reflect supporting Pango markup in both *commit by [@Dridus](https://github.com/Dridus))*
+- [`76a6816`](https://github.com/JakeStanger/ironbar/commit/76a68165f09a6d07f8e95008cb9fe3d40d99abe0) - **upower**: add new formatting properties *(commit by [@Disr0](https://github.com/Disr0))*
+- [`b037a55`](https://github.com/JakeStanger/ironbar/commit/b037a55fb78d05cce0e03bad27a10cbdf743c573) - **tray**: add `direction` option *(commit by [@calops](https://github.com/calops))*
+- [`72440e6`](https://github.com/JakeStanger/ironbar/commit/72440e69c9e665f3e82e569e770747fc63765b53) - **tray**: icon size setting *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`a70956b`](https://github.com/JakeStanger/ironbar/commit/a70956bb3b17f559fda1fdca444e271ae9d3c4cd) - add new volume module *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`7742a46`](https://github.com/JakeStanger/ironbar/commit/7742a465780ed5db80cdb518a834200082a5e936) - swaync notifications module *(commit by [@JakeStanger](https://github.com/JakeStanger))*
 - [`ba00445`](https://github.com/JakeStanger/ironbar/commit/ba004455b25fb51d28a5ec0cdf0f510c2157eb94) - **tray**: option to prefer theme-provided icons *(commit by [@JakeStanger](https://github.com/JakeStanger))*
 - [`994f4a4`](https://github.com/JakeStanger/ironbar/commit/994f4a4a123452607dd591e1e358ec218a3cb5ae) - ability to add custom modules instead native modules *(commit by [@JakeStanger](https://github.com/JakeStanger))*
 - [`46cbaca`](https://github.com/JakeStanger/ironbar/commit/46cbaca5e08a5be8945486d007c0f7315d10b351) - option to disable module popup *(commit by [@JakeStanger](https://github.com/JakeStanger))*
@@ -19,6 +25,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### :bug: Bug Fixes
 - [`30b11db`](https://github.com/JakeStanger/ironbar/commit/30b11db43503f4a78fde8f17fa3af6ce99375cc2) - **tray**: cannot activate menu options with right click *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`f68d95a`](https://github.com/JakeStanger/ironbar/commit/f68d95a740c02434866c662d2cd915a0c5253ba5) - **logging**: log file growing indefinitely *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`6fe9c54`](https://github.com/JakeStanger/ironbar/commit/6fe9c541347b7bdd69e3d735f07a17a5d4b124ca) - **clipboard**: unable to paste large images into xwayland *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`a10466e`](https://github.com/JakeStanger/ironbar/commit/a10466e7e9dafd29e80994eccccdd398e9434b95) - **popup**: re-posiiton on resize due to content change *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`0675b91`](https://github.com/JakeStanger/ironbar/commit/0675b917f2beeed3e6b626dad8fe34b8063d9c83) - **tray**: icons ignoring scaling *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`c62d475`](https://github.com/JakeStanger/ironbar/commit/c62d47555ec31baa1a7094491e2977a832f4cfcc) - **tray**: submenus not working *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`f263849`](https://github.com/JakeStanger/ironbar/commit/f2638497fac4f0e350d069857e6e7437cb756669) - **launcher**: not resolving icon for some apps *(commit by [@slowsage](https://github.com/slowsage))*
+- [`cf44c46`](https://github.com/JakeStanger/ironbar/commit/cf44c461db7a3e5093c69c12fcef57cf9675c6e2) - **workspaces**: favourites not persisting for initally opened workspaces *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`180f874`](https://github.com/JakeStanger/ironbar/commit/180f8748bbe52affbbfe8c5ec045c753e63d554d) - **music** - Handle NoActivePlayer (playerctld) , NoReply, NoMethod, ServiceUnknown DBus errors in mpris. *(commit by [@slowsage](https://github.com/slowsage))*
 - [`3ba8b4b`](https://github.com/JakeStanger/ironbar/commit/3ba8b4bd9611bd82b251fbaf51f4b313f36f1c89) - regressions introduced by [#505](https://github.com/JakeStanger/ironbar/pull/505) *(commit by [@JakeStanger](https://github.com/JakeStanger))*
 - [`f50a65e`](https://github.com/JakeStanger/ironbar/commit/f50a65eab5edfa3a96e4e3b7e54de754ead1eb21) - upower module should display correctly for vertical bars *(commit by [@ClaireNeveu](https://github.com/ClaireNeveu))*
 - [`188abc3`](https://github.com/JakeStanger/ironbar/commit/188abc33e910a708061517b13e36125f9d7736d3) - **tray**: icon colour channels are being incorrectly rendered *(commit by [@rdnelson](https://github.com/rdnelson))*
@@ -27,6 +41,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - :arrow_lower_right: *fixes issue [#554](https://github.com/JakeStanger/ironbar/issues/554) opened by [@DanteDragan](https://github.com/DanteDragan)*
 
 ### :recycle: Refactors
+- [`a55ba8c`](https://github.com/JakeStanger/ironbar/commit/a55ba8c523ff19fa607a31bac589a55b48db39ad) - rename `get_orientation` method to `orientation` *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`86c5b69`](https://github.com/JakeStanger/ironbar/commit/86c5b69f18356201db5c3a314f36e0f68e74c357) - **tray**: tidy imports *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`00a6a84`](https://github.com/JakeStanger/ironbar/commit/00a6a84ca6af6f3c64183ec08fdff7430770d39b) - **upower**: cheaper string building *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`b912619d61a74921c854ea6464e0922e5c107a27`](https://github.com/JakeStanger/ironbar/commit/b912619d61a74921c854ea6464e0922e5c107a27) - **image**: add debug logging
 - [`c7b6ee8`](https://github.com/JakeStanger/ironbar/commit/c7b6ee8bc00e92d075b8c66105c29e3df0906145) - add dead_code allow to fix build warning *(commit by [@JakeStanger](https://github.com/JakeStanger))*
 - [`004ea76`](https://github.com/JakeStanger/ironbar/commit/004ea76da5af3e8750e5a02a8780f62337b06844) - **tray**: complete client rewrite *(commit by [@JakeStanger](https://github.com/JakeStanger))*
 - [`706e040`](https://github.com/JakeStanger/ironbar/commit/706e040e25b54c128b0364a8e6982f2372da0b99) - split bar/top-level config structs *(commit by [@JakeStanger](https://github.com/JakeStanger))*
@@ -35,6 +53,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [`314bfe7`](https://github.com/JakeStanger/ironbar/commit/314bfe7abecec66692d138b49186865c9132c6ef) - **nix**: simplify flake *(commit by [@JakeStanger](https://github.com/JakeStanger))*
 
 ### :memo: Documentation Changes
+- [`76a6816`](https://github.com/JakeStanger/ironbar/commit/76a68165f09a6d07f8e95008cb9fe3d40d99abe0) - correct formatting tokens in upower *(commit by [@Disr0](https://github.com/Disr0))*
+- [`e26e213`](https://github.com/JakeStanger/ironbar/commit/e26e213c4e409018f3b5c35b0319f5db8c0fa3bb) - improve info about logging *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`163a70e`](https://github.com/JakeStanger/ironbar/commit/163a70e690e2a9950c23ef8164dafd762a6a1020) - **readme**: update nix caching info *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`6a03c46`](https://github.com/JakeStanger/ironbar/commit/6a03c46146b612e53fa866ad98263d7cc29aacc8) - **readme**: add [mixxc](https://github.com/Elvyria/Mixxc) acknowledgement *(commit by [@JakeStanger](https://github.com/JakeStanger))*
 - [`3a3d3d7`](https://github.com/JakeStanger/ironbar/commit/3a3d3d75cd4fd8d474edc4c6ddb2c47bce60df16) - **readme**: add void package *(commit by [@JakeStanger](https://github.com/JakeStanger))*
 - [`fc42f6c`](https://github.com/JakeStanger/ironbar/commit/fc42f6c540131576d6eaf1201e78ba216861947d) - **readme**: add repology badge *(commit by [@JakeStanger](https://github.com/JakeStanger))*
 - [`8e9db14`](https://github.com/JakeStanger/ironbar/commit/8e9db141f8a668063ece3622ec91c3e22c3a87a3) - **macros**: add missing comment *(commit by [@JakeStanger](https://github.com/JakeStanger))*
