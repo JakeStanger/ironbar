@@ -186,6 +186,7 @@ impl Client {
     fn get_workspace(name: &str, active: Option<&Workspace>) -> Option<Workspace> {
         Workspaces::get()
             .expect("Failed to get workspaces")
+            .into_iter()
             .find_map(|w| {
                 if w.name == name {
                     let vis = Visibility::from((&w, active.map(|w| w.name.as_ref()), &|w| {
@@ -228,6 +229,7 @@ impl WorkspaceClient for Client {
 
             let workspaces = Workspaces::get()
                 .expect("Failed to get workspaces")
+                .into_iter()
                 .map(|w| {
                     let vis = Visibility::from((&w, active_id.as_deref(), &is_visible));
 
