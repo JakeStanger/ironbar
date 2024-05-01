@@ -71,7 +71,7 @@ networks = 3
 
 [[end]]
 type = "volume"
-format = "{icon} {volume}%"
+format = "{icon} {percentage}%"
 max_volume = 100
 
 [end.icons]

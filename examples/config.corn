@@ -81,7 +81,7 @@ let {
 
     $volume = {
         type = "volume"
-        format = "{icon} {volume}%"
+        format = "{icon} {percentage}%"
         max_volume = 100
         icons.volume_high = "󰕾"
         icons.volume_medium = "󰖀"
