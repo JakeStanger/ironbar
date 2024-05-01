@@ -51,7 +51,7 @@ end:
   - 󰖡 {load_average:1} | {load_average:5} | {load_average:15}
   - 󰥔 {uptime}
 - type: volume
-  format: '{icon} {volume}%'
+  format: '{icon} {percentage}%'
   max_volume: 100
   icons:
     volume_high: 󰕾
