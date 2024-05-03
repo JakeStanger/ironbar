@@ -2,6 +2,8 @@ mod common;
 mod r#impl;
 mod truncate;
 
+#[cfg(feature = "cairo")]
+use crate::modules::cairo::CairoModule;
 #[cfg(feature = "clipboard")]
 use crate::modules::clipboard::ClipboardModule;
 #[cfg(feature = "clock")]
@@ -27,16 +29,21 @@ use crate::modules::upower::UpowerModule;
 use crate::modules::volume::VolumeModule;
 #[cfg(feature = "workspaces")]
 use crate::modules::workspaces::WorkspacesModule;
+
+use crate::modules::{AnyModuleFactory, ModuleFactory, ModuleInfo};
 use cfg_if::cfg_if;
+use color_eyre::Result;
 use serde::Deserialize;
 use std::collections::HashMap;
 
-pub use self::common::{CommonConfig, TransitionType};
+pub use self::common::{CommonConfig, ModuleOrientation, TransitionType};
 pub use self::truncate::TruncateMode;
 
 #[derive(Debug, Deserialize, Clone)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum ModuleConfig {
+    #[cfg(feature = "cairo")]
+    Cairo(Box<CairoModule>),
     #[cfg(feature = "clipboard")]
     Clipboard(Box<ClipboardModule>),
     #[cfg(feature = "clock")]
@@ -62,6 +69,51 @@ pub enum ModuleConfig {
     Volume(Box<VolumeModule>),
     #[cfg(feature = "workspaces")]
     Workspaces(Box<WorkspacesModule>),
+}
+
+impl ModuleConfig {
+    pub fn create(
+        self,
+        module_factory: &AnyModuleFactory,
+        container: &gtk::Box,
+        info: &ModuleInfo,
+    ) -> Result<()> {
+        macro_rules! create {
+            ($module:expr) => {
+                module_factory.create(*$module, container, info)
+            };
+        }
+
+        match self {
+            #[cfg(feature = "cairo")]
+            Self::Cairo(module) => create!(module),
+            #[cfg(feature = "clipboard")]
+            Self::Clipboard(module) => create!(module),
+            #[cfg(feature = "clock")]
+            Self::Clock(module) => create!(module),
+            Self::Custom(module) => create!(module),
+            #[cfg(feature = "focused")]
+            Self::Focused(module) => create!(module),
+            Self::Label(module) => create!(module),
+            #[cfg(feature = "launcher")]
+            Self::Launcher(module) => create!(module),
+            #[cfg(feature = "music")]
+            Self::Music(module) => create!(module),
+            #[cfg(feature = "notifications")]
+            Self::Notifications(module) => create!(module),
+            Self::Script(module) => create!(module),
+            #[cfg(feature = "sys_info")]
+            Self::SysInfo(module) => create!(module),
+            #[cfg(feature = "tray")]
+            Self::Tray(module) => create!(module),
+            #[cfg(feature = "upower")]
+            Self::Upower(module) => create!(module),
+            #[cfg(feature = "volume")]
+            Self::Volume(module) => create!(module),
+            #[cfg(feature = "workspaces")]
+            Self::Workspaces(module) => create!(module),
+        }
+    }
 }
 
 #[derive(Debug, Deserialize, Clone)]

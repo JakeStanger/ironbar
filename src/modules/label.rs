@@ -1,7 +1,7 @@
 use crate::config::CommonConfig;
 use crate::dynamic_value::dynamic_string;
 use crate::modules::{Module, ModuleInfo, ModuleParts, ModuleUpdateEvent, WidgetContext};
-use crate::{glib_recv, try_send};
+use crate::{glib_recv, module_impl, try_send};
 use color_eyre::Result;
 use gtk::prelude::*;
 use gtk::Label;
@@ -29,9 +29,7 @@ impl Module<Label> for LabelModule {
     type SendMessage = String;
     type ReceiveMessage = ();
 
-    fn name() -> &'static str {
-        "label"
-    }
+    module_impl!("label");
 
     fn spawn_controller(
         &self,

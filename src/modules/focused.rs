@@ -3,7 +3,7 @@ use crate::config::{CommonConfig, TruncateMode};
 use crate::gtk_helpers::IronbarGtkExt;
 use crate::image::ImageProvider;
 use crate::modules::{Module, ModuleInfo, ModuleParts, ModuleUpdateEvent, WidgetContext};
-use crate::{glib_recv, send_async, spawn, try_send};
+use crate::{glib_recv, module_impl, send_async, spawn, try_send};
 use color_eyre::Result;
 use gtk::prelude::*;
 use gtk::Label;
@@ -50,9 +50,7 @@ impl Module<gtk::Box> for FocusedModule {
     type SendMessage = Option<(String, String)>;
     type ReceiveMessage = ();
 
-    fn name() -> &'static str {
-        "focused"
-    }
+    module_impl!("focused");
 
     fn spawn_controller(
         &self,
@@ -64,12 +62,16 @@ impl Module<gtk::Box> for FocusedModule {
         let wl = context.client::<wayland::Client>();
 
         spawn(async move {
+            let mut current = None;
+
             let mut wlrx = wl.subscribe_toplevels();
             let handles = wl.toplevel_info_all();
 
             let focused = handles.into_iter().find(|info| info.focused);
 
             if let Some(focused) = focused {
+                current = Some(focused.id);
+
                 try_send!(
                     tx,
                     ModuleUpdateEvent::Update(Some((focused.title.clone(), focused.app_id)))
@@ -79,8 +81,12 @@ impl Module<gtk::Box> for FocusedModule {
             while let Ok(event) = wlrx.recv().await {
                 match event {
                     ToplevelEvent::Update(info) => {
+                        println!("{current:?} | {info:?}");
                         if info.focused {
                             debug!("Changing focus");
+
+                            current = Some(info.id);
+
                             send_async!(
                                 tx,
                                 ModuleUpdateEvent::Update(Some((
@@ -88,13 +94,16 @@ impl Module<gtk::Box> for FocusedModule {
                                     info.app_id.clone()
                                 )))
                             );
-                        } else {
+                        } else if info.id == current.unwrap_or_default() {
+                            debug!("Clearing focus");
+                            current = None;
                             send_async!(tx, ModuleUpdateEvent::Update(None));
                         }
                     }
                     ToplevelEvent::Remove(info) => {
                         if info.focused {
                             debug!("Clearing focus");
+                            current = None;
                             send_async!(tx, ModuleUpdateEvent::Update(None));
                         }
                     }

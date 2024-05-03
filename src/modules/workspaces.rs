@@ -2,7 +2,7 @@ use crate::clients::compositor::{Visibility, Workspace, WorkspaceClient, Workspa
 use crate::config::CommonConfig;
 use crate::image::new_icon_button;
 use crate::modules::{Module, ModuleInfo, ModuleParts, ModuleUpdateEvent, WidgetContext};
-use crate::{glib_recv, send_async, spawn, try_send};
+use crate::{glib_recv, module_impl, send_async, spawn, try_send};
 use color_eyre::{Report, Result};
 use gtk::prelude::*;
 use gtk::{Button, IconTheme};
@@ -144,9 +144,7 @@ impl Module<gtk::Box> for WorkspacesModule {
     type SendMessage = WorkspaceUpdate;
     type ReceiveMessage = String;
 
-    fn name() -> &'static str {
-        "workspaces"
-    }
+    module_impl!("workspaces");
 
     fn spawn_controller(
         &self,
@@ -155,7 +153,7 @@ impl Module<gtk::Box> for WorkspacesModule {
         mut rx: Receiver<Self::ReceiveMessage>,
     ) -> Result<()> {
         let tx = context.tx.clone();
-        let client = context.ironbar.clients.borrow_mut().workspaces();
+        let client = context.ironbar.clients.borrow_mut().workspaces()?;
         // Subscribe & send events
         spawn(async move {
             let mut srx = client.subscribe_workspace_change();
@@ -168,7 +166,7 @@ impl Module<gtk::Box> for WorkspacesModule {
             }
         });
 
-        let client = context.client::<dyn WorkspaceClient>();
+        let client = context.try_client::<dyn WorkspaceClient>()?;
 
         // Change workspace focus
         spawn(async move {

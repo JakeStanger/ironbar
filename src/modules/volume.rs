@@ -4,7 +4,7 @@ use crate::gtk_helpers::IronbarGtkExt;
 use crate::modules::{
     Module, ModuleInfo, ModuleParts, ModulePopup, ModuleUpdateEvent, PopupButton, WidgetContext,
 };
-use crate::{glib_recv, lock, send_async, spawn, try_send};
+use crate::{glib_recv, lock, module_impl, send_async, spawn, try_send};
 use glib::Propagation;
 use gtk::pango::EllipsizeMode;
 use gtk::prelude::*;
@@ -99,9 +99,7 @@ impl Module<Button> for VolumeModule {
     type SendMessage = Event;
     type ReceiveMessage = Update;
 
-    fn name() -> &'static str {
-        "volume"
-    }
+    module_impl!("volume");
 
     fn spawn_controller(
         &self,
@@ -208,7 +206,12 @@ impl Module<Button> for VolumeModule {
         }
 
         let popup = self
-            .into_popup(context.controller_tx.clone(), context.subscribe(), info)
+            .into_popup(
+                context.controller_tx.clone(),
+                context.subscribe(),
+                context,
+                info,
+            )
             .into_popup_parts(vec![&button]);
 
         Ok(ModuleParts::new(button, popup))
@@ -218,6 +221,7 @@ impl Module<Button> for VolumeModule {
         self,
         tx: mpsc::Sender<Self::ReceiveMessage>,
         rx: tokio::sync::broadcast::Receiver<Self::SendMessage>,
+        _context: WidgetContext<Self::SendMessage, Self::ReceiveMessage>,
         _info: &ModuleInfo,
     ) -> Option<gtk::Box>
     where

@@ -69,7 +69,7 @@ format = "{title} / {artist}"
 music_dir = "/home/jake/Music"
 truncate = "end"
 
-[[start.icons]]
+[start.icons]
 play = ""
 pause = ""
 ```

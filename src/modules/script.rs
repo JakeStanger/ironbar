@@ -1,7 +1,7 @@
 use crate::config::CommonConfig;
 use crate::modules::{Module, ModuleInfo, ModuleParts, ModuleUpdateEvent, WidgetContext};
 use crate::script::{OutputStream, Script, ScriptMode};
-use crate::{glib_recv, spawn, try_send};
+use crate::{glib_recv, module_impl, spawn, try_send};
 use color_eyre::{Help, Report, Result};
 use gtk::prelude::*;
 use gtk::Label;
@@ -48,9 +48,7 @@ impl Module<Label> for ScriptModule {
     type SendMessage = String;
     type ReceiveMessage = ();
 
-    fn name() -> &'static str {
-        "script"
-    }
+    module_impl!("script");
 
     fn spawn_controller(
         &self,

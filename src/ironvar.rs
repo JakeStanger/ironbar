@@ -46,6 +46,10 @@ impl VariableManager {
         self.variables.get(key).and_then(IronVar::get)
     }
 
+    pub fn get_all(&self) -> &HashMap<Box<str>, IronVar> {
+        &self.variables
+    }
+
     /// Subscribes to an `ironvar`, creating it if it does not exist.
     /// Any time the var is set, its value is sent on the channel.
     pub fn subscribe(&mut self, key: Box<str>) -> broadcast::Receiver<Option<String>> {
@@ -66,7 +70,7 @@ impl VariableManager {
 /// Ironbar dynamic variable representation.
 /// Interact with them through the `VARIABLE_MANAGER` `VariableManager` singleton.
 #[derive(Debug)]
-struct IronVar {
+pub struct IronVar {
     value: Option<String>,
     tx: broadcast::Sender<Option<String>>,
     _rx: broadcast::Receiver<Option<String>>,
@@ -82,7 +86,7 @@ impl IronVar {
 
     /// Gets the current variable value.
     /// Prefer to subscribe to changes where possible.
-    fn get(&self) -> Option<String> {
+    pub fn get(&self) -> Option<String> {
         self.value.clone()
     }
 

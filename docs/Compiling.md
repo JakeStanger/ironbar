@@ -22,6 +22,8 @@ pacman -S gtk3 gtk-layer-shell
 pacman -S openssl
 # for volume support
 pacman -S libpulse
+# for lua/cairo support
+pacman -S luajit lua51-lgi
 ```
 
 ### Ubuntu/Debian
@@ -32,6 +34,8 @@ apt install build-essential libgtk-3-dev libgtk-layer-shell-dev
 apt install libssl-dev
 # for volume support
 apt install libpulse-dev
+# for lua/cairo support
+apt install luajit-dev lua-lgi
 ```
 
 ### Fedora
@@ -42,6 +46,8 @@ dnf install gtk3-devel gtk-layer-shell-devel
 dnf install openssl-devel
 # for volume support
 dnf install libpulseaudio-devel
+# for lua/cairo support
+dnf install luajit-devel lua-lgi
 ```
 
 ## Features
@@ -49,8 +55,8 @@ dnf install libpulseaudio-devel
 By default, all features are enabled for convenience. This can result in a significant compile time.
 If you know you are not going to need all the features, you can compile with only the features you need.
 
-As of `v0.10.0`, compiling with no features is about 33% faster. 
-On a 3800X, it takes about 60 seconds for no features and 90 seconds for all. 
+As of `v0.15.0`, compiling with no features is about 50% faster. 
+On a 3800X, it takes about 45 seconds for no features and 90 seconds for all. 
 This difference is expected to increase as the bar develops. 
 
 Features containing a `+` can be stacked, for example `config+json` and `config+yaml` could both be enabled.
@@ -77,6 +83,7 @@ cargo build --release --no-default-features \
 | config+corn         | Enables configuration support for [Corn](https://github.com/jakestanger/corn).    |
 | config+ron          | Enables configuration support for [Ron](https://github.com/ron-rs/ron).           |
 | **Modules**         |                                                                                   |
+| cairo               | Enables the `cairo` module                                                        |
 | clipboard           | Enables the `clipboard` module.                                                   |
 | clock               | Enables the `clock` module.                                                       |
 | focused             | Enables the `focused` module.                                                     |

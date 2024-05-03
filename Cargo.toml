@@ -1,6 +1,6 @@
 [package]
 name = "ironbar"
-version = "0.15.0-pre"
+version = "0.15.0"
 edition = "2021"
 license = "MIT"
 description = "Customisable GTK Layer Shell wlroots/sway bar"
@@ -11,6 +11,7 @@ keywords = ["gtk", "bar", "wayland", "wlroots", "gtk-layer-shell"]
 [features]
 default = [
     "cli",
+    "cairo",
     "clipboard",
     "clock",
     "config+all",
@@ -45,6 +46,8 @@ http = ["dep:reqwest"]
 "config+corn" = ["universal-config/corn"]
 "config+ron" = ["universal-config/ron"]
 
+cairo = ["lua-src", "mlua", "cairo-rs"]
+
 clipboard = ["nix"]
 
 clock = ["chrono"]
@@ -68,7 +71,7 @@ upower = ["upower_dbus", "zbus", "futures-lite"]
 
 volume = ["libpulse-binding"]
 
-workspaces = ["futures-util"]
+workspaces = ["futures-lite"]
 "workspaces+all" = ["workspaces", "workspaces+sway", "workspaces+hyprland"]
 "workspaces+sway" = ["workspaces", "swayipc-async"]
 "workspaces+hyprland" = ["workspaces", "hyprland"]
@@ -78,7 +81,7 @@ workspaces = ["futures-util"]
 gtk = "0.18.1"
 gtk-layer-shell = "0.8.0"
 glib = "0.18.5"
-tokio = { version = "1.36.0", features = [
+tokio = { version = "1.37.0", features = [
   "macros",
   "rt-multi-thread",
   "time",
@@ -89,17 +92,16 @@ tokio = { version = "1.36.0", features = [
 ] }
 tracing = "0.1.40"
 tracing-subscriber = { version = "0.3.17", features = ["env-filter"] }
-tracing-error = "0.2.0"
+tracing-error = { version = "0.2.0" , default-features = false }
 tracing-appender = "0.2.3"
 strip-ansi-escapes = "0.2.0"
 color-eyre = "0.6.3"
-serde = { version = "1.0.197", features = ["derive"] }
+serde = { version = "1.0.199", features = ["derive"] }
 indexmap = "2.2.6"
 dirs = "5.0.1"
 walkdir = "2.5.0"
 notify = { version = "6.1.1", default-features = false }
 wayland-client = "0.31.1"
-wayland-protocols = { version = "0.31.0", features = ["unstable", "client"] }
 wayland-protocols-wlr = { version = "0.2.0", features = ["client"] }
 smithay-client-toolkit = { version = "0.18.1", default-features = false, features = [
   "calloop",
@@ -109,33 +111,37 @@ ctrlc = "3.4.2"
 cfg-if = "1.0.0"
 
 # cli
-clap = { version = "4.5.3", optional = true, features = ["derive"] }
+clap = { version = "4.5.4", optional = true, features = ["derive"] }
 
 # ipc
-serde_json = { version = "1.0.114", optional = true }
+serde_json = { version = "1.0.116", optional = true }
 
 # http
-reqwest = { version = "0.12.2", optional = true }
+reqwest = { version = "0.12.4", default_features = false, features = ["default-tls", "http2"], optional = true }
+
+# cairo
+lua-src =  {  version = "546.0.2", optional = true }
+mlua = { version = "0.9.7", optional = true, features = ["luajit"] }
+cairo-rs = { version = "0.18.5", optional = true, features = ["png"] }
 
 # clipboard
 nix = { version = "0.27.1", optional = true, features = ["event"] }
 
 # clock
-chrono = { version = "0.4.35", optional = true, features = ["unstable-locales"] }
+chrono = { version = "0.4.38", optional = true, default_features = false, features = ["clock", "unstable-locales"] }
 
 # music
-mpd-utils = { version = "0.2.0", optional = true }
+mpd-utils = { version = "0.2.1", optional = true }
 mpris = { version = "2.0.1", optional = true }
 
 # sys_info
 sysinfo = { version = "0.29.11", optional = true }
 
 # tray
- system-tray = { version = "0.2.0", optional = true }
+system-tray = { version = "0.2.0", optional = true }
 
 # upower
 upower_dbus = { version = "0.3.2", optional = true }
-futures-lite = { version = "2.3.0", optional = true }
 
 # volume
 libpulse-binding = { version = "2.28.1", optional = true }
@@ -147,8 +153,8 @@ futures-util = { version = "0.3.30", optional = true }
 num-traits = "0.2.18"
 
 # shared
+futures-lite = { version = "2.3.0", optional = true } # workspaces, upower
 regex = { version = "1.10.4", default-features = false, features = [
   "std",
 ], optional = true } # music, sys_info
-zbus = { version = "3.15.2", optional = true } # notifications, upower
-
+zbus = { version = "3.15.2", default-features = false, features = ["tokio"], optional = true } # notifications, upower

@@ -10,6 +10,8 @@ pkgs.mkShell {
     gcc
     openssl
     libpulseaudio
+    luajit
+    luajitPackages.lgi
   ];
 
   nativeBuildInputs = with pkgs; [

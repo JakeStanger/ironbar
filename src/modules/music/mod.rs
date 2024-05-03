@@ -22,7 +22,7 @@ use crate::modules::PopupButton;
 use crate::modules::{
     Module, ModuleInfo, ModuleParts, ModulePopup, ModuleUpdateEvent, WidgetContext,
 };
-use crate::{glib_recv, send_async, spawn, try_send};
+use crate::{glib_recv, module_impl, send_async, spawn, try_send};
 
 pub use self::config::MusicModule;
 use self::config::PlayerType;
@@ -87,9 +87,7 @@ impl Module<Button> for MusicModule {
     type SendMessage = ControllerEvent;
     type ReceiveMessage = PlayerCommand;
 
-    fn name() -> &'static str {
-        "music"
-    }
+    module_impl!("music");
 
     fn spawn_controller(
         &self,
@@ -255,7 +253,7 @@ impl Module<Button> for MusicModule {
 
         let rx = context.subscribe();
         let popup = self
-            .into_popup(context.controller_tx, rx, info)
+            .into_popup(context.controller_tx.clone(), rx, context, info)
             .into_popup_parts(vec![&button]);
 
         Ok(ModuleParts::new(button, popup))
@@ -265,6 +263,7 @@ impl Module<Button> for MusicModule {
         self,
         tx: mpsc::Sender<Self::ReceiveMessage>,
         rx: broadcast::Receiver<Self::SendMessage>,
+        _context: WidgetContext<Self::SendMessage, Self::ReceiveMessage>,
         info: &ModuleInfo,
     ) -> Option<gtk::Box> {
         let icon_theme = info.icon_theme;

@@ -12,7 +12,7 @@ use tracing::{debug, trace};
 use crate::config::BarPosition;
 use crate::gtk_helpers::{IronbarGtkExt, WidgetGeometry};
 use crate::modules::{ModuleInfo, ModulePopupParts, PopupButton};
-use crate::Ironbar;
+use crate::rc_mut;
 
 #[derive(Debug, Clone)]
 pub struct PopupCacheValue {
@@ -23,7 +23,8 @@ pub struct PopupCacheValue {
 #[derive(Debug, Clone)]
 pub struct Popup {
     pub window: ApplicationWindow,
-    pub cache: Rc<RefCell<HashMap<usize, PopupCacheValue>>>,
+    pub container_cache: Rc<RefCell<HashMap<usize, PopupCacheValue>>>,
+    pub button_cache: Rc<RefCell<Vec<Button>>>,
     monitor: Monitor,
     pos: BarPosition,
     current_widget: Rc<RefCell<Option<(usize, usize)>>>,
@@ -106,10 +107,11 @@ impl Popup {
 
         Self {
             window: win,
-            cache: Rc::new(RefCell::new(HashMap::new())),
+            container_cache: rc_mut!(HashMap::new()),
+            button_cache: rc_mut!(vec![]),
             monitor: module_info.monitor.clone(),
             pos,
-            current_widget: Rc::new(RefCell::new(None)),
+            current_widget: rc_mut!(None),
         }
     }
 
@@ -117,8 +119,7 @@ impl Popup {
         debug!("Registered popup content for #{}", key);
 
         for button in &content.buttons {
-            let id = Ironbar::unique_id();
-            button.set_tag("popup-id", id);
+            button.ensure_popup_id();
         }
 
         let orientation = self.pos.orientation();
@@ -126,7 +127,8 @@ impl Popup {
         let window = self.window.clone();
 
         let current_widget = self.current_widget.clone();
-        let cache = self.cache.clone();
+        let cache = self.container_cache.clone();
+        let button_cache = self.button_cache.clone();
 
         content
             .container
@@ -135,11 +137,9 @@ impl Popup {
                     trace!("Resized:  {}x{}", rect.width(), rect.height());
 
                     if let Some((widget_id, button_id)) = *current_widget.borrow() {
-                        if let Some(PopupCacheValue { content, .. }) =
-                            cache.borrow().get(&widget_id)
-                        {
+                        if let Some(PopupCacheValue { .. }) = cache.borrow().get(&widget_id) {
                             Self::set_position(
-                                &content.buttons,
+                                &button_cache.borrow(),
                                 button_id,
                                 orientation,
                                 &monitor,
@@ -150,7 +150,11 @@ impl Popup {
                 }
             });
 
-        self.cache
+        self.button_cache
+            .borrow_mut()
+            .append(&mut content.buttons.clone());
+
+        self.container_cache
             .borrow_mut()
             .insert(key, PopupCacheValue { name, content });
     }
@@ -158,16 +162,17 @@ impl Popup {
     pub fn show(&self, widget_id: usize, button_id: usize) {
         self.clear_window();
 
-        if let Some(PopupCacheValue { content, .. }) = self.cache.borrow().get(&widget_id) {
+        if let Some(PopupCacheValue { content, .. }) = self.container_cache.borrow().get(&widget_id)
+        {
             *self.current_widget.borrow_mut() = Some((widget_id, button_id));
 
-            content.container.style_context().add_class("popup");
+            content.container.add_class("popup");
             self.window.add(&content.container);
 
             self.window.show();
 
             Self::set_position(
-                &content.buttons,
+                &self.button_cache.borrow(),
                 button_id,
                 self.pos.orientation(),
                 &self.monitor,
@@ -179,8 +184,9 @@ impl Popup {
     pub fn show_at(&self, widget_id: usize, geometry: WidgetGeometry) {
         self.clear_window();
 
-        if let Some(PopupCacheValue { content, .. }) = self.cache.borrow().get(&widget_id) {
-            content.container.style_context().add_class("popup");
+        if let Some(PopupCacheValue { content, .. }) = self.container_cache.borrow().get(&widget_id)
+        {
+            content.container.add_class("popup");
             self.window.add(&content.container);
 
             self.window.show();

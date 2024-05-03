@@ -6,7 +6,7 @@ use crate::clients::tray;
 use crate::config::CommonConfig;
 use crate::modules::tray::diff::get_diffs;
 use crate::modules::{Module, ModuleInfo, ModuleParts, ModuleUpdateEvent, WidgetContext};
-use crate::{glib_recv, lock, send_async, spawn};
+use crate::{glib_recv, lock, module_impl, send_async, spawn};
 use color_eyre::{Report, Result};
 use gtk::{prelude::*, PackDirection};
 use gtk::{IconTheme, MenuBar};
@@ -57,9 +57,7 @@ impl Module<MenuBar> for TrayModule {
     type SendMessage = Event;
     type ReceiveMessage = ActivateRequest;
 
-    fn name() -> &'static str {
-        "tray"
-    }
+    module_impl!("tray");
 
     fn spawn_controller(
         &self,
@@ -69,14 +67,14 @@ impl Module<MenuBar> for TrayModule {
     ) -> Result<()> {
         let tx = context.tx.clone();
 
-        let client = context.client::<tray::Client>();
+        let client = context.try_client::<tray::Client>()?;
         let mut tray_rx = client.subscribe();
 
         let initial_items = lock!(client.items()).clone();
 
         // listen to tray updates
         spawn(async move {
-            for (key, (item, menu)) in initial_items.into_iter() {
+            for (key, (item, menu)) in initial_items {
                 send_async!(
                     tx,
                     ModuleUpdateEvent::Update(Event::Add(key.clone(), item.into()))
@@ -91,7 +89,7 @@ impl Module<MenuBar> for TrayModule {
             }
 
             while let Ok(message) = tray_rx.recv().await {
-                send_async!(tx, ModuleUpdateEvent::Update(message))
+                send_async!(tx, ModuleUpdateEvent::Update(message));
             }
         });
 
@@ -161,12 +159,11 @@ fn on_update(
             let mut menu_item = TrayMenu::new(tx.clone(), address.clone(), *item);
             container.add(&menu_item.widget);
 
-            match icon::get_image(&menu_item, icon_theme, icon_size, prefer_icons) {
-                Ok(image) => menu_item.set_image(&image),
-                Err(_) => {
-                    let label = menu_item.title.clone().unwrap_or(address.clone());
-                    menu_item.set_label(&label)
-                }
+            if let Ok(image) = icon::get_image(&menu_item, icon_theme, icon_size, prefer_icons) {
+                menu_item.set_image(&image);
+            } else {
+                let label = menu_item.title.clone().unwrap_or(address.clone());
+                menu_item.set_label(&label);
             };
 
             menu_item.widget.show();

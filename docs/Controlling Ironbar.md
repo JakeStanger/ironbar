@@ -79,7 +79,7 @@ Responds with `ok`.
 
 ### `get`
 
-Gets an [ironvar](ironvars) value.
+Gets an [ironvar](ironvars) value. 
 
 Responds with `ok_value` if the value exists, otherwise `error`.
 
@@ -101,6 +101,20 @@ Responds with `ok`.
   "type": "set",
   "key": "foo",
   "value": "bar"
+}
+```
+
+### list
+
+Gets a list of all [ironvar](ironvars) values.
+
+Responds with `ok_value`. 
+
+Each key/value pair is on its own `\n` separated newline. The key and value are separated by a colon and space `: `.
+
+```json
+{
+  "type": "list"
 }
 ```
 
