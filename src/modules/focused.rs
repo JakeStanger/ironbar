@@ -81,7 +81,6 @@ impl Module<gtk::Box> for FocusedModule {
             while let Ok(event) = wlrx.recv().await {
                 match event {
                     ToplevelEvent::Update(info) => {
-                        println!("{current:?} | {info:?}");
                         if info.focused {
                             debug!("Changing focus");
 
