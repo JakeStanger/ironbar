@@ -5,8 +5,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [v0.15.1] - 2024-05-05
+
+Release to bump hyprland-rs version due to Hyprland v0.40 socket path breaking change.
+
 ### :memo: Documentation Changes
-- [`5bb8079`](https://github.com/JakeStanger/ironbar/commit/5bb8079dff17bf3fcfccec1e58c37e0867088508) - update CHANGELOG.md for v0.15.0 [skip ci] *(commit by [@JakeStanger](https://github.com/JakeStanger))*
 - [`47b6c47`](https://github.com/JakeStanger/ironbar/commit/47b6c477242ad52aae77a6820740d9c5f4bfc263) - **compiling**: add lua deps *(commit by [@JakeStanger](https://github.com/JakeStanger))*
 - [`1971f3b`](https://github.com/JakeStanger/ironbar/commit/1971f3bb1ef3d059b29b99527e77ffaaf92240aa) - **volume**: update deprecated volume token *(PR [#567](https://github.com/JakeStanger/ironbar/pull/567) by [@drendog](https://github.com/drendog))*
 
