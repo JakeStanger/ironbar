@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.15.1] - 2024-05-05
+### :memo: Documentation Changes
+- [`5bb8079`](https://github.com/JakeStanger/ironbar/commit/5bb8079dff17bf3fcfccec1e58c37e0867088508) - update CHANGELOG.md for v0.15.0 [skip ci] *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`47b6c47`](https://github.com/JakeStanger/ironbar/commit/47b6c477242ad52aae77a6820740d9c5f4bfc263) - **compiling**: add lua deps *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`1971f3b`](https://github.com/JakeStanger/ironbar/commit/1971f3bb1ef3d059b29b99527e77ffaaf92240aa) - **volume**: update deprecated volume token *(PR [#567](https://github.com/JakeStanger/ironbar/pull/567) by [@drendog](https://github.com/drendog))*
+
+
 ## [v0.15.0] - 2024-04-28
 ### :sparkles: New Features
 - [`f4384b6`](https://github.com/JakeStanger/ironbar/commit/f4384b6252e86d4e2558e1c36810d4ef903bd58c) -  enable use of markup in clock module format and format_popup, and update documentation to reflect supporting Pango markup in both *commit by [@Dridus](https://github.com/Dridus))*
@@ -565,3 +572,4 @@ It also requires `lua-lgi` as a runtime dependency.
 [v0.14.0]: https://github.com/JakeStanger/ironbar/compare/v0.13.0...v0.14.0
 [v0.14.1]: https://github.com/JakeStanger/ironbar/compare/v0.14.0...v0.14.1
 [v0.15.0]: https://github.com/JakeStanger/ironbar/compare/v0.14.3...v0.15.0
+[v0.15.1]: https://github.com/JakeStanger/ironbar/compare/v0.15.0...v0.15.1
