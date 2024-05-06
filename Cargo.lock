@@ -1598,7 +1598,6 @@ dependencies = [
  "mpris",
  "nix 0.27.1",
  "notify",
- "num-traits",
  "regex",
  "reqwest",
  "serde",
