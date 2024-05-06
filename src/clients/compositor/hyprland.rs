@@ -149,12 +149,27 @@ impl Client {
             }
 
             {
-                event_listener.add_workspace_destroy_handler(move |workspace_type| {
-                    let _lock = lock!(lock);
-                    debug!("Received workspace destroy: {workspace_type:?}");
+                let tx = tx.clone();
+                let lock = lock.clone();
 
-                    let name = get_workspace_name(workspace_type);
-                    send!(tx, WorkspaceUpdate::Remove(name));
+                event_listener.add_workspace_rename_handler(move |data| {
+                    let _lock = lock!(lock);
+
+                    send!(
+                        tx,
+                        WorkspaceUpdate::Rename {
+                            id: data.workspace_id.to_string(),
+                            name: data.workspace_name
+                        }
+                    );
+                });
+            }
+
+            {
+                event_listener.add_workspace_destroy_handler(move |data| {
+                    let _lock = lock!(lock);
+                    debug!("Received workspace destroy: {data:?}");
+                    send!(tx, WorkspaceUpdate::Remove(data.workspace_id.to_string()));
                 });
             }
 

@@ -148,7 +148,7 @@ libpulse-binding = { version = "2.28.1", optional = true }
 
 # workspaces
 swayipc-async = { version = "2.0.1", optional = true }
-hyprland = { version = "0.4.0-alpha.1", features = ["silent"], optional = true }
+hyprland = { version = "0.4.0-alpha.2", features = ["silent"], optional = true }
 futures-util = { version = "0.3.30", optional = true }
 num-traits = "0.2.18"
 
