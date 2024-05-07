@@ -126,6 +126,12 @@ pub enum WorkspaceUpdate {
         old: Option<Workspace>,
         new: Workspace,
     },
+
+    Rename {
+        id: String,
+        name: String,
+    },
+
     /// An update was triggered by the compositor but this was not mapped by Ironbar.
     ///
     /// This is purely used for ergonomics within the compositor clients
