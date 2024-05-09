@@ -158,7 +158,7 @@ impl Client {
                     send!(
                         tx,
                         WorkspaceUpdate::Rename {
-                            id: data.workspace_id.to_string(),
+                            id: data.workspace_id as i64,
                             name: data.workspace_name
                         }
                     );
@@ -169,7 +169,7 @@ impl Client {
                 event_listener.add_workspace_destroy_handler(move |data| {
                     let _lock = lock!(lock);
                     debug!("Received workspace destroy: {data:?}");
-                    send!(tx, WorkspaceUpdate::Remove(data.workspace_id.to_string()));
+                    send!(tx, WorkspaceUpdate::Remove(data.workspace_id as i64));
                 });
             }
 
@@ -279,7 +279,7 @@ fn create_is_visible() -> impl Fn(&HWorkspace) -> bool {
 impl From<(Visibility, HWorkspace)> for Workspace {
     fn from((visibility, workspace): (Visibility, HWorkspace)) -> Self {
         Self {
-            id: workspace.id.to_string(),
+            id: workspace.id as i64,
             name: workspace.name,
             monitor: workspace.monitor,
             visibility,

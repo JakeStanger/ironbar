@@ -74,7 +74,7 @@ impl Compositor {
 #[derive(Debug, Clone)]
 pub struct Workspace {
     /// Unique identifier
-    pub id: String,
+    pub id: i64,
     /// Workspace friendly name
     pub name: String,
     /// Name of the monitor (output) the workspace is located on
@@ -119,7 +119,7 @@ pub enum WorkspaceUpdate {
     /// This is re-sent to all subscribers when a new subscription is created.
     Init(Vec<Workspace>),
     Add(Workspace),
-    Remove(String),
+    Remove(i64),
     Move(Workspace),
     /// Declares focus moved from the old workspace to the new.
     Focus {
@@ -128,7 +128,7 @@ pub enum WorkspaceUpdate {
     },
 
     Rename {
-        id: String,
+        id: i64,
         name: String,
     },
 
