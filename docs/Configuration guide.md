@@ -20,10 +20,17 @@ Ironbar supports a range of configuration formats, so you can pick your favourit
 - `config.json`
 - `config.toml`
 - `config.yaml`
-- `config.corn` (Experimental, includes variable support for re-using blocks.
+- `config.corn` (Includes variable support for re-using blocks.
   See [here](https://github.com/jakestanger/corn) for info)
 
 You can also override the default config path using the `IRONBAR_CONFIG` environment variable.
+
+A hosted schema is available for the latest Git version ~~and each versioned release~~.
+JSON and YAML both support schema checking by adding the `$schema` key 
+to the top level of your config.
+
+- master: `https://f.jstanger.dev/github/ironbar/schema.json`
+- ~~release: `https://f.jstanger.dev/github/ironbar/schema-v0.16.0.json`~~ *(Not released yet)*
 
 ## 2. Pick your use-case
 

@@ -14,6 +14,7 @@ use std::collections::HashMap;
 use tokio::sync::mpsc;
 
 #[derive(Debug, Clone, Deserialize)]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 pub struct VolumeModule {
     /// The format string to use for the widget button label.
     /// For available tokens, see [below](#formatting-tokens).
@@ -45,6 +46,7 @@ fn default_format() -> String {
 }
 
 #[derive(Debug, Clone, Deserialize)]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 pub struct Icons {
     /// Icon to show for high volume levels.
     ///

@@ -10,6 +10,7 @@ use tokio::sync::mpsc;
 use tracing::error;
 
 #[derive(Debug, Deserialize, Clone)]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 pub struct ScriptModule {
     /// Path to script to execute.
     ///

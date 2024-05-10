@@ -1,0 +1,41 @@
+name: Publish Schema
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ "master" ]
+
+env:
+  CARGO_TERM_COLOR: always
+  RUSTFLAGS: '-Dwarnings'
+
+jobs:
+  publish-schema:
+    name: 'Publish Schema'
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: Swatinem/rust-cache@v2
+        name: Cache dependencies
+
+      - name: Install build deps
+        run: ./.github/scripts/ubuntu_setup.sh
+
+      - name: Build
+        run: cargo build --features schema
+
+      - name: Print schema
+        run: cargo run --features schema -- --print-schema > target/schema.json
+
+      - name: Copy file via SSH
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          port: ${{ secrets.SSH_PORT }}
+          username: ${{ secrets.SSH_USERNAME }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          source: "target/schema.json"
+          target: /storage/Public/github/ironbar
+          strip_components: 1

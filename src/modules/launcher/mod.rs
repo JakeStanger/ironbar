@@ -19,6 +19,7 @@ use tokio::sync::{broadcast, mpsc};
 use tracing::{debug, error, trace};
 
 #[derive(Debug, Deserialize, Clone)]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 pub struct LauncherModule {
     /// List of app IDs (or classes) to always show regardless of open state,
     /// in the order specified.

@@ -6,19 +6,12 @@ on:
       - v[0-9]+.[0-9]+.[0-9]+
 
 jobs:
-  deploy:
+  release:
+    name: 'Create Release'
     runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v3
-
-      - uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          override: true
-
-      - name: Install build deps
-        run: ./.github/scripts/ubuntu_setup.sh
 
       - name: Update CHANGELOG
         id: changelog
@@ -41,9 +34,54 @@ jobs:
         uses: stefanzweifel/git-auto-commit-action@v4
         with:
           branch: master
-          commit_message: 'docs: update CHANGELOG.md for ${{ github.ref_name }} [skip ci]'
+          commit_message: 'chore: update CHANGELOG.md for ${{ github.ref_name }} [skip ci]'
           file_pattern: CHANGELOG.md
 
-      - uses: katyo/publish-crates@v1
+
+  publish-crate:
+    name: 'Publish Crate'
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+
+      - name: Install build deps
+        run: ./.github/scripts/ubuntu_setup.sh
+
+      - name: Publish crate
+        uses: katyo/publish-crates@v1
         with:
           registry-token: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+
+
+  publish-schema:
+    name: 'Publish Schema'
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: Swatinem/rust-cache@v2
+        name: Cache dependencies
+
+      - name: Install build deps
+        run: ./.github/scripts/ubuntu_setup.sh
+
+      - name: Build schema
+        run: cargo build --features schema -- --print-schema > target/schema-${{ github.ref_name }}.json
+
+      - name: Copy file via SSH
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          port: ${{ secrets.SSH_PORT }}
+          username: ${{ secrets.SSH_USERNAME }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          source: "target/schema-${{ github.ref_name }}.json"
+          target: /storage/Public/github/ironbar
+          strip_components: 1

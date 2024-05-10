@@ -76,6 +76,13 @@ fn main() {
 fn run_with_args() {
     let args = cli::Args::parse();
 
+    #[cfg(feature = "schema")]
+    if args.print_schema {
+        let schema = schemars::schema_for!(Config);
+        println!("{}", serde_json::to_string_pretty(&schema).unwrap());
+        return;
+    }
+
     match args.command {
         Some(command) => {
             let rt = create_runtime();

@@ -9,6 +9,12 @@ pub struct Args {
     #[command(subcommand)]
     pub command: Option<Command>,
 
+    /// Prints the config JSON schema to `stdout`
+    /// and exits.
+    #[cfg(feature = "schema")]
+    #[arg(long("print-schema"))]
+    pub print_schema: bool,
+
     /// `bar_id` argument passed by `swaybar_command`.
     /// Not used.
     #[arg(short('b'), hide(true))]
