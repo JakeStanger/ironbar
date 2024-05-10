@@ -1,0 +1,40 @@
+name: Feature request
+description: Suggest an idea for this project
+title: <Feature request name>
+labels: ["enhancement"]
+
+body:
+  - type: textarea
+    id: the-problem
+    attributes:
+      label: Is your feature request related to a problem? Please describe.
+      description: A clear and concise description of what the problem is.
+      placeholder: Ex. I'm always frustrated when [...]
+    validations:
+      required: false
+  - type: textarea
+    id: the-solution
+    attributes:
+      label: Describe the solution you'd like
+      description: |
+        A clear and concise description of what you want to happen.
+        The more info here about what you are trying to achieve, the better - there's likely more than one way to go about implementing a solution.
+      placeholder: Ex. I would like there to be [...]
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives-considered
+    attributes:
+      label: Describe alternatives you've considered
+      description: A clear and concise description of any alternative solutions or features you've considered.
+      placeholder: Ex. It might be a good idea to also consider [...]
+    validations:
+      required: false
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: Additional context
+      description: Add any other context or screenshots about the feature request here.
+      placeholder: Ex. This arose from issue [...], and here is a screenshot showing what I mean
+    validations:
+      required: false

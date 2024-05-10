@@ -1,0 +1,99 @@
+name: Bug report
+description: Report an issue with the bar not working as expected
+title: <Bug report name>
+labels: ["bug"]
+body:
+  - type: textarea
+    id: bug-description
+    attributes:
+      label: Describe the bug
+      description: A clear and concise description of what the bug is.
+      placeholder: Ex. The bug is [...]
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction-steps
+    attributes:
+      label: To Reproduce
+      description: Steps to reproduce the behavior:\
+      value: |
+        1. Go to '...'
+        2. Click on '....'
+        3. Scroll down to '....'
+        4. See error
+    validations:
+      required: true
+  - type: textarea
+    id: expected-behavior
+    attributes:
+      label: Expected behavior
+      description: A clear and concise description of what you expected to happen
+      placeholder: Ex. I expected [...] to occur
+    validations:
+      required: true
+  - type: markdown
+    id: system-info
+    attributes:
+      value: |
+        **System information**
+  - type: input
+    id: distro-name
+    attributes:
+      label: Distro
+      placeholder: Ex. NixOS 23.11
+    validations:
+      required: true
+  - type: input
+    id: compositor-name
+    attributes:
+      label: Compositor
+      placeholder: Ex. Hyprland 0.40
+    validations:
+      required: true
+  - type: input
+    id: ironbar-version
+    attributes:
+      label: Ironbar version
+      placeholder: Ex. v0.15.1
+    validations:
+      required: true
+  - type: markdown
+    id: configuration
+    attributes:
+      value: |
+        **Configuration**
+  - type: textarea
+    id: config-file-entry
+    attributes:
+      label: Ironbar config
+      description: The json, yaml, toml, or corn file
+      value: |
+        ```json
+        {}
+        ```
+    validations:
+      required: true
+  - type: textarea
+    id: styles-file-entry
+    attributes:
+      label: Ironbar styles
+      description: The css file with all the styles
+      render: css
+    validations:
+      required: true
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: Additional context
+      description: Add any other extra context about the problem here.
+      placeholder: Ex. This issue was discussed at [...]
+    validations:
+      required: false
+  - type: textarea
+    id: attachements
+    attributes:
+      label: Screenshots and other attachments
+      description: If applicable, add screenshots and other attachments to help explain your problem.
+      placeholder: Ex. Here is a screenshot showing how it occurs
+    validations:
+      required: false
