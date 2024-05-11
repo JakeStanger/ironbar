@@ -409,7 +409,7 @@ impl Module<Button> for MusicModule {
                         // only update art when album changes
                         let new_cover = update.song.cover_path;
                         if prev_cover != new_cover {
-                            prev_cover = new_cover.clone();
+                            prev_cover.clone_from(&new_cover);
                             let res = if let Some(image) = new_cover.and_then(|cover_path| {
                                 ImageProvider::parse(&cover_path, &icon_theme, false, image_size)
                             }) {

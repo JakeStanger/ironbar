@@ -294,15 +294,15 @@ impl DataControlOfferHandler for Environment {
 }
 
 impl DataControlSourceHandler for Environment {
-    fn accept_mime(
-        &mut self,
-        _conn: &Connection,
-        _qh: &QueueHandle<Self>,
-        _source: &ZwlrDataControlSourceV1,
-        mime: Option<String>,
-    ) {
-        debug!("Accepted mime type: {mime:?}");
-    }
+    // fn accept_mime(
+    //     &mut self,
+    //     _conn: &Connection,
+    //     _qh: &QueueHandle<Self>,
+    //     _source: &ZwlrDataControlSourceV1,
+    //     mime: Option<String>,
+    // ) {
+    //     debug!("Accepted mime type: {mime:?}");
+    // }
 
     /// Writes the current clipboard item to 'paste' it
     /// upon request from a compositor client.
