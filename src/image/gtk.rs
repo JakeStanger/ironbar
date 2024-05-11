@@ -44,7 +44,7 @@ pub fn new_icon_label(input: &str, icon_theme: &IconTheme, size: i32) -> gtk::Bo
         ImageProvider::parse(input, icon_theme, false, size)
             .map(|provider| provider.load_into_image(image));
     } else {
-        let label = Label::new(Some(input));
+        let label = Label::builder().use_markup(true).label(input).build();
         label.add_class("icon");
         label.add_class("text-icon");
 

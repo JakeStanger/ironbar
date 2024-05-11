@@ -191,6 +191,7 @@ impl Module<Button> for MusicModule {
         let icon_pause = new_icon_label(&self.icons.pause, info.icon_theme, self.icon_size);
         let label = Label::new(None);
 
+        label.set_use_markup(true);
         label.set_angle(info.bar_position.get_angle());
 
         if let Some(truncate) = self.truncate {
@@ -544,7 +545,14 @@ impl IconLabel {
         let container = gtk::Box::new(Orientation::Horizontal, 5);
 
         let icon = new_icon_label(icon_input, icon_theme, 24);
-        let label = Label::new(label);
+
+        let mut builder = Label::builder().use_markup(true);
+
+        if let Some(label) = label {
+            builder = builder.label(label);
+        }
+
+        let label = builder.build();
 
         icon.add_class("icon-box");
         label.add_class("label");
