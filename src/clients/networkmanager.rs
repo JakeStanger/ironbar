@@ -12,9 +12,9 @@ use zbus::{
 
 use crate::{register_fallible_client, spawn_blocking};
 
-const DBUS_BUS: &str = "org.freedesktop.NetworkManager";
-const DBUS_PATH: &str = "/org/freedesktop/NetworkManager";
-const DBUS_INTERFACE: &str = "org.freedesktop.NetworkManager";
+static DBUS_BUS: &str = "org.freedesktop.NetworkManager";
+static DBUS_PATH: &str = "/org/freedesktop/NetworkManager";
+static DBUS_INTERFACE: &str = "org.freedesktop.NetworkManager";
 
 #[derive(Debug)]
 pub struct Client {

@@ -2,7 +2,7 @@ use color_eyre::Result;
 use futures_lite::StreamExt;
 use futures_signals::signal::SignalExt;
 use gtk::prelude::ContainerExt;
-use gtk::{Box as GtkBox, Image, Orientation};
+use gtk::{Box, Image, Orientation};
 use serde::Deserialize;
 use tokio::sync::mpsc::Receiver;
 
@@ -26,7 +26,7 @@ const fn default_icon_size() -> i32 {
     24
 }
 
-impl Module<GtkBox> for NetworkManagerModule {
+impl Module<Box> for NetworkManagerModule {
     type SendMessage = ClientState;
     type ReceiveMessage = ();
 
@@ -53,8 +53,8 @@ impl Module<GtkBox> for NetworkManagerModule {
         self,
         context: WidgetContext<ClientState, ()>,
         info: &ModuleInfo,
-    ) -> Result<ModuleParts<GtkBox>> {
-        let container = GtkBox::new(Orientation::Horizontal, 0);
+    ) -> Result<ModuleParts<Box>> {
+        let container = Box::new(Orientation::Horizontal, 0);
         let icon = Image::new();
         icon.add_class("icon");
         container.add(&icon);
