@@ -1,7 +1,9 @@
+use crate::error::ExitCode;
 use crate::ipc::commands::Command;
 use crate::ipc::responses::Response;
-use clap::Parser;
+use clap::{Parser, ValueEnum};
 use serde::{Deserialize, Serialize};
+use std::process::exit;
 
 #[derive(Parser, Debug, Serialize, Deserialize)]
 #[command(version)]
@@ -38,6 +40,8 @@ pub enum Format {
 }
 
 pub fn handle_response(response: Response, format: Format) {
+    let is_err = matches!(response, Response::Err { .. });
+
     match format {
         Format::Plain => match response {
             Response::Ok => println!("ok"),
@@ -48,5 +52,9 @@ pub fn handle_response(response: Response, format: Format) {
             "{}",
             serde_json::to_string(&response).expect("to be valid json")
         ),
+    }
+
+    if is_err {
+        exit(ExitCode::IpcResponseError as i32)
     }
 }
