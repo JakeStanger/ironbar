@@ -20,16 +20,33 @@ pub struct Args {
     #[arg(long)]
     pub debug: bool,
 
+    /// Format to output the response as.
+    #[arg(short, long)]
+    pub format: Option<Format>,
+
     /// `bar_id` argument passed by `swaybar_command`.
     /// Not used.
     #[arg(short('b'), hide(true))]
     sway_bar_id: Option<String>,
 }
 
-pub fn handle_response(response: Response) {
-    match response {
-        Response::Ok => println!("ok"),
-        Response::OkValue { value } => println!("ok\n{value}"),
-        Response::Err { message } => eprintln!("error\n{}", message.unwrap_or_default()),
+#[derive(Debug, Serialize, Deserialize, Default, ValueEnum, Clone, Copy)]
+pub enum Format {
+    #[default]
+    Plain,
+    Json,
+}
+
+pub fn handle_response(response: Response, format: Format) {
+    match format {
+        Format::Plain => match response {
+            Response::Ok => println!("ok"),
+            Response::OkValue { value } => println!("{value}"),
+            Response::Err { message } => eprintln!("error\n{}", message.unwrap_or_default()),
+        },
+        Format::Json => println!(
+            "{}",
+            serde_json::to_string(&response).expect("to be valid json")
+        ),
     }
 }
