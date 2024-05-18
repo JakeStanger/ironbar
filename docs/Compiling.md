@@ -45,7 +45,7 @@ dnf install gtk3-devel gtk-layer-shell-devel
 # for http support
 dnf install openssl-devel
 # for volume support
-dnf install libpulseaudio-devel
+dnf install pulseaudio-libs-devel
 # for lua/cairo support
 dnf install luajit-devel lua-lgi
 ```
