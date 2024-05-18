@@ -229,7 +229,7 @@ impl Popup {
     }
 
     /// Checks if the popup is currently visible
-    pub fn is_visible(&self) -> bool {
+    pub fn visible(&self) -> bool {
         self.window.is_visible()
     }
 
