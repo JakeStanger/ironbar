@@ -11,7 +11,7 @@ use crate::{lock, try_send, Ironbar};
 use device::DataControlDevice;
 use glib::Bytes;
 use nix::fcntl::{fcntl, F_GETPIPE_SZ, F_SETPIPE_SZ};
-use nix::sys::epoll::{Epoll, EpollCreateFlags, EpollEvent, EpollFlags};
+use nix::sys::epoll::{Epoll, EpollCreateFlags, EpollEvent, EpollFlags, EpollTimeout};
 use smithay_client_toolkit::data_device_manager::WritePipe;
 use smithay_client_toolkit::reexports::calloop::{PostAction, RegistrationToken};
 use std::cmp::min;
@@ -274,7 +274,7 @@ impl DataControlDeviceHandler for Environment {
                     Ok(token) => {
                         cur_offer.token.replace(token);
                     }
-                    Err(err) => error!("{err:?}"),
+                    Err(err) => error!("Failed to insert read pipe event: {err:?}"),
                 }
             }
         }
@@ -349,11 +349,12 @@ impl DataControlSourceHandler for Environment {
                     .add(fd, epoll_event)
                     .expect("to send valid epoll operation");
 
+                let timeout = EpollTimeout::from(100u16);
                 while !bytes.is_empty() {
                     let chunk = &bytes[..min(pipe_size as usize, bytes.len())];
 
                     epoll_fd
-                        .wait(&mut events, 100)
+                        .wait(&mut events, timeout)
                         .expect("Failed to wait to epoll");
 
                     match file.write(chunk) {
