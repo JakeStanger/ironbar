@@ -239,6 +239,7 @@ impl Ironbar {
 
     /// Gets a `usize` ID value that is unique to the entire Ironbar instance.
     /// This is just a static `AtomicUsize` that increments every time this function is called.
+    #[must_use]
     pub fn unique_id() -> usize {
         static COUNTER: AtomicUsize = AtomicUsize::new(1);
         COUNTER.fetch_add(1, Ordering::Relaxed)
