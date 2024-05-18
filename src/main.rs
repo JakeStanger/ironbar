@@ -85,11 +85,21 @@ fn run_with_args() {
 
     match args.command {
         Some(command) => {
+            if args.debug {
+                eprintln!("REQUEST: {command:?}")
+            }
+
             let rt = create_runtime();
             rt.block_on(async move {
                 let ipc = ipc::Ipc::new();
-                match ipc.send(command).await {
-                    Ok(res) => cli::handle_response(res),
+                match ipc.send(command, args.debug).await {
+                    Ok(res) => {
+                        if args.debug {
+                            eprintln!("RESPONSE: {res:?}")
+                        }
+
+                        cli::handle_response(res, args.format.unwrap_or_default())
+                    }
                     Err(err) => error!("{err:?}"),
                 };
             });

@@ -8,7 +8,7 @@ use tokio::net::UnixStream;
 impl Ipc {
     /// Sends a command to the IPC server.
     /// The server response is returned.
-    pub async fn send(&self, command: Command) -> Result<Response> {
+    pub async fn send(&self, command: Command, debug: bool) -> Result<Response> {
         let mut stream = match UnixStream::connect(&self.path).await {
             Ok(stream) => Ok(stream),
             Err(err) => Err(Report::new(err)
@@ -17,6 +17,11 @@ impl Ipc {
         }?;
 
         let write_buffer = serde_json::to_vec(&command)?;
+
+        if debug {
+            eprintln!("REQUEST JSON: {}", serde_json::to_string(&command)?);
+        }
+
         stream.write_all(&write_buffer).await?;
 
         let mut read_buffer = vec![0; 1024];

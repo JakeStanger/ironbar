@@ -15,6 +15,11 @@ pub struct Args {
     #[arg(long("print-schema"))]
     pub print_schema: bool,
 
+    /// Print debug information to stderr
+    /// TODO: Make bar follow this too
+    #[arg(long)]
+    pub debug: bool,
+
     /// `bar_id` argument passed by `swaybar_command`.
     /// Not used.
     #[arg(short('b'), hide(true))]
