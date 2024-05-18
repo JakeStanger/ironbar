@@ -9,7 +9,7 @@ use std::rc::Rc;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 #[cfg(feature = "ipc")]
 use std::sync::RwLock;
-use std::sync::{mpsc, Arc, OnceLock};
+use std::sync::{mpsc, Arc, Mutex, OnceLock};
 
 use cfg_if::cfg_if;
 #[cfg(feature = "cli")]
@@ -339,17 +339,36 @@ fn load_output_bars(
     app: &Application,
     output: &OutputInfo,
 ) -> Result<Vec<Bar>> {
+    // Hack to track monitor positions due to new GTK3/wlroots bug:
+    // https://github.com/swaywm/sway/issues/8164
+    // This relies on Wayland always tracking monitors in the same order as GDK.
+    // We also need this static to ensure hot-reloading continues to work as best we can.
+    static INDEX_MAP: OnceLock<Mutex<Vec<String>>> = OnceLock::new();
+
     let Some(monitor_name) = &output.name else {
         return Err(Report::msg("Output missing monitor name"));
+    };
+
+    let map = INDEX_MAP.get_or_init(|| Mutex::new(vec![]));
+
+    let index = lock!(map).iter().position(|n| n == monitor_name);
+    let index = match index {
+        Some(index) => index - 1,
+        None => {
+            lock!(map).push(monitor_name.clone());
+            lock!(map).len() - 1
+        }
     };
 
     let config = ironbar.config.borrow();
     let display = get_display();
 
-    let pos = output.logical_position.unwrap_or_default();
-    let monitor = display
-        .monitor_at_point(pos.0, pos.1)
-        .expect("monitor to exist");
+    // let pos = output.logical_position.unwrap_or_default();
+    // let monitor = display
+    //     .monitor_at_point(pos.0, pos.1)
+    //     .expect("monitor to exist");
+
+    let monitor = display.monitor(index as i32).expect("monitor to exist");
 
     let show_default_bar =
         config.bar.start.is_some() || config.bar.center.is_some() || config.bar.end.is_some();
