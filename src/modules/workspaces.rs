@@ -45,26 +45,69 @@ impl Default for Favorites {
 #[derive(Debug, Deserialize, Clone)]
 pub struct WorkspacesModule {
     /// Map of actual workspace names to custom names.
+    ///
+    /// Custom names can be [images](images).
+    ///
+    /// If a workspace is not present in the map,
+    /// it will fall back to using its actual name.
     name_map: Option<HashMap<String, String>>,
 
-    /// Array of always shown workspaces, and what monitor to show on
+    /// Workspaces which should always be shown.
+    /// This can either be an array of workspace names,
+    /// or a map of monitor names to arrays of workspace names.
+    ///
+    /// **Default**: `{}`
+    ///
+    /// # Example
+    ///
+    /// ```corn
+    /// // array format
+    /// {
+    ///   type = "workspaces"
+    ///   favorites = ["1", "2", "3"]
+    /// }
+    ///
+    /// // map format
+    /// {
+    ///   type = "workspaces"
+    ///   favorites.DP-1 = ["1", "2", "3"]
+    ///   favorites.DP-2 = ["4", "5", "6"]
+    /// }
+    /// ```
     #[serde(default)]
     favorites: Favorites,
 
-    /// List of workspace names to never show
+    /// A list of workspace names to never show.
+    ///
+    /// This may be useful for scratchpad/special workspaces, for example.
+    ///
+    /// **Default**: `[]`
     #[serde(default)]
     hidden: Vec<String>,
 
-    /// Whether to display buttons for all monitors.
+    /// Whether to display workspaces from all monitors.
+    /// When false, only shows workspaces on the current monitor.
+    ///
+    /// **Default**: `false`
     #[serde(default = "crate::config::default_false")]
     all_monitors: bool,
 
+    /// The method used for sorting workspaces.
+    /// `added` always appends to the end, `alphanumeric` sorts by number/name.
+    ///
+    /// **Valid options**: `added`, `alphanumeric`
+    /// <br>
+    /// **Default**: `alphanumeric`
     #[serde(default)]
     sort: SortOrder,
 
+    /// The size to render icons at (image icons only).
+    ///
+    /// **Default**: `32`
     #[serde(default = "default_icon_size")]
     icon_size: i32,
 
+    /// See [common options](module-level-options#common-options).
     #[serde(flatten)]
     pub common: Option<CommonConfig>,
 }

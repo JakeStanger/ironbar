@@ -19,16 +19,33 @@ use tracing::{debug, error};
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct CairoModule {
+    /// The path to the Lua script to load.
+    /// This can be absolute, or relative to the working directory.
+    ///
+    /// The script must contain the entry `draw` function.
+    ///
+    /// **Required**
     path: PathBuf,
 
+    /// The number of milliseconds between each draw call.
+    ///
+    /// **Default**: `200`
     #[serde(default = "default_frequency")]
     frequency: u64,
 
+    /// The canvas width in pixels.
+    ///
+    /// **Default**: `42`
     #[serde(default = "default_size")]
     width: u32,
+
+    /// The canvas height in pixels.
+    ///
+    /// **Default**: `42`
     #[serde(default = "default_size")]
     height: u32,
 
+    /// See [common options](module-level-options#common-options).
     #[serde(flatten)]
     pub common: Option<CommonConfig>,
 }
