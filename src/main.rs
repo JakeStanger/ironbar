@@ -353,7 +353,7 @@ fn load_output_bars(
 
     let index = lock!(map).iter().position(|n| n == monitor_name);
     let index = match index {
-        Some(index) => index - 1,
+        Some(index) => index,
         None => {
             lock!(map).push(monitor_name.clone());
             lock!(map).len() - 1
