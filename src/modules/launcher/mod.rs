@@ -182,13 +182,22 @@ impl Module<gtk::Box> for LauncherModule {
                         }?;
                     }
                     ToplevelEvent::Update(info) => {
-                        if let Some(item) = lock!(items).get_mut(&info.app_id) {
+                        // check if open, as updates can be sent as program closes
+                        // if it's a focused favourite closing, it otherwise incorrectly re-focuses.
+                        let is_open = if let Some(item) = lock!(items).get_mut(&info.app_id) {
                             item.set_window_focused(info.id, info.focused);
                             item.set_window_name(info.id, info.title.clone());
-                        }
 
-                        send_update(LauncherUpdate::Focus(info.app_id.clone(), info.focused))
-                            .await?;
+                            item.open_state.is_open()
+                        } else {
+                            false
+                        };
+
+                        send_update(LauncherUpdate::Focus(
+                            info.app_id.clone(),
+                            is_open && info.focused,
+                        ))
+                        .await?;
                         send_update(LauncherUpdate::Title(
                             info.app_id.clone(),
                             info.id,
@@ -355,8 +364,7 @@ impl Module<gtk::Box> for LauncherModule {
                             button.set_open(true);
                             button.set_focused(win.open_state.is_focused());
 
-                            let mut menu_state = write_lock!(button.menu_state);
-                            menu_state.num_windows += 1;
+                            write_lock!(button.menu_state).num_windows += 1;
                         }
                     }
                     LauncherUpdate::RemoveItem(app_id) => {
