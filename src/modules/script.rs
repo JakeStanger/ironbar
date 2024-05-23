@@ -12,14 +12,29 @@ use tracing::error;
 #[derive(Debug, Deserialize, Clone)]
 pub struct ScriptModule {
     /// Path to script to execute.
+    ///
+    /// This can be an absolute path,
+    /// or relative to the working directory.
+    ///
+    /// **Required**
     cmd: String,
-    /// Script execution mode
+
+    /// Script execution mode.
+    /// See [modes](#modes) for more info.
+    ///
+    /// **Valid options**: `poll`, `watch`
+    /// <br />
+    /// **Default**: `poll`
     #[serde(default = "default_mode")]
     mode: ScriptMode,
+
     /// Time in milliseconds between executions.
+    ///
+    /// **Default**: `5000`
     #[serde(default = "default_interval")]
     interval: u64,
 
+    /// See [common options](module-level-options#common-options).
     #[serde(flatten)]
     pub common: Option<CommonConfig>,
 }

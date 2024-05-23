@@ -15,15 +15,27 @@ use tokio::sync::mpsc;
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct VolumeModule {
+    /// The format string to use for the widget button label.
+    /// For available tokens, see [below](#formatting-tokens).
+    ///
+    /// **Default**: `{icon} {percentage}%`
     #[serde(default = "default_format")]
     format: String,
 
+    /// Maximum value to allow volume sliders to reach.
+    /// Pulse supports values > 100 but this may result in distortion.
+    ///
+    /// **Default**: `100`
     #[serde(default = "default_max_volume")]
     max_volume: f64,
 
+    /// Volume state icons.
+    ///
+    /// See [icons](#icons).
     #[serde(default)]
     icons: Icons,
 
+    /// See [common options](module-level-options#common-options).
     #[serde(flatten)]
     pub common: Option<CommonConfig>,
 }
@@ -34,12 +46,27 @@ fn default_format() -> String {
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct Icons {
+    /// Icon to show for high volume levels.
+    ///
+    /// **Default**: `󰕾`
     #[serde(default = "default_icon_volume_high")]
     volume_high: String,
+
+    /// Icon to show for medium volume levels.
+    ///
+    /// **Default**: `󰖀`
     #[serde(default = "default_icon_volume_medium")]
     volume_medium: String,
+
+    /// Icon to show for low volume levels.
+    ///
+    /// **Default**: `󰕿`
     #[serde(default = "default_icon_volume_low")]
     volume_low: String,
+
+    /// Icon to show for muted outputs.
+    ///
+    /// **Default**: `󰝟`
     #[serde(default = "default_icon_muted")]
     muted: String,
 }

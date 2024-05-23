@@ -20,15 +20,28 @@ use tracing::{debug, error, warn};
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct TrayModule {
+    /// Requests that icons from the theme be used over the item-provided item.
+    /// Most items only provide one or the other so this will have no effect in most circumstances.
+    ///
+    /// **Default**: `true`
     #[serde(default = "crate::config::default_true")]
     prefer_theme_icons: bool,
 
+    /// Size in pixels to display the tray icons as.
+    ///
+    /// **Default**: `16`
     #[serde(default = "default_icon_size")]
     icon_size: u32,
 
+    /// Direction to display the tray items.
+    ///
+    /// **Valid options**: `top_to_bottom`, `bottom_to_top`, `left_to_right`, `right_to_left`
+    /// <br>
+    /// **Default**: `left_to_right` if bar is horizontal, `top_to_bottom` if bar is vertical
     #[serde(default, deserialize_with = "deserialize_orientation")]
     direction: Option<PackDirection>,
 
+    /// See [common options](module-level-options#common-options).
     #[serde(flatten)]
     pub common: Option<CommonConfig>,
 }
