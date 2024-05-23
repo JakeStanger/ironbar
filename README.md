@@ -59,6 +59,10 @@ Ironbar is designed to support anything from a lightweight bar to a full desktop
 
 [![Packaging status](https://repology.org/badge/vertical-allrepos/ironbar.svg)](https://repology.org/project/ironbar/versions)
 
+Ironbar can be installed from source or using your preferred package manager.
+
+It is also recommended to install a [Nerd Font](https://www.nerdfonts.com/#home) for displaying symbols.
+
 ### Cargo
 
 [crate](https://crates.io/crates/ironbar)

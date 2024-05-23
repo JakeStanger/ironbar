@@ -9,6 +9,8 @@ cargo build --release
 install target/release/ironbar ~/.local/bin/ironbar
 ```
 
+It is also recommended to install a [Nerd Font](https://www.nerdfonts.com/#home) for displaying symbols.
+
 ## Build requirements
 
 To build from source, you must have GTK (>= 3.22) and GTK Layer Shell installed.
