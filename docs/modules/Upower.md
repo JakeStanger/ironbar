@@ -84,11 +84,10 @@ and will be replaced with values from the current battery state:
 
 | Selector                        | Description                    |
 |---------------------------------|--------------------------------|
-| `.upower`                       | Upower widget container.       |
-| `.upower .button`               | Upower widget button.          |
-| `.upower .button .contents`     | Upower widget button contents. |
-| `.upower .button .icon`         | Upower widget battery icon.    |
-| `.upower .button .label`        | Upower widget button label.    |
+| `.upower`                       | Upower widget button.          |
+| `.upower .contents`             | Upower widget button contents. |
+| `.upower .icon`                 | Upower widget battery icon.    |
+| `.upower .label`                | Upower widget button label.    |
 | `.popup-upower`                 | Upower popup box.              |
 | `.popup-upower .upower-details` | Label inside the popup.        |
 
