@@ -9,6 +9,8 @@ If you want to see some ready-to-go config files check
 the [examples folder](https://github.com/JakeStanger/ironbar/tree/master/examples)
 and the example pages in the sidebar.
 
+The examples make use of [Nerd Fonts](https://www.nerdfonts.com/#home) for displaying symbols.
+
 ## 1. Create config file
 
 The config file lives inside the `ironbar` directory in your XDG_CONFIG_DIR, which is usually `~/.config/ironbar`.
