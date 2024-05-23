@@ -53,7 +53,7 @@ interval = 500
 [[end]]
 type = "sys_info"
 format = [
-    " {cpu_percent}% | {temp_c:k10temp_Tccd1}°C",
+    " {cpu_percent}% | {temp_c:k10temp-Tccd1}°C",
     " {memory_used} / {memory_total} GB ({memory_percent}%)",
     "| {swap_used} / {swap_total} GB ({swap_percent}%)",
     "󰋊 {disk_used:/} / {disk_total:/} GB ({disk_percent:/}%)",
