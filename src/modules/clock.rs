@@ -17,23 +17,47 @@ use crate::{glib_recv, module_impl, send_async, spawn, try_send};
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct ClockModule {
-    /// Date/time format string.
-    /// Default: `%d/%m/%Y %H:%M`
+    /// The format string to use for the date/time shown on the bar.
+    /// Pango markup is supported.
     ///
     /// Detail on available tokens can be found here:
     /// <https://docs.rs/chrono/latest/chrono/format/strftime/index.html>
+    ///
+    /// **Default**: `%d/%m/%Y %H:%M`
     #[serde(default = "default_format")]
     format: String,
 
+    /// The format string to use for the date/time shown in the popup header.
+    /// Pango markup is supported.
+    ///
+    /// Detail on available tokens can be found here:
+    /// <https://docs.rs/chrono/latest/chrono/format/strftime/index.html>
+    ///
+    /// **Default**: `%H:%M:%S`
     #[serde(default = "default_popup_format")]
     format_popup: String,
 
+    /// The locale to use when formatting dates.
+    ///
+    /// Note this will not control the calendar -
+    /// for that you must set `LC_TIME`.
+    ///
+    /// **Valid options**: See [here](https://docs.rs/pure-rust-locales/0.8.1/pure_rust_locales/enum.Locale.html#variants)
+    /// <br>
+    /// **Default**: `$LC_TIME` or `$LANG` or `'POSIX'`
     #[serde(default = "default_locale")]
     locale: String,
 
+    /// The orientation to display the widget contents.
+    /// Setting to vertical will rotate text 90 degrees.
+    ///
+    /// **Valid options**: `horizontal`, `vertical`
+    /// <br>
+    /// **Default**: `horizontal`
     #[serde(default)]
     orientation: ModuleOrientation,
 
+    /// See [common options](module-level-options#common-options).
     #[serde(flatten)]
     pub common: Option<CommonConfig>,
 }

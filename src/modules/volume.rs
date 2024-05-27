@@ -19,12 +19,17 @@ use tokio::sync::mpsc;
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct VolumeModule {
+    /// Maximum value to allow volume sliders to reach.
+    /// Pulse supports values > 100 but this may result in distortion.
+    ///
+    /// **Default**: `100`
     #[serde(default = "default_max_volume")]
     max_volume: f64,
 
     #[serde(default = "default_icon_size")]
     icon_size: i32,
 
+    /// See [common options](module-level-options#common-options).
     #[serde(flatten)]
     pub common: Option<CommonConfig>,
 }

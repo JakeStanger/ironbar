@@ -18,18 +18,34 @@ use tracing::{debug, error};
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct ClipboardModule {
+    /// The icon to show on the bar widget button.
+    /// Supports [image](images) icons.
+    ///
+    /// **Default**: `󰨸`
     #[serde(default = "default_icon")]
     icon: String,
 
+    /// The size to render the icon at.
+    /// Note this only applies to image-type icons.
+    ///
+    /// **Default**: `32`
     #[serde(default = "default_icon_size")]
     icon_size: i32,
 
+    /// The maximum number of items to keep in the history,
+    /// and to show in the popup.
+    ///
+    /// **Default**: `10`
     #[serde(default = "default_max_items")]
     max_items: usize,
 
     // -- Common --
+    /// See [truncate options](module-level-options#truncate-mode).
+    ///
+    /// **Default**: `null`
     truncate: Option<TruncateMode>,
 
+    /// See [common options](module-level-options#common-options).
     #[serde(flatten)]
     pub common: Option<CommonConfig>,
 }

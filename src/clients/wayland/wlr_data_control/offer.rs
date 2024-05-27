@@ -5,7 +5,7 @@ use nix::unistd::{close, pipe2};
 use smithay_client_toolkit::data_device_manager::data_offer::DataOfferError;
 use smithay_client_toolkit::data_device_manager::ReadPipe;
 use std::ops::DerefMut;
-use std::os::fd::{BorrowedFd, FromRawFd};
+use std::os::fd::{AsFd, AsRawFd};
 use std::sync::{Arc, Mutex};
 use tracing::{trace, warn};
 use wayland_client::{Connection, Dispatch, Proxy, QueueHandle};
@@ -176,11 +176,11 @@ pub unsafe fn receive(
     // create a pipe
     let (readfd, writefd) = pipe2(OFlag::O_CLOEXEC)?;
 
-    offer.receive(mime_type, BorrowedFd::borrow_raw(writefd));
+    offer.receive(mime_type, writefd.as_fd());
 
-    if let Err(err) = close(writefd) {
+    if let Err(err) = close(writefd.as_raw_fd()) {
         warn!("Failed to close write pipe: {}", err);
     }
 
-    Ok(FromRawFd::from_raw_fd(readfd))
+    Ok(ReadPipe::from(readfd))
 }

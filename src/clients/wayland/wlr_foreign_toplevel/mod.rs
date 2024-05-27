@@ -77,7 +77,6 @@ impl ToplevelHandleHandler for Environment {
         match handle.info() {
             Some(info) => {
                 trace!("Updating handle: {info:?}");
-                self.handles.push(handle.clone());
                 if let Some(info) = handle.info() {
                     try_send!(self.event_tx, Event::Toplevel(ToplevelEvent::Update(info)));
                 }

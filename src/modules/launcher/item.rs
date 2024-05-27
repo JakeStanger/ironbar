@@ -40,7 +40,7 @@ impl Item {
         let id = info.id;
 
         if self.windows.is_empty() {
-            self.name = info.title.clone();
+            self.name.clone_from(&info.title);
         }
 
         let window = Window::from(info);
@@ -59,7 +59,7 @@ impl Item {
     pub fn set_window_name(&mut self, window_id: usize, name: String) {
         if let Some(window) = self.windows.get_mut(&window_id) {
             if let OpenState::Open { focused: true, .. } = window.open_state {
-                self.name = name.clone();
+                self.name.clone_from(&name);
             }
 
             window.name = name;
