@@ -55,7 +55,7 @@ let {
         interval.networks = 3
 
         format = [
-            " {cpu_percent}% | {temp_c:k10temp_Tccd1}°C"
+            " {cpu_percent}% | {temp_c:k10temp-Tccd1}°C"
             " {memory_used} / {memory_total} GB ({memory_percent}%)"
             "| {swap_used} / {swap_total} GB ({swap_percent}%)"
             "󰋊 {disk_used:/} / {disk_total:/} GB ({disk_percent:/}%)"
@@ -81,7 +81,7 @@ let {
 
     $volume = {
         type = "volume"
-        format = "{icon} {volume}%"
+        format = "{icon} {percentage}%"
         max_volume = 100
         icons.volume_high = "󰕾"
         icons.volume_medium = "󰖀"

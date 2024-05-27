@@ -93,7 +93,7 @@ impl IronVar {
     /// Sets the current variable value.
     /// The change is broadcast to all receivers.
     fn set(&mut self, value: Option<String>) {
-        self.value = value.clone();
+        self.value.clone_from(&value);
         send!(self.tx, value);
     }
 

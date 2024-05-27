@@ -29,19 +29,28 @@ use tracing::{debug, error};
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct CustomModule {
-    /// Widgets to add to the bar container
+    /// Modules and widgets to add to the bar container.
+    ///
+    /// **Default**: `[]`
     bar: Vec<WidgetConfig>,
-    /// Widgets to add to the popup container
+
+    /// Modules and widgets to add to the popup container.
+    ///
+    /// **Default**: `null`
     popup: Option<Vec<WidgetConfig>>,
 
+    /// See [common options](module-level-options#common-options).
     #[serde(flatten)]
     pub common: Option<CommonConfig>,
 }
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct WidgetConfig {
+    /// One of a custom module native Ironbar module.
     #[serde(flatten)]
     widget: WidgetOrModule,
+
+    /// See [common options](module-level-options#common-options).
     #[serde(flatten)]
     common: CommonConfig,
 }
@@ -49,18 +58,27 @@ pub struct WidgetConfig {
 #[derive(Debug, Deserialize, Clone)]
 #[serde(untagged)]
 pub enum WidgetOrModule {
+    /// A custom-module specific basic widget
     Widget(Widget),
+    /// A native Ironbar module, such as `clock` or `focused`.
+    /// All widgets are supported, including their popups.
     Module(ModuleConfig),
 }
 
 #[derive(Debug, Deserialize, Clone)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum Widget {
+    /// A container to place nested widgets inside.
     Box(BoxWidget),
+    /// A text label. Pango markup is supported.
     Label(LabelWidget),
+    /// A clickable button, which can run a command when clicked.
     Button(ButtonWidget),
+    /// An image or icon from disk or http.
     Image(ImageWidget),
+    /// A draggable slider.
     Slider(SliderWidget),
+    /// A progress bar.
     Progress(ProgressWidget),
 }
 
