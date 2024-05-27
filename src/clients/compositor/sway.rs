@@ -90,7 +90,7 @@ impl From<Node> for Workspace {
         let visibility = Visibility::from(&node);
 
         Self {
-            id: node.id.to_string(),
+            id: node.id,
             name: node.name.unwrap_or_default(),
             monitor: node.output.unwrap_or_default(),
             visibility,
@@ -103,7 +103,7 @@ impl From<swayipc_async::Workspace> for Workspace {
         let visibility = Visibility::from(&workspace);
 
         Self {
-            id: workspace.id.to_string(),
+            id: workspace.id,
             name: workspace.name,
             monitor: workspace.output,
             visibility,
@@ -141,13 +141,9 @@ impl From<WorkspaceEvent> for WorkspaceUpdate {
             WorkspaceChange::Init => {
                 Self::Add(event.current.expect("Missing current workspace").into())
             }
-            WorkspaceChange::Empty => Self::Remove(
-                event
-                    .current
-                    .expect("Missing current workspace")
-                    .name
-                    .unwrap_or_default(),
-            ),
+            WorkspaceChange::Empty => {
+                Self::Remove(event.current.expect("Missing current workspace").id)
+            }
             WorkspaceChange::Focus => Self::Focus {
                 old: event.old.map(Workspace::from),
                 new: Workspace::from(event.current.expect("Missing current workspace")),

@@ -53,10 +53,10 @@ jobs:
 
       - name: Compress the built binary
         if: ${{ matrix.platform.zipext == '.tar.gz' }}
-        run: tar -zcvf ${{env.BINARY_NAME}}-${{github.ref_name}}-${{matrix.platform.target}}.tar.gz -C target/${{matrix.platform.target}}/release ${{env.BINARY_NAME}}
+        run: tar -zcvf ${{env.BINARY_NAME}}-${{needs.get_last_release.outputs.latest_release_tag}}-${{matrix.platform.target}}.tar.gz -C target/${{matrix.platform.target}}/release ${{env.BINARY_NAME}}
 
       - name: Upload to release
-        run: gh release upload ${{needs.get_last_release.outputs.latest_release_tag}} ${{env.BINARY_NAME}}-${{github.ref_name}}-${{matrix.platform.target}}${{matrix.platform.zipext}}
+        run: gh release upload ${{needs.get_last_release.outputs.latest_release_tag}} ${{env.BINARY_NAME}}-${{needs.get_last_release.outputs.latest_release_tag}}-${{matrix.platform.target}}${{matrix.platform.zipext}}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 

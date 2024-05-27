@@ -14,14 +14,49 @@ use super::{CustomWidget, CustomWidgetContext};
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct ProgressWidget {
+    /// Widget name.
+    ///
+    /// **Default**: `null`
     name: Option<String>,
+
+    /// Widget class name.
+    ///
+    /// **Default**: `null`
     class: Option<String>,
+
+    /// Orientation of the progress bar.
+    ///
+    /// **Valid options**: `horizontal`, `vertical`, `h`, `v`
+    /// <br />
+    /// **Default**: `horizontal`
     #[serde(default)]
     orientation: ModuleOrientation,
+
+    /// Text label to show for the progress bar.
+    ///
+    /// This is a [Dynamic String](dynamic-values#dynamic-string).
+    ///
+    /// **Default**: `null`
     label: Option<String>,
+
+    /// Script to run to get the progress bar value.
+    /// Output must be a valid percentage.
+    ///
+    /// Note that this expects a numeric value between `0`-`max` as output.
+    ///
+    /// **Default**: `null`
     value: Option<ScriptInput>,
+
+    /// The maximum progress bar value.
+    ///
+    /// **Default**: `100`
     #[serde(default = "default_max")]
     max: f64,
+
+    /// The progress bar length, in pixels.
+    /// GTK will automatically determine the size if left blank.
+    ///
+    /// **Default**: `null`
     length: Option<i32>,
 }
 

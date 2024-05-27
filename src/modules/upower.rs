@@ -23,12 +23,20 @@ const MINUTE: i64 = 60;
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct UpowerModule {
+    /// The format string to use for the widget button label.
+    /// For available tokens, see [below](#formatting-tokens).
+    ///
+    /// **Default**: `{percentage}%`
     #[serde(default = "default_format")]
     format: String,
 
+    /// The size to render the icon at, in pixels.
+    ///
+    /// **Default**: `24`
     #[serde(default = "default_icon_size")]
     icon_size: i32,
 
+    /// See [common options](module-level-options#common-options).
     #[serde(flatten)]
     pub common: Option<CommonConfig>,
 }

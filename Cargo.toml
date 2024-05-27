@@ -1,6 +1,6 @@
 [package]
 name = "ironbar"
-version = "0.15.0"
+version = "0.16.0-pre"
 edition = "2021"
 license = "MIT"
 description = "Customisable GTK Layer Shell wlroots/sway bar"
@@ -99,7 +99,7 @@ tracing-error = { version = "0.2.0" , default-features = false }
 tracing-appender = "0.2.3"
 strip-ansi-escapes = "0.2.0"
 color-eyre = "0.6.3"
-serde = { version = "1.0.198", features = ["derive"] }
+serde = { version = "1.0.202", features = ["derive"] }
 indexmap = "2.2.6"
 dirs = "5.0.1"
 walkdir = "2.5.0"
@@ -117,18 +117,18 @@ cfg-if = "1.0.0"
 clap = { version = "4.5.4", optional = true, features = ["derive"] }
 
 # ipc
-serde_json = { version = "1.0.116", optional = true }
+serde_json = { version = "1.0.117", optional = true }
 
 # http
 reqwest = { version = "0.12.4", default_features = false, features = ["default-tls", "http2"], optional = true }
 
 # cairo
 lua-src =  {  version = "546.0.2", optional = true }
-mlua = { version = "0.9.7", optional = true, features = ["luajit"] }
+mlua = { version = "0.9.8", optional = true, features = ["luajit"] }
 cairo-rs = { version = "0.18.5", optional = true, features = ["png"] }
 
 # clipboard
-nix = { version = "0.27.1", optional = true, features = ["event"] }
+nix = { version = "0.28.0", optional = true, features = ["event", "fs"] }
 
 # clock
 chrono = { version = "0.4.38", optional = true, default_features = false, features = ["clock", "unstable-locales"] }
@@ -154,7 +154,8 @@ libpulse-binding = { version = "2.28.1", optional = true }
 
 # workspaces
 swayipc-async = { version = "2.0.1", optional = true }
-hyprland = { version = "0.3.13", default_features = false, features = ["listener", "tokio", "silent"], optional = true }
+hyprland = { version = "0.4.0-alpha.2", features = ["silent"], optional = true }
+futures-util = { version = "0.3.30", optional = true }
 
 # shared
 futures-lite = { version = "2.3.0", optional = true } # networkmanager, upower, workspaces

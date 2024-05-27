@@ -7,26 +7,153 @@ use gtk::{EventBox, Orientation, Revealer, RevealerTransitionType};
 use serde::Deserialize;
 use tracing::trace;
 
-/// Common configuration options
-/// which can be set on every module.
+/// The following are module-level options which are present on **all** modules.
+///
+/// Each module also provides options specific to its type.
+/// For details on those, check the relevant module documentation.
+///
+/// For information on the Script type, and embedding scripts in strings,
+/// see [here](script).
+/// For information on styling, please see the [styling guide](styling-guide).
 #[derive(Debug, Default, Deserialize, Clone)]
 pub struct CommonConfig {
-    pub class: Option<String>,
+    /// Sets the unique widget name,
+    /// allowing you to target it in CSS using `#name`.
+    ///
+    /// It is best practise (although not required) to ensure that the value is
+    /// globally unique throughout the Ironbar instance
+    /// to avoid clashes.
+    ///
+    /// **Default**: `null`
     pub name: Option<String>,
 
+    /// Sets one or more CSS classes,
+    /// allowing you to target it in CSS using `.class`.
+    ///
+    /// Unlike [name](#name), the `class` property is not expected to be unique.
+    ///
+    /// **Default**: `null`
+    pub class: Option<String>,
+
+    /// Shows this text on hover.
+    /// Supports embedding scripts between `{{double braces}}`.
+    ///
+    /// Note that full dynamic string support is not currently supported.
+    ///
+    /// **Default**: `null`
+    pub tooltip: Option<String>,
+
+    /// Shows the module only if the dynamic boolean evaluates to true.
+    ///
+    /// This allows for modules to be dynamically shown or hidden
+    /// based on custom events.
+    ///
+    /// **Default**: `null`
     pub show_if: Option<DynamicBool>,
+
+    /// The transition animation to use when showing/hiding the widget.
+    ///
+    /// Note this has no effect if `show_if` is not configured.
+    ///
+    /// **Valid options**: `slide_start`, `slide_end`, `crossfade`, `none`
+    /// <br>
+    /// **Default**: `slide_start`
     pub transition_type: Option<TransitionType>,
+
+    /// The length in milliseconds
+    /// of the transition animation to use when showing/hiding the widget.
+    ///
+    /// Note this has no effect if `show_if` is not configured.
+    ///
+    /// **Default**: `250`
     pub transition_duration: Option<u32>,
 
+    /// A [script](scripts) to run when the module is left-clicked.
+    ///
+    /// **Supported script types**: `oneshot`.
+    /// <br>
+    /// **Default**: `null`
+    ///
+    /// # Example
+    ///
+    /// ```corn
+    /// { on_click_left = "echo 'event' >> log.txt" }
+    /// ```
     pub on_click_left: Option<ScriptInput>,
+
+    /// A [script](scripts) to run when the module is right-clicked.
+    ///
+    /// **Supported script types**: `oneshot`.
+    /// <br>
+    /// **Default**: `null`
+    /// /// # Example
+    ///
+    /// ```corn
+    /// { on_click_right = "echo 'event' >> log.txt" }
+    /// ```
     pub on_click_right: Option<ScriptInput>,
+
+    /// A [script](scripts) to run when the module is middle-clicked.
+    ///
+    /// **Supported script types**: `oneshot`.
+    /// <br>
+    /// **Default**: `null`
+    /// # Example
+    ///
+    /// ```corn
+    /// { on_click_middle = "echo 'event' >> log.txt" }
+    /// ```
     pub on_click_middle: Option<ScriptInput>,
+
+    /// A [script](scripts) to run when the module is scrolled up on.
+    ///
+    /// **Supported script types**: `oneshot`.
+    /// <br>
+    /// **Default**: `null`
+    /// # Example
+    ///
+    /// ```corn
+    /// { on_scroll_up = "echo 'event' >> log.txt" }
+    /// ```
     pub on_scroll_up: Option<ScriptInput>,
+
+    /// A [script](scripts) to run when the module is scrolled down on.
+    ///
+    /// **Supported script types**: `oneshot`.
+    /// <br>
+    /// **Default**: `null`
+    /// # Example
+    ///
+    /// ```corn
+    /// { on_scroll_down = "echo 'event' >> log.txt" }
+    /// ```
     pub on_scroll_down: Option<ScriptInput>,
+
+    /// A [script](scripts) to run when the cursor begins hovering over the module.
+    ///
+    /// **Supported script types**: `oneshot`.
+    /// <br>
+    /// **Default**: `null`
+    /// # Example
+    ///
+    /// ```corn
+    /// { on_mouse_enter = "echo 'event' >> log.txt" }
+    /// ```
     pub on_mouse_enter: Option<ScriptInput>,
+
+    /// A [script](scripts) to run when the cursor stops hovering over the module.
+    ///
+    /// **Supported script types**: `oneshot`.
+    /// <br>
+    /// **Default**: `null`
+    /// # Example
+    ///
+    /// ```corn
+    /// { on_mouse_exit = "echo 'event' >> log.txt" }
+    /// ```
     pub on_mouse_exit: Option<ScriptInput>,
 
-    pub tooltip: Option<String>,
+    /// Prevents the popup from opening on-click for this widget.
     #[serde(default)]
     pub disable_popup: bool,
 }
