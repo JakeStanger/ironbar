@@ -76,6 +76,8 @@ workspaces = ["futures-lite"]
 "workspaces+sway" = ["workspaces", "swayipc-async"]
 "workspaces+hyprland" = ["workspaces", "hyprland"]
 
+schema = ["dep:schemars"]
+
 [dependencies]
 # core
 gtk = "0.18.1"
@@ -157,3 +159,6 @@ regex = { version = "1.10.4", default-features = false, features = [
   "std",
 ], optional = true } # music, sys_info
 zbus = { version = "3.15.2", default-features = false, features = ["tokio"], optional = true } # notifications, upower
+
+# schema
+schemars = { version = "0.8.19", optional = true }

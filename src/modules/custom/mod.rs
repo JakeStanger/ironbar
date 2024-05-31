@@ -28,6 +28,7 @@ use tokio::sync::{broadcast, mpsc};
 use tracing::{debug, error};
 
 #[derive(Debug, Deserialize, Clone)]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 pub struct CustomModule {
     /// Modules and widgets to add to the bar container.
     ///
@@ -45,6 +46,7 @@ pub struct CustomModule {
 }
 
 #[derive(Debug, Deserialize, Clone)]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 pub struct WidgetConfig {
     /// One of a custom module native Ironbar module.
     #[serde(flatten)]
@@ -57,6 +59,7 @@ pub struct WidgetConfig {
 
 #[derive(Debug, Deserialize, Clone)]
 #[serde(untagged)]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 pub enum WidgetOrModule {
     /// A custom-module specific basic widget
     Widget(Widget),
@@ -67,6 +70,7 @@ pub enum WidgetOrModule {
 
 #[derive(Debug, Deserialize, Clone)]
 #[serde(tag = "type", rename_all = "snake_case")]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 pub enum Widget {
     /// A container to place nested widgets inside.
     Box(BoxWidget),

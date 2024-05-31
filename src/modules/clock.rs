@@ -16,6 +16,7 @@ use crate::modules::{
 use crate::{glib_recv, module_impl, send_async, spawn, try_send};
 
 #[derive(Debug, Deserialize, Clone)]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 pub struct ClockModule {
     /// The format string to use for the date/time shown on the bar.
     /// Pango markup is supported.

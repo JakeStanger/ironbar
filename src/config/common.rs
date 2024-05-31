@@ -16,6 +16,7 @@ use tracing::trace;
 /// see [here](script).
 /// For information on styling, please see the [styling guide](styling-guide).
 #[derive(Debug, Default, Deserialize, Clone)]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 pub struct CommonConfig {
     /// Sets the unique widget name,
     /// allowing you to target it in CSS using `#name`.
@@ -160,6 +161,7 @@ pub struct CommonConfig {
 
 #[derive(Debug, Deserialize, Clone)]
 #[serde(rename_all = "snake_case")]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 pub enum TransitionType {
     None,
     Crossfade,
@@ -169,6 +171,7 @@ pub enum TransitionType {
 
 #[derive(Debug, Default, Deserialize, Clone, Copy)]
 #[serde(rename_all = "snake_case")]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 pub enum ModuleOrientation {
     #[default]
     #[serde(alias = "h")]

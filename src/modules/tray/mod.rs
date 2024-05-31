@@ -19,6 +19,7 @@ use tokio::sync::mpsc;
 use tracing::{debug, error, warn};
 
 #[derive(Debug, Deserialize, Clone)]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 pub struct TrayModule {
     /// Requests that icons from the theme be used over the item-provided item.
     /// Most items only provide one or the other so this will have no effect in most circumstances.
@@ -38,7 +39,8 @@ pub struct TrayModule {
     /// **Valid options**: `top_to_bottom`, `bottom_to_top`, `left_to_right`, `right_to_left`
     /// <br>
     /// **Default**: `left_to_right` if bar is horizontal, `top_to_bottom` if bar is vertical
-    #[serde(default, deserialize_with = "deserialize_orientation")]
+    #[serde(default, deserialize_with = "deserialize_pack_direction")]
+    #[cfg_attr(feature = "schema", schemars(schema_with = "schema_pack_direction"))]
     direction: Option<PackDirection>,
 
     /// See [common options](module-level-options#common-options).
@@ -50,7 +52,7 @@ const fn default_icon_size() -> u32 {
     16
 }
 
-fn deserialize_orientation<'de, D>(deserializer: D) -> Result<Option<PackDirection>, D::Error>
+fn deserialize_pack_direction<'de, D>(deserializer: D) -> Result<Option<PackDirection>, D::Error>
 where
     D: serde::Deserializer<'de>,
 {
@@ -61,9 +63,22 @@ where
             "right_to_left" => Ok(PackDirection::Rtl),
             "top_to_bottom" => Ok(PackDirection::Ttb),
             "bottom_to_top" => Ok(PackDirection::Btt),
-            _ => Err(serde::de::Error::custom("invalid value for orientation")),
+            _ => Err(serde::de::Error::custom("invalid value for direction")),
         })
         .transpose()
+}
+
+#[cfg(feature = "schema")]
+fn schema_pack_direction(gen: &mut schemars::gen::SchemaGenerator) -> schemars::schema::Schema {
+    use schemars::JsonSchema;
+    let mut schema: schemars::schema::SchemaObject = <String>::json_schema(gen).into();
+    schema.enum_values = Some(vec![
+        "top_to_bottom".into(),
+        "bottom_to_top".into(),
+        "left_to_right".into(),
+        "right_to_left".into(),
+    ]);
+    schema.into()
 }
 
 impl Module<MenuBar> for TrayModule {

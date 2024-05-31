@@ -17,6 +17,7 @@ use tokio::sync::{broadcast, mpsc};
 use tracing::{debug, error};
 
 #[derive(Debug, Deserialize, Clone)]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 pub struct ClipboardModule {
     /// The icon to show on the bar widget button.
     /// Supports [image](images) icons.
