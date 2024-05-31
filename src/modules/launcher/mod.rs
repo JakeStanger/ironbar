@@ -7,7 +7,7 @@ use super::{Module, ModuleInfo, ModuleParts, ModulePopup, ModuleUpdateEvent, Wid
 use crate::clients::wayland::{self, ToplevelEvent};
 use crate::config::CommonConfig;
 use crate::desktop_file::find_desktop_file;
-use crate::{arc_mut, glib_recv, lock, send_async, spawn, try_send, write_lock};
+use crate::{arc_mut, glib_recv, lock, module_impl, send_async, spawn, try_send, write_lock};
 use color_eyre::{Help, Report};
 use gtk::prelude::*;
 use gtk::{Button, Orientation};
@@ -22,17 +22,38 @@ use tracing::{debug, error, trace};
 pub struct LauncherModule {
     /// List of app IDs (or classes) to always show regardless of open state,
     /// in the order specified.
+    ///
+    /// **Default**: `null`
     favorites: Option<Vec<String>>,
+
     /// Whether to show application names on the bar.
+    ///
+    /// **Default**: `false`
     #[serde(default = "crate::config::default_false")]
     show_names: bool,
+
     /// Whether to show application icons on the bar.
+    ///
+    /// **Default**: `true`
     #[serde(default = "crate::config::default_true")]
     show_icons: bool,
 
+    /// Size in pixels to render icon at (image icons only).
+    ///
+    /// **Default**: `32`
     #[serde(default = "default_icon_size")]
     icon_size: i32,
 
+    /// Whether items should be added from right-to-left
+    /// instead of left-to-right.
+    ///
+    /// This includes favourites.
+    ///
+    /// **Default**: `false`
+    #[serde(default = "crate::config::default_false")]
+    reversed: bool,
+
+    /// See [common options](module-level-options#common-options).
     #[serde(flatten)]
     pub common: Option<CommonConfig>,
 }
@@ -80,9 +101,7 @@ impl Module<gtk::Box> for LauncherModule {
     type SendMessage = LauncherUpdate;
     type ReceiveMessage = ItemEvent;
 
-    fn name() -> &'static str {
-        "launcher"
-    }
+    module_impl!("launcher");
 
     fn spawn_controller(
         &self,
@@ -181,13 +200,22 @@ impl Module<gtk::Box> for LauncherModule {
                         }?;
                     }
                     ToplevelEvent::Update(info) => {
-                        if let Some(item) = lock!(items).get_mut(&info.app_id) {
+                        // check if open, as updates can be sent as program closes
+                        // if it's a focused favourite closing, it otherwise incorrectly re-focuses.
+                        let is_open = if let Some(item) = lock!(items).get_mut(&info.app_id) {
                             item.set_window_focused(info.id, info.focused);
                             item.set_window_name(info.id, info.title.clone());
-                        }
 
-                        send_update(LauncherUpdate::Focus(info.app_id.clone(), info.focused))
-                            .await?;
+                            item.open_state.is_open()
+                        } else {
+                            false
+                        };
+
+                        send_update(LauncherUpdate::Focus(
+                            info.app_id.clone(),
+                            is_open && info.focused,
+                        ))
+                        .await?;
                         send_update(LauncherUpdate::Title(
                             info.app_id.clone(),
                             info.id,
@@ -340,7 +368,12 @@ impl Module<gtk::Box> for LauncherModule {
                                 &controller_tx,
                             );
 
-                            container.add(&button.button);
+                            if self.reversed {
+                                container.pack_end(&button.button, false, false, 0);
+                            } else {
+                                container.add(&button.button);
+                            }
+
                             buttons.insert(item.app_id, button);
                         }
                     }
@@ -349,8 +382,7 @@ impl Module<gtk::Box> for LauncherModule {
                             button.set_open(true);
                             button.set_focused(win.open_state.is_focused());
 
-                            let mut menu_state = write_lock!(button.menu_state);
-                            menu_state.num_windows += 1;
+                            write_lock!(button.menu_state).num_windows += 1;
                         }
                     }
                     LauncherUpdate::RemoveItem(app_id) => {
@@ -401,7 +433,7 @@ impl Module<gtk::Box> for LauncherModule {
 
         let rx = context.subscribe();
         let popup = self
-            .into_popup(context.controller_tx, rx, info)
+            .into_popup(context.controller_tx.clone(), rx, context, info)
             .into_popup_parts(vec![]); // since item buttons are dynamic, they pass their geometry directly
 
         Ok(ModuleParts {
@@ -414,6 +446,7 @@ impl Module<gtk::Box> for LauncherModule {
         self,
         controller_tx: mpsc::Sender<Self::ReceiveMessage>,
         rx: broadcast::Receiver<Self::SendMessage>,
+        _context: WidgetContext<Self::SendMessage, Self::ReceiveMessage>,
         _info: &ModuleInfo,
     ) -> Option<gtk::Box> {
         const MAX_WIDTH: i32 = 250;

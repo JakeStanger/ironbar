@@ -1,0 +1,60 @@
+let {
+    $config_dir = "/home/jake/.config/ironbar"
+
+    $workspaces = { type = "workspaces"  }
+    $launcher = { type = "launcher" }
+    $volume = {
+        type = "volume"
+        format = "{icon} {percentage}%"
+        max_volume = 100
+        icons.volume_high = "󰕾"
+        icons.volume_medium = "󰖀"
+        icons.volume_low = "󰕿"
+        icons.muted = "󰝟"
+    }
+    $network_manager = { type = "networkmanager" }
+    $clock = {
+        type = "clock"
+        // disable_popup = true
+        // format = "<span color='#f2777a'>%d/%m/%Y</span> <span color='#69c'>%H:%M:%S</span>"
+    }
+    $tray = { type = "tray" prefer_theme_icons = false }
+
+    // $label = { type = "label" label = "<span color='#color'>hello</span>" }
+    $label = { type = "label" label = "#random" }
+    $clipboard = { type = "clipboard" }
+
+    $notifications = {
+        type = "notifications"
+        show_count = true
+
+        icons.closed_none = "󰍥"
+        icons.closed_some = "󱥂"
+        icons.closed_dnd = "󱅯"
+        icons.open_none = "󰍡"
+        icons.open_some = "󱥁"
+        icons.open_dnd = "󱅮"
+    }
+
+    $focused = { type = "focused" }
+
+    $cairo = { type = "cairo" path = "$config_dir/clock.lua" frequency = 50 width = 300 height = 300 }
+
+    $custom = {
+        type = "custom"
+        bar = [ { type = "button" on_click = "popup:toggle" widgets = [ $focused ] } ]
+        popup = [ { type = "box" orientation = "v" widgets = [ $clock $cairo ] } ]
+    }
+
+    $mpris = { type = "music" }
+} in {
+    // ironvar_defaults.color = "red"
+
+    position = "bottom"
+
+    icon_theme = "Paper"
+
+     start = [ $workspaces $label ]
+     center = [ $custom ]
+     end = [ $notifications $clock ]
+}

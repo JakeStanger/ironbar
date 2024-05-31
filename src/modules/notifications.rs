@@ -2,7 +2,7 @@ use crate::clients::swaync;
 use crate::config::CommonConfig;
 use crate::gtk_helpers::IronbarGtkExt;
 use crate::modules::{Module, ModuleInfo, ModuleParts, ModuleUpdateEvent, WidgetContext};
-use crate::{glib_recv, send_async, spawn, try_send};
+use crate::{glib_recv, module_impl, send_async, spawn, try_send};
 use gtk::prelude::*;
 use gtk::{Align, Button, Label, Overlay};
 use serde::Deserialize;
@@ -11,28 +11,60 @@ use tracing::error;
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct NotificationsModule {
+    /// Whether to show the current notification count.
+    ///
+    /// **Default**: `true`
     #[serde(default = "crate::config::default_true")]
     show_count: bool,
 
+    /// SwayNC state icons.
+    ///
+    /// See [icons](#icons).
     #[serde(default)]
     icons: Icons,
 
+    /// See [common options](module-level-options#common-options).
     #[serde(flatten)]
     pub common: Option<CommonConfig>,
 }
 
 #[derive(Debug, Deserialize, Clone)]
 struct Icons {
+    /// Icon to show when the panel is closed, with no notifications.
+    ///
+    /// **Default**: `󰍥`
     #[serde(default = "default_icon_closed_none")]
     closed_none: String,
+
+    /// Icon to show when the panel is closed, with notifications.
+    ///
+    /// **Default**: `󱥂`
     #[serde(default = "default_icon_closed_some")]
     closed_some: String,
+
+    /// Icon to show when the panel is closed, with DnD enabled.
+    /// Takes higher priority than count-based icons.
+    ///
+    /// **Default**: `󱅯`
     #[serde(default = "default_icon_closed_dnd")]
     closed_dnd: String,
+
+    /// Icon to show when the panel is open, with no notifications.
+    ///
+    /// **Default**: `󰍡`
     #[serde(default = "default_icon_open_none")]
     open_none: String,
+
+    /// Icon to show when the panel is open, with notifications.
+    ///
+    /// **Default**: `󱥁`
     #[serde(default = "default_icon_open_some")]
     open_some: String,
+
+    /// Icon to show when the panel is open, with DnD enabled.
+    /// Takes higher priority than count-based icons.
+    ///
+    /// **Default**: `󱅮`
     #[serde(default = "default_icon_open_dnd")]
     open_dnd: String,
 }
@@ -75,7 +107,7 @@ fn default_icon_open_dnd() -> String {
 }
 
 impl Icons {
-    fn icon(&self, value: &swaync::Event) -> &str {
+    fn icon(&self, value: swaync::Event) -> &str {
         match (value.cc_open, value.count > 0, value.dnd) {
             (true, _, true) => &self.open_dnd,
             (true, true, false) => &self.open_some,
@@ -97,9 +129,7 @@ impl Module<Overlay> for NotificationsModule {
     type SendMessage = swaync::Event;
     type ReceiveMessage = UiEvent;
 
-    fn name() -> &'static str {
-        "notifications"
-    }
+    module_impl!("notifications");
 
     fn spawn_controller(
         &self,
@@ -110,7 +140,7 @@ impl Module<Overlay> for NotificationsModule {
     where
         <Self as Module<Overlay>>::SendMessage: Clone,
     {
-        let client = context.client::<swaync::Client>();
+        let client = context.try_client::<swaync::Client>()?;
 
         {
             let client = client.clone();
@@ -174,7 +204,7 @@ impl Module<Overlay> for NotificationsModule {
             let button = button.clone();
 
             glib_recv!(context.subscribe(), ev => {
-                let icon = self.icons.icon(&ev);
+                let icon = self.icons.icon(ev);
                 button.set_label(icon);
 
                 label.set_label(&ev.count.to_string());

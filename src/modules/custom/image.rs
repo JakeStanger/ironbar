@@ -10,9 +10,27 @@ use super::{CustomWidget, CustomWidgetContext};
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct ImageWidget {
+    /// Widget name.
+    ///
+    /// **Default**: `null`
     name: Option<String>,
+
+    /// Widget class name.
+    ///
+    /// **Default**: `null`
     class: Option<String>,
+
+    /// Image source.
+    ///
+    /// This is an [image](image) via [Dynamic String](dynamic-values#dynamic-string).
+    ///
+    /// **Required**
     src: String,
+
+    /// The width/height of the image.
+    /// Aspect ratio is preserved.
+    ///
+    /// **Default**: `32`
     #[serde(default = "default_size")]
     size: i32,
 }

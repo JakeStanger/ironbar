@@ -1,3 +1,31 @@
+/// Provides implementations of methods required by the `Module` trait
+/// which cannot be included as part of the trait.
+///
+/// This removes the need to add the same boilerplate method definitions
+/// to every module implementation.
+///
+/// # Usage:
+///
+/// ```rs
+/// impl Module for ClockModule {
+///    type SendMessage = DateTime<Local>;
+///    type ReceiveMessage = ();
+///
+///    module_impl!("clock");
+/// }
+#[macro_export]
+macro_rules! module_impl {
+    ($name:literal) => {
+        fn name() -> &'static str {
+            $name
+        }
+
+        fn take_common(&mut self) -> $crate::config::CommonConfig {
+            self.common.take().unwrap_or_default()
+        }
+    };
+}
+
 /// Sends a message on an asynchronous `Sender` using `send()`
 /// Panics if the message cannot be sent.
 ///
@@ -181,6 +209,13 @@ macro_rules! arc_rw {
     };
 }
 
+/// Wraps `val` in a new `Rc<RefCell<T>>`.
+///
+/// # Usage
+///
+/// ```rs
+/// let val = rc_mut!(MyService::new())
+/// ```
 #[macro_export]
 macro_rules! rc_mut {
     ($val:expr) => {

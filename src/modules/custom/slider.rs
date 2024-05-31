@@ -8,25 +8,76 @@ use serde::Deserialize;
 use tokio::sync::mpsc;
 use tracing::error;
 
+use crate::config::ModuleOrientation;
 use crate::modules::custom::set_length;
 use crate::script::{OutputStream, Script, ScriptInput};
 use crate::{build, glib_recv_mpsc, spawn, try_send};
 
-use super::{try_get_orientation, CustomWidget, CustomWidgetContext, ExecEvent};
+use super::{CustomWidget, CustomWidgetContext, ExecEvent};
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct SliderWidget {
+    /// Widget name.
+    ///
+    /// **Default**: `null`
     name: Option<String>,
+
+    /// Widget class name.
+    ///
+    /// **Default**: `null`
     class: Option<String>,
-    orientation: Option<String>,
+
+    /// Orientation of the slider.
+    ///
+    /// **Valid options**: `horizontal`, `vertical`, `h`, `v`
+    /// <br />
+    /// **Default**: `horizontal`
+    #[serde(default)]
+    orientation: ModuleOrientation,
+
+    /// Script to run to get the slider value.
+    /// Output must be a valid number.
+    ///
+    /// **Default**: `null`
     value: Option<ScriptInput>,
+
+    /// Command to execute when the slider changes.
+    /// More on this [below](#slider).
+    ///
+    /// Note that this will provide the floating point value as an argument.
+    /// If your input program requires an integer, you will need to round it.
+    ///
+    /// **Default**: `null`
     on_change: Option<String>,
+
+    /// Minimum slider value.
+    ///
+    /// **Default**: `0`
     #[serde(default = "default_min")]
     min: f64,
+
+    /// Maximum slider value.
+    ///
+    /// **Default**: `100`
     #[serde(default = "default_max")]
     max: f64,
+
+    /// If the increment to change when scrolling with the mousewheel.
+    /// If left blank, GTK will use the default value,
+    /// determined by the current environment.
+    ///
+    /// **Default**: `null`
     step: Option<f64>,
+
+    /// The slider length.
+    /// GTK will automatically determine the size if left blank.
+    ///
+    /// **Default**: `null`
     length: Option<i32>,
+
+    /// Whether to show the value label above the slider.
+    ///
+    /// **Default**: `true`
     #[serde(default = "crate::config::default_true")]
     show_label: bool,
 }
@@ -45,11 +96,7 @@ impl CustomWidget for SliderWidget {
     fn into_widget(self, context: CustomWidgetContext) -> Self::Widget {
         let scale = build!(self, Self::Widget);
 
-        if let Some(orientation) = self.orientation {
-            scale.set_orientation(
-                try_get_orientation(&orientation).unwrap_or(context.bar_orientation),
-            );
-        }
+        scale.set_orientation(self.orientation.into());
 
         if let Some(length) = self.length {
             set_length(&scale, length, context.bar_orientation);

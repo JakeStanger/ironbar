@@ -52,7 +52,7 @@ type = "volume"
 format = "{icon} {percentage}%"
 max_volume = 100
 
-[[end.icons]]
+[end.icons]
 volume_high = "󰕾"
 volume_medium = "󰖀"
 volume_low = "󰕿"

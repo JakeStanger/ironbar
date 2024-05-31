@@ -2,6 +2,8 @@ mod common;
 mod r#impl;
 mod truncate;
 
+#[cfg(feature = "cairo")]
+use crate::modules::cairo::CairoModule;
 #[cfg(feature = "clipboard")]
 use crate::modules::clipboard::ClipboardModule;
 #[cfg(feature = "clock")]
@@ -15,7 +17,7 @@ use crate::modules::launcher::LauncherModule;
 #[cfg(feature = "music")]
 use crate::modules::music::MusicModule;
 #[cfg(feature = "networkmanager")]
-use crate::modules::networkmanager::NetworkmanagerModule;
+use crate::modules::networkmanager::NetworkManagerModule;
 #[cfg(feature = "notifications")]
 use crate::modules::notifications::NotificationsModule;
 use crate::modules::script::ScriptModule;
@@ -29,16 +31,21 @@ use crate::modules::upower::UpowerModule;
 use crate::modules::volume::VolumeModule;
 #[cfg(feature = "workspaces")]
 use crate::modules::workspaces::WorkspacesModule;
+
+use crate::modules::{AnyModuleFactory, ModuleFactory, ModuleInfo};
 use cfg_if::cfg_if;
+use color_eyre::Result;
 use serde::Deserialize;
 use std::collections::HashMap;
 
-pub use self::common::{CommonConfig, TransitionType};
+pub use self::common::{CommonConfig, ModuleOrientation, TransitionType};
 pub use self::truncate::TruncateMode;
 
 #[derive(Debug, Deserialize, Clone)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum ModuleConfig {
+    #[cfg(feature = "cairo")]
+    Cairo(Box<CairoModule>),
     #[cfg(feature = "clipboard")]
     Clipboard(Box<ClipboardModule>),
     #[cfg(feature = "clock")]
@@ -52,7 +59,7 @@ pub enum ModuleConfig {
     #[cfg(feature = "music")]
     Music(Box<MusicModule>),
     #[cfg(feature = "networkmanager")]
-    Networkmanager(Box<NetworkmanagerModule>),
+    NetworkManager(Box<NetworkManagerModule>),
     #[cfg(feature = "notifications")]
     Notifications(Box<NotificationsModule>),
     Script(Box<ScriptModule>),
@@ -68,10 +75,57 @@ pub enum ModuleConfig {
     Workspaces(Box<WorkspacesModule>),
 }
 
+impl ModuleConfig {
+    pub fn create(
+        self,
+        module_factory: &AnyModuleFactory,
+        container: &gtk::Box,
+        info: &ModuleInfo,
+    ) -> Result<()> {
+        macro_rules! create {
+            ($module:expr) => {
+                module_factory.create(*$module, container, info)
+            };
+        }
+
+        match self {
+            #[cfg(feature = "cairo")]
+            Self::Cairo(module) => create!(module),
+            #[cfg(feature = "clipboard")]
+            Self::Clipboard(module) => create!(module),
+            #[cfg(feature = "clock")]
+            Self::Clock(module) => create!(module),
+            Self::Custom(module) => create!(module),
+            #[cfg(feature = "focused")]
+            Self::Focused(module) => create!(module),
+            Self::Label(module) => create!(module),
+            #[cfg(feature = "launcher")]
+            Self::Launcher(module) => create!(module),
+            #[cfg(feature = "music")]
+            Self::Music(module) => create!(module),
+            #[cfg(feature = "networkmanager")]
+            Self::NetworkManager(module) => create!(module),
+            #[cfg(feature = "notifications")]
+            Self::Notifications(module) => create!(module),
+            Self::Script(module) => create!(module),
+            #[cfg(feature = "sys_info")]
+            Self::SysInfo(module) => create!(module),
+            #[cfg(feature = "tray")]
+            Self::Tray(module) => create!(module),
+            #[cfg(feature = "upower")]
+            Self::Upower(module) => create!(module),
+            #[cfg(feature = "volume")]
+            Self::Volume(module) => create!(module),
+            #[cfg(feature = "workspaces")]
+            Self::Workspaces(module) => create!(module),
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub enum MonitorConfig {
-    Single(Config),
-    Multiple(Vec<Config>),
+    Single(BarConfig),
+    Multiple(Vec<BarConfig>),
 }
 
 #[derive(Debug, Deserialize, Copy, Clone, PartialEq, Eq)]
@@ -101,38 +155,110 @@ pub struct MarginConfig {
     pub top: i32,
 }
 
+/// The following is a list of all top-level bar config options.
+///
+/// These options can either be written at the very top object of your config,
+/// or within an object in the [monitors](#monitors) config,
+/// depending on your [use-case](#2-pick-your-use-case).
+///
 #[derive(Debug, Deserialize, Clone)]
-pub struct Config {
-    #[serde(default)]
-    pub position: BarPosition,
-    #[serde(default = "default_true")]
-    pub anchor_to_edges: bool,
-    #[serde(default = "default_bar_height")]
-    pub height: i32,
-    #[serde(default)]
-    pub margin: MarginConfig,
-    #[serde(default = "default_popup_gap")]
-    pub popup_gap: i32,
+pub struct BarConfig {
+    /// A unique identifier for the bar, used for controlling it over IPC.
+    /// If not set, uses a generated integer suffix.
+    ///
+    /// **Default**: `bar-n`
     pub name: Option<String>,
 
+    /// The bar's position on screen.
+    ///
+    /// **Valid options**: `top`, `bottom`, `left`, `right`
+    /// <br>
+    /// **Default**: `bottom`
+    #[serde(default)]
+    pub position: BarPosition,
+
+    /// Whether to anchor the bar to the edges of the screen.
+    /// Setting to false centers the bar.
+    ///
+    /// **Default**: `true`
+    #[serde(default = "default_true")]
+    pub anchor_to_edges: bool,
+
+    /// The bar's height in pixels.
+    ///
+    /// Note that GTK treats this as a target minimum,
+    /// and if content inside the bar is over this,
+    /// it will automatically expand to fit.
+    ///
+    /// **Default**: `42`
+    #[serde(default = "default_bar_height")]
+    pub height: i32,
+
+    /// The margin to use on each side of the bar, in pixels.
+    /// Object which takes `top`, `bottom`, `left` and `right` keys.
+    ///
+    /// **Default**: `0` on all sides.
+    ///
+    /// # Example
+    ///
+    /// The following would set a 10px margin around each edge.
+    ///
+    /// ```corn
+    /// {
+    ///     margin.top = 10
+    ///     margin.bottom = 10
+    ///     margin.left = 10
+    ///     margin.right = 10
+    /// }
+    /// ```
+    #[serde(default)]
+    pub margin: MarginConfig,
+
+    /// The size of the gap in pixels
+    /// between the bar and the popup window.
+    ///
+    /// **Default**: `5`
+    #[serde(default = "default_popup_gap")]
+    pub popup_gap: i32,
+
+    /// Whether the bar should be hidden when Ironbar starts.
+    ///
+    /// **Default**: `false`, unless `autohide` is set.
     #[serde(default)]
     pub start_hidden: Option<bool>,
+
+    /// The duration in milliseconds before the bar is hidden after the cursor leaves.
+    /// Leave unset to disable auto-hide behaviour.
+    ///
+    /// **Default**: `null`
     #[serde(default)]
     pub autohide: Option<u64>,
 
-    /// GTK icon theme to use.
+    /// The name of the GTK icon theme to use.
+    /// Leave unset to use the default Adwaita theme.
+    ///
+    /// **Default**: `null`
     pub icon_theme: Option<String>,
 
-    pub ironvar_defaults: Option<HashMap<Box<str>, String>>,
-
+    /// An array of modules to append to the start of the bar.
+    /// Depending on the orientation, this is either the top of the left edge.
+    ///
+    /// **Default**: `[]`
     pub start: Option<Vec<ModuleConfig>>,
-    pub center: Option<Vec<ModuleConfig>>,
-    pub end: Option<Vec<ModuleConfig>>,
 
-    pub monitors: Option<HashMap<String, MonitorConfig>>,
+    /// An array of modules to append to the center of the bar.
+    ///
+    /// **Default**: `[]`
+    pub center: Option<Vec<ModuleConfig>>,
+
+    /// An array of modules to append to the end of the bar.
+    /// Depending on the orientation, this is either the bottom or right edge.
+    ///
+    /// **Default**: `[]`
+    pub end: Option<Vec<ModuleConfig>>,
 }
 
-impl Default for Config {
+impl Default for BarConfig {
     fn default() -> Self {
         cfg_if! {
             if #[cfg(feature = "clock")] {
@@ -159,18 +285,56 @@ impl Default for Config {
             name: None,
             start_hidden: None,
             autohide: None,
-            popup_gap: default_popup_gap(),
             icon_theme: None,
-            ironvar_defaults: None,
             start: Some(vec![ModuleConfig::Label(
                 LabelModule::new("ℹ️ Using default config".to_string()).into(),
             )]),
             center,
             end,
             anchor_to_edges: default_true(),
-            monitors: None,
+            popup_gap: default_popup_gap(),
         }
     }
+}
+
+#[derive(Debug, Deserialize, Clone, Default)]
+pub struct Config {
+    /// A map of [ironvar](ironvar) keys and values
+    /// to initialize Ironbar with on startup.
+    ///
+    /// **Default**: `{}`
+    ///
+    /// # Example
+    ///
+    /// The following initializes an ironvar called `foo` set to `bar` on startup:
+    ///
+    /// ```corn
+    /// { ironvar_defaults.foo = "bar" }
+    /// ```
+    ///
+    /// The variable can then be immediately fetched without needing to be manually set:
+    ///
+    /// ```sh
+    /// $ ironbar get foo
+    /// ok
+    /// bar
+    /// ```
+    pub ironvar_defaults: Option<HashMap<Box<str>, String>>,
+
+    /// The configuration for the bar.
+    /// Setting through this will enable a single identical bar on each monitor.
+    #[serde(flatten)]
+    pub bar: BarConfig,
+
+    /// A map of monitor names to configs.
+    ///
+    /// The config values can be either:
+    ///
+    /// - a single object, which denotes a single bar for that monitor,
+    /// - an array of multiple objects, which denotes multiple for that monitor.
+    ///
+    /// Providing this option overrides the single, global `bar` option.
+    pub monitors: Option<HashMap<String, MonitorConfig>>,
 }
 
 const fn default_bar_height() -> i32 {

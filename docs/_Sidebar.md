@@ -20,9 +20,11 @@
 ## Custom
 
 - [Power Menu](power-menu)
+- [Weather](weather)
 
 # Modules
 
+- [Cairo](cairo)
 - [Clipboard](clipboard)
 - [Clock](clock)
 - [Custom](custom)

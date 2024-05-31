@@ -9,7 +9,7 @@ use std::rc::Rc;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 #[cfg(feature = "ipc")]
 use std::sync::RwLock;
-use std::sync::{mpsc, Arc, OnceLock};
+use std::sync::{mpsc, Arc, Mutex, OnceLock};
 
 use cfg_if::cfg_if;
 #[cfg(feature = "cli")]
@@ -96,14 +96,18 @@ pub struct Ironbar {
     bars: Rc<RefCell<Vec<Bar>>>,
     clients: Rc<RefCell<Clients>>,
     config: Rc<RefCell<Config>>,
+    config_dir: PathBuf,
 }
 
 impl Ironbar {
     fn new() -> Self {
+        let (config, config_dir) = load_config();
+
         Self {
             bars: Rc::new(RefCell::new(vec![])),
             clients: Rc::new(RefCell::new(Clients::new())),
-            config: Rc::new(RefCell::new(load_config())),
+            config: Rc::new(RefCell::new(config)),
+            config_dir,
         }
     }
 
@@ -192,7 +196,7 @@ impl Ironbar {
                 while let Ok(event) = rx_outputs.recv().await {
                     match event.event_type {
                         OutputEventType::New => {
-                            match load_output_bars(&instance, &app, event.output) {
+                            match load_output_bars(&instance, &app, &event.output) {
                                 Ok(mut new_bars) => {
                                     instance.bars.borrow_mut().append(&mut new_bars);
                                 }
@@ -260,7 +264,7 @@ impl Ironbar {
     /// Note this does *not* reload bars, which must be performed separately.
     #[cfg(feature = "ipc")]
     fn reload_config(&self) {
-        self.config.replace(load_config());
+        self.config.replace(load_config().0);
     }
 }
 
@@ -270,20 +274,37 @@ fn start_ironbar() {
 }
 
 /// Loads the config file from disk.
-fn load_config() -> Config {
-    let mut config = env::var("IRONBAR_CONFIG")
-        .map_or_else(
-            |_| ConfigLoader::new("ironbar").find_and_load(),
-            ConfigLoader::load,
-        )
-        .unwrap_or_else(|err| {
-            error!("Failed to load config: {}", err);
-            warn!("Falling back to the default config");
-            info!("If this is your first time using Ironbar, you should create a config in ~/.config/ironbar/");
-            info!("More info here: https://github.com/JakeStanger/ironbar/wiki/configuration-guide");
+fn load_config() -> (Config, PathBuf) {
+    let config_path = env::var("IRONBAR_CONFIG");
 
-            Config::default()
-        });
+    let (config, directory) = if let Ok(config_path) = config_path {
+        let path = PathBuf::from(config_path);
+        (
+            ConfigLoader::load(&path),
+            path.parent()
+                .map(PathBuf::from)
+                .ok_or_else(|| Report::msg("Specified path has no parent")),
+        )
+    } else {
+        let config_loader = ConfigLoader::new("ironbar");
+        (
+            config_loader.find_and_load(),
+            config_loader.config_dir().map_err(Report::new),
+        )
+    };
+
+    let mut config = config.unwrap_or_else(|err| {
+        error!("Failed to load config: {}", err);
+        warn!("Falling back to the default config");
+        info!("If this is your first time using Ironbar, you should create a config in ~/.config/ironbar/");
+        info!("More info here: https://github.com/JakeStanger/ironbar/wiki/configuration-guide");
+
+        Config::default()
+    });
+
+    let directory = directory
+        .and_then(|dir| dir.canonicalize().map_err(Report::new))
+        .unwrap_or_else(|_| env::current_dir().expect("to have current working directory"));
 
     debug!("Loaded config file");
 
@@ -297,7 +318,7 @@ fn load_config() -> Config {
         }
     }
 
-    config
+    (config, directory)
 }
 
 /// Gets the GDK `Display` instance.
@@ -316,22 +337,41 @@ fn get_display() -> Display {
 fn load_output_bars(
     ironbar: &Rc<Ironbar>,
     app: &Application,
-    output: OutputInfo,
+    output: &OutputInfo,
 ) -> Result<Vec<Bar>> {
+    // Hack to track monitor positions due to new GTK3/wlroots bug:
+    // https://github.com/swaywm/sway/issues/8164
+    // This relies on Wayland always tracking monitors in the same order as GDK.
+    // We also need this static to ensure hot-reloading continues to work as best we can.
+    static INDEX_MAP: OnceLock<Mutex<Vec<String>>> = OnceLock::new();
+
     let Some(monitor_name) = &output.name else {
         return Err(Report::msg("Output missing monitor name"));
+    };
+
+    let map = INDEX_MAP.get_or_init(|| Mutex::new(vec![]));
+
+    let index = lock!(map).iter().position(|n| n == monitor_name);
+    let index = match index {
+        Some(index) => index,
+        None => {
+            lock!(map).push(monitor_name.clone());
+            lock!(map).len() - 1
+        }
     };
 
     let config = ironbar.config.borrow();
     let display = get_display();
 
-    let pos = output.logical_position.unwrap_or_default();
-    let monitor = display
-        .monitor_at_point(pos.0, pos.1)
-        .expect("monitor to exist");
+    // let pos = output.logical_position.unwrap_or_default();
+    // let monitor = display
+    //     .monitor_at_point(pos.0, pos.1)
+    //     .expect("monitor to exist");
+
+    let monitor = display.monitor(index as i32).expect("monitor to exist");
 
     let show_default_bar =
-        config.start.is_some() || config.center.is_some() || config.end.is_some();
+        config.bar.start.is_some() || config.bar.center.is_some() || config.bar.end.is_some();
 
     let bars = match config
         .monitors
@@ -363,7 +403,7 @@ fn load_output_bars(
             app,
             &monitor,
             monitor_name.to_string(),
-            config.clone(),
+            config.bar.clone(),
             ironbar.clone(),
         )?],
         None => vec![],

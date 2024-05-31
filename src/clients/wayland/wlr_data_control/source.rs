@@ -10,13 +10,13 @@ use wayland_protocols_wlr::data_control::v1::client::zwlr_data_control_source_v1
 pub struct DataControlSourceData {}
 
 pub trait DataControlSourceDataExt: Send + Sync {
-    fn data_source_data(&self) -> &DataControlSourceData;
+    // fn data_source_data(&self) -> &DataControlSourceData;
 }
 
 impl DataControlSourceDataExt for DataControlSourceData {
-    fn data_source_data(&self) -> &DataControlSourceData {
-        self
-    }
+    // fn data_source_data(&self) -> &DataControlSourceData {
+    //     self
+    // }
 }
 
 /// Handler trait for `DataSource` events.
@@ -24,13 +24,13 @@ impl DataControlSourceDataExt for DataControlSourceData {
 /// The functions defined in this trait are called as `DataSource` events are received from the compositor.
 pub trait DataControlSourceHandler: Sized {
     /// This may be called multiple times, once for each accepted mime type from the destination, if any.
-    fn accept_mime(
-        &mut self,
-        conn: &Connection,
-        qh: &QueueHandle<Self>,
-        source: &ZwlrDataControlSourceV1,
-        mime: Option<String>,
-    );
+    // fn accept_mime(
+    //     &mut self,
+    //     conn: &Connection,
+    //     qh: &QueueHandle<Self>,
+    //     source: &ZwlrDataControlSourceV1,
+    //     mime: Option<String>,
+    // );
 
     /// The client has requested the data for this source to be sent.
     /// Send the data, then close the fd.

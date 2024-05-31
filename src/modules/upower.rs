@@ -15,7 +15,7 @@ use crate::modules::PopupButton;
 use crate::modules::{
     Module, ModuleInfo, ModuleParts, ModulePopup, ModuleUpdateEvent, WidgetContext,
 };
-use crate::{glib_recv, send_async, spawn, try_send};
+use crate::{glib_recv, module_impl, send_async, spawn, try_send};
 
 const DAY: i64 = 24 * 60 * 60;
 const HOUR: i64 = 60 * 60;
@@ -23,12 +23,20 @@ const MINUTE: i64 = 60;
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct UpowerModule {
+    /// The format string to use for the widget button label.
+    /// For available tokens, see [below](#formatting-tokens).
+    ///
+    /// **Default**: `{percentage}%`
     #[serde(default = "default_format")]
     format: String,
 
+    /// The size to render the icon at, in pixels.
+    ///
+    /// **Default**: `24`
     #[serde(default = "default_icon_size")]
     icon_size: i32,
 
+    /// See [common options](module-level-options#common-options).
     #[serde(flatten)]
     pub common: Option<CommonConfig>,
 }
@@ -54,9 +62,7 @@ impl Module<gtk::Button> for UpowerModule {
     type SendMessage = UpowerProperties;
     type ReceiveMessage = ();
 
-    fn name() -> &'static str {
-        "upower"
-    }
+    module_impl!("upower");
 
     fn spawn_controller(
         &self,
@@ -183,7 +189,6 @@ impl Module<gtk::Button> for UpowerModule {
             try_send!(tx, ModuleUpdateEvent::TogglePopup(button.popup_id()));
         });
 
-        label.set_angle(info.bar_position.get_angle());
         let format = self.format.clone();
 
         let rx = context.subscribe();
@@ -199,7 +204,9 @@ impl Module<gtk::Button> for UpowerModule {
             let format = format.replace("{percentage}", &properties.percentage.to_string())
                 .replace("{time_remaining}", &time_remaining)
                 .replace("{state}", battery_state_to_string(state));
-            let icon_name = String::from("icon:") + &properties.icon_name;
+
+            let mut icon_name = String::from("icon:");
+            icon_name.push_str(&properties.icon_name);
 
             ImageProvider::parse(&icon_name, &icon_theme, false, self.icon_size)
                     .map(|provider| provider.load_into_image(icon.clone()));
@@ -209,7 +216,7 @@ impl Module<gtk::Button> for UpowerModule {
 
         let rx = context.subscribe();
         let popup = self
-            .into_popup(context.controller_tx, rx, info)
+            .into_popup(context.controller_tx.clone(), rx, context, info)
             .into_popup_parts(vec![&button]);
 
         Ok(ModuleParts::new(button, popup))
@@ -219,6 +226,7 @@ impl Module<gtk::Button> for UpowerModule {
         self,
         _tx: mpsc::Sender<Self::ReceiveMessage>,
         rx: broadcast::Receiver<Self::SendMessage>,
+        _context: WidgetContext<Self::SendMessage, Self::ReceiveMessage>,
         _info: &ModuleInfo,
     ) -> Option<gtk::Box>
     where

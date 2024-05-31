@@ -11,7 +11,7 @@ use gtk::{IconLookupFlags, IconTheme};
 use std::path::{Path, PathBuf};
 #[cfg(feature = "http")]
 use tokio::sync::mpsc;
-use tracing::warn;
+use tracing::{debug, warn};
 
 cfg_if!(
     if #[cfg(feature = "http")] {
@@ -45,6 +45,7 @@ impl<'a> ImageProvider<'a> {
     /// but no other check is performed.
     pub fn parse(input: &str, theme: &'a IconTheme, use_fallback: bool, size: i32) -> Option<Self> {
         let location = Self::get_location(input, theme, size, use_fallback, 0)?;
+        debug!("Resolved {input} --> {location:?} (size: {size})");
 
         Some(Self { location, size })
     }
@@ -171,7 +172,7 @@ impl<'a> ImageProvider<'a> {
                     );
 
                     // Different error types makes this a bit awkward
-                    match pixbuf.map(|pixbuf| Self::create_and_load_surface(&pixbuf, &image, scale))
+                    match pixbuf.map(|pixbuf| Self::create_and_load_surface(&pixbuf, &image))
                     {
                         Ok(Err(err)) => error!("{err:?}"),
                         Err(err) => error!("{err:?}"),
@@ -202,7 +203,7 @@ impl<'a> ImageProvider<'a> {
             _ => unreachable!(), // handled above
         }?;
 
-        Self::create_and_load_surface(&pixbuf, image, scale)
+        Self::create_and_load_surface(&pixbuf, image)
     }
 
     /// Attempts to create a Cairo surface from the provided `Pixbuf`,
@@ -210,10 +211,13 @@ impl<'a> ImageProvider<'a> {
     /// The surface is then loaded into the provided image.
     ///
     /// This is necessary for HiDPI since `Pixbuf`s are always treated as scale factor 1.
-    fn create_and_load_surface(pixbuf: &Pixbuf, image: &gtk::Image, scale: i32) -> Result<()> {
+    pub fn create_and_load_surface(pixbuf: &Pixbuf, image: &gtk::Image) -> Result<()> {
         let surface = unsafe {
-            let ptr =
-                gdk_cairo_surface_create_from_pixbuf(pixbuf.as_ptr(), scale, std::ptr::null_mut());
+            let ptr = gdk_cairo_surface_create_from_pixbuf(
+                pixbuf.as_ptr(),
+                image.scale_factor(),
+                std::ptr::null_mut(),
+            );
             Surface::from_raw_full(ptr)
         }?;
 

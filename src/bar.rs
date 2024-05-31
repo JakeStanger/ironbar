@@ -1,9 +1,7 @@
-use crate::config::{BarPosition, MarginConfig, ModuleConfig};
-use crate::modules::{
-    create_module, set_widget_identifiers, wrap_widget, ModuleInfo, ModuleLocation,
-};
+use crate::config::{BarConfig, BarPosition, MarginConfig, ModuleConfig};
+use crate::modules::{BarModuleFactory, ModuleInfo, ModuleLocation};
 use crate::popup::Popup;
-use crate::{Config, Ironbar};
+use crate::Ironbar;
 use color_eyre::Result;
 use glib::Propagation;
 use gtk::gdk::Monitor;
@@ -16,7 +14,7 @@ use tracing::{debug, info};
 
 #[derive(Debug, Clone)]
 enum Inner {
-    New { config: Option<Config> },
+    New { config: Option<BarConfig> },
     Loaded { popup: Rc<Popup> },
 }
 
@@ -43,7 +41,7 @@ impl Bar {
     pub fn new(
         app: &Application,
         monitor_name: String,
-        config: Config,
+        config: BarConfig,
         ironbar: Rc<Ironbar>,
     ) -> Self {
         let window = ApplicationWindow::builder()
@@ -245,7 +243,7 @@ impl Bar {
     }
 
     /// Loads the configured modules onto a bar.
-    fn load_modules(&self, config: Config, monitor: &Monitor) -> Result<BarLoadResult> {
+    fn load_modules(&self, config: BarConfig, monitor: &Monitor) -> Result<BarLoadResult> {
         let icon_theme = IconTheme::new();
         if let Some(ref theme) = config.icon_theme {
             icon_theme.set_custom_theme(Some(theme));
@@ -350,57 +348,10 @@ fn add_modules(
     ironbar: &Rc<Ironbar>,
     popup: &Rc<Popup>,
 ) -> Result<()> {
-    let orientation = info.bar_position.orientation();
-
-    macro_rules! add_module {
-        ($module:expr, $id:expr) => {{
-            let common = $module.common.take().expect("common config to exist");
-            let widget_parts = create_module(
-                *$module,
-                $id,
-                ironbar.clone(),
-                common.name.clone(),
-                &info,
-                &Rc::clone(&popup),
-            )?;
-            set_widget_identifiers(&widget_parts, &common);
-
-            let container = wrap_widget(&widget_parts.widget, common, orientation);
-            content.add(&container);
-        }};
-    }
+    let module_factory = BarModuleFactory::new(ironbar.clone(), popup.clone()).into();
 
     for config in modules {
-        let id = Ironbar::unique_id();
-        match config {
-            #[cfg(feature = "clipboard")]
-            ModuleConfig::Clipboard(mut module) => add_module!(module, id),
-            #[cfg(feature = "clock")]
-            ModuleConfig::Clock(mut module) => add_module!(module, id),
-            ModuleConfig::Custom(mut module) => add_module!(module, id),
-            #[cfg(feature = "focused")]
-            ModuleConfig::Focused(mut module) => add_module!(module, id),
-            ModuleConfig::Label(mut module) => add_module!(module, id),
-            #[cfg(feature = "launcher")]
-            ModuleConfig::Launcher(mut module) => add_module!(module, id),
-            #[cfg(feature = "music")]
-            ModuleConfig::Music(mut module) => add_module!(module, id),
-            #[cfg(feature = "networkmanager")]
-            ModuleConfig::Networkmanager(mut module) => add_module!(module, id),
-            #[cfg(feature = "notifications")]
-            ModuleConfig::Notifications(mut module) => add_module!(module, id),
-            ModuleConfig::Script(mut module) => add_module!(module, id),
-            #[cfg(feature = "sys_info")]
-            ModuleConfig::SysInfo(mut module) => add_module!(module, id),
-            #[cfg(feature = "tray")]
-            ModuleConfig::Tray(mut module) => add_module!(module, id),
-            #[cfg(feature = "upower")]
-            ModuleConfig::Upower(mut module) => add_module!(module, id),
-            #[cfg(feature = "volume")]
-            ModuleConfig::Volume(mut module) => add_module!(module, id),
-            #[cfg(feature = "workspaces")]
-            ModuleConfig::Workspaces(mut module) => add_module!(module, id),
-        }
+        config.create(&module_factory, content, info)?;
     }
 
     Ok(())
@@ -410,7 +361,7 @@ pub fn create_bar(
     app: &Application,
     monitor: &Monitor,
     monitor_name: String,
-    config: Config,
+    config: BarConfig,
     ironbar: Rc<Ironbar>,
 ) -> Result<Bar> {
     let bar = Bar::new(app, monitor_name, config, ironbar);

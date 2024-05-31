@@ -5,7 +5,7 @@ use crate::image::new_icon_button;
 use crate::modules::{
     Module, ModuleInfo, ModuleParts, ModulePopup, ModuleUpdateEvent, PopupButton, WidgetContext,
 };
-use crate::{glib_recv, spawn, try_send};
+use crate::{glib_recv, module_impl, spawn, try_send};
 use glib::Propagation;
 use gtk::gdk_pixbuf::Pixbuf;
 use gtk::gio::{Cancellable, MemoryInputStream};
@@ -13,24 +13,39 @@ use gtk::prelude::*;
 use gtk::{Button, EventBox, Image, Label, Orientation, RadioButton, Widget};
 use serde::Deserialize;
 use std::collections::HashMap;
-use std::sync::Arc;
 use tokio::sync::{broadcast, mpsc};
 use tracing::{debug, error};
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct ClipboardModule {
+    /// The icon to show on the bar widget button.
+    /// Supports [image](images) icons.
+    ///
+    /// **Default**: `󰨸`
     #[serde(default = "default_icon")]
     icon: String,
 
+    /// The size to render the icon at.
+    /// Note this only applies to image-type icons.
+    ///
+    /// **Default**: `32`
     #[serde(default = "default_icon_size")]
     icon_size: i32,
 
+    /// The maximum number of items to keep in the history,
+    /// and to show in the popup.
+    ///
+    /// **Default**: `10`
     #[serde(default = "default_max_items")]
     max_items: usize,
 
     // -- Common --
+    /// See [truncate options](module-level-options#truncate-mode).
+    ///
+    /// **Default**: `null`
     truncate: Option<TruncateMode>,
 
+    /// See [common options](module-level-options#common-options).
     #[serde(flatten)]
     pub common: Option<CommonConfig>,
 }
@@ -65,9 +80,7 @@ impl Module<Button> for ClipboardModule {
     type SendMessage = ControllerEvent;
     type ReceiveMessage = UIEvent;
 
-    fn name() -> &'static str {
-        "clipboard"
-    }
+    module_impl!("clipboard");
 
     fn spawn_controller(
         &self,
@@ -78,7 +91,7 @@ impl Module<Button> for ClipboardModule {
         let max_items = self.max_items;
 
         let tx = context.tx.clone();
-        let client: Arc<clipboard::Client> = context.client();
+        let client = context.client::<clipboard::Client>();
 
         // listen to clipboard events
         spawn(async move {
@@ -137,7 +150,7 @@ impl Module<Button> for ClipboardModule {
 
         let rx = context.subscribe();
         let popup = self
-            .into_popup(context.controller_tx, rx, info)
+            .into_popup(context.controller_tx.clone(), rx, context, info)
             .into_popup_parts(vec![&button]);
 
         Ok(ModuleParts::new(button, popup))
@@ -147,6 +160,7 @@ impl Module<Button> for ClipboardModule {
         self,
         tx: mpsc::Sender<Self::ReceiveMessage>,
         rx: broadcast::Receiver<Self::SendMessage>,
+        _context: WidgetContext<Self::SendMessage, Self::ReceiveMessage>,
         _info: &ModuleInfo,
     ) -> Option<gtk::Box>
     where

@@ -10,12 +10,14 @@ use gtk::{Application, Button, EventBox, IconTheme, Orientation, Revealer, Widge
 use tokio::sync::{broadcast, mpsc};
 use tracing::debug;
 
-use crate::clients::ProvidesClient;
+use crate::clients::{ClientResult, ProvidesClient, ProvidesFallibleClient};
 use crate::config::{BarPosition, CommonConfig, TransitionType};
 use crate::gtk_helpers::{IronbarGtkExt, WidgetGeometry};
 use crate::popup::Popup;
 use crate::{glib_recv_mpsc, send, Ironbar};
 
+#[cfg(feature = "cairo")]
+pub mod cairo;
 #[cfg(feature = "clipboard")]
 pub mod clipboard;
 /// Displays the current date and time.
@@ -56,6 +58,8 @@ pub enum ModuleLocation {
     Center,
     Right,
 }
+
+#[derive(Clone)]
 pub struct ModuleInfo<'a> {
     pub app: &'a Application,
     pub location: ModuleLocation,
@@ -87,9 +91,15 @@ where
 {
     pub id: usize,
     pub ironbar: Rc<Ironbar>,
+    pub popup: Rc<Popup>,
     pub tx: mpsc::Sender<ModuleUpdateEvent<TSend>>,
     pub update_tx: broadcast::Sender<TSend>,
     pub controller_tx: mpsc::Sender<TReceive>,
+
+    // TODO: Don't like this - need some serious refactoring to deal with it
+    //  This is a hack to be able to pass data from module -> popup creation
+    //  for custom widget only.
+    pub button_id: usize,
 
     _update_rx: broadcast::Receiver<TSend>,
 }
@@ -109,6 +119,13 @@ where
         ProvidesClient::provide(self)
     }
 
+    pub fn try_client<T: ?Sized>(&self) -> ClientResult<T>
+    where
+        WidgetContext<TSend, TReceive>: ProvidesFallibleClient<T>,
+    {
+        ProvidesFallibleClient::try_provide(self)
+    }
+
     /// Subscribes to events sent from this widget.
     pub fn subscribe(&self) -> broadcast::Receiver<TSend> {
         self.update_tx.subscribe()
@@ -123,6 +140,32 @@ pub struct ModuleParts<W: IsA<Widget>> {
 impl<W: IsA<Widget>> ModuleParts<W> {
     fn new(widget: W, popup: Option<ModulePopupParts>) -> Self {
         Self { widget, popup }
+    }
+
+    pub fn setup_identifiers(&self, common: &CommonConfig) {
+        if let Some(ref name) = common.name {
+            self.widget.set_widget_name(name);
+
+            if let Some(ref popup) = self.popup {
+                popup.container.set_widget_name(&format!("popup-{name}"));
+            }
+        }
+
+        if let Some(ref class) = common.class {
+            // gtk counts classes with spaces as the same class
+            for part in class.split(' ') {
+                self.widget.style_context().add_class(part);
+            }
+
+            if let Some(ref popup) = self.popup {
+                for part in class.split(' ') {
+                    popup
+                        .container
+                        .style_context()
+                        .add_class(&format!("popup-{part}"));
+                }
+            }
+        }
     }
 }
 
@@ -152,11 +195,24 @@ impl ModulePopup for Option<gtk::Box> {
 }
 
 pub trait PopupButton {
+    fn ensure_popup_id(&self) -> usize;
     fn try_popup_id(&self) -> Option<usize>;
     fn popup_id(&self) -> usize;
 }
 
 impl PopupButton for Button {
+    /// Gets the popup ID associated with this button,
+    /// or creates a new one if it does not exist.
+    fn ensure_popup_id(&self) -> usize {
+        if let Some(id) = self.try_popup_id() {
+            id
+        } else {
+            let id = Ironbar::unique_id();
+            self.set_tag("popup-id", id);
+            id
+        }
+    }
+
     /// Gets the popup ID associated with this button, if there is one.
     /// Will return `None` if this is not a popup button.
     fn try_popup_id(&self) -> Option<usize> {
@@ -203,162 +259,287 @@ where
         self,
         _tx: mpsc::Sender<Self::ReceiveMessage>,
         _rx: broadcast::Receiver<Self::SendMessage>,
+        _context: WidgetContext<Self::SendMessage, Self::ReceiveMessage>,
         _info: &ModuleInfo,
     ) -> Option<gtk::Box>
     where
         Self: Sized,
+        <Self as Module<W>>::SendMessage: Clone,
     {
         None
     }
+
+    fn take_common(&mut self) -> CommonConfig;
 }
 
-/// Creates a module and sets it up.
-/// This setup includes widget/popup content and event channels.
-pub fn create_module<TModule, TWidget, TSend, TRec>(
-    module: TModule,
-    id: usize,
-    ironbar: Rc<Ironbar>,
-    name: Option<String>,
-    info: &ModuleInfo,
-    popup: &Rc<Popup>,
-) -> Result<ModuleParts<TWidget>>
-where
-    TModule: Module<TWidget, SendMessage = TSend, ReceiveMessage = TRec>,
-    TWidget: IsA<Widget>,
-    TSend: Debug + Clone + Send + 'static,
-{
-    let (ui_tx, ui_rx) = mpsc::channel::<ModuleUpdateEvent<TSend>>(64);
-    let (controller_tx, controller_rx) = mpsc::channel::<TRec>(64);
+pub trait ModuleFactory {
+    fn create<TModule, TWidget, TSend, TRev>(
+        &self,
+        mut module: TModule,
+        container: &gtk::Box,
+        info: &ModuleInfo,
+    ) -> Result<()>
+    where
+        TModule: Module<TWidget, SendMessage = TSend, ReceiveMessage = TRev>,
+        TWidget: IsA<Widget>,
+        TSend: Debug + Clone + Send + 'static,
+    {
+        let id = Ironbar::unique_id();
+        let common = module.take_common();
 
-    let (tx, rx) = broadcast::channel(64);
+        let (ui_tx, ui_rx) = mpsc::channel::<ModuleUpdateEvent<TSend>>(64);
+        let (controller_tx, controller_rx) = mpsc::channel::<TRev>(64);
 
-    let context = WidgetContext {
-        id,
-        ironbar,
-        tx: ui_tx,
-        update_tx: tx.clone(),
-        controller_tx,
-        _update_rx: rx,
-    };
+        let (tx, rx) = broadcast::channel(64);
 
-    module.spawn_controller(info, &context, controller_rx)?;
+        let context = WidgetContext {
+            id,
+            ironbar: self.ironbar().clone(),
+            popup: self.popup().clone(),
+            tx: ui_tx,
+            update_tx: tx.clone(),
+            controller_tx,
+            _update_rx: rx,
+            button_id: usize::MAX, // hack :(
+        };
 
-    let module_name = TModule::name();
-    let instance_name = name.unwrap_or_else(|| module_name.to_string());
+        module.spawn_controller(info, &context, controller_rx)?;
 
-    let module_parts = module.into_widget(context, info)?;
-    module_parts.widget.add_class("widget");
-    module_parts.widget.add_class(module_name);
+        let module_name = TModule::name();
+        let instance_name = common
+            .name
+            .clone()
+            .unwrap_or_else(|| module_name.to_string());
 
-    if let Some(popup_content) = module_parts.popup.clone() {
-        popup_content
-            .container
-            .style_context()
-            .add_class(&format!("popup-{module_name}"));
+        let module_parts = module.into_widget(context, info)?;
+        module_parts.widget.add_class("widget");
+        module_parts.widget.add_class(module_name);
 
-        popup.register_content(id, instance_name, popup_content);
+        if let Some(popup_content) = module_parts.popup.clone() {
+            popup_content
+                .container
+                .style_context()
+                .add_class(&format!("popup-{module_name}"));
+
+            self.popup()
+                .register_content(id, instance_name, popup_content);
+        }
+
+        self.setup_receiver(tx, ui_rx, module_name, id, common.disable_popup);
+
+        module_parts.setup_identifiers(&common);
+
+        let ev_container = wrap_widget(
+            &module_parts.widget,
+            common,
+            info.bar_position.orientation(),
+        );
+        container.add(&ev_container);
+
+        Ok(())
     }
 
-    setup_receiver(tx, ui_rx, popup.clone(), module_name, id);
+    fn setup_receiver<TSend>(
+        &self,
+        tx: broadcast::Sender<TSend>,
+        rx: mpsc::Receiver<ModuleUpdateEvent<TSend>>,
+        name: &'static str,
+        id: usize,
+        disable_popup: bool,
+    ) where
+        TSend: Debug + Clone + Send + 'static;
 
-    Ok(module_parts)
+    fn ironbar(&self) -> &Rc<Ironbar>;
+    fn popup(&self) -> &Rc<Popup>;
 }
 
-/// Sets up the bridge channel receiver
-/// to pick up events from the controller, widget or popup.
-///
-/// Handles opening/closing popups
-/// and communicating update messages between controllers and widgets/popups.
-fn setup_receiver<TSend>(
-    tx: broadcast::Sender<TSend>,
-    rx: mpsc::Receiver<ModuleUpdateEvent<TSend>>,
+#[derive(Clone)]
+pub struct BarModuleFactory {
+    ironbar: Rc<Ironbar>,
     popup: Rc<Popup>,
-    name: &'static str,
-    id: usize,
-) where
-    TSend: Debug + Clone + Send + 'static,
-{
-    // some rare cases can cause the popup to incorrectly calculate its size on first open.
-    // we can fix that by just force re-rendering it on its first open.
-    let mut has_popup_opened = false;
+}
 
-    glib_recv_mpsc!(rx, ev => {
-        match ev {
-            ModuleUpdateEvent::Update(update) => {
-                send!(tx, update);
-            }
-            ModuleUpdateEvent::TogglePopup(button_id) => {
-                debug!("Toggling popup for {} [#{}]", name, id);
-                if popup.is_visible() {
-                    popup.hide();
-                } else {
-                    popup.show(id, button_id);
+impl BarModuleFactory {
+    pub fn new(ironbar: Rc<Ironbar>, popup: Rc<Popup>) -> Self {
+        Self { ironbar, popup }
+    }
+}
 
-                    // force re-render on initial open to try and fix size issue
-                    if !has_popup_opened {
+impl ModuleFactory for BarModuleFactory {
+    fn setup_receiver<TSend>(
+        &self,
+        tx: broadcast::Sender<TSend>,
+        rx: mpsc::Receiver<ModuleUpdateEvent<TSend>>,
+        name: &'static str,
+        id: usize,
+        disable_popup: bool,
+    ) where
+        TSend: Debug + Clone + Send + 'static,
+    {
+        let popup = self.popup.clone();
+        glib_recv_mpsc!(rx, ev => {
+            match ev {
+                ModuleUpdateEvent::Update(update) => {
+                    send!(tx, update);
+                }
+                ModuleUpdateEvent::TogglePopup(button_id) if !disable_popup => {
+                    debug!("Toggling popup for {} [#{}] (button id: {button_id})", name, id);
+                    if popup.is_visible() && popup.current_widget().unwrap_or_default() == id {
+                        popup.hide();
+                    } else {
                         popup.show(id, button_id);
-                        has_popup_opened = true;
                     }
                 }
-            }
-            ModuleUpdateEvent::OpenPopup(button_id) => {
-                debug!("Opening popup for {} [#{}]", name, id);
-                popup.hide();
-                popup.show(id, button_id);
-
-                // force re-render on initial open to try and fix size issue
-                if !has_popup_opened {
+                ModuleUpdateEvent::OpenPopup(button_id) if !disable_popup => {
+                    debug!("Opening popup for {} [#{}] (button id: {button_id})", name, id);
+                    popup.hide();
                     popup.show(id, button_id);
-                    has_popup_opened = true;
                 }
-            }
-            #[cfg(feature = "launcher")]
-            ModuleUpdateEvent::OpenPopupAt(geometry) => {
-                debug!("Opening popup for {} [#{}]", name, id);
+                #[cfg(feature = "launcher")]
+                ModuleUpdateEvent::OpenPopupAt(geometry) if !disable_popup => {
+                    debug!("Opening popup for {} [#{}]", name, id);
 
-                popup.hide();
-                popup.show_at(id, geometry);
-
-                // force re-render on initial open to try and fix size issue
-                if !has_popup_opened {
+                    popup.hide();
                     popup.show_at(id, geometry);
-                    has_popup_opened = true;
                 }
+                ModuleUpdateEvent::ClosePopup if !disable_popup => {
+                    debug!("Closing popup for {} [#{}]", name, id);
+                    popup.hide();
+                },
+                _ => {}
             }
-            ModuleUpdateEvent::ClosePopup => {
-                debug!("Closing popup for {} [#{}]", name, id);
-                popup.hide();
-            }
-        }
-    });
+        });
+    }
+
+    fn ironbar(&self) -> &Rc<Ironbar> {
+        &self.ironbar
+    }
+
+    fn popup(&self) -> &Rc<Popup> {
+        &self.popup
+    }
 }
 
-pub fn set_widget_identifiers<TWidget: IsA<Widget>>(
-    widget_parts: &ModuleParts<TWidget>,
-    common: &CommonConfig,
-) {
-    if let Some(ref name) = common.name {
-        widget_parts.widget.set_widget_name(name);
+#[derive(Clone)]
+pub struct PopupModuleFactory {
+    ironbar: Rc<Ironbar>,
+    popup: Rc<Popup>,
+    button_id: usize,
+}
 
-        if let Some(ref popup) = widget_parts.popup {
-            popup.container.set_widget_name(&format!("popup-{name}"));
+impl PopupModuleFactory {
+    pub fn new(ironbar: Rc<Ironbar>, popup: Rc<Popup>, button_id: usize) -> Self {
+        Self {
+            ironbar,
+            popup,
+            button_id,
+        }
+    }
+}
+
+impl ModuleFactory for PopupModuleFactory {
+    fn setup_receiver<TSend>(
+        &self,
+        tx: broadcast::Sender<TSend>,
+        rx: mpsc::Receiver<ModuleUpdateEvent<TSend>>,
+        name: &'static str,
+        id: usize,
+        disable_popup: bool,
+    ) where
+        TSend: Debug + Clone + Send + 'static,
+    {
+        let popup = self.popup.clone();
+        let button_id = self.button_id;
+        glib_recv_mpsc!(rx, ev => {
+            match ev {
+                ModuleUpdateEvent::Update(update) => {
+                    send!(tx, update);
+                }
+                ModuleUpdateEvent::TogglePopup(_) if !disable_popup => {
+                    debug!("Toggling popup for {} [#{}] (button id: {button_id})", name, id);
+                    if popup.is_visible() && popup.current_widget().unwrap_or_default() == id {
+                        popup.hide();
+                    } else {
+                        popup.show(id, button_id);
+                    }
+                }
+                ModuleUpdateEvent::OpenPopup(_) if !disable_popup => {
+                    debug!("Opening popup for {} [#{}] (button id: {button_id})", name, id);
+                    popup.hide();
+                    popup.show(id, button_id);
+                }
+                #[cfg(feature = "launcher")]
+                ModuleUpdateEvent::OpenPopupAt(geometry) if !disable_popup => {
+                    debug!("Opening popup for {} [#{}]", name, id);
+
+                    popup.hide();
+                    popup.show_at(id, geometry);
+                }
+                ModuleUpdateEvent::ClosePopup if !disable_popup => {
+                    debug!("Closing popup for {} [#{}]", name, id);
+                    popup.hide();
+                },
+                _ => {}
+            }
+        });
+    }
+
+    fn ironbar(&self) -> &Rc<Ironbar> {
+        &self.ironbar
+    }
+
+    fn popup(&self) -> &Rc<Popup> {
+        &self.popup
+    }
+}
+
+#[derive(Clone)]
+pub enum AnyModuleFactory {
+    Bar(BarModuleFactory),
+    Popup(PopupModuleFactory),
+}
+
+impl ModuleFactory for AnyModuleFactory {
+    fn setup_receiver<TSend>(
+        &self,
+        tx: broadcast::Sender<TSend>,
+        rx: mpsc::Receiver<ModuleUpdateEvent<TSend>>,
+        name: &'static str,
+        id: usize,
+        disable_popup: bool,
+    ) where
+        TSend: Debug + Clone + Send + 'static,
+    {
+        match self {
+            AnyModuleFactory::Bar(bar) => bar.setup_receiver(tx, rx, name, id, disable_popup),
+            AnyModuleFactory::Popup(popup) => popup.setup_receiver(tx, rx, name, id, disable_popup),
         }
     }
 
-    if let Some(ref class) = common.class {
-        // gtk counts classes with spaces as the same class
-        for part in class.split(' ') {
-            widget_parts.widget.style_context().add_class(part);
+    fn ironbar(&self) -> &Rc<Ironbar> {
+        match self {
+            AnyModuleFactory::Bar(bar) => bar.ironbar(),
+            AnyModuleFactory::Popup(popup) => popup.ironbar(),
         }
+    }
 
-        if let Some(ref popup) = widget_parts.popup {
-            for part in class.split(' ') {
-                popup
-                    .container
-                    .style_context()
-                    .add_class(&format!("popup-{part}"));
-            }
+    fn popup(&self) -> &Rc<Popup> {
+        match self {
+            AnyModuleFactory::Bar(bar) => bar.popup(),
+            AnyModuleFactory::Popup(popup) => popup.popup(),
         }
+    }
+}
+
+impl From<BarModuleFactory> for AnyModuleFactory {
+    fn from(value: BarModuleFactory) -> Self {
+        Self::Bar(value)
+    }
+}
+
+impl From<PopupModuleFactory> for AnyModuleFactory {
+    fn from(value: PopupModuleFactory) -> Self {
+        Self::Popup(value)
     }
 }
 

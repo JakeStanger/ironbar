@@ -1,4 +1,4 @@
-use crate::{await_sync, register_client};
+use crate::{await_sync, register_fallible_client};
 use cfg_if::cfg_if;
 use color_eyre::{Help, Report, Result};
 use std::fmt::{Debug, Display, Formatter};
@@ -74,7 +74,7 @@ impl Compositor {
 #[derive(Debug, Clone)]
 pub struct Workspace {
     /// Unique identifier
-    pub id: String,
+    pub id: i64,
     /// Workspace friendly name
     pub name: String,
     /// Name of the monitor (output) the workspace is located on
@@ -119,13 +119,19 @@ pub enum WorkspaceUpdate {
     /// This is re-sent to all subscribers when a new subscription is created.
     Init(Vec<Workspace>),
     Add(Workspace),
-    Remove(String),
+    Remove(i64),
     Move(Workspace),
     /// Declares focus moved from the old workspace to the new.
     Focus {
         old: Option<Workspace>,
         new: Workspace,
     },
+
+    Rename {
+        id: i64,
+        name: String,
+    },
+
     /// An update was triggered by the compositor but this was not mapped by Ironbar.
     ///
     /// This is purely used for ergonomics within the compositor clients
@@ -141,4 +147,4 @@ pub trait WorkspaceClient: Debug + Send + Sync {
     fn subscribe_workspace_change(&self) -> broadcast::Receiver<WorkspaceUpdate>;
 }
 
-register_client!(dyn WorkspaceClient, workspaces);
+register_fallible_client!(dyn WorkspaceClient, workspaces);

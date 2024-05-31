@@ -1,8 +1,9 @@
 use crate::clients::compositor::{Visibility, Workspace, WorkspaceClient, WorkspaceUpdate};
 use crate::config::CommonConfig;
+use crate::gtk_helpers::IronbarGtkExt;
 use crate::image::new_icon_button;
 use crate::modules::{Module, ModuleInfo, ModuleParts, ModuleUpdateEvent, WidgetContext};
-use crate::{glib_recv, send_async, spawn, try_send};
+use crate::{glib_recv, module_impl, send_async, spawn, try_send, Ironbar};
 use color_eyre::{Report, Result};
 use gtk::prelude::*;
 use gtk::{Button, IconTheme};
@@ -44,26 +45,69 @@ impl Default for Favorites {
 #[derive(Debug, Deserialize, Clone)]
 pub struct WorkspacesModule {
     /// Map of actual workspace names to custom names.
+    ///
+    /// Custom names can be [images](images).
+    ///
+    /// If a workspace is not present in the map,
+    /// it will fall back to using its actual name.
     name_map: Option<HashMap<String, String>>,
 
-    /// Array of always shown workspaces, and what monitor to show on
+    /// Workspaces which should always be shown.
+    /// This can either be an array of workspace names,
+    /// or a map of monitor names to arrays of workspace names.
+    ///
+    /// **Default**: `{}`
+    ///
+    /// # Example
+    ///
+    /// ```corn
+    /// // array format
+    /// {
+    ///   type = "workspaces"
+    ///   favorites = ["1", "2", "3"]
+    /// }
+    ///
+    /// // map format
+    /// {
+    ///   type = "workspaces"
+    ///   favorites.DP-1 = ["1", "2", "3"]
+    ///   favorites.DP-2 = ["4", "5", "6"]
+    /// }
+    /// ```
     #[serde(default)]
     favorites: Favorites,
 
-    /// List of workspace names to never show
+    /// A list of workspace names to never show.
+    ///
+    /// This may be useful for scratchpad/special workspaces, for example.
+    ///
+    /// **Default**: `[]`
     #[serde(default)]
     hidden: Vec<String>,
 
-    /// Whether to display buttons for all monitors.
+    /// Whether to display workspaces from all monitors.
+    /// When false, only shows workspaces on the current monitor.
+    ///
+    /// **Default**: `false`
     #[serde(default = "crate::config::default_false")]
     all_monitors: bool,
 
+    /// The method used for sorting workspaces.
+    /// `added` always appends to the end, `alphanumeric` sorts by number/name.
+    ///
+    /// **Valid options**: `added`, `alphanumeric`
+    /// <br>
+    /// **Default**: `alphanumeric`
     #[serde(default)]
     sort: SortOrder,
 
+    /// The size to render icons at (image icons only).
+    ///
+    /// **Default**: `32`
     #[serde(default = "default_icon_size")]
     icon_size: i32,
 
+    /// See [common options](module-level-options#common-options).
     #[serde(flatten)]
     pub common: Option<CommonConfig>,
 }
@@ -133,6 +177,15 @@ fn reorder_workspaces(container: &gtk::Box) {
     }
 }
 
+fn find_btn(map: &HashMap<i64, Button>, workspace: &Workspace) -> Option<Button> {
+    map.get(&workspace.id)
+        .or_else(|| {
+            map.values()
+                .find(|btn| btn.label().unwrap_or_default() == workspace.name)
+        })
+        .cloned()
+}
+
 impl WorkspacesModule {
     fn show_workspace_check(&self, output: &String, work: &Workspace) -> bool {
         (work.visibility.is_focused() || !self.hidden.contains(&work.name))
@@ -144,9 +197,7 @@ impl Module<gtk::Box> for WorkspacesModule {
     type SendMessage = WorkspaceUpdate;
     type ReceiveMessage = String;
 
-    fn name() -> &'static str {
-        "workspaces"
-    }
+    module_impl!("workspaces");
 
     fn spawn_controller(
         &self,
@@ -155,7 +206,7 @@ impl Module<gtk::Box> for WorkspacesModule {
         mut rx: Receiver<Self::ReceiveMessage>,
     ) -> Result<()> {
         let tx = context.tx.clone();
-        let client = context.ironbar.clients.borrow_mut().workspaces();
+        let client = context.ironbar.clients.borrow_mut().workspaces()?;
         // Subscribe & send events
         spawn(async move {
             let mut srx = client.subscribe_workspace_change();
@@ -168,7 +219,7 @@ impl Module<gtk::Box> for WorkspacesModule {
             }
         });
 
-        let client = context.client::<dyn WorkspaceClient>();
+        let client = context.try_client::<dyn WorkspaceClient>()?;
 
         // Change workspace focus
         spawn(async move {
@@ -195,7 +246,7 @@ impl Module<gtk::Box> for WorkspacesModule {
         let favs = self.favorites.clone();
         let mut fav_names: Vec<String> = vec![];
 
-        let mut button_map: HashMap<String, Button> = HashMap::new();
+        let mut button_map: HashMap<i64, Button> = HashMap::new();
 
         {
             let container = container.clone();
@@ -215,7 +266,7 @@ impl Module<gtk::Box> for WorkspacesModule {
 
                             let mut added = HashSet::new();
 
-                            let mut add_workspace = |name: &str, visibility: Visibility| {
+                            let mut add_workspace = |id: i64, name: &str, visibility: Visibility| {
                                 let item = create_button(
                                     name,
                                     visibility,
@@ -226,13 +277,13 @@ impl Module<gtk::Box> for WorkspacesModule {
                                 );
 
                                 container.add(&item);
-                                button_map.insert(name.to_string(), item);
+                                button_map.insert(id, item);
                             };
 
                             // add workspaces from client
                             for workspace in &workspaces {
                                 if self.show_workspace_check(&output_name, workspace) {
-                                    add_workspace(&workspace.name, workspace.visibility);
+                                    add_workspace(workspace.id, &workspace.name, workspace.visibility);
                                     added.insert(workspace.name.to_string());
                                 }
                             }
@@ -242,7 +293,11 @@ impl Module<gtk::Box> for WorkspacesModule {
                                     fav_names.push(name.to_string());
 
                                     if !added.contains(name) {
-                                        add_workspace(name, Visibility::Hidden);
+                                        // Favourites are added with the same name and ID
+                                        // as Hyprland will initialize them this way.
+                                        // Since existing workspaces are added above,
+                                        // this means there shouldn't be any issues with renaming.
+                                        add_workspace(-(Ironbar::unique_id() as i64), name, Visibility::Hidden);
                                         added.insert(name.to_string());
                                     }
                                 }
@@ -267,25 +322,28 @@ impl Module<gtk::Box> for WorkspacesModule {
                         }
                     }
                     WorkspaceUpdate::Focus { old, new } => {
-                        if let Some(btn) = old.as_ref().and_then(|w| button_map.get(&w.name)) {
-                            if Some(new.monitor) == old.map(|w| w.monitor) {
+                        if let Some(btn) = old.as_ref().and_then(|w| find_btn(&button_map, w)) {
+                            if Some(new.monitor.as_str()) == old.as_ref().map(|w| w.monitor.as_str()) {
                                 btn.style_context().remove_class("visible");
                             }
 
                             btn.style_context().remove_class("focused");
                         }
 
-                        let new = button_map.get(&new.name);
-                        if let Some(btn) = new {
-                            let style = btn.style_context();
-
-                            style.add_class("visible");
-                            style.add_class("focused");
+                        if let Some(btn) = find_btn(&button_map, &new) {
+                            btn.add_class("visible");
+                            btn.add_class("focused");
+                        }
+                    }
+                    WorkspaceUpdate::Rename { id, name } => {
+                        if let Some(btn) = button_map.get(&id) {
+                            let name = name_map.get(&name).unwrap_or(&name);
+                            btn.set_label(name);
                         }
                     }
                     WorkspaceUpdate::Add(workspace) => {
                         if fav_names.contains(&workspace.name) {
-                            let btn = button_map.get(&workspace.name);
+                            let btn = button_map.get(&workspace.id);
                             if let Some(btn) = btn {
                                 btn.style_context().remove_class("inactive");
                             }
@@ -308,7 +366,7 @@ impl Module<gtk::Box> for WorkspacesModule {
                             item.show();
 
                             if !name.is_empty() {
-                                button_map.insert(name, item);
+                                button_map.insert(workspace.id, item);
                             }
                         }
                     }
@@ -334,9 +392,9 @@ impl Module<gtk::Box> for WorkspacesModule {
                                 item.show();
 
                                 if !name.is_empty() {
-                                    button_map.insert(name, item);
+                                    button_map.insert(workspace.id, item);
                                 }
-                            } else if let Some(item) = button_map.get(&workspace.name) {
+                            } else if let Some(item) = button_map.get(&workspace.id) {
                                 container.remove(item);
                             }
                         }
@@ -344,7 +402,8 @@ impl Module<gtk::Box> for WorkspacesModule {
                     WorkspaceUpdate::Remove(workspace) => {
                         let button = button_map.get(&workspace);
                         if let Some(item) = button {
-                            if fav_names.contains(&workspace) {
+                            if workspace < 0 {
+                            // if fav_names.contains(&workspace) {
                                 item.style_context().add_class("inactive");
                             } else {
                                 container.remove(item);

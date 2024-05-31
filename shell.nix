@@ -9,6 +9,9 @@ pkgs.mkShell {
     gtk-layer-shell
     gcc
     openssl
+    libpulseaudio
+    luajit
+    luajitPackages.lgi
   ];
 
   nativeBuildInputs = with pkgs; [

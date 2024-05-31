@@ -149,12 +149,27 @@ impl Client {
             }
 
             {
-                event_listener.add_workspace_destroy_handler(move |workspace_type| {
-                    let _lock = lock!(lock);
-                    debug!("Received workspace destroy: {workspace_type:?}");
+                let tx = tx.clone();
+                let lock = lock.clone();
 
-                    let name = get_workspace_name(workspace_type);
-                    send!(tx, WorkspaceUpdate::Remove(name));
+                event_listener.add_workspace_rename_handler(move |data| {
+                    let _lock = lock!(lock);
+
+                    send!(
+                        tx,
+                        WorkspaceUpdate::Rename {
+                            id: data.workspace_id as i64,
+                            name: data.workspace_name
+                        }
+                    );
+                });
+            }
+
+            {
+                event_listener.add_workspace_destroy_handler(move |data| {
+                    let _lock = lock!(lock);
+                    debug!("Received workspace destroy: {data:?}");
+                    send!(tx, WorkspaceUpdate::Remove(data.workspace_id as i64));
                 });
             }
 
@@ -186,6 +201,7 @@ impl Client {
     fn get_workspace(name: &str, active: Option<&Workspace>) -> Option<Workspace> {
         Workspaces::get()
             .expect("Failed to get workspaces")
+            .into_iter()
             .find_map(|w| {
                 if w.name == name {
                     let vis = Visibility::from((&w, active.map(|w| w.name.as_ref()), &|w| {
@@ -228,6 +244,7 @@ impl WorkspaceClient for Client {
 
             let workspaces = Workspaces::get()
                 .expect("Failed to get workspaces")
+                .into_iter()
                 .map(|w| {
                     let vis = Visibility::from((&w, active_id.as_deref(), &is_visible));
 
@@ -262,7 +279,7 @@ fn create_is_visible() -> impl Fn(&HWorkspace) -> bool {
 impl From<(Visibility, HWorkspace)> for Workspace {
     fn from((visibility, workspace): (Visibility, HWorkspace)) -> Self {
         Self {
-            id: workspace.id.to_string(),
+            id: workspace.id as i64,
             name: workspace.name,
             monitor: workspace.monitor,
             visibility,

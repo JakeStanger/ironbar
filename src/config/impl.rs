@@ -1,4 +1,4 @@
-use super::{BarPosition, Config, MonitorConfig};
+use super::{BarConfig, BarPosition, MonitorConfig};
 use color_eyre::{Help, Report};
 use gtk::Orientation;
 use serde::{Deserialize, Deserializer};
@@ -13,11 +13,11 @@ impl<'de> Deserialize<'de> for MonitorConfig {
         let content =
             <serde::__private::de::Content as serde::Deserialize>::deserialize(deserializer)?;
 
-        match <Config as serde::Deserialize>::deserialize(
+        match <BarConfig as serde::Deserialize>::deserialize(
             serde::__private::de::ContentRefDeserializer::<D::Error>::new(&content),
         ) {
             Ok(config) => Ok(Self::Single(config)),
-            Err(outer) => match <Vec<Config> as serde::Deserialize>::deserialize(
+            Err(outer) => match <Vec<BarConfig> as serde::Deserialize>::deserialize(
                 serde::__private::de::ContentRefDeserializer::<D::Error>::new(&content),
             ) {
                 Ok(config) => Ok(Self::Multiple(config)),

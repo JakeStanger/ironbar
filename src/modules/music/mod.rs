@@ -22,7 +22,7 @@ use crate::modules::PopupButton;
 use crate::modules::{
     Module, ModuleInfo, ModuleParts, ModulePopup, ModuleUpdateEvent, WidgetContext,
 };
-use crate::{glib_recv, send_async, spawn, try_send};
+use crate::{glib_recv, module_impl, send_async, spawn, try_send};
 
 pub use self::config::MusicModule;
 use self::config::PlayerType;
@@ -87,9 +87,7 @@ impl Module<Button> for MusicModule {
     type SendMessage = ControllerEvent;
     type ReceiveMessage = PlayerCommand;
 
-    fn name() -> &'static str {
-        "music"
-    }
+    module_impl!("music");
 
     fn spawn_controller(
         &self,
@@ -193,6 +191,7 @@ impl Module<Button> for MusicModule {
         let icon_pause = new_icon_label(&self.icons.pause, info.icon_theme, self.icon_size);
         let label = Label::new(None);
 
+        label.set_use_markup(true);
         label.set_angle(info.bar_position.get_angle());
 
         if let Some(truncate) = self.truncate {
@@ -255,7 +254,7 @@ impl Module<Button> for MusicModule {
 
         let rx = context.subscribe();
         let popup = self
-            .into_popup(context.controller_tx, rx, info)
+            .into_popup(context.controller_tx.clone(), rx, context, info)
             .into_popup_parts(vec![&button]);
 
         Ok(ModuleParts::new(button, popup))
@@ -265,6 +264,7 @@ impl Module<Button> for MusicModule {
         self,
         tx: mpsc::Sender<Self::ReceiveMessage>,
         rx: broadcast::Receiver<Self::SendMessage>,
+        _context: WidgetContext<Self::SendMessage, Self::ReceiveMessage>,
         info: &ModuleInfo,
     ) -> Option<gtk::Box> {
         let icon_theme = info.icon_theme;
@@ -409,7 +409,7 @@ impl Module<Button> for MusicModule {
                         // only update art when album changes
                         let new_cover = update.song.cover_path;
                         if prev_cover != new_cover {
-                            prev_cover = new_cover.clone();
+                            prev_cover.clone_from(&new_cover);
                             let res = if let Some(image) = new_cover.and_then(|cover_path| {
                                 ImageProvider::parse(&cover_path, &icon_theme, false, image_size)
                             }) {
@@ -545,7 +545,14 @@ impl IconLabel {
         let container = gtk::Box::new(Orientation::Horizontal, 5);
 
         let icon = new_icon_label(icon_input, icon_theme, 24);
-        let label = Label::new(label);
+
+        let mut builder = Label::builder().use_markup(true);
+
+        if let Some(label) = label {
+            builder = builder.label(label);
+        }
+
+        let label = builder.build();
 
         icon.add_class("icon-box");
         label.add_class("label");

@@ -129,7 +129,7 @@ impl Ipc {
                 ironbar.reload_config();
 
                 for output in outputs {
-                    match crate::load_output_bars(ironbar, application, output) {
+                    match crate::load_output_bars(ironbar, application, &output) {
                         Ok(mut bars) => ironbar.bars.borrow_mut().append(&mut bars),
                         Err(err) => error!("{err:?}"),
                     }
@@ -153,6 +153,20 @@ impl Ipc {
                     None => Response::error("Variable not found"),
                 }
             }
+            Command::List => {
+                let variable_manager = Ironbar::variable_manager();
+
+                let mut values = read_lock!(variable_manager)
+                    .get_all()
+                    .iter()
+                    .map(|(k, v)| format!("{k}: {}", v.get().unwrap_or_default()))
+                    .collect::<Vec<_>>();
+
+                values.sort();
+                let value = values.join("\n");
+
+                Response::OkValue { value }
+            }
             Command::LoadCss { path } => {
                 if path.exists() {
                     load_css(path);
@@ -172,7 +186,7 @@ impl Ipc {
                         popup.hide();
 
                         let data = popup
-                            .cache
+                            .container_cache
                             .borrow()
                             .iter()
                             .find(|(_, value)| value.name == name)
@@ -209,7 +223,7 @@ impl Ipc {
                         popup.hide();
 
                         let data = popup
-                            .cache
+                            .container_cache
                             .borrow()
                             .iter()
                             .find(|(_, value)| value.name == name)

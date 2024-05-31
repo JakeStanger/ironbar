@@ -4,6 +4,85 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.15.1] - 2024-05-05
+
+Release to bump hyprland-rs version due to Hyprland v0.40 socket path breaking change.
+
+### :memo: Documentation Changes
+- [`47b6c47`](https://github.com/JakeStanger/ironbar/commit/47b6c477242ad52aae77a6820740d9c5f4bfc263) - **compiling**: add lua deps *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`1971f3b`](https://github.com/JakeStanger/ironbar/commit/1971f3bb1ef3d059b29b99527e77ffaaf92240aa) - **volume**: update deprecated volume token *(PR [#567](https://github.com/JakeStanger/ironbar/pull/567) by [@drendog](https://github.com/drendog))*
+
+
+## [v0.15.0] - 2024-04-28
+### :sparkles: New Features
+- [`f4384b6`](https://github.com/JakeStanger/ironbar/commit/f4384b6252e86d4e2558e1c36810d4ef903bd58c) -  enable use of markup in clock module format and format_popup, and update documentation to reflect supporting Pango markup in both *commit by [@Dridus](https://github.com/Dridus))*
+- [`76a6816`](https://github.com/JakeStanger/ironbar/commit/76a68165f09a6d07f8e95008cb9fe3d40d99abe0) - **upower**: add new formatting properties *(commit by [@Disr0](https://github.com/Disr0))*
+- [`b037a55`](https://github.com/JakeStanger/ironbar/commit/b037a55fb78d05cce0e03bad27a10cbdf743c573) - **tray**: add `direction` option *(commit by [@calops](https://github.com/calops))*
+- [`72440e6`](https://github.com/JakeStanger/ironbar/commit/72440e69c9e665f3e82e569e770747fc63765b53) - **tray**: icon size setting *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`a70956b`](https://github.com/JakeStanger/ironbar/commit/a70956bb3b17f559fda1fdca444e271ae9d3c4cd) - add new volume module *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`7742a46`](https://github.com/JakeStanger/ironbar/commit/7742a465780ed5db80cdb518a834200082a5e936) - swaync notifications module *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`ba00445`](https://github.com/JakeStanger/ironbar/commit/ba004455b25fb51d28a5ec0cdf0f510c2157eb94) - **tray**: option to prefer theme-provided icons *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`994f4a4`](https://github.com/JakeStanger/ironbar/commit/994f4a4a123452607dd591e1e358ec218a3cb5ae) - ability to add custom modules instead native modules *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`46cbaca`](https://github.com/JakeStanger/ironbar/commit/46cbaca5e08a5be8945486d007c0f7315d10b351) - option to disable module popup *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`46224d8`](https://github.com/JakeStanger/ironbar/commit/46224d8a541699a04b2311e89766dded781863d6) - **custom**: ability to add modules/widgets to buttons *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`702b0a6`](https://github.com/JakeStanger/ironbar/commit/702b0a63bf75204d03f9229f1667cb2e77c1b8b8) - Add orientation support for clock *(commit by [@ClaireNeveu](https://github.com/ClaireNeveu))*
+- [`70b2c59`](https://github.com/JakeStanger/ironbar/commit/70b2c592b284965382182098b0b90b40bdac9965) - Add orientation support for custom label and button *(commit by [@ClaireNeveu](https://github.com/ClaireNeveu))*
+- [`44be585`](https://github.com/JakeStanger/ironbar/commit/44be58594b296ff6a1a7d902c88aa01116322538) - Add orientation and direction support for sys info *(commit by [@ClaireNeveu](https://github.com/ClaireNeveu))*
+- [`cfaba87`](https://github.com/JakeStanger/ironbar/commit/cfaba87f2fe470667eea4eca0504f6e8651c90f3) - **ipc**: ironvar list command *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`b0a05b7`](https://github.com/JakeStanger/ironbar/commit/b0a05b7cda1d07af6673a5ee9fb8105ed1497a36) - new cairo module *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`d03c752`](https://github.com/JakeStanger/ironbar/commit/d03c752f9a0ac849fe3f1a93d7c3de4f743c7f00) - **launcher**: option to reverse order *(commit by [@SerraPi](https://github.com/SerraPi))*
+
+### :bug: Bug Fixes
+- [`30b11db`](https://github.com/JakeStanger/ironbar/commit/30b11db43503f4a78fde8f17fa3af6ce99375cc2) - **tray**: cannot activate menu options with right click *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`f68d95a`](https://github.com/JakeStanger/ironbar/commit/f68d95a740c02434866c662d2cd915a0c5253ba5) - **logging**: log file growing indefinitely *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`6fe9c54`](https://github.com/JakeStanger/ironbar/commit/6fe9c541347b7bdd69e3d735f07a17a5d4b124ca) - **clipboard**: unable to paste large images into xwayland *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`a10466e`](https://github.com/JakeStanger/ironbar/commit/a10466e7e9dafd29e80994eccccdd398e9434b95) - **popup**: re-posiiton on resize due to content change *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`0675b91`](https://github.com/JakeStanger/ironbar/commit/0675b917f2beeed3e6b626dad8fe34b8063d9c83) - **tray**: icons ignoring scaling *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`c62d475`](https://github.com/JakeStanger/ironbar/commit/c62d47555ec31baa1a7094491e2977a832f4cfcc) - **tray**: submenus not working *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`f263849`](https://github.com/JakeStanger/ironbar/commit/f2638497fac4f0e350d069857e6e7437cb756669) - **launcher**: not resolving icon for some apps *(commit by [@slowsage](https://github.com/slowsage))*
+- [`cf44c46`](https://github.com/JakeStanger/ironbar/commit/cf44c461db7a3e5093c69c12fcef57cf9675c6e2) - **workspaces**: favourites not persisting for initally opened workspaces *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`180f874`](https://github.com/JakeStanger/ironbar/commit/180f8748bbe52affbbfe8c5ec045c753e63d554d) - **music** - Handle NoActivePlayer (playerctld) , NoReply, NoMethod, ServiceUnknown DBus errors in mpris. *(commit by [@slowsage](https://github.com/slowsage))*
+- [`3ba8b4b`](https://github.com/JakeStanger/ironbar/commit/3ba8b4bd9611bd82b251fbaf51f4b313f36f1c89) - regressions introduced by [#505](https://github.com/JakeStanger/ironbar/pull/505) *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`f50a65e`](https://github.com/JakeStanger/ironbar/commit/f50a65eab5edfa3a96e4e3b7e54de754ead1eb21) - upower module should display correctly for vertical bars *(commit by [@ClaireNeveu](https://github.com/ClaireNeveu))*
+- [`188abc3`](https://github.com/JakeStanger/ironbar/commit/188abc33e910a708061517b13e36125f9d7736d3) - **tray**: icon colour channels are being incorrectly rendered *(commit by [@rdnelson](https://github.com/rdnelson))*
+- [`ea2b208`](https://github.com/JakeStanger/ironbar/commit/ea2b20816d459aafe79578f155454d50684f5fad) - **focused**: incorrectly clearing when unfocused window title changes *(PR [#556](https://github.com/JakeStanger/ironbar/pull/556) by [@JakeStanger](https://github.com/JakeStanger))*
+  - :arrow_lower_right: *fixes issue [#488](https://github.com/JakeStanger/ironbar/issues/488) opened by [@bluebyt](https://github.com/bluebyt)*
+  - :arrow_lower_right: *fixes issue [#554](https://github.com/JakeStanger/ironbar/issues/554) opened by [@DanteDragan](https://github.com/DanteDragan)*
+
+### :recycle: Refactors
+- [`a55ba8c`](https://github.com/JakeStanger/ironbar/commit/a55ba8c523ff19fa607a31bac589a55b48db39ad) - rename `get_orientation` method to `orientation` *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`86c5b69`](https://github.com/JakeStanger/ironbar/commit/86c5b69f18356201db5c3a314f36e0f68e74c357) - **tray**: tidy imports *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`00a6a84`](https://github.com/JakeStanger/ironbar/commit/00a6a84ca6af6f3c64183ec08fdff7430770d39b) - **upower**: cheaper string building *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`b912619`](https://github.com/JakeStanger/ironbar/commit/b912619d61a74921c854ea6464e0922e5c107a27) - **image**: add debug logging *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`c7b6ee8`](https://github.com/JakeStanger/ironbar/commit/c7b6ee8bc00e92d075b8c66105c29e3df0906145) - add dead_code allow to fix build warning *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`004ea76`](https://github.com/JakeStanger/ironbar/commit/004ea76da5af3e8750e5a02a8780f62337b06844) - **tray**: complete client rewrite *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`706e040`](https://github.com/JakeStanger/ironbar/commit/706e040e25b54c128b0364a8e6982f2372da0b99) - split bar/top-level config structs *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`1b35354`](https://github.com/JakeStanger/ironbar/commit/1b353542722ac70b99e5a4f846e68ae68a2870fd) - fix clippy warnings *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`9245188`](https://github.com/JakeStanger/ironbar/commit/9245188af7830b09aa564ab83f1db2e2a4cffb2c) - better error handling for client initialization *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`314bfe7`](https://github.com/JakeStanger/ironbar/commit/314bfe7abecec66692d138b49186865c9132c6ef) - **nix**: simplify flake *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+
+### :memo: Documentation Changes
+- [`76a6816`](https://github.com/JakeStanger/ironbar/commit/76a68165f09a6d07f8e95008cb9fe3d40d99abe0) - correct formatting tokens in upower *(commit by [@Disr0](https://github.com/Disr0))*
+- [`e26e213`](https://github.com/JakeStanger/ironbar/commit/e26e213c4e409018f3b5c35b0319f5db8c0fa3bb) - improve info about logging *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`163a70e`](https://github.com/JakeStanger/ironbar/commit/163a70e690e2a9950c23ef8164dafd762a6a1020) - **readme**: update nix caching info *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`6a03c46`](https://github.com/JakeStanger/ironbar/commit/6a03c46146b612e53fa866ad98263d7cc29aacc8) - **readme**: add [mixxc](https://github.com/Elvyria/Mixxc) acknowledgement *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`3a3d3d7`](https://github.com/JakeStanger/ironbar/commit/3a3d3d75cd4fd8d474edc4c6ddb2c47bce60df16) - **readme**: add void package *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`fc42f6c`](https://github.com/JakeStanger/ironbar/commit/fc42f6c540131576d6eaf1201e78ba216861947d) - **readme**: add repology badge *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`8e9db14`](https://github.com/JakeStanger/ironbar/commit/8e9db141f8a668063ece3622ec91c3e22c3a87a3) - **macros**: add missing comment *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`bb02a21`](https://github.com/JakeStanger/ironbar/commit/bb02a21d0efcad07ba0598a38ff56abfc7c06107) - **compiling**: add missing notifications feature flag *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`ee8873a`](https://github.com/JakeStanger/ironbar/commit/ee8873a94a904d895a2005fa3593628c9500fc0c) - **custom**: add native examples *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`dffb3e5`](https://github.com/JakeStanger/ironbar/commit/dffb3e5d543d33c10146d43384b8a3c03ef3aab7) - **workspaces**: fix typo that results in a non working config *(commit by [@nyadiia](https://github.com/nyadiia))*
+- [`782b955`](https://github.com/JakeStanger/ironbar/commit/782b9554a2a24123acfebcc80401abf051c7dc06) - fix issues with several more toml examples *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+
+### Note for maintainers
+
+The addition of new modules requires the following new build dependencies:
+
+- `libpulse`
+- `luajit`
+
+It also requires `lua-lgi` as a runtime dependency.
+
 ## [v0.14.1] - 2024-02-10
 ### :bug: Bug Fixes
 - [`1c9c9bb`](https://github.com/JakeStanger/ironbar/commit/1c9c9bbece878286939abacfaec0daaecc559243) - **cli**: error when launched via `swaybar_command` *(commit by [@JakeStanger](https://github.com/JakeStanger))*
@@ -24,7 +103,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [`af7e037`](https://github.com/JakeStanger/ironbar/commit/af7e037dd5a24cff0959e2fd5f04e3eb49418b23) - **dynamic string**: test pango attributes with ironvars *(commit by [@JakeStanger](https://github.com/JakeStanger))*
 
 ### :memo: Documentation Changes
-- [`7d51155`](https://github.com/JakeStanger/ironbar/commit/7d51155a3e6e6e1d77f2e3d2b8e6c73831b15c0e) - update CHANGELOG.md for v0.14.0 [skip ci] *(commit by [@JakeStanger](https://github.com/JakeStanger))*
 - [`754e339`](https://github.com/JakeStanger/ironbar/commit/754e33952eaf7794d00c831c46aab007684ff0b2) - add info on speeding up compilation time *(commit by [@JakeStanger](https://github.com/JakeStanger))*
 - [`cb2f9b0`](https://github.com/JakeStanger/ironbar/commit/cb2f9b0aaff1519516664ab04a3a195d29983b4e) - **examples**: fix issues with example css *(commit by [@JakeStanger](https://github.com/JakeStanger))*
 - [`1b54276`](https://github.com/JakeStanger/ironbar/commit/1b54276bea6268131fca7c3f453284ca0aee4b9b) - **compilation**: add sccache section *(commit by [@JakeStanger](https://github.com/JakeStanger))*
@@ -69,7 +147,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [`18b4784`](https://github.com/JakeStanger/ironbar/commit/18b47844f94067bbf029cf4b6b94153a742d6af1) - **wayland**: simplify task spawning code *(commit by [@JakeStanger](https://github.com/JakeStanger))*
 
 ### :memo: Documentation Changes
-- [`e5281e9`](https://github.com/JakeStanger/ironbar/commit/e5281e96193a2f42d52a0eb736473cdb378dd243) - update CHANGELOG.md for v0.13.0 [skip ci] *(commit by [@JakeStanger](https://github.com/JakeStanger))*
 - [`b9c41af`](https://github.com/JakeStanger/ironbar/commit/b9c41af0f73c85c0daf6f0af2fd1339c79e66758) - **workspaces**: add missing `.inactive` selector *(commit by [@JakeStanger](https://github.com/JakeStanger))*
 - [`abd1f80`](https://github.com/JakeStanger/ironbar/commit/abd1f8054821cedef594ebcb22a914feb230c9f1) - **examples**: update discord icon, temporarily disable random label *(commit by [@JakeStanger](https://github.com/JakeStanger))*
 - [`ccc6ff2`](https://github.com/JakeStanger/ironbar/commit/ccc6ff2d943ba46d0f9a36478933cda8b14b7ab1) - **readme**: add nixpkgs details *(commit by [@JakeStanger](https://github.com/JakeStanger))*
@@ -126,7 +203,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [`36f3db7`](https://github.com/JakeStanger/ironbar/commit/36f3db741178b959070ee90bcd6448e1b2a6ef26) - **image**: do not try to read desktop files where definitely not necessary *(commit by [@JakeStanger](https://github.com/JakeStanger))*
 
 ### :memo: Documentation Changes
-- [`aea8de2`](https://github.com/JakeStanger/ironbar/commit/aea8de25522e5f5e7f92f46a6248eb2e79cb457e) - update CHANGELOG.md for v0.12.1 [skip ci] *(commit by [@JakeStanger](https://github.com/JakeStanger))*
 - [`607c728`](https://github.com/JakeStanger/ironbar/commit/607c7285d7e01265a8c8417e2941b2099e61aa42) - update for ipc/cli, tidy a bit *(commit by [@JakeStanger](https://github.com/JakeStanger))*
 - [`4b88079`](https://github.com/JakeStanger/ironbar/commit/4b88079561e5c9fec63480afe56a1f89c76dc094) - fix header *(commit by [@JakeStanger](https://github.com/JakeStanger))*
 - [`4620f29`](https://github.com/JakeStanger/ironbar/commit/4620f29d381394aef8b241b03009ef8c3b8d0145) - **examples**: update stylesheet *(commit by [@JakeStanger](https://github.com/JakeStanger))*
@@ -158,7 +234,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [`103a224`](https://github.com/JakeStanger/ironbar/commit/103a224355e8f700904a2b8fbc87cd7be4f64566) - **launcher**: crash when focusing newly opened window in popup *(commit by [@JakeStanger](https://github.com/JakeStanger))*
 
 ### :memo: Documentation Changes
-- [`d116a51`](https://github.com/JakeStanger/ironbar/commit/d116a510830be59f4ebaba4fe06f9f4489da7ebc) - update CHANGELOG.md for v0.12.0 [skip ci] *(commit by [@JakeStanger](https://github.com/JakeStanger))*
 - [`327e345`](https://github.com/JakeStanger/ironbar/commit/327e345630a5a89a6f7e464d873c16666d929c0f) - **examples**: fix css button styles *(commit by [@JakeStanger](https://github.com/JakeStanger))*
 - [`13d3923`](https://github.com/JakeStanger/ironbar/commit/13d39235ad032623745baecb6911057ec057ff11) - **examples**: fix casing of steam in launcher favourites *(commit by [@JakeStanger](https://github.com/JakeStanger))*
 - [`cdeafbd`](https://github.com/JakeStanger/ironbar/commit/cdeafbdc7245d37120e3e8338b6f933a39d4e428) - **sys info**: add typical temperature sensors for intel/amd cpus *(commit by [@JakeStanger](https://github.com/JakeStanger))*
@@ -220,7 +295,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [`38da59c`](https://github.com/JakeStanger/ironbar/commit/38da59cd419fa0023d0ea0b435b11f0f9dea3f15) - fix a few pedantic clippy warnings *(commit by [@JakeStanger](https://github.com/JakeStanger))*
 
 ### :memo: Documentation Changes
-- [`1b0287b`](https://github.com/JakeStanger/ironbar/commit/1b0287becc161e5addd8a8fed8bd9e8c437cd242) - update CHANGELOG.md for v0.11.0 [skip ci] *(commit by [@JakeStanger](https://github.com/JakeStanger))*
 - [`e928b30`](https://github.com/JakeStanger/ironbar/commit/e928b30f9927aa7c895c0d9855ee3ef09e559dc7) - **custom**: rewrite widget options to be clearer *(commit by [@JakeStanger](https://github.com/JakeStanger))*
 - [`138b5b3`](https://github.com/JakeStanger/ironbar/commit/138b5b39038a005d17069830a04b88d52730bed5) - **custom**: fix potential error in progress example *(commit by [@JakeStanger](https://github.com/JakeStanger))*
 - [`07df51c`](https://github.com/JakeStanger/ironbar/commit/07df51c2497977a31b2f5ef5bc7d051e0bd88564) - include readme in rust docs *(commit by [@JakeStanger](https://github.com/JakeStanger))*
@@ -261,7 +335,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [`6221f74`](https://github.com/JakeStanger/ironbar/commit/6221f7454a2da2ec8a5a7f84e6fd35a8dc1a1548) - fix new clippy warnings *(commit by [@JakeStanger](https://github.com/JakeStanger))*
 
 ### :memo: Documentation Changes
-- [`82875cd`](https://github.com/JakeStanger/ironbar/commit/82875cde687628f3ee3436343068825440128599) - update CHANGELOG.md for v0.10.0 [skip ci] *(commit by [@JakeStanger](https://github.com/JakeStanger))*
 - [`7c36f5c`](https://github.com/JakeStanger/ironbar/commit/7c36f5cb0cf03191c9b03e2455b63829a64e402e) - fix a couple of issues *(commit by [@JakeStanger](https://github.com/JakeStanger))*
 - [`83a4916`](https://github.com/JakeStanger/ironbar/commit/83a49165c42fa793ef1224f93cbc147bc69de894) - **compiling**: add info about build deps *(commit by [@JakeStanger](https://github.com/JakeStanger))*
 - [`5bbe64b`](https://github.com/JakeStanger/ironbar/commit/5bbe64bb86fb2db0921e284a1560db2f6c1a1920) - **clock**: format table *(commit by [@JakeStanger](https://github.com/JakeStanger))*
@@ -301,7 +374,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [`15f0857`](https://github.com/JakeStanger/ironbar/commit/15f0857859d5d4a590b60b6b1a4347b4b84a58a1) - replace icon loading with improved general image loading *(commit by [@JakeStanger](https://github.com/JakeStanger))*
 
 ### :memo: Documentation Changes
-- [`1ed3220`](https://github.com/JakeStanger/ironbar/commit/1ed3220733c2dcb7c5e5cbf377b3324d3183609e) - update CHANGELOG.md for v0.9.0 [skip ci] *(commit by [@JakeStanger](https://github.com/JakeStanger))*
 - [`90f57d6`](https://github.com/JakeStanger/ironbar/commit/90f57d61b94c50c98a6f55de18c6edf3d18aa3fa) - **music**: remove irrelevant `icon` format token *(commit by [@JakeStanger](https://github.com/JakeStanger))*
 - [`6a39905`](https://github.com/JakeStanger/ironbar/commit/6a39905b4333582fbcda81a66a9b91055333d698) - **compiling**: add missing full stop *(commit by [@JakeStanger](https://github.com/JakeStanger))*
 - [`7b23e61`](https://github.com/JakeStanger/ironbar/commit/7b23e61e7dedf2736a30580b6c1aa84e002c462c) - **wiki**: update screenshots and examples *(commit by [@JakeStanger](https://github.com/JakeStanger))*
@@ -340,7 +412,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [`0d7ab54`](https://github.com/JakeStanger/ironbar/commit/0d7ab541604691455ed39c73e039ac0635307bc8) - remove redundant clone *(commit by [@JakeStanger](https://github.com/JakeStanger))*
 
 ### :memo: Documentation Changes
-- [`b97f018`](https://github.com/JakeStanger/ironbar/commit/b97f018e81aa55a871a12aa3e1e4b07b1f8eb50f) - update CHANGELOG.md for v0.8.0 [skip ci] *(commit by [@JakeStanger](https://github.com/JakeStanger))*
 - [`c223892`](https://github.com/JakeStanger/ironbar/commit/c223892a57b29ae56431fc585b8cec503f3206c7) - **workspaces**: update for hyprland/new ordering option *(commit by [@JakeStanger](https://github.com/JakeStanger))*
 
 
@@ -379,7 +450,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [`907a565`](https://github.com/JakeStanger/ironbar/commit/907a565f3d418a276dfb454e1189ddede1814291) - **dynamic label**: do not run if cannot initialise gtk *(commit by [@JakeStanger](https://github.com/JakeStanger))*
 
 ### :memo: Documentation Changes
-- [`1c032ae`](https://github.com/JakeStanger/ironbar/commit/1c032ae8e3a38b82c286bab7d102842f14b708e1) - update CHANGELOG.md for v0.7.0 [skip ci] *(commit by [@JakeStanger](https://github.com/JakeStanger))*
 - [`58d55db`](https://github.com/JakeStanger/ironbar/commit/58d55db6600fe2f9b23ae8ec6a50a686d2acaf65) - migrate wiki into main repo *(commit by [@JakeStanger](https://github.com/JakeStanger))*
 - [`c480296`](https://github.com/JakeStanger/ironbar/commit/c48029664d5f58bf73faa2931f34b38b8b184d25) - **script**: improve doc comment *(commit by [@JakeStanger](https://github.com/JakeStanger))*
 - [`8c77410`](https://github.com/JakeStanger/ironbar/commit/8c774100f1c8ea051284c6950339a2c8ed59a52a) - **script**: add information on new mode options *(commit by [@JakeStanger](https://github.com/JakeStanger))*
@@ -415,7 +485,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [`bc625b9`](https://github.com/JakeStanger/ironbar/commit/bc625b929b8644ce92f275b5d98cdf74b93fe067) - clippy & fmt *(commit by [@JakeStanger](https://github.com/JakeStanger))*
 
 ### :memo: Documentation Changes
-- [`9d9c275`](https://github.com/JakeStanger/ironbar/commit/9d9c2753137331ae85ac8ab7d75a6de9a9c82042) - update CHANGELOG.md for v0.6.0 [skip ci] *(commit by [@JakeStanger](https://github.com/JakeStanger))*
 - [`27d0479`](https://github.com/JakeStanger/ironbar/commit/27d04795af1c25fe5f765c7480d5dd5d096a8ab7) - **readme**: add warning about crate being outdated *(commit by [@JakeStanger](https://github.com/JakeStanger))*
 - [`a06c4bc`](https://github.com/JakeStanger/ironbar/commit/a06c4bccca6cb51935605ac9239e63024fb7c663) - **examples**: add full system info config *(commit by [@JakeStanger](https://github.com/JakeStanger))*
 - [`0a331f3`](https://github.com/JakeStanger/ironbar/commit/0a331f31381f0d967793c0d8b7a14e2a43bf666f) - **readme**: remove warning about outdated cargo package *(commit by [@JakeStanger](https://github.com/JakeStanger))*
@@ -441,7 +510,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [`1b853bc`](https://github.com/JakeStanger/ironbar/commit/1b853bcb71197a4bf3ca75725cc010b1d404c2b3) - fix clippy warning *(commit by [@JakeStanger](https://github.com/JakeStanger))*
 
 ### :memo: Documentation Changes
-- [`daafa09`](https://github.com/JakeStanger/ironbar/commit/daafa0943e5b9886b09fd18d6fff04558fb02335) - update CHANGELOG.md for v0.5.2 [skip ci] *(commit by [@JakeStanger](https://github.com/JakeStanger))*
 - [`b352181`](https://github.com/JakeStanger/ironbar/commit/b352181b3d232ccc79ffc1d9e22a633729d01a47) - update json example *(commit by [@JakeStanger](https://github.com/JakeStanger))*
 - [`bb4fe7f`](https://github.com/JakeStanger/ironbar/commit/bb4fe7f7f58fa2a6d0a2259bd9442700d2c884f7) - **readme**: credit smithay client toolkit *(commit by [@JakeStanger](https://github.com/JakeStanger))*
 - [`994d0f5`](https://github.com/JakeStanger/ironbar/commit/994d0f580b4d1b6ff750839652a7f06149743172) - **readme**: update references to sway *(commit by [@JakeStanger](https://github.com/JakeStanger))*
@@ -505,3 +573,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [v0.13.0]: https://github.com/JakeStanger/ironbar/compare/v0.12.1...v0.13.0
 [v0.14.0]: https://github.com/JakeStanger/ironbar/compare/v0.13.0...v0.14.0
 [v0.14.1]: https://github.com/JakeStanger/ironbar/compare/v0.14.0...v0.14.1
+[v0.15.0]: https://github.com/JakeStanger/ironbar/compare/v0.14.3...v0.15.0
+[v0.15.1]: https://github.com/JakeStanger/ironbar/compare/v0.15.0...v0.15.1

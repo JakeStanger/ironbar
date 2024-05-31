@@ -4,22 +4,59 @@ use serde::Deserialize;
 use tokio::sync::mpsc;
 use tracing::error;
 
+use crate::config::ModuleOrientation;
 use crate::dynamic_value::dynamic_string;
 use crate::modules::custom::set_length;
 use crate::script::{OutputStream, Script, ScriptInput};
 use crate::{build, glib_recv_mpsc, spawn, try_send};
 
-use super::{try_get_orientation, CustomWidget, CustomWidgetContext};
+use super::{CustomWidget, CustomWidgetContext};
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct ProgressWidget {
+    /// Widget name.
+    ///
+    /// **Default**: `null`
     name: Option<String>,
+
+    /// Widget class name.
+    ///
+    /// **Default**: `null`
     class: Option<String>,
-    orientation: Option<String>,
+
+    /// Orientation of the progress bar.
+    ///
+    /// **Valid options**: `horizontal`, `vertical`, `h`, `v`
+    /// <br />
+    /// **Default**: `horizontal`
+    #[serde(default)]
+    orientation: ModuleOrientation,
+
+    /// Text label to show for the progress bar.
+    ///
+    /// This is a [Dynamic String](dynamic-values#dynamic-string).
+    ///
+    /// **Default**: `null`
     label: Option<String>,
+
+    /// Script to run to get the progress bar value.
+    /// Output must be a valid percentage.
+    ///
+    /// Note that this expects a numeric value between `0`-`max` as output.
+    ///
+    /// **Default**: `null`
     value: Option<ScriptInput>,
+
+    /// The maximum progress bar value.
+    ///
+    /// **Default**: `100`
     #[serde(default = "default_max")]
     max: f64,
+
+    /// The progress bar length, in pixels.
+    /// GTK will automatically determine the size if left blank.
+    ///
+    /// **Default**: `null`
     length: Option<i32>,
 }
 
@@ -33,11 +70,7 @@ impl CustomWidget for ProgressWidget {
     fn into_widget(self, context: CustomWidgetContext) -> Self::Widget {
         let progress = build!(self, Self::Widget);
 
-        if let Some(orientation) = self.orientation {
-            progress.set_orientation(
-                try_get_orientation(&orientation).unwrap_or(context.bar_orientation),
-            );
-        }
+        progress.set_orientation(self.orientation.into());
 
         if let Some(length) = self.length {
             set_length(&progress, length, context.bar_orientation);
