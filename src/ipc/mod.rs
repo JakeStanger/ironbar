@@ -6,7 +6,7 @@ mod server;
 use std::path::{Path, PathBuf};
 use tracing::warn;
 
-pub use commands::Command;
+pub use commands::*;
 pub use responses::Response;
 
 #[derive(Debug)]

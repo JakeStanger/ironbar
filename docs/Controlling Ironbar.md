@@ -5,28 +5,38 @@ It also includes a command line interface, which can be used for interacting wit
 # CLI
 
 This is shipped as part of the `ironbar` binary. To view commands, you can use `ironbar --help`. 
-You can also view help per-command, for example using `ironbar set --help`.
+You can also view help per sub-command or command, for example using `ironbar var --help` or `ironbar var set --help`.
 
-Responses are handled by writing their type to stdout, followed by any value starting on the next line.
-Error responses are written to stderr in the same format.
+The CLI supports plaintext and JSON output. Plaintext will:
+
+- Print `ok` for empty success responses
+- Print the returned body for success responses
+- Print `error` to followed by the error on the next line for error responses. This is printed to `stderr`.
 
 Example:
 
 ```shell
-$ ironbar set subject world
+$ ironbar var set subject world
 ok
 
-$ ironbar get subject
-ok
+$ ironbar var get subject
 world
+
+$ ironbar var get foo
+error
+Variable not found
 ```
+
+All error responses will cause the CLI to exit code 3.
 
 # IPC
 
 The server listens on a Unix socket. 
-This can usually be found at `/run/user/$UID/ironbar-ipc.sock`.
+The path is printed on startup, and can usually be found at `/run/user/$UID/ironbar-ipc.sock`.
 
-Commands and responses are sent as JSON objects, denoted by their `type` key.
+Commands and responses are sent as JSON objects.
+
+Commands will have a `command` key, and a `subcommand` key when part of a sub-command.
 
 The message buffer is currently limited to `1024` bytes. 
 Particularly large messages will be truncated or cause an error.
@@ -47,7 +57,7 @@ Responds with `ok`.
 
 ```json
 {
-  "type": "ping"
+  "command": "ping"
 }
 ```
 
@@ -59,7 +69,7 @@ Responds with `ok`.
 
 ```json
 {
-  "type": "inspect"
+  "command": "inspect"
 }
 ```
 
@@ -73,48 +83,7 @@ Responds with `ok`.
 
 ```json
 {
-  "type": "reload"
-}
-```
-
-### `get`
-
-Gets an [ironvar](ironvars) value. 
-
-Responds with `ok_value` if the value exists, otherwise `error`.
-
-```json
-{
-  "type": "get",
-  "key": "foo"
-}
-```
-
-### `set`
-
-Sets an [ironvar](ironvars) value.
-
-Responds with `ok`.
-
-```json
-{
-  "type": "set",
-  "key": "foo",
-  "value": "bar"
-}
-```
-
-### list
-
-Gets a list of all [ironvar](ironvars) values.
-
-Responds with `ok_value`. 
-
-Each key/value pair is on its own `\n` separated newline. The key and value are separated by a colon and space `: `.
-
-```json
-{
-  "type": "list"
+  "command": "reload"
 }
 ```
 
@@ -126,26 +95,113 @@ Responds with `ok` if the stylesheet exists, otherwise `error`.
 
 ```json
 {
-  "type": "load_css",
+  "command": "load_css",
   "path": "/path/to/style.css"
 }
 ```
 
-### `set_visible`
+### `var`
 
-Sets a bar's visibility.
+Subcommand for controlling Ironvars.
+
+#### `get`
+
+Gets an [ironvar](ironvars) value. 
+
+Responds with `ok_value` if the value exists, otherwise `error`.
+
+```json
+{
+  "command": "var",
+  "subcommand": "get",
+  "key": "foo"
+}
+```
+
+#### `set`
+
+Sets an [ironvar](ironvars) value.
+
+Responds with `ok`.
+
+```json
+{
+  "command": "var",
+  "subcommand": "set",
+  "key": "foo",
+  "value": "bar"
+}
+```
+
+#### `list`
+
+Gets a list of all [ironvar](ironvars) values.
+
+Responds with `ok_value`. 
+
+Each key/value pair is on its own `\n` separated newline. The key and value are separated by a colon and space `: `.
+
+```json
+{
+  "command": "var",
+  "subcommand": "list"
+}
+```
+
+### `bar`
+
+#### `show`
+
+Forces a bar to be shown, regardless of the current visibility state.
+
+```json
+{
+  "command": "bar",
+  "subcommand": "show",
+  "name": "bar-123"
+}
+```
+
+#### `hide`
+
+Forces a bar to be hidden, regardless of the current visibility state.
+
+```json
+{
+  "command": "bar",
+  "subcommand": "hide",
+  "name": "bar-123"
+}
+```
+
+#### `set_visible`
+
+Sets a bar's visibility to one of shown/hidden.
 
 Responds with `ok` if the bar exists, otherwise `error`.
 
 ```json
 {
-  "type": "set_visible",
-  "bar_name": "bar-123",
+  "command": "bar",
+  "subcommand": "set_visible",
+  "name": "bar-123",
   "visible": true
 }
 ```
 
-### `get_visible`
+#### `toggle_visible`
+
+Toggles the current visibility state of a bar between shown and hidden.
+
+```json
+{
+  "command": "bar",
+  "subcommand": "toggle_visible",
+  "name": "bar-123"
+}
+```
+
+#### `get_visible`
 
 Gets a bar's visibility.
 
@@ -153,50 +209,82 @@ Responds with `ok_value` and the visibility (`true`/`false`) if the bar exists, 
 
 ```json
 {
-  "type": "get_visible",
-  "bar_name": "bar-123"
+  "command": "bar",
+  "subcommand": "get_visible",
+  "name": "bar-123"
 }
 ```
 
-### `toggle_popup`
-
-Toggles the open/closed state for a module's popup.
-Since each bar only has a single popup, any open popup on the bar is closed.
-
-Responds with `ok` if the popup exists, otherwise `error`.
-
-```json
-{
-  "type": "toggle_popup",
-  "bar_name": "bar-123",
-  "name": "clock"
-}
-```
-
-### `open_popup`
+#### `show_popup`
 
 Sets a module's popup open, regardless of its current state.
 Since each bar only has a single popup, any open popup on the bar is closed.
 
-Responds with `ok` if the popup exists, otherwise `error`.
+Responds with `ok` if the bar and widget exist, otherwise `error`.
 
 ```json
 {
-  "type": "open_popup",
-  "bar_name": "bar-123",
-  "name": "clock"
+  "command": "bar",
+  "subcommand": "show_popup",
+  "name": "bar-123",
+  "widget_name": "clock"
 }
 ```
 
-### `close_popup`
+#### `hide_popup`
 
 Sets the popup on a bar closed, regardless of which module it is open for.
 
-Responds with `ok` if the popup exists, otherwise `error`.
+Responds with `ok` if the bar and widget exist, otherwise `error`.
 
 ```json
 {
-  "type": "close_popup",
+  "command": "bar",
+  "subcommand": "hide_popup",
+  "bar_name": "bar-123"
+}
+```
+
+#### `set_popup_visible`
+
+Sets a popup's visibility to one of shown/hidden.
+
+Responds with `ok` if the bar and widget exist, otherwise `error`.
+
+```json
+{
+  "command": "bar",
+  "subcommand": "set_popup_visible",
+  "name": "bar-123",
+  "widget_name": "clock",
+  "visible": true
+}
+```
+
+#### `toggle_popup`
+
+Toggles the open/closed state for a module's popup.
+Since each bar only has a single popup, any open popup on the bar is closed.
+
+Responds with `ok` if the bar and widget exist, otherwise `error`.
+
+```json
+{
+  "command": "bar",
+  "subcommand": "toggle_popup",
+  "bar_name": "bar-123",
+  "widget_name": "clock"
+}
+```
+
+#### `get_popup_visible`
+
+Gets the popup's current visibility state.
+
+```json
+{
+  "command": "bar",
+  "subcommand": "get_popup_visible",
   "bar_name": "bar-123"
 }
 ```
