@@ -165,7 +165,7 @@ impl Module<gtk::Box> for FocusedModule {
 
                     if self.show_title {
                         label.show();
-                        label.set_label(&name);
+                        label.set_text(&name);
                     }
                 } else {
                     icon.hide();

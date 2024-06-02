@@ -473,7 +473,7 @@ impl Module<Button> for MusicModule {
                         if let (Some(elapsed), Some(duration)) =
                             (progress_tick.elapsed, progress_tick.duration)
                         {
-                            progress_label.set_label(&format!(
+                            progress_label.set_text(&format!(
                                 "{}/{}",
                                 format_time(elapsed),
                                 format_time(duration)
