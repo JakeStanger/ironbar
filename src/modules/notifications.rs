@@ -195,6 +195,7 @@ impl Module<Overlay> for NotificationsModule {
         if self.show_count {
             label.add_class("count");
             overlay.add_overlay(&label);
+            overlay.set_overlay_pass_through(&label, true);
         }
 
         let ctx = context.controller_tx.clone();
