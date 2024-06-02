@@ -1,4 +1,5 @@
 use crate::config::CommonConfig;
+use crate::gtk_helpers::IronbarLabelExt;
 use crate::modules::{Module, ModuleInfo, ModuleParts, ModuleUpdateEvent, WidgetContext};
 use crate::script::{OutputStream, Script, ScriptMode};
 use crate::{glib_recv, module_impl, spawn, try_send};
@@ -103,7 +104,7 @@ impl Module<Label> for ScriptModule {
 
         {
             let label = label.clone();
-            glib_recv!(context.subscribe(), s => label.set_markup(s.as_str()));
+            glib_recv!(context.subscribe(), s => label.set_markup_escaped(s.as_str()));
         }
 
         Ok(ModuleParts {

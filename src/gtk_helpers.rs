@@ -1,6 +1,6 @@
-use glib::IsA;
+use glib::{markup_escape_text, IsA};
 use gtk::prelude::*;
-use gtk::{Orientation, Widget};
+use gtk::{Label, Orientation, Widget};
 
 /// Represents a widget's size
 /// and location relative to the bar's start edge.
@@ -73,5 +73,18 @@ impl<W: IsA<Widget>> IronbarGtkExt for W {
 
     fn set_tag<V: 'static>(&self, key: &str, value: V) {
         unsafe { self.set_data(key, value) }
+    }
+}
+
+pub trait IronbarLabelExt {
+    /// Sets a label's pango markup, escaping it in the process.
+    /// This should be used for any label values
+    /// which could contain special characters, for example `&`.
+    fn set_markup_escaped(&self, text: &str);
+}
+
+impl IronbarLabelExt for Label {
+    fn set_markup_escaped(&self, text: &str) {
+        self.set_markup(markup_escape_text(text).as_str())
     }
 }

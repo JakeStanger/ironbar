@@ -209,7 +209,7 @@ impl Module<Overlay> for NotificationsModule {
                 let icon = self.icons.icon(ev);
                 button.set_label(icon);
 
-                label.set_label(&ev.count.to_string());
+                label.set_text(&ev.count.to_string());
                 label.set_visible(self.show_count && ev.count > 0);
             });
         }
