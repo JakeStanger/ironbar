@@ -4,7 +4,6 @@ use serde::Deserialize;
 
 use crate::config::ModuleOrientation;
 use crate::dynamic_value::dynamic_string;
-use crate::gtk_helpers::IronbarLabelExt;
 use crate::modules::PopupButton;
 use crate::{build, try_send};
 
@@ -76,7 +75,7 @@ impl CustomWidget for ButtonWidget {
             button.add(&label);
 
             dynamic_string(&text, move |string| {
-                label.set_markup_escaped(&string);
+                label.set_markup(&string);
             });
         }
 

@@ -432,7 +432,7 @@ impl Module<Button> for VolumeModule {
                     }
                     Event::UpdateInput(info) => {
                         if let Some(ui) = inputs.get(&info.index) {
-                            ui.label.set_text(&info.name);
+                            ui.label.set_label(&info.name);
                             ui.slider.set_value(info.volume);
                             ui.slider.set_sensitive(info.can_set_volume);
                             ui.btn_mute.set_label(if info.muted { &self.icons.muted } else { self.icons.volume_icon(info.volume) });
