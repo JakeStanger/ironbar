@@ -124,7 +124,7 @@ impl TrayMenu {
                 label.show();
                 label
             })
-            .set_text(text);
+            .set_label(text);
     }
 
     /// Shows the label, using its current text.

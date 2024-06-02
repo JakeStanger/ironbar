@@ -1,6 +1,5 @@
 use crate::config::CommonConfig;
 use crate::dynamic_value::dynamic_string;
-use crate::gtk_helpers::IronbarLabelExt;
 use crate::modules::{Module, ModuleInfo, ModuleParts, ModuleUpdateEvent, WidgetContext};
 use crate::{glib_recv, module_impl, try_send};
 use color_eyre::Result;
@@ -62,7 +61,7 @@ impl Module<Label> for LabelModule {
 
         {
             let label = label.clone();
-            glib_recv!(context.subscribe(), string => label.set_markup_escaped(&string));
+            glib_recv!(context.subscribe(), string => label.set_markup(&string));
         }
 
         Ok(ModuleParts {
