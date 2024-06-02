@@ -9,7 +9,7 @@ use tokio::sync::{broadcast, mpsc};
 use tokio::time::sleep;
 
 use crate::config::{CommonConfig, ModuleOrientation};
-use crate::gtk_helpers::IronbarGtkExt;
+use crate::gtk_helpers::{IronbarGtkExt, IronbarLabelExt};
 use crate::modules::{
     Module, ModuleInfo, ModuleParts, ModulePopup, ModuleUpdateEvent, PopupButton, WidgetContext,
 };
@@ -143,7 +143,7 @@ impl Module<Button> for ClockModule {
         let rx = context.subscribe();
         glib_recv!(rx, date => {
             let date_string = format!("{}", date.format_localized(&format, locale));
-            label.set_label(&date_string);
+            label.set_markup_escaped(&date_string);
         });
 
         let popup = self

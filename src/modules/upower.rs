@@ -9,7 +9,7 @@ use zbus;
 use zbus::fdo::PropertiesProxy;
 
 use crate::config::CommonConfig;
-use crate::gtk_helpers::IronbarGtkExt;
+use crate::gtk_helpers::{IronbarGtkExt, IronbarLabelExt};
 use crate::image::ImageProvider;
 use crate::modules::PopupButton;
 use crate::modules::{
@@ -212,7 +212,7 @@ impl Module<gtk::Button> for UpowerModule {
             ImageProvider::parse(&icon_name, &icon_theme, false, self.icon_size)
                     .map(|provider| provider.load_into_image(icon.clone()));
 
-            label.set_markup(format.as_ref());
+            label.set_markup_escaped(format.as_ref());
         });
 
         let rx = context.subscribe();
@@ -263,7 +263,7 @@ impl Module<gtk::Button> for UpowerModule {
                 _ => String::new(),
             };
 
-            label.set_markup(&format);
+            label.set_markup_escaped(&format);
         });
 
         container.show_all();

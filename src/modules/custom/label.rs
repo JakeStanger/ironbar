@@ -5,6 +5,7 @@ use serde::Deserialize;
 use crate::build;
 use crate::config::ModuleOrientation;
 use crate::dynamic_value::dynamic_string;
+use crate::gtk_helpers::IronbarLabelExt;
 
 use super::{CustomWidget, CustomWidgetContext};
 
@@ -50,7 +51,7 @@ impl CustomWidget for LabelWidget {
         {
             let label = label.clone();
             dynamic_string(&self.label, move |string| {
-                label.set_markup(&string);
+                label.set_markup_escaped(&string);
             });
         }
 

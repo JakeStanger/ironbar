@@ -5,7 +5,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use color_eyre::Result;
-use glib::{Propagation, PropertySet};
+use glib::{markup_escape_text, Propagation, PropertySet};
 use gtk::prelude::*;
 use gtk::{Button, IconTheme, Label, Orientation, Scale};
 use regex::Regex;
@@ -16,7 +16,7 @@ use crate::clients::music::{
     self, MusicClient, PlayerState, PlayerUpdate, ProgressTick, Status, Track,
 };
 use crate::clients::Clients;
-use crate::gtk_helpers::IronbarGtkExt;
+use crate::gtk_helpers::{IronbarGtkExt, IronbarLabelExt};
 use crate::image::{new_icon_button, new_icon_label, ImageProvider};
 use crate::modules::PopupButton;
 use crate::modules::{
@@ -222,7 +222,7 @@ impl Module<Button> for MusicModule {
                 };
 
                 if let Some(event) = event.take() {
-                    label.set_label(&event.display_string);
+                    label.set_markup_escaped(&event.display_string);
 
                     button.show();
 
@@ -549,7 +549,7 @@ impl IconLabel {
         let mut builder = Label::builder().use_markup(true);
 
         if let Some(label) = label {
-            builder = builder.label(label);
+            builder = builder.label(markup_escape_text(label));
         }
 
         let label = builder.build();
