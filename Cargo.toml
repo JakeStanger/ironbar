@@ -161,4 +161,4 @@ regex = { version = "1.10.4", default-features = false, features = [
 zbus = { version = "3.15.2", default-features = false, features = ["tokio"], optional = true } # notifications, upower
 
 # schema
-schemars = { version = "0.8.19", optional = true }
+schemars = { version = "0.8.21", optional = true }
