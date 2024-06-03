@@ -5,7 +5,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use color_eyre::Result;
-use glib::{Propagation, PropertySet};
+use glib::{markup_escape_text, Propagation, PropertySet};
 use gtk::prelude::*;
 use gtk::{Button, IconTheme, Label, Orientation, Scale};
 use regex::Regex;
@@ -531,6 +531,7 @@ fn get_token_value(song: &Track, token: &str) -> String {
         "track" => song.track.map(|x| x.to_string()),
         _ => Some(token.to_string()),
     }
+    .map(|str| markup_escape_text(str.as_str()).to_string())
     .unwrap_or_default()
 }
 
