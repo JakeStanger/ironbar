@@ -49,6 +49,7 @@ impl ToplevelHandleData {
 #[derive(Debug, Default)]
 pub struct ToplevelHandleDataInner {
     initial_done: bool,
+    closed: bool,
     output: Option<WlOutput>,
 
     current_info: Option<ToplevelInfo>,
@@ -137,14 +138,17 @@ where
             }
             Event::OutputEnter { output } => lock!(data.inner).output = Some(output),
             Event::OutputLeave { output: _ } => lock!(data.inner).output = None,
-            Event::Closed => state.remove_handle(
-                conn,
-                qh,
-                ToplevelHandle {
-                    handle: handle.clone(),
-                },
-            ),
-            Event::Done => {
+            Event::Closed => {
+                lock!(data.inner).closed = true;
+                state.remove_handle(
+                    conn,
+                    qh,
+                    ToplevelHandle {
+                        handle: handle.clone(),
+                    },
+                )
+            }
+            Event::Done if !lock!(data.inner).closed => {
                 {
                     let pending_info = lock!(data.inner).pending_info.clone();
                     lock!(data.inner).current_info = Some(pending_info);
