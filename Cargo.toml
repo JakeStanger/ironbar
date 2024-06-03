@@ -105,7 +105,7 @@ walkdir = "2.5.0"
 notify = { version = "6.1.1", default-features = false }
 wayland-client = "0.31.1"
 wayland-protocols-wlr = { version = "0.2.0", features = ["client"] }
-smithay-client-toolkit = { version = "0.18.1", default-features = false, features = [
+smithay-client-toolkit = { version = "0.19.0", default-features = false, features = [
   "calloop",
 ] }
 universal-config = { version = "0.5.0", default_features = false }
