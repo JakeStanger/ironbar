@@ -24,6 +24,7 @@ pub struct Client {
     client_state: Mutable<ClientState>,
     interface_name: InterfaceName<'static>,
     dbus_connection: Connection,
+    props_proxy: PropertiesProxy<'static>,
 }
 
 #[derive(Clone, Debug)]
@@ -67,11 +68,16 @@ impl Client {
         let client_state = Mutable::new(ClientState::Unknown);
         let dbus_connection = Connection::system()?;
         let interface_name = InterfaceName::from_static_str(DBUS_INTERFACE)?;
+        let props_proxy = PropertiesProxy::builder(&dbus_connection)
+            .destination(DBUS_BUS)?
+            .path(DBUS_PATH)?
+            .build()?;
 
         Ok(Self {
             client_state,
             interface_name,
             dbus_connection,
+            props_proxy,
         })
     }
 
@@ -82,7 +88,33 @@ impl Client {
         let mut primary_connection_type = proxy.primary_connection_type()?;
         let mut wireless_enabled = proxy.wireless_enabled()?;
 
-        todo!()
+        for change in self.props_proxy.receive_properties_changed()? {
+            let changed_props = change.args()?.changed_properties;
+            let mut relevant_prop_changed = false;
+
+            if changed_props.contains_key("PrimaryConnection") {
+                primary_connection = proxy.primary_connection()?;
+                relevant_prop_changed = true;
+            }
+            if changed_props.contains_key("PrimaryConnectionType") {
+                primary_connection_type = proxy.primary_connection_type()?;
+                relevant_prop_changed = true;
+            }
+            if changed_props.contains_key("WirelessEnabled") {
+                wireless_enabled = proxy.wireless_enabled()?;
+                relevant_prop_changed = true;
+            }
+
+            if relevant_prop_changed {
+                self.client_state.set(determine_state(
+                    &primary_connection,
+                    &primary_connection_type,
+                    wireless_enabled,
+                ));
+            }
+        }
+
+        Ok(())
     }
 
     pub fn subscribe(&self) -> MutableSignalCloned<ClientState> {
