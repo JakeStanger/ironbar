@@ -1,5 +1,4 @@
 use std::sync::Arc;
-use std::thread;
 
 use color_eyre::Result;
 use futures_signals::signal::{Mutable, MutableSignalCloned};
@@ -9,11 +8,10 @@ use zbus::blocking::Connection;
 use zbus::{
     dbus_proxy,
     names::InterfaceName,
-    zvariant::{Error as ZVariantError, ObjectPath, Str},
-    Error as ZBusError,
+    zvariant::{ObjectPath, Str},
 };
 
-use crate::{register_fallible_client, spawn, spawn_blocking};
+use crate::{register_fallible_client, spawn_blocking};
 
 const DBUS_BUS: &str = "org.freedesktop.NetworkManager";
 const DBUS_PATH: &str = "/org/freedesktop/NetworkManager";
@@ -89,7 +87,12 @@ impl Client {
         let mut wireless_enabled = proxy.wireless_enabled()?;
 
         for change in self.props_proxy.receive_properties_changed()? {
-            let changed_props = change.args()?.changed_properties;
+            let args = change.args()?;
+            if args.interface_name != self.interface_name {
+                continue;
+            }
+
+            let changed_props = args.changed_properties;
             let mut relevant_prop_changed = false;
 
             if changed_props.contains_key("PrimaryConnection") {
