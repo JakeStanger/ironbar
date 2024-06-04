@@ -86,6 +86,12 @@ impl Client {
         let mut primary_connection_type = proxy.primary_connection_type()?;
         let mut wireless_enabled = proxy.wireless_enabled()?;
 
+        self.client_state.set(determine_state(
+            &primary_connection,
+            &primary_connection_type,
+            wireless_enabled,
+        ));
+
         for change in self.props_proxy.receive_properties_changed()? {
             let args = change.args()?;
             if args.interface_name != self.interface_name {
