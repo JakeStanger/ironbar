@@ -9,6 +9,7 @@ use serde::Deserialize;
 use tokio::sync::mpsc;
 
 #[derive(Debug, Deserialize, Clone)]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 pub struct LabelModule {
     /// The text to show on the label.
     /// This is a [Dynamic String](dynamic-values#dynamic-string).

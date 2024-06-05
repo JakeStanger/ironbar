@@ -13,6 +13,7 @@ use crate::{build, glib_recv_mpsc, spawn, try_send};
 use super::{CustomWidget, CustomWidgetContext};
 
 #[derive(Debug, Deserialize, Clone)]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 pub struct ProgressWidget {
     /// Widget name.
     ///

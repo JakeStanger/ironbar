@@ -384,7 +384,7 @@ impl ModuleFactory for BarModuleFactory {
                 }
                 ModuleUpdateEvent::TogglePopup(button_id) if !disable_popup => {
                     debug!("Toggling popup for {} [#{}] (button id: {button_id})", name, id);
-                    if popup.is_visible() && popup.current_widget().unwrap_or_default() == id {
+                    if popup.visible() && popup.current_widget().unwrap_or_default() == id {
                         popup.hide();
                     } else {
                         popup.show(id, button_id);
@@ -457,7 +457,7 @@ impl ModuleFactory for PopupModuleFactory {
                 }
                 ModuleUpdateEvent::TogglePopup(_) if !disable_popup => {
                     debug!("Toggling popup for {} [#{}] (button id: {button_id})", name, id);
-                    if popup.is_visible() && popup.current_widget().unwrap_or_default() == id {
+                    if popup.visible() && popup.current_widget().unwrap_or_default() == id {
                         popup.hide();
                     } else {
                         popup.show(id, button_id);

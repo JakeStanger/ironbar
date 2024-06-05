@@ -18,6 +18,7 @@ use std::collections::HashMap;
 use tokio::sync::mpsc;
 
 #[derive(Debug, Clone, Deserialize)]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 pub struct VolumeModule {
     /// Maximum value to allow volume sliders to reach.
     /// Pulse supports values > 100 but this may result in distortion.

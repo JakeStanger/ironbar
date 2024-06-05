@@ -4,6 +4,7 @@ use serde::Deserialize;
 use std::path::PathBuf;
 
 #[derive(Debug, Deserialize, Clone)]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 pub struct Icons {
     /// Icon to display when playing.
     ///
@@ -71,6 +72,7 @@ impl Default for Icons {
 
 #[derive(Debug, Deserialize, Clone, Copy)]
 #[serde(rename_all = "snake_case")]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 pub enum PlayerType {
     Mpd,
     Mpris,
@@ -83,6 +85,7 @@ impl Default for PlayerType {
 }
 
 #[derive(Debug, Deserialize, Clone)]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 pub struct MusicModule {
     /// Type of player to connect to
     #[serde(default)]

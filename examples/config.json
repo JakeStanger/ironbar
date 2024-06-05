@@ -1,4 +1,5 @@
 {
+  "$schema": "https://f.jstanger.dev/github/ironbar/schema.json",
   "anchor_to_edges": true,
   "position": "bottom",
   "icon_theme": "Paper",

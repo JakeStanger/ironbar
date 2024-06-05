@@ -15,6 +15,7 @@ use tracing::{debug, trace, warn};
 
 #[derive(Debug, Deserialize, Clone, Copy, Eq, PartialEq)]
 #[serde(rename_all = "snake_case")]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 pub enum SortOrder {
     /// Shows workspaces in the order they're added
     Added,
@@ -31,6 +32,7 @@ impl Default for SortOrder {
 
 #[derive(Debug, Deserialize, Clone)]
 #[serde(untagged)]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 pub enum Favorites {
     ByMonitor(HashMap<String, Vec<String>>),
     Global(Vec<String>),
@@ -43,6 +45,7 @@ impl Default for Favorites {
 }
 
 #[derive(Debug, Deserialize, Clone)]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 pub struct WorkspacesModule {
     /// Map of actual workspace names to custom names.
     ///

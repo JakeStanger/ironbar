@@ -6,6 +6,7 @@ use gtk::prelude::*;
 use serde::Deserialize;
 
 #[derive(Debug, Deserialize, Clone)]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 pub struct BoxWidget {
     /// Widget name.
     ///

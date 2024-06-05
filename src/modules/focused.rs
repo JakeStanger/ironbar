@@ -12,6 +12,7 @@ use tokio::sync::mpsc;
 use tracing::debug;
 
 #[derive(Debug, Deserialize, Clone)]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 pub struct FocusedModule {
     /// Whether to show icon on the bar.
     ///

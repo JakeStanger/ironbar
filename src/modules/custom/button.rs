@@ -10,6 +10,7 @@ use crate::{build, try_send};
 use super::{CustomWidget, CustomWidgetContext, ExecEvent, WidgetConfig};
 
 #[derive(Debug, Deserialize, Clone)]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 pub struct ButtonWidget {
     /// Widget name.
     ///

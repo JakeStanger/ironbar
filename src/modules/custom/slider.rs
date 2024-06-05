@@ -16,6 +16,7 @@ use crate::{build, glib_recv_mpsc, spawn, try_send};
 use super::{CustomWidget, CustomWidgetContext, ExecEvent};
 
 #[derive(Debug, Deserialize, Clone)]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 pub struct SliderWidget {
     /// Widget name.
     ///

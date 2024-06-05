@@ -10,6 +10,7 @@ use tokio::sync::mpsc::Receiver;
 use tracing::error;
 
 #[derive(Debug, Deserialize, Clone)]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 pub struct NotificationsModule {
     /// Whether to show the current notification count.
     ///
@@ -29,6 +30,7 @@ pub struct NotificationsModule {
 }
 
 #[derive(Debug, Deserialize, Clone)]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 struct Icons {
     /// Icon to show when the panel is closed, with no notifications.
     ///
@@ -193,6 +195,7 @@ impl Module<Overlay> for NotificationsModule {
         if self.show_count {
             label.add_class("count");
             overlay.add_overlay(&label);
+            overlay.set_overlay_pass_through(&label, true);
         }
 
         let ctx = context.controller_tx.clone();

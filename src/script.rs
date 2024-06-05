@@ -14,6 +14,7 @@ use tracing::{debug, error, trace, warn};
 
 #[derive(Debug, Deserialize, Clone)]
 #[serde(untagged)]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 pub enum ScriptInput {
     String(String),
     Struct(Script),
@@ -21,6 +22,7 @@ pub enum ScriptInput {
 
 #[derive(Debug, Deserialize, Clone, Copy, Eq, PartialEq)]
 #[serde(rename_all = "snake_case")]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 pub enum ScriptMode {
     Poll,
     Watch,
@@ -75,6 +77,7 @@ impl ScriptMode {
 }
 
 #[derive(Debug, Deserialize, Clone)]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 pub struct Script {
     #[serde(default = "ScriptMode::default")]
     pub(crate) mode: ScriptMode,

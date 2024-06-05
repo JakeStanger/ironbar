@@ -9,6 +9,7 @@ use crate::image::ImageProvider;
 use super::{CustomWidget, CustomWidgetContext};
 
 #[derive(Debug, Deserialize, Clone)]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 pub struct ImageWidget {
     /// Widget name.
     ///

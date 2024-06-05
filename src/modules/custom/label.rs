@@ -9,6 +9,7 @@ use crate::dynamic_value::dynamic_string;
 use super::{CustomWidget, CustomWidgetContext};
 
 #[derive(Debug, Deserialize, Clone)]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 pub struct LabelWidget {
     /// Widget name.
     ///

@@ -38,11 +38,15 @@ use color_eyre::Result;
 use serde::Deserialize;
 use std::collections::HashMap;
 
+#[cfg(feature = "schema")]
+use schemars::JsonSchema;
+
 pub use self::common::{CommonConfig, ModuleOrientation, TransitionType};
 pub use self::truncate::TruncateMode;
 
 #[derive(Debug, Deserialize, Clone)]
 #[serde(tag = "type", rename_all = "snake_case")]
+#[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub enum ModuleConfig {
     #[cfg(feature = "cairo")]
     Cairo(Box<CairoModule>),
@@ -123,6 +127,7 @@ impl ModuleConfig {
 }
 
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub enum MonitorConfig {
     Single(BarConfig),
     Multiple(Vec<BarConfig>),
@@ -130,6 +135,7 @@ pub enum MonitorConfig {
 
 #[derive(Debug, Deserialize, Copy, Clone, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
+#[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub enum BarPosition {
     Top,
     Bottom,
@@ -144,6 +150,7 @@ impl Default for BarPosition {
 }
 
 #[derive(Debug, Default, Deserialize, Copy, Clone, PartialEq, Eq)]
+#[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub struct MarginConfig {
     #[serde(default)]
     pub bottom: i32,
@@ -162,6 +169,7 @@ pub struct MarginConfig {
 /// depending on your [use-case](#2-pick-your-use-case).
 ///
 #[derive(Debug, Deserialize, Clone)]
+#[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub struct BarConfig {
     /// A unique identifier for the bar, used for controlling it over IPC.
     /// If not set, uses a generated integer suffix.
@@ -298,6 +306,7 @@ impl Default for BarConfig {
 }
 
 #[derive(Debug, Deserialize, Clone, Default)]
+#[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub struct Config {
     /// A map of [ironvar](ironvar) keys and values
     /// to initialize Ironbar with on startup.

@@ -320,6 +320,15 @@ impl Bar {
             Inner::Loaded { popup } => popup.clone(),
         }
     }
+
+    pub fn visible(&self) -> bool {
+        self.window.is_visible()
+    }
+
+    /// Sets the window visibility status
+    pub fn set_visible(&self, visible: bool) {
+        self.window.set_visible(visible)
+    }
 }
 
 /// Creates a `gtk::Box` container to place widgets inside.
