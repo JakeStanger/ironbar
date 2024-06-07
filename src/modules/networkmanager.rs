@@ -3,6 +3,7 @@ use futures_lite::StreamExt;
 use futures_signals::signal::SignalExt;
 use gtk::prelude::ContainerExt;
 use gtk::{Box as GtkBox, Image, Orientation};
+use schemars::JsonSchema;
 use serde::Deserialize;
 use tokio::sync::mpsc::Receiver;
 
@@ -14,6 +15,7 @@ use crate::modules::{Module, ModuleInfo, ModuleParts, ModuleUpdateEvent, WidgetC
 use crate::{glib_recv, module_impl, send_async, spawn};
 
 #[derive(Debug, Deserialize, Clone)]
+#[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub struct NetworkManagerModule {
     #[serde(default = "default_icon_size")]
     icon_size: i32,
