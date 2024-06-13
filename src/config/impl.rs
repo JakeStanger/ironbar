@@ -35,6 +35,37 @@ impl<'de> Deserialize<'de> for MonitorConfig {
     }
 }
 
+pub fn deserialize_layer<'de, D>(deserializer: D) -> Result<gtk_layer_shell::Layer, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    use gtk_layer_shell::Layer;
+
+    let value = Option::<String>::deserialize(deserializer)?;
+    value
+        .map(|v| match v.as_str() {
+            "background" => Ok(Layer::Background),
+            "bottom" => Ok(Layer::Bottom),
+            "top" => Ok(Layer::Top),
+            "overlay" => Ok(Layer::Overlay),
+            _ => Err(serde::de::Error::custom("invalid value for orientation")),
+        })
+        .unwrap_or(Ok(Layer::Top))
+}
+
+#[cfg(feature = "schema")]
+pub fn schema_layer(gen: &mut schemars::gen::SchemaGenerator) -> schemars::schema::Schema {
+    use schemars::JsonSchema;
+    let mut schema: schemars::schema::SchemaObject = <String>::json_schema(gen).into();
+    schema.enum_values = Some(vec![
+        "background".into(),
+        "bottom".into(),
+        "top".into(),
+        "overlay".into(),
+    ]);
+    schema.into()
+}
+
 impl BarPosition {
     /// Gets the orientation the bar and widgets should use
     /// based on this position.

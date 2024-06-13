@@ -120,27 +120,28 @@ impl Bar {
             self.name, self.monitor_name
         );
 
-        self.setup_layer_shell(
-            &self.window,
-            true,
-            config.anchor_to_edges,
-            config.margin,
-            monitor,
-        );
-
         let start_hidden = config
             .start_hidden
             .unwrap_or_else(|| config.autohide.is_some());
 
+        self.setup_layer_shell(
+            &self.window,
+            config.exclusive_zone.unwrap_or(!start_hidden),
+            config.anchor_to_edges,
+            config.margin,
+            config.layer,
+            monitor,
+        );
+
         if let Some(autohide) = config.autohide {
             let hotspot_window = Window::new(WindowType::Toplevel);
-
             Self::setup_autohide(&self.window, &hotspot_window, autohide);
             self.setup_layer_shell(
                 &hotspot_window,
                 false,
                 config.anchor_to_edges,
                 config.margin,
+                gtk_layer_shell::Layer::Top,
                 monitor,
             );
 
@@ -166,43 +167,46 @@ impl Bar {
         exclusive_zone: bool,
         anchor_to_edges: bool,
         margin: MarginConfig,
+        layer: gtk_layer_shell::Layer,
         monitor: &Monitor,
     ) {
+        use gtk_layer_shell::Edge;
+
         let position = self.position;
 
         win.init_layer_shell();
         win.set_monitor(monitor);
-        win.set_layer(gtk_layer_shell::Layer::Top);
+        win.set_layer(layer);
         win.set_namespace(env!("CARGO_PKG_NAME"));
 
         if exclusive_zone {
             win.auto_exclusive_zone_enable();
         }
 
-        win.set_layer_shell_margin(gtk_layer_shell::Edge::Top, margin.top);
-        win.set_layer_shell_margin(gtk_layer_shell::Edge::Bottom, margin.bottom);
-        win.set_layer_shell_margin(gtk_layer_shell::Edge::Left, margin.left);
-        win.set_layer_shell_margin(gtk_layer_shell::Edge::Right, margin.right);
+        win.set_layer_shell_margin(Edge::Top, margin.top);
+        win.set_layer_shell_margin(Edge::Bottom, margin.bottom);
+        win.set_layer_shell_margin(Edge::Left, margin.left);
+        win.set_layer_shell_margin(Edge::Right, margin.right);
 
         let bar_orientation = position.orientation();
 
         win.set_anchor(
-            gtk_layer_shell::Edge::Top,
+            Edge::Top,
             position == BarPosition::Top
                 || (bar_orientation == Orientation::Vertical && anchor_to_edges),
         );
         win.set_anchor(
-            gtk_layer_shell::Edge::Bottom,
+            Edge::Bottom,
             position == BarPosition::Bottom
                 || (bar_orientation == Orientation::Vertical && anchor_to_edges),
         );
         win.set_anchor(
-            gtk_layer_shell::Edge::Left,
+            Edge::Left,
             position == BarPosition::Left
                 || (bar_orientation == Orientation::Horizontal && anchor_to_edges),
         );
         win.set_anchor(
-            gtk_layer_shell::Edge::Right,
+            Edge::Right,
             position == BarPosition::Right
                 || (bar_orientation == Orientation::Horizontal && anchor_to_edges),
         );
@@ -328,6 +332,14 @@ impl Bar {
     /// Sets the window visibility status
     pub fn set_visible(&self, visible: bool) {
         self.window.set_visible(visible)
+    }
+
+    pub fn set_exclusive(&self, exclusive: bool) {
+        if exclusive {
+            self.window.auto_exclusive_zone_enable();
+        } else {
+            self.window.set_exclusive_zone(0);
+        }
     }
 }
 

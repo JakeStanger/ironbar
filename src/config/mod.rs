@@ -216,6 +216,36 @@ pub struct BarConfig {
     #[serde(default)]
     pub margin: MarginConfig,
 
+    /// The layer-shell layer to place the bar on.
+    ///
+    /// Taken from the
+    /// [wlr_layer_shell](https://wayland.app/protocols/wlr-layer-shell-unstable-v1#zwlr_layer_shell_v1:enum:layer) definition:
+    ///
+    /// > These values indicate which layers a surface can be rendered in.
+    /// > They are ordered by z depth, bottom-most first.
+    /// > Traditional shell surfaces will typically be rendered between the bottom and top layers.
+    /// > Fullscreen shell surfaces are typically rendered at the top layer.
+    /// > Multiple surfaces can share a single layer, and ordering within a single layer is undefined.
+    ///
+    /// **Valid options**: `background`, `bottom`, `top`, `overlay`
+    /// <br>
+    /// **Default**: `top`
+    #[serde(
+        default = "default_layer",
+        deserialize_with = "r#impl::deserialize_layer"
+    )]
+    #[cfg_attr(feature = "schema", schemars(schema_with = "r#impl::schema_layer"))]
+    pub layer: gtk_layer_shell::Layer,
+
+    /// Whether the bar should reserve an exclusive zone around it.
+    ///
+    /// When true, this prevents windows from rendering in the same space
+    /// as the bar, causing them to shift.
+    ///
+    /// **Default**: `true` unless `start_hidden` is set.
+    #[serde(default)]
+    pub exclusive_zone: Option<bool>,
+
     /// The size of the gap in pixels
     /// between the bar and the popup window.
     ///
@@ -282,9 +312,11 @@ impl Default for BarConfig {
 
         Self {
             position: BarPosition::default(),
-            height: default_bar_height(),
             margin: MarginConfig::default(),
             name: None,
+            layer: default_layer(),
+            exclusive_zone: None,
+            height: default_bar_height(),
             start_hidden: None,
             autohide: None,
             icon_theme: None,
@@ -338,6 +370,10 @@ pub struct Config {
     ///
     /// Providing this option overrides the single, global `bar` option.
     pub monitors: Option<HashMap<String, MonitorConfig>>,
+}
+
+const fn default_layer() -> gtk_layer_shell::Layer {
+    gtk_layer_shell::Layer::Top
 }
 
 const fn default_bar_height() -> i32 {
