@@ -118,4 +118,15 @@ pub enum BarCommandType {
     },
     /// Get the popup's current visibility state.
     GetPopupVisible,
+
+    // == Exclusivity == \\
+    /// Set whether the bar reserves an exclusive zone.
+    SetExclusive {
+        #[clap(
+            num_args(1),
+            require_equals(true),
+            action = ArgAction::Set,
+        )]
+        exclusive: bool,
+    },
 }
