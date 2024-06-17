@@ -124,8 +124,7 @@ impl Module<GtkBox> for NetworkManagerModule {
             });
             update_icon!(vpn_icon, vpn, {
                 VpnState::Connected(_) => "icon:network-vpn-symbolic",
-                VpnState::Disconnected => "icon:network-vpn-disabled-symbolic",
-                VpnState::Unknown => "",
+                VpnState::Disconnected | VpnState::Unknown => "",
             });
         });
 

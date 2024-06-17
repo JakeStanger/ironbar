@@ -1,6 +1,3 @@
-mod dbus;
-pub mod state;
-
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
 
@@ -21,17 +18,20 @@ use crate::{
     read_lock, register_fallible_client, spawn_blocking, spawn_blocking_result, write_lock,
 };
 
-type PathMap<'a, T> = HashMap<ObjectPath<'a>, T>;
+mod dbus;
+pub mod state;
+
+type PathMap<'l, ValueType> = HashMap<ObjectPath<'l>, ValueType>;
 
 #[derive(Debug)]
 pub struct Client(Arc<ClientInner<'static>>);
 
 #[derive(Debug)]
-struct ClientInner<'a> {
+struct ClientInner<'l> {
     state: Mutable<State>,
-    root_object: &'a DbusProxyBlocking<'a>,
-    active_connections: RwLock<PathMap<'a, ActiveConnectionDbusProxyBlocking<'a>>>,
-    devices: RwLock<PathMap<'a, DeviceDbusProxyBlocking<'a>>>,
+    root_object: &'l DbusProxyBlocking<'l>,
+    active_connections: RwLock<PathMap<'l, ActiveConnectionDbusProxyBlocking<'l>>>,
+    devices: RwLock<PathMap<'l, DeviceDbusProxyBlocking<'l>>>,
     dbus_connection: Connection,
 }
 
@@ -44,11 +44,15 @@ impl Client {
             vpn: VpnState::Unknown,
         });
         let dbus_connection = Connection::system()?;
-        let dbus_proxy = DbusProxyBlocking::new(&dbus_connection)?;
+        let root_object = {
+            let root_object = DbusProxyBlocking::new(&dbus_connection)?;
+            // Workaround for the fact that zbus (unnecessarily) requires a static lifetime here
+            Box::leak(Box::new(root_object))
+        };
 
         Ok(Client(Arc::new(ClientInner {
             state,
-            root_object: Box::leak(Box::new(dbus_proxy)), // TODO: Check if boxing is still necessary
+            root_object,
             active_connections: RwLock::new(HashMap::new()),
             devices: RwLock::new(HashMap::new()),
             dbus_connection,
@@ -56,41 +60,74 @@ impl Client {
     }
 
     fn run(&self) -> Result<()> {
-        macro_rules! spawn_property_watcher {
-            ($client:expr, $property_changes:ident) => {
-                let client = $client.clone();
-                spawn_blocking_result!({
-                    while let Some(_) = client.root_object.$property_changes().next() {
-                        client.state.set(State {
-                            wired: determine_wired_state(&read_lock!(client.devices))?,
-                            wifi: determine_wifi_state(&read_lock!(client.devices))?,
-                            cellular: determine_cellular_state(&read_lock!(client.devices))?,
-                            vpn: determine_vpn_state(&read_lock!(client.active_connections))?,
+        // Initialisation
+        {
+            let client = &self.0;
+
+            // Initial active connections path list
+            {
+                let new_paths = client.root_object.active_connections()?;
+                let mut pathmap = write_lock!(client.active_connections);
+                for new_path in new_paths {
+                    let new_proxy =
+                        ActiveConnectionDbusProxyBlocking::builder(&client.dbus_connection)
+                            .path(new_path.clone())?
+                            .build()?;
+                    pathmap.insert(new_path, new_proxy);
+                }
+            }
+
+            // Initial devices path list
+            {
+                let new_paths = client.root_object.devices()?;
+                let mut pathmap = write_lock!(client.devices);
+                for new_path in new_paths {
+                    let new_proxy = DeviceDbusProxyBlocking::builder(&client.dbus_connection)
+                        .path(new_path.clone())?
+                        .build()?;
+
+                    // Specific device state watcher
+                    {
+                        let client = client.clone();
+                        let new_path = new_path.clone();
+                        spawn_blocking_result!({
+                            let changes = read_lock!(client.devices)
+                                .get(&new_path)
+                                .unwrap()
+                                .receive_state_changed();
+                            for _ in changes {
+                                // TODO: Check if our device still exists in client.devices
+                                client.state.set(State {
+                                    wired: determine_wired_state(&read_lock!(client.devices))?,
+                                    wifi: determine_wifi_state(&read_lock!(client.devices))?,
+                                    cellular: determine_cellular_state(&read_lock!(
+                                        client.devices
+                                    ))?,
+                                    vpn: client.state.get_cloned().vpn,
+                                });
+                            }
+                            Ok(())
                         });
                     }
-                    Ok(())
-                });
-            };
+
+                    pathmap.insert(new_path, new_proxy);
+                }
+            }
+
+            client.state.set(State {
+                wired: determine_wired_state(&read_lock!(client.devices))?,
+                wifi: determine_wifi_state(&read_lock!(client.devices))?,
+                cellular: determine_cellular_state(&read_lock!(client.devices))?,
+                vpn: determine_vpn_state(&read_lock!(client.active_connections))?,
+            });
         }
 
-        macro_rules! spawn_list_watcher {
-            () => {};
-        }
-
-        // Initial state
-        self.0.state.set(State {
-            wired: determine_wired_state(&read_lock!(self.0.devices))?,
-            wifi: determine_wifi_state(&read_lock!(self.0.devices))?,
-            cellular: determine_cellular_state(&read_lock!(self.0.devices))?,
-            vpn: determine_vpn_state(&read_lock!(self.0.active_connections))?,
-        });
-
-        // Active connections paths list watcher
+        // Watcher for active connections path list
         {
             let client = self.0.clone();
             spawn_blocking_result!({
-                let mut changes = client.root_object.receive_active_connections_changed();
-                while let Some(_) = changes.next() {
+                let changes = client.root_object.receive_active_connections_changed();
+                for _ in changes {
                     let mut new_pathmap = HashMap::new();
                     {
                         let new_paths = client.root_object.active_connections()?;
@@ -115,9 +152,9 @@ impl Client {
                     }
                     *write_lock!(client.active_connections) = new_pathmap;
                     client.state.set(State {
-                        wired: determine_wired_state(&read_lock!(client.devices))?,
-                        wifi: determine_wifi_state(&read_lock!(client.devices))?,
-                        cellular: determine_cellular_state(&read_lock!(client.devices))?,
+                        wired: client.state.get_cloned().wired,
+                        wifi: client.state.get_cloned().wifi,
+                        cellular: client.state.get_cloned().cellular,
                         vpn: determine_vpn_state(&read_lock!(client.active_connections))?,
                     });
                 }
@@ -125,12 +162,12 @@ impl Client {
             });
         }
 
-        // Devices paths list watcher
+        // Watcher for devices path list
         {
             let client = self.0.clone();
             spawn_blocking_result!({
-                let mut changes = client.root_object.receive_devices_changed();
-                while let Some(_) = changes.next() {
+                let changes = client.root_object.receive_devices_changed();
+                for _ in changes {
                     let mut new_pathmap = HashMap::new();
                     {
                         let new_paths = client.root_object.devices()?;
@@ -152,11 +189,12 @@ impl Client {
                                     let client = client.clone();
                                     let new_path = new_path.clone();
                                     spawn_blocking_result!({
-                                        let mut changes = read_lock!(client.devices)
+                                        let changes = read_lock!(client.devices)
                                             .get(&new_path)
                                             .unwrap()
                                             .receive_state_changed();
-                                        while let Some(_) = changes.next() {
+                                        for _ in changes {
+                                            // TODO: Check if our device still exists in client.devices
                                             client.state.set(State {
                                                 wired: determine_wired_state(&read_lock!(
                                                     client.devices
@@ -167,9 +205,7 @@ impl Client {
                                                 cellular: determine_cellular_state(&read_lock!(
                                                     client.devices
                                                 ))?,
-                                                vpn: determine_vpn_state(&read_lock!(
-                                                    client.active_connections
-                                                ))?,
+                                                vpn: client.state.get_cloned().vpn,
                                             });
                                         }
                                         Ok(())
@@ -187,13 +223,12 @@ impl Client {
                         wired: determine_wired_state(&read_lock!(client.devices))?,
                         wifi: determine_wifi_state(&read_lock!(client.devices))?,
                         cellular: determine_cellular_state(&read_lock!(client.devices))?,
-                        vpn: determine_vpn_state(&read_lock!(client.active_connections))?,
+                        vpn: client.state.get_cloned().vpn,
                     });
                 }
                 Ok(())
             });
         }
-
         Ok(())
     }
 

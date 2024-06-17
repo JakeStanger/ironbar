@@ -14,17 +14,17 @@ trait Dbus {
     #[dbus_proxy(property)]
     fn devices(&self) -> Result<Vec<ObjectPath>>;
 
-    #[dbus_proxy(property)]
-    fn networking_enabled(&self) -> Result<bool>;
+    // #[dbus_proxy(property)]
+    // fn networking_enabled(&self) -> Result<bool>;
 
-    #[dbus_proxy(property)]
-    fn primary_connection(&self) -> Result<ObjectPath>;
+    // #[dbus_proxy(property)]
+    // fn primary_connection(&self) -> Result<ObjectPath>;
 
-    #[dbus_proxy(property)]
-    fn primary_connection_type(&self) -> Result<Str>;
+    // #[dbus_proxy(property)]
+    // fn primary_connection_type(&self) -> Result<Str>;
 
-    #[dbus_proxy(property)]
-    fn wireless_enabled(&self) -> Result<bool>;
+    // #[dbus_proxy(property)]
+    // fn wireless_enabled(&self) -> Result<bool>;
 }
 
 #[dbus_proxy(
@@ -32,26 +32,26 @@ trait Dbus {
     interface = "org.freedesktop.NetworkManager.Connection.Active"
 )]
 trait ActiveConnectionDbus {
-    #[dbus_proxy(property)]
-    fn connection(&self) -> Result<ObjectPath>;
+    // #[dbus_proxy(property)]
+    // fn connection(&self) -> Result<ObjectPath>;
 
-    #[dbus_proxy(property)]
-    fn default(&self) -> Result<bool>;
+    // #[dbus_proxy(property)]
+    // fn default(&self) -> Result<bool>;
 
-    #[dbus_proxy(property)]
-    fn default6(&self) -> Result<bool>;
+    // #[dbus_proxy(property)]
+    // fn default6(&self) -> Result<bool>;
 
     #[dbus_proxy(property)]
     fn devices(&self) -> Result<Vec<ObjectPath>>;
 
-    #[dbus_proxy(property)]
-    fn id(&self) -> Result<Str>;
+    // #[dbus_proxy(property)]
+    // fn id(&self) -> Result<Str>;
 
     #[dbus_proxy(property)]
     fn type_(&self) -> Result<Str>;
 
-    #[dbus_proxy(property)]
-    fn uuid(&self) -> Result<Str>;
+    // #[dbus_proxy(property)]
+    // fn uuid(&self) -> Result<Str>;
 }
 
 #[dbus_proxy(
@@ -59,8 +59,8 @@ trait ActiveConnectionDbus {
     interface = "org.freedesktop.NetworkManager.Device"
 )]
 trait DeviceDbus {
-    #[dbus_proxy(property)]
-    fn active_connection(&self) -> Result<ObjectPath>;
+    // #[dbus_proxy(property)]
+    // fn active_connection(&self) -> Result<ObjectPath>;
 
     #[dbus_proxy(property)]
     fn device_type(&self) -> Result<DeviceType>;
@@ -125,9 +125,9 @@ pub(super) enum DeviceState {
 
 impl DeviceState {
     pub(super) fn is_enabled(&self) -> bool {
-        match self {
-            DeviceState::Unknown | DeviceState::Unmanaged | DeviceState::Unavailable => false,
-            _ => true,
-        }
+        !matches!(
+            self,
+            DeviceState::Unknown | DeviceState::Unmanaged | DeviceState::Unavailable,
+        )
     }
 }
