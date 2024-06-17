@@ -69,6 +69,6 @@ Supports wired ethernet, wifi, cellular data and VPN connections among others.
 | Selector               | Description                      |
 |------------------------|----------------------------------|
 | `.networkmanager`      | NetworkManager widget container. |
-| `.networkmanger .icon` | NetworkManager widget icon.      |
+| `.networkmanger .icon` | NetworkManager widget icons.     |
 
 For more information on styling, please see the [styling guide](styling-guide).

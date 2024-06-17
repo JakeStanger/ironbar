@@ -6,7 +6,10 @@ use gtk::{Box as GtkBox, Image, Orientation};
 use serde::Deserialize;
 use tokio::sync::mpsc::Receiver;
 
-use crate::clients::networkmanager::{CellularState, Client, State, VpnState, WifiState, WiredState};
+use crate::clients::networkmanager::state::{
+    CellularState, State, VpnState, WifiState, WiredState,
+};
+use crate::clients::networkmanager::Client;
 use crate::config::CommonConfig;
 use crate::gtk_helpers::IronbarGtkExt;
 use crate::image::ImageProvider;
@@ -59,28 +62,36 @@ impl Module<GtkBox> for NetworkManagerModule {
 
         // Wired icon
         let wired_icon = Image::new();
+        wired_icon.add_class("icon");
         wired_icon.add_class("wired-icon");
         container.add(&wired_icon);
 
         // Wifi icon
         let wifi_icon = Image::new();
+        wifi_icon.add_class("icon");
         wifi_icon.add_class("wifi-icon");
         container.add(&wifi_icon);
 
         // Cellular icon
         let cellular_icon = Image::new();
+        cellular_icon.add_class("icon");
         cellular_icon.add_class("cellular-icon");
         container.add(&cellular_icon);
 
         // VPN icon
         let vpn_icon = Image::new();
+        vpn_icon.add_class("icon");
         vpn_icon.add_class("vpn-icon");
         container.add(&vpn_icon);
 
         let icon_theme = info.icon_theme.clone();
         glib_recv!(context.subscribe(), state => {
             macro_rules! update_icon {
-                ($icon_var:expr, $state_type:ident, {$($state:pat => $icon_name:expr,)+}) => {
+                (
+                    $icon_var:expr,
+                    $state_type:ident,
+                    {$($state:pat => $icon_name:expr,)+}
+                ) => {
                     let icon_name = match state.$state_type {
                         $($state => $icon_name,)+
                     };
@@ -113,7 +124,8 @@ impl Module<GtkBox> for NetworkManagerModule {
             });
             update_icon!(vpn_icon, vpn, {
                 VpnState::Connected(_) => "icon:network-vpn-symbolic",
-                VpnState::Disconnected | VpnState::Unknown => "",
+                VpnState::Disconnected => "icon:network-vpn-disabled-symbolic",
+                VpnState::Unknown => "",
             });
         });
 
