@@ -131,10 +131,8 @@ impl Client {
                             }
                         }
                         *write_lock!(client.$property) = new_path_map;
-                        {
-                            let $state_client = &client;
-                            $state_update;
-                        }
+                        let $state_client = &client;
+                        $state_update;
                     }
                     Ok(())
                 });
@@ -160,10 +158,8 @@ impl Client {
                         if !read_lock!(client.$containing_list).contains_key(&path) {
                             break;
                         }
-                        {
-                            let $inner_client = &client;
-                            $state_update;
-                        }
+                        let $inner_client = &client;
+                        $state_update;
                     }
                     Ok(())
                 });
