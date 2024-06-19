@@ -60,6 +60,17 @@ impl Client {
     }
 
     fn run(&self) -> Result<()> {
+        macro_rules! update_state_for_device_change {
+            ($client:ident) => {
+                $client.state.set(State {
+                    wired: determine_wired_state(&read_lock!($client.devices))?,
+                    wifi: determine_wifi_state(&read_lock!($client.devices))?,
+                    cellular: determine_cellular_state(&read_lock!($client.devices))?,
+                    vpn: $client.state.get_cloned().vpn,
+                });
+            };
+        }
+
         macro_rules! initialise_path_map {
             (
                 $client:expr,
@@ -88,8 +99,9 @@ impl Client {
                 $client:expr,
                 $property:ident,
                 $property_changes:ident,
-                $proxy_type:ident
-                $(, |$inner_client:ident, $new_path:ident| $property_watcher:expr)*
+                $proxy_type:ident,
+                |$state_client:ident| $state_update:expr
+                $(, |$property_client:ident, $new_path:ident| $property_watcher:expr)*
             ) => {
                 let client = $client.clone();
                 spawn_blocking_result!({
@@ -111,7 +123,7 @@ impl Client {
                                         .build()?;
                                     new_path_map.insert(new_path.clone(), new_proxy);
                                     $({
-                                        let $inner_client = &client;
+                                        let $property_client = &client;
                                         let $new_path = &new_path;
                                         $property_watcher;
                                     })*
@@ -119,13 +131,10 @@ impl Client {
                             }
                         }
                         *write_lock!(client.$property) = new_path_map;
-                        client.state.set(State {
-                            // TODO: Investigate if there's a sane way to do only the relevant updates
-                            wired: determine_wired_state(&read_lock!(client.devices))?,
-                            wifi: determine_wifi_state(&read_lock!(client.devices))?,
-                            cellular: determine_cellular_state(&read_lock!(client.devices))?,
-                            vpn: determine_vpn_state(&read_lock!(client.active_connections))?,
-                        });
+                        {
+                            let $state_client = &client;
+                            $state_update;
+                        }
                     }
                     Ok(())
                 });
@@ -168,12 +177,7 @@ impl Client {
         );
         initialise_path_map!(self.0, devices, DeviceDbusProxyBlocking, |path| {
             spawn_property_watcher!(self.0, path, receive_state_changed, devices, |client| {
-                client.state.set(State {
-                    wired: determine_wired_state(&read_lock!(client.devices))?,
-                    wifi: determine_wifi_state(&read_lock!(client.devices))?,
-                    cellular: determine_cellular_state(&read_lock!(client.devices))?,
-                    vpn: client.state.get_cloned().vpn,
-                });
+                update_state_for_device_change!(client);
             });
         });
         self.0.state.set(State {
@@ -187,21 +191,27 @@ impl Client {
             self.0,
             active_connections,
             receive_active_connections_changed,
-            ActiveConnectionDbusProxyBlocking
+            ActiveConnectionDbusProxyBlocking,
+            |client| {
+                client.state.set(State {
+                    wired: client.state.get_cloned().wired,
+                    wifi: client.state.get_cloned().wifi,
+                    cellular: client.state.get_cloned().cellular,
+                    vpn: determine_vpn_state(&read_lock!(client.active_connections))?,
+                });
+            }
         );
         spawn_path_list_watcher!(
             self.0,
             devices,
             receive_devices_changed,
             DeviceDbusProxyBlocking,
+            |client| {
+                update_state_for_device_change!(client);
+            },
             |client, path| {
                 spawn_property_watcher!(client, path, receive_state_changed, devices, |client| {
-                    client.state.set(State {
-                        wired: determine_wired_state(&read_lock!(client.devices))?,
-                        wifi: determine_wifi_state(&read_lock!(client.devices))?,
-                        cellular: determine_cellular_state(&read_lock!(client.devices))?,
-                        vpn: client.state.get_cloned().vpn,
-                    });
+                    update_state_for_device_change!(client);
                 });
             }
         );
