@@ -108,7 +108,7 @@ wayland-protocols-wlr = { version = "0.2.0", features = ["client"] }
 smithay-client-toolkit = { version = "0.18.1", default-features = false, features = [
   "calloop",
 ] }
-universal-config = { version = "0.5.0", default_features = false }
+universal-config = { version = "0.5.0", default-features = false }
 ctrlc = "3.4.2"
 cfg-if = "1.0.0"
 
@@ -119,7 +119,7 @@ clap = { version = "4.5.7", optional = true, features = ["derive"] }
 serde_json = { version = "1.0.117", optional = true }
 
 # http
-reqwest = { version = "0.12.4", default_features = false, features = ["default-tls", "http2"], optional = true }
+reqwest = { version = "0.12.4", default-features = false, features = ["default-tls", "http2"], optional = true }
 
 # cairo
 lua-src =  {  version = "546.0.2", optional = true }
@@ -130,7 +130,7 @@ cairo-rs = { version = "0.18.5", optional = true, features = ["png"] }
 nix = { version = "0.29.0", optional = true, features = ["event", "fs"] }
 
 # clock
-chrono = { version = "0.4.38", optional = true, default_features = false, features = ["clock", "unstable-locales"] }
+chrono = { version = "0.4.38", optional = true, default-features = false, features = ["clock", "unstable-locales"] }
 
 # music
 mpd-utils = { version = "0.2.1", optional = true }
