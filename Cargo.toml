@@ -119,7 +119,7 @@ clap = { version = "4.5.7", optional = true, features = ["derive"] }
 serde_json = { version = "1.0.117", optional = true }
 
 # http
-reqwest = { version = "0.12.4", default-features = false, features = ["default-tls", "http2"], optional = true }
+reqwest = { version = "0.12.5", default-features = false, features = ["default-tls", "http2"], optional = true }
 
 # cairo
 lua-src =  {  version = "546.0.2", optional = true }
