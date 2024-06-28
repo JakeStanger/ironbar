@@ -141,7 +141,7 @@ impl<'a> ImageProvider<'a> {
 
     /// Attempts to fetch the image from the location
     /// and load it into the provided `GTK::Image` widget.
-    pub fn load_into_image(&self, image: gtk::Image) -> Result<()> {
+    pub fn load_into_image(&self, image: &gtk::Image) -> Result<()> {
         // handle remote locations async to avoid blocking UI thread while downloading
         #[cfg(feature = "http")]
         if let ImageLocation::Remote(url) = &self.location {
@@ -157,6 +157,7 @@ impl<'a> ImageProvider<'a> {
 
             {
                 let size = self.size;
+                let image = image.clone();
                 glib_recv_mpsc!(rx, bytes => {
                     let stream = MemoryInputStream::from_bytes(&bytes);
 
@@ -181,11 +182,11 @@ impl<'a> ImageProvider<'a> {
                 });
             }
         } else {
-            self.load_into_image_sync(&image)?;
+            self.load_into_image_sync(image)?;
         };
 
         #[cfg(not(feature = "http"))]
-        self.load_into_image_sync(&image)?;
+        self.load_into_image_sync(image)?;
 
         Ok(())
     }

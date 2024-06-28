@@ -176,7 +176,7 @@ impl ItemButton {
                 button.set_image(Some(&gtk_image));
                 button.set_always_show_image(true);
 
-                if let Err(err) = image.load_into_image(gtk_image) {
+                if let Err(err) = image.load_into_image(&gtk_image) {
                     error!("{err:?}");
                 }
             };

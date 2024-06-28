@@ -156,7 +156,7 @@ impl Module<gtk::Box> for FocusedModule {
                 if let Some((name, id)) = data {
                     if self.show_icon {
                         match ImageProvider::parse(&id, &icon_theme, true, self.icon_size)
-                            .map(|image| image.load_into_image(icon.clone()))
+                            .map(|image| image.load_into_image(&icon))
                         {
                             Some(Ok(())) => icon.show(),
                             _ => icon.hide(),
