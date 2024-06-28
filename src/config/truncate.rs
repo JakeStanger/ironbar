@@ -6,6 +6,7 @@ use serde::Deserialize;
 #[serde(rename_all = "snake_case")]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 pub enum EllipsizeMode {
+    None,
     Start,
     Middle,
     End,
@@ -14,6 +15,7 @@ pub enum EllipsizeMode {
 impl From<EllipsizeMode> for GtkEllipsizeMode {
     fn from(value: EllipsizeMode) -> Self {
         match value {
+            EllipsizeMode::None => Self::None,
             EllipsizeMode::Start => Self::Start,
             EllipsizeMode::Middle => Self::Middle,
             EllipsizeMode::End => Self::End,
@@ -31,6 +33,17 @@ impl From<EllipsizeMode> for GtkEllipsizeMode {
 #[serde(untagged)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 pub enum TruncateMode {
+    /// Do not truncate content.
+    ///
+    /// Setting this option may cause excessively long content to overflow other widgets,
+    /// shifting them off-screen.
+    ///
+    /// # Example
+    ///
+    /// ```corn
+    /// { truncate = "off" }
+    Off,
+
     /// Auto mode lets GTK decide when to ellipsize.
     ///
     /// To use this mode, set the truncate option to a string
@@ -97,14 +110,14 @@ impl TruncateMode {
 
     const fn length(&self) -> Option<i32> {
         match self {
-            Self::Auto(_) => None,
+            Self::Auto(_) | Self::Off => None,
             Self::Length { length, .. } => *length,
         }
     }
 
     const fn max_length(&self) -> Option<i32> {
         match self {
-            Self::Auto(_) => None,
+            Self::Auto(_) | Self::Off => None,
             Self::Length { max_length, .. } => *max_length,
         }
     }
