@@ -1,13 +1,14 @@
 use gtk::pango::EllipsizeMode as GtkEllipsizeMode;
 use serde::Deserialize;
 
-#[derive(Debug, Deserialize, Clone, Copy)]
+#[derive(Debug, Deserialize, Clone, Copy, Default)]
 #[serde(rename_all = "snake_case")]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 pub enum EllipsizeMode {
     None,
     Start,
     Middle,
+    #[default]
     End,
 }
 
@@ -27,6 +28,8 @@ impl From<EllipsizeMode> for GtkEllipsizeMode {
 /// which is defined below.
 ///
 /// The option can be configured in one of two modes.
+///
+/// **Default**: `Auto (end)`
 ///
 #[derive(Debug, Deserialize, Clone, Copy)]
 #[serde(untagged)]
@@ -56,7 +59,7 @@ pub enum TruncateMode {
     ///
     /// **Valid options**: `start`, `middle`, `end`
     /// <br>
-    /// **Default**: `null`
+    /// **Default**: `end`
     Auto(EllipsizeMode),
 
     /// Length mode defines a fixed point at which to ellipsize.
@@ -98,6 +101,12 @@ pub enum TruncateMode {
         /// **Default**: `null`
         max_length: Option<i32>,
     },
+}
+
+impl Default for TruncateMode {
+    fn default() -> Self {
+        Self::Auto(EllipsizeMode::default())
+    }
 }
 
 impl TruncateMode {
