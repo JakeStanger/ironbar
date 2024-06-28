@@ -196,7 +196,7 @@ impl Module<Button> for MusicModule {
             .build();
 
         if let Some(truncate) = self.truncate {
-            truncate.truncate_label(&label);
+            label.truncate(truncate);
         }
 
         button_contents.add(&icon_pause);

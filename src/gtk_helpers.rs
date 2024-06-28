@@ -1,6 +1,8 @@
+use crate::config::TruncateMode;
 use glib::{markup_escape_text, IsA};
+use gtk::pango::EllipsizeMode;
 use gtk::prelude::*;
-use gtk::{Orientation, Widget};
+use gtk::{Label, Orientation, Widget};
 
 /// Represents a widget's size
 /// and location relative to the bar's start edge.
@@ -83,14 +85,28 @@ pub trait IronbarLabelExt {
     /// the text is escaped to avoid issues with special characters (ie `&`).
     /// Otherwise, the text is used verbatim, and it is up to the user to escape.
     fn set_label_escaped(&self, label: &str);
+
+    fn truncate(&self, mode: TruncateMode);
 }
 
-impl IronbarLabelExt for gtk::Label {
+impl IronbarLabelExt for Label {
     fn set_label_escaped(&self, label: &str) {
         if !label.contains("<span") {
             self.set_label(&markup_escape_text(label));
         } else {
             self.set_label(label);
+        }
+    }
+
+    fn truncate(&self, mode: TruncateMode) {
+        self.set_ellipsize(<TruncateMode as Into<EllipsizeMode>>::into(mode));
+
+        if let Some(length) = mode.length() {
+            self.set_width_chars(length);
+        }
+
+        if let Some(length) = mode.max_length() {
+            self.set_max_width_chars(length);
         }
     }
 }

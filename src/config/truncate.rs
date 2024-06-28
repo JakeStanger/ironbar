@@ -1,5 +1,4 @@
 use gtk::pango::EllipsizeMode as GtkEllipsizeMode;
-use gtk::prelude::*;
 use serde::Deserialize;
 
 #[derive(Debug, Deserialize, Clone, Copy)]
@@ -102,35 +101,27 @@ pub enum TruncateMode {
 }
 
 impl TruncateMode {
-    const fn mode(&self) -> EllipsizeMode {
-        match self {
-            Self::Length { mode, .. } | Self::Auto(mode) => *mode,
-        }
-    }
-
-    const fn length(&self) -> Option<i32> {
+    pub const fn length(&self) -> Option<i32> {
         match self {
             Self::Auto(_) | Self::Off => None,
             Self::Length { length, .. } => *length,
         }
     }
 
-    const fn max_length(&self) -> Option<i32> {
+    pub const fn max_length(&self) -> Option<i32> {
         match self {
             Self::Auto(_) | Self::Off => None,
             Self::Length { max_length, .. } => *max_length,
         }
     }
+}
 
-    pub fn truncate_label(&self, label: &gtk::Label) {
-        label.set_ellipsize(self.mode().into());
-
-        if let Some(length) = self.length() {
-            label.set_width_chars(length);
-        }
-
-        if let Some(length) = self.max_length() {
-            label.set_max_width_chars(length);
-        }
+impl From<TruncateMode> for GtkEllipsizeMode {
+    fn from(value: TruncateMode) -> Self {
+        let mode = match value {
+            TruncateMode::Off => EllipsizeMode::None,
+            TruncateMode::Length { mode, .. } | TruncateMode::Auto(mode) => mode,
+        };
+        mode.into()
     }
 }

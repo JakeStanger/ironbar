@@ -66,7 +66,7 @@ impl Module<Label> for SwayModeModule {
             let label = label.clone();
 
             if let Some(truncate) = self.truncate {
-                truncate.truncate_label(&label);
+                label.truncate(truncate);
             }
 
             let on_mode = move |mode: ModeEvent| {
