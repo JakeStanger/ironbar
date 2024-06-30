@@ -2,8 +2,9 @@ mod macros;
 mod wl_output;
 mod wl_seat;
 
-use crate::error::ERR_CHANNEL_RECV;
+use crate::error::{ExitCode, ERR_CHANNEL_RECV};
 use crate::{arc_mut, lock, register_client, send, spawn, spawn_blocking};
+use std::process::exit;
 use std::sync::{Arc, Mutex};
 
 use calloop_channel::Event::Msg;
@@ -305,6 +306,8 @@ impl Environment {
                     "{:?}",
                     Report::new(err).wrap_err("Failed to dispatch pending wayland events")
                 );
+
+                exit(ExitCode::WaylandDispatchError as i32)
             }
         }
     }

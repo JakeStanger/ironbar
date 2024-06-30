@@ -43,6 +43,11 @@ pub fn handle_command(command: BarCommand, ironbar: &Rc<Ironbar>) -> Response {
         GetPopupVisible => Response::OkValue {
             value: bar.popup().visible().to_string(),
         },
+        SetExclusive { exclusive } => {
+            bar.set_exclusive(exclusive);
+
+            Response::Ok
+        }
     }
 }
 

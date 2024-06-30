@@ -14,7 +14,7 @@ pub struct Event {
     pub count: u32,
     pub dnd: bool,
     pub cc_open: bool,
-    pub inhibited: bool,
+    // pub inhibited: bool,
 }
 
 type GetSubscribeData = (bool, bool, u32, bool);
@@ -22,12 +22,12 @@ type GetSubscribeData = (bool, bool, u32, bool);
 /// Converts the data returned from
 /// `get_subscribe_data` into an event for convenience.
 impl From<GetSubscribeData> for Event {
-    fn from((dnd, cc_open, count, inhibited): (bool, bool, u32, bool)) -> Self {
+    fn from((dnd, cc_open, count, _inhibited): (bool, bool, u32, bool)) -> Self {
         Self {
             count,
             dnd,
             cc_open,
-            inhibited,
+            // inhibited,
         }
     }
 }
