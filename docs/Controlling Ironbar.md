@@ -289,6 +289,18 @@ Gets the popup's current visibility state.
 }
 ```
 
+#### `set_exclusive`
+
+Sets whether the bar reserves an exclusive zone.
+
+```json
+{
+  "command": "bar",
+  "subcommand": "set_exclusive",
+  "exclusive": true
+}
+```
+
 ## Responses
 
 ### `ok`
