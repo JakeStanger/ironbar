@@ -14,6 +14,8 @@ use crate::modules::focused::FocusedModule;
 use crate::modules::label::LabelModule;
 #[cfg(feature = "launcher")]
 use crate::modules::launcher::LauncherModule;
+#[cfg(feature = "menu")]
+use crate::modules::menu::MenuModule;
 #[cfg(feature = "music")]
 use crate::modules::music::MusicModule;
 #[cfg(feature = "notifications")]
@@ -58,6 +60,8 @@ pub enum ModuleConfig {
     Label(Box<LabelModule>),
     #[cfg(feature = "launcher")]
     Launcher(Box<LauncherModule>),
+    #[cfg(feature = "menu")]
+    Menu(Box<MenuModule>),
     #[cfg(feature = "music")]
     Music(Box<MusicModule>),
     #[cfg(feature = "notifications")]
@@ -101,6 +105,8 @@ impl ModuleConfig {
             Self::Label(module) => create!(module),
             #[cfg(feature = "launcher")]
             Self::Launcher(module) => create!(module),
+            #[cfg(feature = "menu")]
+            Self::Menu(module) => create!(module),
             #[cfg(feature = "music")]
             Self::Music(module) => create!(module),
             #[cfg(feature = "notifications")]
