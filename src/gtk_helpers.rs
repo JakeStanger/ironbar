@@ -1,6 +1,8 @@
+use crate::config::TruncateMode;
 use glib::IsA;
+use gtk::pango::EllipsizeMode;
 use gtk::prelude::*;
-use gtk::{Orientation, Widget};
+use gtk::{Label, Orientation, Widget};
 
 /// Represents a widget's size
 /// and location relative to the bar's start edge.
@@ -73,5 +75,23 @@ impl<W: IsA<Widget>> IronbarGtkExt for W {
 
     fn set_tag<V: 'static>(&self, key: &str, value: V) {
         unsafe { self.set_data(key, value) }
+    }
+}
+
+pub trait IronbarLabelExt {
+    fn truncate(&self, mode: TruncateMode);
+}
+
+impl IronbarLabelExt for Label {
+    fn truncate(&self, mode: TruncateMode) {
+        self.set_ellipsize(<TruncateMode as Into<EllipsizeMode>>::into(mode));
+
+        if let Some(length) = mode.length() {
+            self.set_width_chars(length);
+        }
+
+        if let Some(length) = mode.max_length() {
+            self.set_max_width_chars(length);
+        }
     }
 }

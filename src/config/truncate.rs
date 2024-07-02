@@ -1,19 +1,21 @@
 use gtk::pango::EllipsizeMode as GtkEllipsizeMode;
-use gtk::prelude::*;
 use serde::Deserialize;
 
-#[derive(Debug, Deserialize, Clone, Copy)]
+#[derive(Debug, Deserialize, Clone, Copy, Default)]
 #[serde(rename_all = "snake_case")]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 pub enum EllipsizeMode {
+    None,
     Start,
     Middle,
+    #[default]
     End,
 }
 
 impl From<EllipsizeMode> for GtkEllipsizeMode {
     fn from(value: EllipsizeMode) -> Self {
         match value {
+            EllipsizeMode::None => Self::None,
             EllipsizeMode::Start => Self::Start,
             EllipsizeMode::Middle => Self::Middle,
             EllipsizeMode::End => Self::End,
@@ -27,10 +29,23 @@ impl From<EllipsizeMode> for GtkEllipsizeMode {
 ///
 /// The option can be configured in one of two modes.
 ///
+/// **Default**: `Auto (end)`
+///
 #[derive(Debug, Deserialize, Clone, Copy)]
 #[serde(untagged)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 pub enum TruncateMode {
+    /// Do not truncate content.
+    ///
+    /// Setting this option may cause excessively long content to overflow other widgets,
+    /// shifting them off-screen.
+    ///
+    /// # Example
+    ///
+    /// ```corn
+    /// { truncate = "off" }
+    Off,
+
     /// Auto mode lets GTK decide when to ellipsize.
     ///
     /// To use this mode, set the truncate option to a string
@@ -44,7 +59,7 @@ pub enum TruncateMode {
     ///
     /// **Valid options**: `start`, `middle`, `end`
     /// <br>
-    /// **Default**: `null`
+    /// **Default**: `end`
     Auto(EllipsizeMode),
 
     /// Length mode defines a fixed point at which to ellipsize.
@@ -88,36 +103,34 @@ pub enum TruncateMode {
     },
 }
 
-impl TruncateMode {
-    const fn mode(&self) -> EllipsizeMode {
-        match self {
-            Self::Length { mode, .. } | Self::Auto(mode) => *mode,
-        }
+impl Default for TruncateMode {
+    fn default() -> Self {
+        Self::Auto(EllipsizeMode::default())
     }
+}
 
-    const fn length(&self) -> Option<i32> {
+impl TruncateMode {
+    pub const fn length(&self) -> Option<i32> {
         match self {
-            Self::Auto(_) => None,
+            Self::Auto(_) | Self::Off => None,
             Self::Length { length, .. } => *length,
         }
     }
 
-    const fn max_length(&self) -> Option<i32> {
+    pub const fn max_length(&self) -> Option<i32> {
         match self {
-            Self::Auto(_) => None,
+            Self::Auto(_) | Self::Off => None,
             Self::Length { max_length, .. } => *max_length,
         }
     }
+}
 
-    pub fn truncate_label(&self, label: &gtk::Label) {
-        label.set_ellipsize(self.mode().into());
-
-        if let Some(length) = self.length() {
-            label.set_width_chars(length);
-        }
-
-        if let Some(length) = self.max_length() {
-            label.set_max_width_chars(length);
-        }
+impl From<TruncateMode> for GtkEllipsizeMode {
+    fn from(value: TruncateMode) -> Self {
+        let mode = match value {
+            TruncateMode::Off => EllipsizeMode::None,
+            TruncateMode::Length { mode, .. } | TruncateMode::Auto(mode) => mode,
+        };
+        mode.into()
     }
 }
