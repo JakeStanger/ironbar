@@ -81,7 +81,7 @@ schema = ["dep:schemars"]
 [dependencies]
 # core
 gtk = "0.18.1"
-gtk-layer-shell = "0.8.0"
+gtk-layer-shell = "0.8.1"
 glib = "0.18.5"
 tokio = { version = "1.38.0", features = [
   "macros",
