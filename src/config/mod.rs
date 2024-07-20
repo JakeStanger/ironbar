@@ -21,6 +21,8 @@ use crate::modules::networkmanager::NetworkManagerModule;
 #[cfg(feature = "notifications")]
 use crate::modules::notifications::NotificationsModule;
 use crate::modules::script::ScriptModule;
+#[cfg(feature = "sway")]
+use crate::modules::sway::mode::SwayModeModule;
 #[cfg(feature = "sys_info")]
 use crate::modules::sysinfo::SysInfoModule;
 #[cfg(feature = "tray")]
@@ -69,6 +71,8 @@ pub enum ModuleConfig {
     Script(Box<ScriptModule>),
     #[cfg(feature = "sys_info")]
     SysInfo(Box<SysInfoModule>),
+    #[cfg(feature = "sway")]
+    SwayMode(Box<SwayModeModule>),
     #[cfg(feature = "tray")]
     Tray(Box<TrayModule>),
     #[cfg(feature = "upower")]
@@ -114,6 +118,8 @@ impl ModuleConfig {
             Self::Script(module) => create!(module),
             #[cfg(feature = "sys_info")]
             Self::SysInfo(module) => create!(module),
+            #[cfg(feature = "sway")]
+            Self::SwayMode(module) => create!(module),
             #[cfg(feature = "tray")]
             Self::Tray(module) => create!(module),
             #[cfg(feature = "upower")]
