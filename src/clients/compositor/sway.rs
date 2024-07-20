@@ -4,15 +4,31 @@ use color_eyre::{Report, Result};
 use futures_lite::StreamExt;
 use std::sync::Arc;
 use swayipc_async::{Connection, Event, EventType, Node, WorkspaceChange, WorkspaceEvent};
-use tokio::sync::broadcast::{channel, Receiver, Sender};
+use tokio::sync::broadcast::{channel, Receiver};
 use tokio::sync::Mutex;
 use tracing::{info, trace};
 
-#[derive(Debug)]
+type SyncFn = dyn Fn(&Event) + Sync + Send;
+
+struct TaskState {
+    join_handle: Option<tokio::task::JoinHandle<Result<()>>>,
+    // could have been a `HashMap<EventType, Vec<Box<dyn Fn(&Event) + Sync + Send>>>`, but we don't
+    // expect enough listeners to justify the constant overhead of a hashmap.
+    listeners: Arc<Vec<(EventType, Box<SyncFn>)>>,
+}
+
 pub struct Client {
     client: Arc<Mutex<Connection>>,
-    workspace_tx: Sender<WorkspaceUpdate>,
-    _workspace_rx: Receiver<WorkspaceUpdate>,
+    task_state: Mutex<TaskState>,
+}
+
+impl std::fmt::Debug for Client {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Client")
+            .field("client", &"Connection")
+            .field("task_state", &format_args!("<...>"))
+            .finish()
+    }
 }
 
 impl Client {
@@ -21,36 +37,59 @@ impl Client {
         let client = Arc::new(Mutex::new(Connection::new().await?));
         info!("Sway IPC subscription client connected");
 
-        let (workspace_tx, workspace_rx) = channel(16);
-
-        {
-            // create 2nd client as subscription takes ownership
-            let client = Connection::new().await?;
-            let workspace_tx = workspace_tx.clone();
-
-            spawn(async move {
-                let event_types = [EventType::Workspace];
-                let mut events = client.subscribe(event_types).await?;
-
-                while let Some(event) = events.next().await {
-                    trace!("event: {:?}", event);
-                    if let Event::Workspace(event) = event? {
-                        let event = WorkspaceUpdate::from(*event);
-                        if !matches!(event, WorkspaceUpdate::Unknown) {
-                            workspace_tx.send(event)?;
-                        }
-                    };
-                }
-
-                Ok::<(), Report>(())
-            });
-        }
-
         Ok(Self {
             client,
-            workspace_tx,
-            _workspace_rx: workspace_rx,
+            task_state: Mutex::new(TaskState {
+                listeners: Arc::new(Vec::new()),
+                join_handle: None,
+            }),
         })
+    }
+
+    pub async fn add_listener(&self, event_type: EventType, f: Box<SyncFn>) -> Result<()> {
+        // abort current running task
+        let TaskState {
+            join_handle,
+            listeners,
+        } = &mut *self.task_state.lock().await;
+
+        if let Some(handle) = join_handle.take() {
+            handle.abort();
+            let _ = handle.await;
+        }
+
+        // Only the task and self have a reference to listeners, and we just abort the task. This
+        // is the only reference to listeners, so we can safely unwrap.
+        let listeners_mut = Arc::get_mut(listeners).unwrap();
+
+        listeners_mut.push((event_type, f));
+
+        // create new client as subscription takes ownership
+        let client = Connection::new().await?;
+
+        let event_types = listeners.iter().map(|(t, _)| *t).collect::<Vec<_>>();
+        let listeners = listeners.clone();
+
+        let handle = spawn(async move {
+            let mut events = client.subscribe(&event_types).await?;
+
+            while let Some(event) = events.next().await {
+                trace!("event: {:?}", event);
+                let event = event?;
+                let ty = sway_event_to_event_type(&event);
+                for (t, f) in listeners.iter() {
+                    if *t == ty {
+                        f(&event);
+                    }
+                }
+            }
+
+            Ok::<(), Report>(())
+        });
+
+        *join_handle = Some(handle);
+
+        Ok(())
     }
 }
 
@@ -64,22 +103,34 @@ impl WorkspaceClient for Client {
     }
 
     fn subscribe_workspace_change(&self) -> Receiver<WorkspaceUpdate> {
-        let rx = self.workspace_tx.subscribe();
+        let (tx, rx) = channel(16);
 
-        {
-            let tx = self.workspace_tx.clone();
-            let client = self.client.clone();
+        let client = self.client.clone();
 
-            await_sync(async {
-                let mut client = client.lock().await;
-                let workspaces = client.get_workspaces().await.expect("to get workspaces");
+        await_sync(async {
+            let mut client = client.lock().await;
+            let workspaces = client.get_workspaces().await.expect("to get workspaces");
 
-                let event =
-                    WorkspaceUpdate::Init(workspaces.into_iter().map(Workspace::from).collect());
+            let event =
+                WorkspaceUpdate::Init(workspaces.into_iter().map(Workspace::from).collect());
 
-                send!(tx, event);
-            });
-        }
+            send!(tx, event);
+
+            drop(client);
+
+            self.add_listener(
+                EventType::Workspace,
+                Box::new(move |event| {
+                    let Event::Workspace(event) = event else {
+                        unreachable!()
+                    };
+                    let update = WorkspaceUpdate::from((**event).clone());
+                    send!(tx, update);
+                }),
+            )
+            .await
+            .expect("to add listener");
+        });
 
         rx
     }
@@ -153,5 +204,20 @@ impl From<WorkspaceEvent> for WorkspaceUpdate {
             }
             _ => Self::Unknown,
         }
+    }
+}
+
+fn sway_event_to_event_type(event: &Event) -> EventType {
+    match event {
+        Event::Workspace(_) => EventType::Workspace,
+        Event::Mode(_) => EventType::Mode,
+        Event::Window(_) => EventType::Window,
+        Event::BarConfigUpdate(_) => EventType::BarConfigUpdate,
+        Event::Binding(_) => EventType::Binding,
+        Event::Shutdown(_) => EventType::Shutdown,
+        Event::Tick(_) => EventType::Tick,
+        Event::BarStateUpdate(_) => EventType::BarStateUpdate,
+        Event::Input(_) => EventType::Input,
+        _ => todo!(),
     }
 }

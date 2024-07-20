@@ -1,12 +1,11 @@
 use crate::config::{CommonConfig, TruncateMode};
 use crate::modules::{Module, ModuleInfo, ModuleParts, ModuleUpdateEvent, WidgetContext};
-use crate::{glib_recv, module_impl, spawn};
+use crate::{await_sync, glib_recv, module_impl};
 use color_eyre::{Report, Result};
-use futures_lite::StreamExt;
 use gtk::prelude::*;
 use gtk::Label;
 use serde::Deserialize;
-use swayipc_async::{Connection, Event, EventType, ModeEvent};
+use swayipc_async::{Event, EventType, ModeEvent};
 use tokio::sync::mpsc;
 use tracing::{info, trace};
 
@@ -39,21 +38,23 @@ impl Module<Label> for SwayModeModule {
         info!("Sway Mode module started");
         let tx = context.tx.clone();
 
-        spawn(async move {
-            let client = Connection::new().await?;
-
-            let event_types = [EventType::Mode];
-            let mut events = client.subscribe(event_types).await?;
-
-            while let Some(event) = events.next().await {
-                trace!("event: {:?}", event);
-                if let Event::Mode(mode) = event? {
-                    tx.send(ModuleUpdateEvent::Update(mode)).await?
-                };
-            }
+        await_sync(async move {
+            let client = context.ironbar.clients.borrow_mut().sway()?;
+            client
+                .add_listener(
+                    EventType::Mode,
+                    Box::new(move |event| {
+                        trace!("event: {:?}", event);
+                        let Event::Mode(mode) = event else {
+                            unreachable!()
+                        };
+                        let _ = await_sync(tx.send(ModuleUpdateEvent::Update(mode.clone())));
+                    }),
+                )
+                .await?;
 
             Ok::<(), Report>(())
-        });
+        })?;
 
         Ok(())
     }
@@ -73,6 +74,7 @@ impl Module<Label> for SwayModeModule {
             }
 
             let on_mode = move |mode: ModeEvent| {
+                trace!("mode: {:?}", mode);
                 label.set_use_markup(mode.pango_markup);
                 if mode.change != "default" {
                     label.set_markup(&mode.change)

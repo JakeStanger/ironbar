@@ -31,6 +31,8 @@ pub struct Clients {
     wayland: Option<Arc<wayland::Client>>,
     #[cfg(feature = "workspaces")]
     workspaces: Option<Arc<dyn compositor::WorkspaceClient>>,
+    #[cfg(feature = "sway")]
+    sway: Option<Arc<compositor::sway::Client>>,
     #[cfg(feature = "clipboard")]
     clipboard: Option<Arc<clipboard::Client>>,
     #[cfg(feature = "cairo")]
@@ -76,8 +78,23 @@ impl Clients {
         let client = match &self.workspaces {
             Some(workspaces) => workspaces.clone(),
             None => {
-                let client = compositor::Compositor::create_workspace_client()?;
+                let client = compositor::Compositor::create_workspace_client(self)?;
                 self.workspaces.replace(client.clone());
+                client
+            }
+        };
+
+        Ok(client)
+    }
+
+    #[cfg(feature = "sway")]
+    pub fn sway(&mut self) -> ClientResult<compositor::sway::Client> {
+        let client = match &self.sway {
+            Some(client) => client.clone(),
+            None => {
+                let client = await_sync(async { compositor::sway::Client::new().await })?;
+                let client = Arc::new(client);
+                self.sway.replace(client.clone());
                 client
             }
         };

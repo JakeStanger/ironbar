@@ -1,4 +1,4 @@
-use crate::{await_sync, register_fallible_client};
+use crate::register_fallible_client;
 use cfg_if::cfg_if;
 use color_eyre::{Help, Report, Result};
 use std::fmt::{Debug, Display, Formatter};
@@ -56,13 +56,16 @@ impl Compositor {
 
     /// Creates a new instance of
     /// the workspace client for the current compositor.
-    pub fn create_workspace_client() -> Result<Arc<dyn WorkspaceClient + Send + Sync>> {
+    pub fn create_workspace_client(
+        clients: &mut super::Clients,
+    ) -> Result<Arc<dyn WorkspaceClient + Send + Sync>> {
         let current = Self::get_current();
         debug!("Getting workspace client for: {current}");
         match current {
             #[cfg(feature = "workspaces+sway")]
-            Self::Sway => await_sync(async { sway::Client::new().await })
-                .map(|client| Arc::new(client) as Arc<dyn WorkspaceClient + Send + Sync>),
+            Self::Sway => clients
+                .sway()
+                .map(|client| client as Arc<dyn WorkspaceClient + Send + Sync>),
             #[cfg(feature = "workspaces+hyprland")]
             Self::Hyprland => Ok(Arc::new(hyprland::Client::new())),
             Self::Unsupported => Err(Report::msg("Unsupported compositor")
