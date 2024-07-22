@@ -103,7 +103,7 @@ indexmap = "2.2.6"
 dirs = "5.0.1"
 walkdir = "2.5.0"
 notify = { version = "6.1.1", default-features = false }
-wayland-client = "0.31.1"
+wayland-client = "0.31.5"
 wayland-protocols-wlr = { version = "0.2.0", features = ["client"] }
 smithay-client-toolkit = { version = "0.18.1", default-features = false, features = [
   "calloop",
