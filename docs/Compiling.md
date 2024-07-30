@@ -117,6 +117,26 @@ cargo build --release --no-default-features \
 | **Other**           |                                                                                   |
 | schema              | Enables JSON schema support and the CLI `--print-schema` flag.                    |
 
+## Shell completions
+
+Compiling Ironbar will produce shell completions for bash, zsh and fish; these can be found in `target/completions`.
+
+You can install these as follows:
+
+Bash: 
+```shell
+install -Dm644 completions/ironbar.bash /usr/share/bash-completion/completions/ironbar
+```
+
+Zsh:
+```shell
+install -Dm644 completions/_ironbar /usr/share/zsh/site-functions/_ironbar
+```
+
+Fish:
+```shell
+install -Dm644 completions/ironbar.fish /usr/share/fish/vendor_completions.d/ironbar.fish
+```
 
 ## Speeding up compiling
 
