@@ -1,5 +1,6 @@
 use super::Ipc;
-use crate::ipc::{Command, Response};
+use crate::cli::Command;
+use crate::ipc::Response;
 use color_eyre::Result;
 use color_eyre::{Help, Report};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
