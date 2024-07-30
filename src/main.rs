@@ -28,10 +28,14 @@ use tracing::{debug, error, info, warn};
 use universal_config::ConfigLoader;
 
 use crate::bar::{create_bar, Bar};
+#[cfg(feature = "cli")]
+use crate::cli::Format;
 use crate::clients::wayland::OutputEventType;
 use crate::clients::Clients;
 use crate::config::{Config, MonitorConfig};
 use crate::error::ExitCode;
+#[cfg(feature = "ipc")]
+use crate::ipc::responses::Response;
 #[cfg(feature = "ipc")]
 use crate::ironvar::VariableManager;
 use crate::style::load_css;
@@ -98,13 +102,34 @@ fn run_with_args() {
                             eprintln!("RESPONSE: {res:?}")
                         }
 
-                        cli::handle_response(res, args.format.unwrap_or_default())
+                        handle_response(res, args.format.unwrap_or_default())
                     }
                     Err(err) => error!("{err:?}"),
                 };
             });
         }
         None => start_ironbar(),
+    }
+}
+
+#[cfg(feature = "cli")]
+pub fn handle_response(response: Response, format: Format) {
+    let is_err = matches!(response, Response::Err { .. });
+
+    match format {
+        Format::Plain => match response {
+            Response::Ok => println!("ok"),
+            Response::OkValue { value } => println!("{value}"),
+            Response::Err { message } => eprintln!("error\n{}", message.unwrap_or_default()),
+        },
+        Format::Json => println!(
+            "{}",
+            serde_json::to_string(&response).expect("to be valid json")
+        ),
+    }
+
+    if is_err {
+        exit(ExitCode::IpcResponseError as i32)
     }
 }
 

@@ -162,3 +162,9 @@ zbus = { version = "3.15.2", default-features = false, features = ["tokio"], opt
 
 # schema
 schemars = { version = "0.8.21", optional = true }
+
+[build-dependencies]
+clap = { version = "4.5.9", features = ["derive"] }
+clap_complete = "4.5.2"
+clap_mangen = "0.2.20"
+serde = { version = "1.0.204", features = ["derive"] }
