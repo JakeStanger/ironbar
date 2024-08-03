@@ -83,7 +83,7 @@ schema = ["dep:schemars"]
 gtk = "0.18.1"
 gtk-layer-shell = "0.8.1"
 glib = "0.18.5"
-tokio = { version = "1.38.1", features = [
+tokio = { version = "1.39.2", features = [
   "macros",
   "rt-multi-thread",
   "time",
@@ -99,7 +99,7 @@ tracing-appender = "0.2.3"
 strip-ansi-escapes = "0.2.0"
 color-eyre = "0.6.3"
 serde = { version = "1.0.204", features = ["derive"] }
-indexmap = "2.2.6"
+indexmap = "2.3.0"
 dirs = "5.0.1"
 walkdir = "2.5.0"
 notify = { version = "6.1.1", default-features = false }
@@ -109,14 +109,14 @@ smithay-client-toolkit = { version = "0.18.1", default-features = false, feature
   "calloop",
 ] }
 universal-config = { version = "0.5.0", default-features = false }
-ctrlc = "3.4.2"
+ctrlc = "3.4.4"
 cfg-if = "1.0.0"
 
 # cli
-clap = { version = "4.5.9", optional = true, features = ["derive"] }
+clap = { version = "4.5.13", optional = true, features = ["derive"] }
 
 # ipc
-serde_json = { version = "1.0.121", optional = true }
+serde_json = { version = "1.0.122", optional = true }
 
 # http
 reqwest = { version = "0.12.5", default-features = false, features = ["default-tls", "http2"], optional = true }
@@ -155,10 +155,14 @@ futures-util = { version = "0.3.30", optional = true }
 
 # shared
 futures-lite = { version = "2.3.0", optional = true } # workspaces, upower
-regex = { version = "1.10.5", default-features = false, features = [
+regex = { version = "1.10.6", default-features = false, features = [
   "std",
 ], optional = true } # music, sys_info
 zbus = { version = "3.15.2", default-features = false, features = ["tokio"], optional = true } # notifications, upower
 
 # schema
 schemars = { version = "0.8.21", optional = true }
+
+# -- PATCH --
+# temp fix for tracing-appender/time
+time = "0.3.36"
