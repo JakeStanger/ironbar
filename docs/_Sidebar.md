@@ -32,6 +32,7 @@
 - [Label](label)
 - [Launcher](launcher)
 - [Music](music)
+- [Network Manager](network-manager)
 - [Notifications](notifications)
 - [Script](script)
 - [Sys_Info](sys-info)
