@@ -1,6 +1,6 @@
 use crate::config::{CommonConfig, TruncateMode};
 use crate::modules::{Module, ModuleInfo, ModuleParts, ModuleUpdateEvent, WidgetContext};
-use crate::{await_sync, glib_recv, module_impl};
+use crate::{await_sync, glib_recv, module_impl, try_send};
 use color_eyre::{Report, Result};
 use gtk::prelude::*;
 use gtk::Label;
@@ -48,7 +48,7 @@ impl Module<Label> for SwayModeModule {
                         let Event::Mode(mode) = event else {
                             unreachable!()
                         };
-                        let _ = await_sync(tx.send(ModuleUpdateEvent::Update(mode.clone())));
+                        try_send!(tx, ModuleUpdateEvent::Update(mode.clone()));
                     }),
                 )
                 .await?;
