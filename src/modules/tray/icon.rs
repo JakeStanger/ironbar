@@ -90,6 +90,10 @@ fn get_image_from_pixmap(item: &TrayMenu, size: u32) -> Result<Image> {
         .and_then(|pixmap| pixmap.first())
         .ok_or_else(|| Report::msg("Failed to get pixmap from tray icon"))?;
 
+    if pixmap.width == 0 || pixmap.height == 0 {
+        return Err(Report::msg("empty pixmap"));
+    }
+
     let mut pixels = pixmap.pixels.to_vec();
 
     for i in (0..pixels.len()).step_by(4) {
