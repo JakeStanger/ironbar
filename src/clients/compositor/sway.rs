@@ -8,13 +8,13 @@ use tokio::sync::broadcast::{channel, Receiver};
 use tokio::sync::Mutex;
 use tracing::{info, trace};
 
-type SyncFn = dyn Fn(&Event) + Sync + Send;
+type SyncFn<T> = dyn Fn(&T) + Sync + Send;
 
 struct TaskState {
     join_handle: Option<tokio::task::JoinHandle<Result<()>>>,
     // could have been a `HashMap<EventType, Vec<Box<dyn Fn(&Event) + Sync + Send>>>`, but we don't
     // expect enough listeners to justify the constant overhead of a hashmap.
-    listeners: Arc<Vec<(EventType, Box<SyncFn>)>>,
+    listeners: Arc<Vec<(EventType, Box<SyncFn<Event>>)>>,
 }
 
 pub struct Client {
@@ -46,7 +46,25 @@ impl Client {
         })
     }
 
-    pub async fn add_listener(&self, event_type: EventType, f: Box<SyncFn>) -> Result<()> {
+    pub async fn add_listener<T: SwayIpcEvent>(
+        &self,
+        f: impl Fn(&T) + Sync + Send + 'static,
+    ) -> Result<()> {
+        self.add_listener_type(
+            T::EVENT_TYPE,
+            Box::new(move |event| {
+                let event = T::from_event(event).unwrap();
+                f(event)
+            }),
+        )
+        .await
+    }
+
+    pub async fn add_listener_type(
+        &self,
+        event_type: EventType,
+        f: Box<SyncFn<Event>>,
+    ) -> Result<()> {
         // abort current running task
         let TaskState {
             join_handle,
@@ -119,16 +137,10 @@ impl WorkspaceClient for Client {
 
             drop(client);
 
-            self.add_listener(
-                EventType::Workspace,
-                Box::new(move |event| {
-                    let Event::Workspace(event) = event else {
-                        unreachable!()
-                    };
-                    let update = WorkspaceUpdate::from((**event).clone());
-                    send!(tx, update);
-                }),
-            )
+            self.add_listener::<swayipc_async::WorkspaceEvent>(move |event| {
+                let update = WorkspaceUpdate::from(event.clone());
+                send!(tx, update);
+            })
             .await
             .expect("to add listener");
         });
@@ -222,3 +234,54 @@ fn sway_event_to_event_type(event: &Event) -> EventType {
         _ => todo!(),
     }
 }
+
+pub trait SwayIpcEvent {
+    const EVENT_TYPE: EventType;
+    fn from_event(e: &Event) -> Option<&Self>;
+}
+macro_rules! sway_ipc_event_impl {
+    (@ $($t:tt)*) => { $($t)* };
+    ($t:ty, $v:expr, $($m:tt)*) => {
+        sway_ipc_event_impl! {@
+            impl SwayIpcEvent for $t {
+                const EVENT_TYPE: EventType = $v;
+                fn from_event(e: &Event) -> Option<&Self> {
+                    match e {
+                        $($m)* (x) => Some(x),
+                        _ => None,
+                    }
+                }
+            }
+        }
+    };
+}
+
+sway_ipc_event_impl!(
+    swayipc_async::WorkspaceEvent,
+    EventType::Workspace,
+    Event::Workspace
+);
+sway_ipc_event_impl!(swayipc_async::ModeEvent, EventType::Mode, Event::Mode);
+sway_ipc_event_impl!(swayipc_async::WindowEvent, EventType::Window, Event::Window);
+sway_ipc_event_impl!(
+    swayipc_async::BarConfig,
+    EventType::BarConfigUpdate,
+    Event::BarConfigUpdate
+);
+sway_ipc_event_impl!(
+    swayipc_async::BindingEvent,
+    EventType::Binding,
+    Event::Binding
+);
+sway_ipc_event_impl!(
+    swayipc_async::ShutdownEvent,
+    EventType::Shutdown,
+    Event::Shutdown
+);
+sway_ipc_event_impl!(swayipc_async::TickEvent, EventType::Tick, Event::Tick);
+sway_ipc_event_impl!(
+    swayipc_async::BarStateUpdateEvent,
+    EventType::BarStateUpdate,
+    Event::BarStateUpdate
+);
+sway_ipc_event_impl!(swayipc_async::InputEvent, EventType::Input, Event::Input);

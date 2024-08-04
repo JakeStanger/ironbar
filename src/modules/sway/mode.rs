@@ -5,7 +5,7 @@ use color_eyre::{Report, Result};
 use gtk::prelude::*;
 use gtk::Label;
 use serde::Deserialize;
-use swayipc_async::{Event, EventType, ModeEvent};
+use swayipc_async::ModeEvent;
 use tokio::sync::mpsc;
 use tracing::{info, trace};
 
@@ -41,16 +41,10 @@ impl Module<Label> for SwayModeModule {
         await_sync(async move {
             let client = context.ironbar.clients.borrow_mut().sway()?;
             client
-                .add_listener(
-                    EventType::Mode,
-                    Box::new(move |event| {
-                        trace!("event: {:?}", event);
-                        let Event::Mode(mode) = event else {
-                            unreachable!()
-                        };
-                        try_send!(tx, ModuleUpdateEvent::Update(mode.clone()));
-                    }),
-                )
+                .add_listener::<swayipc_async::ModeEvent>(move |mode| {
+                    trace!("mode: {:?}", mode);
+                    try_send!(tx, ModuleUpdateEvent::Update(mode.clone()));
+                })
                 .await?;
 
             Ok::<(), Report>(())
