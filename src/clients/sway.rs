@@ -55,7 +55,7 @@ impl Client {
         self.add_listener_type(
             T::EVENT_TYPE,
             Box::new(move |event| {
-                let event = T::from_event(event).unwrap();
+                let event = T::from_event(event).expect("event type mismatch");
                 f(event)
             }),
         )
