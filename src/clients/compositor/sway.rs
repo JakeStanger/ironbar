@@ -59,8 +59,9 @@ impl Client {
         }
 
         // Only the task and self have a reference to listeners, and we just abort the task. This
-        // is the only reference to listeners, so we can safely unwrap.
-        let listeners_mut = Arc::get_mut(listeners).unwrap();
+        // is the only reference to listeners, so we can safely get a mutable reference.
+        let listeners_mut = Arc::get_mut(listeners)
+            .ok_or_else(|| Report::msg("Failed to get mutable reference to listeners"))?;
 
         listeners_mut.push((event_type, f));
 
