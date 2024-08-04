@@ -78,10 +78,6 @@ impl Bar {
         let center = create_container("center", orientation);
         let end = create_container("end", orientation);
 
-        content.add(&start);
-        content.set_center_widget(Some(&center));
-        content.pack_end(&end, false, false, 0);
-
         window.add(&content);
 
         window.connect_destroy_event(|_, _| {
@@ -273,16 +269,22 @@ impl Bar {
         let popup = Rc::new(popup);
 
         if let Some(modules) = config.start {
+            self.content.add(&self.start);
+
             let info = info!(ModuleLocation::Left);
             add_modules(&self.start, modules, &info, &self.ironbar, &popup)?;
         }
 
         if let Some(modules) = config.center {
+            self.content.set_center_widget(Some(&self.center));
+
             let info = info!(ModuleLocation::Center);
             add_modules(&self.center, modules, &info, &self.ironbar, &popup)?;
         }
 
         if let Some(modules) = config.end {
+            self.content.pack_end(&self.end, false, true, 0);
+
             let info = info!(ModuleLocation::Right);
             add_modules(&self.end, modules, &info, &self.ironbar, &popup)?;
         }

@@ -34,6 +34,8 @@ impl Module<GtkBox> for NetworkManagerModule {
     type SendMessage = State;
     type ReceiveMessage = ();
 
+    module_impl!("network_manager");
+
     fn spawn_controller(
         &self,
         _: &ModuleInfo,
@@ -130,6 +132,4 @@ impl Module<GtkBox> for NetworkManagerModule {
 
         Ok(ModuleParts::new(container, None))
     }
-
-    module_impl!("networkmanager");
 }

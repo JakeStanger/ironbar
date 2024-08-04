@@ -162,7 +162,7 @@
             };
 
             style = lib.mkOption {
-              type = lib.types.lines;
+              type = lib.types.either (lib.types.lines) (lib.types.path);
               default = "";
               description = "The stylesheet to apply to ironbar.";
             };
@@ -189,8 +189,12 @@
                 source = jsonFormat.generate "ironbar-config" cfg.config;
               };
 
-              "ironbar/style.css" =
-                lib.mkIf (cfg.style != "") { text = cfg.style; };
+              "ironbar/style.css" = lib.mkIf (cfg.style != "") (
+                if builtins.isPath cfg.style || lib.isStorePath cfg.style then
+                  { source = cfg.style; }
+                else
+                  { text = cfg.style; }
+              );
             };
 
             systemd.user.services.ironbar = lib.mkIf cfg.systemd {

@@ -1,13 +1,13 @@
 use super::manager::DataControlDeviceManagerState;
 use crate::lock;
 use nix::fcntl::OFlag;
-use nix::unistd::{close, pipe2};
+use nix::unistd::pipe2;
 use smithay_client_toolkit::data_device_manager::data_offer::DataOfferError;
 use smithay_client_toolkit::data_device_manager::ReadPipe;
 use std::ops::DerefMut;
-use std::os::fd::{AsFd, AsRawFd};
+use std::os::fd::AsFd;
 use std::sync::{Arc, Mutex};
-use tracing::{trace, warn};
+use tracing::trace;
 use wayland_client::{Connection, Dispatch, Proxy, QueueHandle};
 use wayland_protocols_wlr::data_control::v1::client::zwlr_data_control_offer_v1::{
     Event, ZwlrDataControlOfferV1,
@@ -177,10 +177,6 @@ pub unsafe fn receive(
     let (readfd, writefd) = pipe2(OFlag::O_CLOEXEC)?;
 
     offer.receive(mime_type, writefd.as_fd());
-
-    if let Err(err) = close(writefd.as_raw_fd()) {
-        warn!("Failed to close write pipe: {}", err);
-    }
 
     Ok(ReadPipe::from(readfd))
 }

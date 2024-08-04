@@ -36,7 +36,7 @@ pub mod label;
 pub mod launcher;
 #[cfg(feature = "music")]
 pub mod music;
-#[cfg(feature = "networkmanager")]
+#[cfg(feature = "network_manager")]
 pub mod networkmanager;
 #[cfg(feature = "notifications")]
 pub mod notifications;
@@ -286,6 +286,8 @@ pub trait ModuleFactory {
     {
         let id = Ironbar::unique_id();
         let common = module.take_common();
+
+        debug!("adding module {} (id: {})", TModule::name(), id);
 
         let (ui_tx, ui_rx) = mpsc::channel::<ModuleUpdateEvent<TSend>>(64);
         let (controller_tx, controller_rx) = mpsc::channel::<TRev>(64);
