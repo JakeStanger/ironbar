@@ -1,4 +1,4 @@
-name: update-nix-flake-lock
+name: Update Nix Flake lock
 on:
   workflow_dispatch: # allows manual triggering
   schedule:
@@ -19,7 +19,7 @@ jobs:
             access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}
 
       - name: Update flake.lock
-        uses: DeterminateSystems/update-flake-lock@v15
+        uses: DeterminateSystems/update-flake-lock@v23
         with:
           pr-title: "Update flake.lock" # Title of PR to be created
           pr-labels: |                  # Labels to be set on the PR
