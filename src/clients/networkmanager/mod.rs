@@ -232,4 +232,4 @@ pub fn create_client() -> Result<Arc<Client>> {
     Ok(client)
 }
 
-register_fallible_client!(Client, networkmanager);
+register_fallible_client!(Client, network_manager);
