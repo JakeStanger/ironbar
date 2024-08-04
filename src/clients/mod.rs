@@ -14,6 +14,8 @@ pub mod lua;
 pub mod music;
 #[cfg(feature = "network_manager")]
 pub mod networkmanager;
+#[cfg(feature = "sway")]
+pub mod sway;
 #[cfg(feature = "notifications")]
 pub mod swaync;
 #[cfg(feature = "tray")]
@@ -32,7 +34,7 @@ pub struct Clients {
     #[cfg(feature = "workspaces")]
     workspaces: Option<Arc<dyn compositor::WorkspaceClient>>,
     #[cfg(feature = "sway")]
-    sway: Option<Arc<compositor::sway::Client>>,
+    sway: Option<Arc<sway::Client>>,
     #[cfg(feature = "clipboard")]
     clipboard: Option<Arc<clipboard::Client>>,
     #[cfg(feature = "cairo")]
@@ -88,11 +90,11 @@ impl Clients {
     }
 
     #[cfg(feature = "sway")]
-    pub fn sway(&mut self) -> ClientResult<compositor::sway::Client> {
+    pub fn sway(&mut self) -> ClientResult<sway::Client> {
         let client = match &self.sway {
             Some(client) => client.clone(),
             None => {
-                let client = await_sync(async { compositor::sway::Client::new().await })?;
+                let client = await_sync(async { sway::Client::new().await })?;
                 let client = Arc::new(client);
                 self.sway.replace(client.clone());
                 client
