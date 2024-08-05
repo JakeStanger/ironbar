@@ -1,85 +1,43 @@
 use super::{Visibility, Workspace, WorkspaceClient, WorkspaceUpdate};
-use crate::{await_sync, send, spawn};
-use color_eyre::{Report, Result};
-use futures_lite::StreamExt;
-use std::sync::Arc;
-use swayipc_async::{Connection, Event, EventType, Node, WorkspaceChange, WorkspaceEvent};
-use tokio::sync::broadcast::{channel, Receiver, Sender};
-use tokio::sync::Mutex;
-use tracing::{info, trace};
+use crate::{await_sync, send};
+use color_eyre::Result;
+use swayipc_async::{Node, WorkspaceChange, WorkspaceEvent};
+use tokio::sync::broadcast::{channel, Receiver};
 
-#[derive(Debug)]
-pub struct Client {
-    client: Arc<Mutex<Connection>>,
-    workspace_tx: Sender<WorkspaceUpdate>,
-    _workspace_rx: Receiver<WorkspaceUpdate>,
-}
-
-impl Client {
-    pub(crate) async fn new() -> Result<Self> {
-        // Avoid using `arc_mut!` here because we need tokio Mutex.
-        let client = Arc::new(Mutex::new(Connection::new().await?));
-        info!("Sway IPC subscription client connected");
-
-        let (workspace_tx, workspace_rx) = channel(16);
-
-        {
-            // create 2nd client as subscription takes ownership
-            let client = Connection::new().await?;
-            let workspace_tx = workspace_tx.clone();
-
-            spawn(async move {
-                let event_types = [EventType::Workspace];
-                let mut events = client.subscribe(event_types).await?;
-
-                while let Some(event) = events.next().await {
-                    trace!("event: {:?}", event);
-                    if let Event::Workspace(event) = event? {
-                        let event = WorkspaceUpdate::from(*event);
-                        if !matches!(event, WorkspaceUpdate::Unknown) {
-                            workspace_tx.send(event)?;
-                        }
-                    };
-                }
-
-                Ok::<(), Report>(())
-            });
-        }
-
-        Ok(Self {
-            client,
-            workspace_tx,
-            _workspace_rx: workspace_rx,
-        })
-    }
-}
+use crate::clients::sway::Client;
 
 impl WorkspaceClient for Client {
     fn focus(&self, id: String) -> Result<()> {
         await_sync(async move {
-            let mut client = self.client.lock().await;
+            let mut client = self.connection().lock().await;
             client.run_command(format!("workspace {id}")).await
         })?;
         Ok(())
     }
 
     fn subscribe_workspace_change(&self) -> Receiver<WorkspaceUpdate> {
-        let rx = self.workspace_tx.subscribe();
+        let (tx, rx) = channel(16);
 
-        {
-            let tx = self.workspace_tx.clone();
-            let client = self.client.clone();
+        let client = self.connection().clone();
 
-            await_sync(async {
-                let mut client = client.lock().await;
-                let workspaces = client.get_workspaces().await.expect("to get workspaces");
+        await_sync(async {
+            let mut client = client.lock().await;
+            let workspaces = client.get_workspaces().await.expect("to get workspaces");
 
-                let event =
-                    WorkspaceUpdate::Init(workspaces.into_iter().map(Workspace::from).collect());
+            let event =
+                WorkspaceUpdate::Init(workspaces.into_iter().map(Workspace::from).collect());
 
-                send!(tx, event);
-            });
-        }
+            send!(tx, event);
+
+            drop(client);
+
+            self.add_listener::<swayipc_async::WorkspaceEvent>(move |event| {
+                let update = WorkspaceUpdate::from(event.clone());
+                send!(tx, update);
+            })
+            .await
+            .expect("to add listener");
+        });
 
         rx
     }

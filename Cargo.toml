@@ -76,8 +76,10 @@ volume = ["libpulse-binding"]
 
 workspaces = ["futures-lite"]
 "workspaces+all" = ["workspaces", "workspaces+sway", "workspaces+hyprland"]
-"workspaces+sway" = ["workspaces", "swayipc-async"]
+"workspaces+sway" = ["workspaces", "sway"]
 "workspaces+hyprland" = ["workspaces", "hyprland"]
+
+sway = ["swayipc-async"]
 
 schema = ["dep:schemars"]
 

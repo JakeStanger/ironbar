@@ -41,6 +41,8 @@ pub mod networkmanager;
 #[cfg(feature = "notifications")]
 pub mod notifications;
 pub mod script;
+#[cfg(feature = "sway")]
+pub mod sway;
 #[cfg(feature = "sys_info")]
 pub mod sysinfo;
 #[cfg(feature = "tray")]
