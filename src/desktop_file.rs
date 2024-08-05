@@ -47,7 +47,7 @@ fn find_application_dirs() -> Vec<PathBuf> {
 }
 
 /// Finds all the desktop files
-fn find_desktop_files() -> Vec<PathBuf> {
+pub fn find_desktop_files() -> Vec<PathBuf> {
     let dirs = find_application_dirs();
     dirs.into_iter()
         .flat_map(|dir| {
