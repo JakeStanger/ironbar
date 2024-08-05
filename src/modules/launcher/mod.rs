@@ -5,8 +5,10 @@ use self::item::{AppearanceOptions, Item, ItemButton, Window};
 use self::open_state::OpenState;
 use super::{Module, ModuleInfo, ModuleParts, ModulePopup, ModuleUpdateEvent, WidgetContext};
 use crate::clients::wayland::{self, ToplevelEvent};
-use crate::config::CommonConfig;
+use crate::config::{CommonConfig, EllipsizeMode, TruncateMode};
 use crate::desktop_file::find_desktop_file;
+use crate::gtk_helpers::{IronbarGtkExt, IronbarLabelExt};
+use crate::modules::launcher::item::ImageTextButton;
 use crate::{arc_mut, glib_recv, lock, module_impl, send_async, spawn, try_send, write_lock};
 use color_eyre::{Help, Report};
 use gtk::prelude::*;
@@ -54,6 +56,21 @@ pub struct LauncherModule {
     #[serde(default = "crate::config::default_false")]
     reversed: bool,
 
+    // -- common --
+    /// Truncate application names on the bar if they get too long.
+    /// See [truncate options](module-level-options#truncate-mode).
+    ///
+    /// **Default**: `Auto (end)`
+    #[serde(default)]
+    truncate: TruncateMode,
+
+    /// Truncate application names in popups if they get too long.
+    /// See [truncate options](module-level-options#truncate-mode).
+    ///
+    /// **Default**: `{ mode = "middle" max_length = 25 }`
+    #[serde(default = "default_truncate_popup")]
+    truncate_popup: TruncateMode,
+
     /// See [common options](module-level-options#common-options).
     #[serde(flatten)]
     pub common: Option<CommonConfig>,
@@ -61,6 +78,14 @@ pub struct LauncherModule {
 
 const fn default_icon_size() -> i32 {
     32
+}
+
+const fn default_truncate_popup() -> TruncateMode {
+    TruncateMode::Length {
+        mode: EllipsizeMode::Middle,
+        length: None,
+        max_length: Some(25),
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -342,6 +367,7 @@ impl Module<gtk::Box> for LauncherModule {
                 show_names: self.show_names,
                 show_icons: self.show_icons,
                 icon_size: self.icon_size,
+                truncate: self.truncate,
             };
 
             let show_names = self.show_names;
@@ -370,9 +396,9 @@ impl Module<gtk::Box> for LauncherModule {
                             );
 
                             if self.reversed {
-                                container.pack_end(&button.button, false, false, 0);
+                                container.pack_end(&button.button.button, false, false, 0);
                             } else {
-                                container.add(&button.button);
+                                container.add(&button.button.button);
                             }
 
                             buttons.insert(item.app_id, button);
@@ -393,10 +419,10 @@ impl Module<gtk::Box> for LauncherModule {
                             if button.persistent {
                                 button.set_open(false);
                                 if button.show_names {
-                                    button.button.set_label(&app_id);
+                                    button.button.label.set_label(&app_id);
                                 }
                             } else {
-                                container.remove(&button.button);
+                                container.remove(&button.button.button);
                                 buttons.shift_remove(&app_id);
                             }
                         }
@@ -423,7 +449,7 @@ impl Module<gtk::Box> for LauncherModule {
 
                         if show_names {
                             if let Some(button) = buttons.get(&app_id) {
-                                button.button.set_label(&name);
+                                button.button.label.set_label(&name);
                             }
                         }
                     }
@@ -459,7 +485,7 @@ impl Module<gtk::Box> for LauncherModule {
         placeholder.set_width_request(MAX_WIDTH);
         container.add(&placeholder);
 
-        let mut buttons = IndexMap::<String, IndexMap<usize, Button>>::new();
+        let mut buttons = IndexMap::<String, IndexMap<usize, ImageTextButton>>::new();
 
         {
             let container = container.clone();
@@ -473,10 +499,11 @@ impl Module<gtk::Box> for LauncherModule {
                             .windows
                             .into_iter()
                             .map(|(_, win)| {
-                                let button = Button::builder()
-                                    .label(clamp(&win.name))
-                                    .height_request(40)
-                                    .build();
+                                // TODO: Currently has a useless image
+                                let button = ImageTextButton::new();
+                                button.set_height_request(40);
+                                button.label.set_label(&win.name);
+                                button.label.truncate(self.truncate_popup);
 
                                 {
                                     let tx = controller_tx.clone();
@@ -498,10 +525,11 @@ impl Module<gtk::Box> for LauncherModule {
                         );
 
                         if let Some(buttons) = buttons.get_mut(&app_id) {
-                            let button = Button::builder()
-                                .height_request(40)
-                                .label(clamp(&win.name))
-                                .build();
+                            // TODO: Currently has a useless image
+                            let button = ImageTextButton::new();
+                            button.set_height_request(40);
+                            button.label.set_label(&win.name);
+                            button.label.truncate(self.truncate_popup);
 
                             {
                                 let tx = controller_tx.clone();
@@ -527,7 +555,7 @@ impl Module<gtk::Box> for LauncherModule {
 
                         if let Some(buttons) = buttons.get_mut(&app_id) {
                             if let Some(button) = buttons.get(&win_id) {
-                                button.set_label(&title);
+                                button.label.set_label(&title);
                             }
                         }
                     }
@@ -540,8 +568,8 @@ impl Module<gtk::Box> for LauncherModule {
                         // add app's buttons
                         if let Some(buttons) = buttons.get(&app_id) {
                             for (_, button) in buttons {
-                                button.style_context().add_class("popup-item");
-                                container.add(button);
+                                button.add_class("popup-item");
+                                container.add(&button.button);
                             }
 
                             container.show_all();
@@ -554,23 +582,5 @@ impl Module<gtk::Box> for LauncherModule {
         }
 
         Some(container)
-    }
-}
-
-/// Clamps a string at 24 characters.
-///
-/// This is a hacky number derived from
-/// "what fits inside the 250px popup"
-/// and probably won't hold up with wide fonts.
-///
-/// TODO: Migrate this to truncate system
-///
-fn clamp(str: &str) -> String {
-    const MAX_CHARS: usize = 24;
-
-    if str.len() > MAX_CHARS {
-        str.chars().take(MAX_CHARS - 3).collect::<String>() + "..."
-    } else {
-        str.to_string()
     }
 }

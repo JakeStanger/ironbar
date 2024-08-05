@@ -52,7 +52,7 @@ impl CustomWidget for ImageWidget {
 
             dynamic_string(&self.src, move |src| {
                 ImageProvider::parse(&src, &icon_theme, false, self.size)
-                    .map(|image| image.load_into_image(gtk_image.clone()));
+                    .map(|image| image.load_into_image(&gtk_image));
             });
         }
 
