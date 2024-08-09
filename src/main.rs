@@ -17,7 +17,6 @@ use clap::Parser;
 use color_eyre::eyre::Result;
 use color_eyre::Report;
 use dirs::config_dir;
-use glib::PropertySet;
 use gtk::gdk::Display;
 use gtk::prelude::*;
 use gtk::Application;
@@ -79,7 +78,7 @@ fn run_with_args() {
     #[cfg(feature = "schema")]
     if args.print_schema {
         let schema = schemars::schema_for!(Config);
-        println!("{}", serde_json::to_string_pretty(&schema).unwrap());
+        println!("{}", serde_json::to_string_pretty(&schema).expect("to be serializable"));
         return;
     }
 
@@ -153,7 +152,7 @@ impl Ironbar {
                 return;
             }
 
-            running.set(true);
+            running.store(true, Ordering::Relaxed);
 
             cfg_if! {
                 if #[cfg(feature = "ipc")] {
