@@ -363,6 +363,8 @@ fn load_output_bars(
     // We also need this static to ensure hot-reloading continues to work as best we can.
     static INDEX_MAP: OnceLock<Mutex<Vec<String>>> = OnceLock::new();
 
+    let output_size = output.logical_size.unwrap_or_default();
+
     let Some(monitor_name) = &output.name else {
         return Err(Report::msg("Output missing monitor name"));
     };
@@ -401,6 +403,7 @@ fn load_output_bars(
                 app,
                 &monitor,
                 monitor_name.to_string(),
+                output_size,
                 config.clone(),
                 ironbar.clone(),
             )?]
@@ -412,6 +415,7 @@ fn load_output_bars(
                     app,
                     &monitor,
                     monitor_name.to_string(),
+                    output_size,
                     config.clone(),
                     ironbar.clone(),
                 )
@@ -421,6 +425,7 @@ fn load_output_bars(
             app,
             &monitor,
             monitor_name.to_string(),
+            output_size,
             config.bar.clone(),
             ironbar.clone(),
         )?],
