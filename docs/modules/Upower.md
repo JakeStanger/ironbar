@@ -1,5 +1,8 @@
 Displays system power information such as the battery percentage, and estimated time to empty.
 
+> [!NOTE]
+> This module requires that `upower` is installed and its service running.
+
 `TODO: ADD SCREENSHOT`
 
 [//]: # (![Screenshot]&#40;https://user-images.githubusercontent.com/5057870/184540521-2278bdec-9742-46f0-9ac2-58a7b6f6ea1d.png&#41;)
