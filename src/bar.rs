@@ -22,6 +22,7 @@ enum Inner {
 pub struct Bar {
     name: String,
     monitor_name: String,
+    monitor_size: (i32, i32),
     position: BarPosition,
 
     ironbar: Rc<Ironbar>,
@@ -41,6 +42,7 @@ impl Bar {
     pub fn new(
         app: &Application,
         monitor_name: String,
+        monitor_size: (i32, i32),
         config: BarConfig,
         ironbar: Rc<Ironbar>,
     ) -> Self {
@@ -89,6 +91,7 @@ impl Bar {
         Self {
             name,
             monitor_name,
+            monitor_size,
             position,
             ironbar,
             window,
@@ -146,7 +149,7 @@ impl Bar {
             }
         }
 
-        let load_result = self.load_modules(config, monitor)?;
+        let load_result = self.load_modules(config, monitor, self.monitor_size)?;
 
         self.show(!start_hidden);
 
@@ -243,7 +246,12 @@ impl Bar {
     }
 
     /// Loads the configured modules onto a bar.
-    fn load_modules(&self, config: BarConfig, monitor: &Monitor) -> Result<BarLoadResult> {
+    fn load_modules(
+        &self,
+        config: BarConfig,
+        monitor: &Monitor,
+        output_size: (i32, i32),
+    ) -> Result<BarLoadResult> {
         let icon_theme = IconTheme::new();
         if let Some(ref theme) = config.icon_theme {
             icon_theme.set_custom_theme(Some(theme));
@@ -265,7 +273,7 @@ impl Bar {
         }
 
         // popup ignores module location so can bodge this for now
-        let popup = Popup::new(&info!(ModuleLocation::Left), config.popup_gap);
+        let popup = Popup::new(&info!(ModuleLocation::Left), output_size, config.popup_gap);
         let popup = Rc::new(popup);
 
         if let Some(modules) = config.start {
@@ -384,9 +392,10 @@ pub fn create_bar(
     app: &Application,
     monitor: &Monitor,
     monitor_name: String,
+    monitor_size: (i32, i32),
     config: BarConfig,
     ironbar: Rc<Ironbar>,
 ) -> Result<Bar> {
-    let bar = Bar::new(app, monitor_name, config, ironbar);
+    let bar = Bar::new(app, monitor_name, monitor_size, config, ironbar);
     bar.init(monitor)
 }
