@@ -1,21 +1,15 @@
-use crate::register_client;
+use crate::clients::ClientResult;
+use crate::register_fallible_client;
 use std::sync::Arc;
 use upower_dbus::UPowerProxy;
 use zbus::fdo::PropertiesProxy;
 
-pub async fn create_display_proxy() -> Arc<PropertiesProxy<'static>> {
-    let dbus = Box::pin(zbus::Connection::system())
-        .await
-        .expect("failed to create connection to system bus");
+pub async fn create_display_proxy() -> ClientResult<PropertiesProxy<'static>> {
+    let dbus = Box::pin(zbus::Connection::system()).await?;
 
-    let device_proxy = UPowerProxy::new(&dbus)
-        .await
-        .expect("failed to create upower proxy");
+    let device_proxy = UPowerProxy::new(&dbus).await?;
 
-    let display_device = device_proxy
-        .get_display_device()
-        .await
-        .unwrap_or_else(|_| panic!("failed to get display device for {device_proxy:?}"));
+    let display_device = device_proxy.get_display_device().await?;
 
     let path = display_device.path().to_owned();
 
@@ -26,10 +20,9 @@ pub async fn create_display_proxy() -> Arc<PropertiesProxy<'static>> {
         .expect("failed to set proxy path")
         .cache_properties(zbus::CacheProperties::No)
         .build()
-        .await
-        .expect("failed to build proxy");
+        .await?;
 
-    Arc::new(proxy)
+    Ok(Arc::new(proxy))
 }
 
-register_client!(PropertiesProxy<'static>, upower);
+register_fallible_client!(PropertiesProxy<'static>, upower);
