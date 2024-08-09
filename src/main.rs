@@ -78,7 +78,10 @@ fn run_with_args() {
     #[cfg(feature = "schema")]
     if args.print_schema {
         let schema = schemars::schema_for!(Config);
-        println!("{}", serde_json::to_string_pretty(&schema).expect("to be serializable"));
+        println!(
+            "{}",
+            serde_json::to_string_pretty(&schema).expect("to be serializable")
+        );
         return;
     }
 

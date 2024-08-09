@@ -164,12 +164,17 @@ impl Clients {
     }
 
     #[cfg(feature = "upower")]
-    pub fn upower(&mut self) -> Arc<zbus::fdo::PropertiesProxy<'static>> {
-        self.upower
-            .get_or_insert_with(|| {
-                crate::await_sync(async { upower::create_display_proxy().await })
-            })
-            .clone()
+    pub fn upower(&mut self) -> ClientResult<zbus::fdo::PropertiesProxy<'static>> {
+        let client = match &self.upower {
+            Some(client) => client.clone(),
+            None => {
+                let client = await_sync(async { upower::create_display_proxy().await })?;
+                self.upower.replace(client.clone());
+                client
+            }
+        };
+
+        Ok(client)
     }
 
     #[cfg(feature = "volume")]

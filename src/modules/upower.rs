@@ -73,7 +73,7 @@ impl Module<gtk::Button> for UpowerModule {
     ) -> Result<()> {
         let tx = context.tx.clone();
 
-        let display_proxy = context.client::<PropertiesProxy>();
+        let display_proxy = context.try_client::<PropertiesProxy>()?;
 
         spawn(async move {
             let mut prop_changed_stream = display_proxy.receive_properties_changed().await?;
