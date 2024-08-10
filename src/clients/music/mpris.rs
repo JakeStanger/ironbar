@@ -47,9 +47,12 @@ impl Client {
                         )) if transport_error.name() == Some(NO_ACTIVE_PLAYER)
                             || transport_error.name() == Some(NO_REPLY) =>
                         {
-                            Vec::new()
+                            vec![]
                         }
-                        _ => panic!("Failed to connect to D-Bus"),
+                        _ => {
+                            error!("D-Bus error getting MPRIS players: {e:?}");
+                            vec![]
+                        }
                     });
                     // Acquire the lock of current_player before players to avoid deadlock.
                     // There are places where we lock on current_player and players, but we always lock on current_player first.
