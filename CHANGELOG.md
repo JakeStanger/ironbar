@@ -4,6 +4,65 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.16.0] - 2024-08-10
+### :boom: BREAKING CHANGES
+- due to [`9dd7112`](https://github.com/JakeStanger/ironbar/commit/9dd711235f21d9016fec240f1be5c8d6de1596df) - improve CLI structure, add new commands *(commit by [@JakeStanger](https://github.com/JakeStanger))*:
+
+  `ok_value` responses will no longer print `ok` as the first line when using the CLI
+
+
+### :sparkles: New Features
+- [`f11da3e`](https://github.com/JakeStanger/ironbar/commit/f11da3eca1b7d1bc5e1904266f285f0e28f290a0) - **music**: pango markup support *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`951576c`](https://github.com/JakeStanger/ironbar/commit/951576ce3c092d187fd6d1d2ff55b7dbf6198a25) - pango markup support in image icons *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`36d724f`](https://github.com/JakeStanger/ironbar/commit/36d724f148ed8ebe84cbb3c3e25cd4a361d94e66) - **config**: json schema support *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`7413f78`](https://github.com/JakeStanger/ironbar/commit/7413f78e04fe9b532397144e49b7545547980723) - **cli**: debug flag *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`a33e0a2`](https://github.com/JakeStanger/ironbar/commit/a33e0a241a8d5f65f7360b5c7e34a116f3f9f092) - **cli**: format flag, json output format *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`9dd7112`](https://github.com/JakeStanger/ironbar/commit/9dd711235f21d9016fec240f1be5c8d6de1596df) - improve CLI structure, add new commands *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`aa45396`](https://github.com/JakeStanger/ironbar/commit/aa4539606241cfd4d7b8e5512866d30ce92e432d) - ability to set bar layer and exclusive zone *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`92ae1a8`](https://github.com/JakeStanger/ironbar/commit/92ae1a8d73d68ebf51e008cd6322a9269cd10325) - **nix**: home-manager option to read style.css file *(commit by [@Alpha-Ursae-Minoris](https://github.com/Alpha-Ursae-Minoris))*
+- [`6d0fe4c`](https://github.com/JakeStanger/ironbar/commit/6d0fe4c8ace9c8a4136fb65c9ff9cdb04e9b6408) - add networkmanager module *(commit by [@Zedfrigg](https://github.com/Zedfrigg))*
+- [`e307e15`](https://github.com/JakeStanger/ironbar/commit/e307e15dc4462d1bdcaabff2375f5ac0c5a5df7b) - new sway-mode module *(PR [#671](https://github.com/JakeStanger/ironbar/pull/671) by [@Rodrigodd](https://github.com/Rodrigodd))*
+
+### :bug: Bug Fixes
+- [`5e7f576`](https://github.com/JakeStanger/ironbar/commit/5e7f576841f94bdfd89d401cb9a2ba1fabb45c1c) - **workspaces**: add support for hyprland rename event *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`c45ea02`](https://github.com/JakeStanger/ironbar/commit/c45ea02a7d39b30fece3986044a44a64aebf5e16) - **workspaces**: regression due to [#572](https://github.com/JakeStanger/ironbar/pull/572) *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`4a37429`](https://github.com/JakeStanger/ironbar/commit/4a37429634a32a2ffaeb1b591240bdb2a564cab9) - **launcher**: ghost windows in reload *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`520a94a`](https://github.com/JakeStanger/ironbar/commit/520a94abfa526c22df0bebecc42b9be8ae20881e) - all bars showing on same display due to GTK bug *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`4ad4b0e`](https://github.com/JakeStanger/ironbar/commit/4ad4b0e070cc4e271251763db7210e70857d68ca) - **ipc**: regression - reload not working due to [#592](https://github.com/JakeStanger/ironbar/pull/592) *(commit by [@SerraPi](https://github.com/SerraPi))*
+- [`9a39420`](https://github.com/JakeStanger/ironbar/commit/9a39420ae28b185cb38a33817f1fc91b5c4e9f55) - **launcher**: favourites staying focused when closed in hyprland *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`8dda494`](https://github.com/JakeStanger/ironbar/commit/8dda49477b2ceb268b94c729aadc5986bdca8528) - **cli**: using zero exit code for error responses *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`9d8a3eb`](https://github.com/JakeStanger/ironbar/commit/9d8a3eb370195321d224c0a51a6752c62404ac1b) - correctly escape pango markup *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`277e6b6`](https://github.com/JakeStanger/ironbar/commit/277e6b62965608ae90defa9a2170d414e09d4c59) - **notifications**: unable to click through overlay *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`dbd385d`](https://github.com/JakeStanger/ironbar/commit/dbd385d225e27a7d732d60ba5a6d6f13c1184add) - **launcher**: apps with multiple windows stay focused when window closed *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`176af99`](https://github.com/JakeStanger/ironbar/commit/176af997f442833adcd7ada1919836d54530d7ef) - **music**: tokens with `&` not rendering *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`7e04e30`](https://github.com/JakeStanger/ironbar/commit/7e04e30171a1897de468592fe5c1f6082d12eb69) - **wayland**: exit on event dispatch error *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`461bee8`](https://github.com/JakeStanger/ironbar/commit/461bee8847590e769df186a2f24ab2ce957568f7) - **bar**: do not add start/center/end containers if empty *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`fb6ae42`](https://github.com/JakeStanger/ironbar/commit/fb6ae42f3bcc7ad35066e1182e617c739a8cfa8a) - crash due to clipboard fd incorrectly closed *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`2bc741d`](https://github.com/JakeStanger/ironbar/commit/2bc741d197867cd5f0c391b9532b4cf9c4d378f6) - **tray**: crash when provided empty pixmap *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`f819aec`](https://github.com/JakeStanger/ironbar/commit/f819aec259cfe418f050c57eb51a236a95039b57) - **notifications**: client broken by recent refactor *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`45d5bf5`](https://github.com/JakeStanger/ironbar/commit/45d5bf5feb88d0854a41faa5890b56188b3e051c) - popups not accounting for monitor scaling *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`474e1fe`](https://github.com/JakeStanger/ironbar/commit/474e1fe364ef70fa0afcff476034d5f307dcd54b) - **upower**: avoid panic on client init error *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+
+### :recycle: Refactors
+- [`04a694e`](https://github.com/JakeStanger/ironbar/commit/04a694e2ad5998e82de8dd121cc2b486432c0a70) - fix latest clippy warnings *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`c876904`](https://github.com/JakeStanger/ironbar/commit/c876904bda7bb51ef2d3ec1661281df75fad60be) - update `nix` crate to latest version *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`dedb89b`](https://github.com/JakeStanger/ironbar/commit/dedb89bb027c4477620410d9103d64c3f2668517) - **popup**: rename `is_visible` to `visible` *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`a0cb01a`](https://github.com/JakeStanger/ironbar/commit/a0cb01ae5f2121581eb90f73b8f661862da12b03) - make `Ironbar#unique_id` `must_use` *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`b8fdd85`](https://github.com/JakeStanger/ironbar/commit/b8fdd8531e5516598f81e869b9284b8888f1d06b) - explicitly use `set_text` on non-pango labels *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`9d12535`](https://github.com/JakeStanger/ironbar/commit/9d125353c45a7a8ce3fee43192364745a3fba931) - small tidy *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`1899757`](https://github.com/JakeStanger/ironbar/commit/189975791f6424eca85fcfd76b796e5e9f9fb47f) - **mpris**: better logging, avoid panic on dbus error *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+
+### :memo: Documentation Changes
+- [`c25440c`](https://github.com/JakeStanger/ironbar/commit/c25440cd3274cb7adf4e8a1c97b4bc88a53841b4) - update CHANGELOG.md for v0.15.1 [skip ci] *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`f7f991b`](https://github.com/JakeStanger/ironbar/commit/f7f991b2e68a19ff66387913b54127fd8808cc21) - **compiling**: fix wrong fedora package for pulse libs *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`c7743b2`](https://github.com/JakeStanger/ironbar/commit/c7743b28c68919e5bb1d8b9c53d63fb53fd3b081) - add rustdoc comments to all module options *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`7d19106`](https://github.com/JakeStanger/ironbar/commit/7d191065fc20e64befca64e8814aa86b2c654a7c) - add notes about nerd fonts *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`9db0cbc`](https://github.com/JakeStanger/ironbar/commit/9db0cbcbdc561ba929c300cec92156c873c3c151) - **upower**: fix incorrect css selectors *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`057fdff`](https://github.com/JakeStanger/ironbar/commit/057fdffc5f3219b60bbc1f095f88a9d8e3e8f750) - **examples**: fix incorrect cpu sensor name *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`076c2df`](https://github.com/JakeStanger/ironbar/commit/076c2df4a29bb3af2183dc1617f101e1e39d3fa4) - add fedora copr package to readme *(commit by [@victorvintorez](https://github.com/victorvintorez))*
+- [`860a676`](https://github.com/JakeStanger/ironbar/commit/860a6767f144610d6c1809ddadd52e31c8d8d68d) - **upower**: add note to make clear upower is required *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+
+
 ## [v0.15.1] - 2024-05-05
 
 Release to bump hyprland-rs version due to Hyprland v0.40 socket path breaking change.
@@ -575,3 +634,4 @@ It also requires `lua-lgi` as a runtime dependency.
 [v0.14.1]: https://github.com/JakeStanger/ironbar/compare/v0.14.0...v0.14.1
 [v0.15.0]: https://github.com/JakeStanger/ironbar/compare/v0.14.3...v0.15.0
 [v0.15.1]: https://github.com/JakeStanger/ironbar/compare/v0.15.0...v0.15.1
+[v0.16.0]: https://github.com/JakeStanger/ironbar/compare/v0.15.1...v0.16.0
