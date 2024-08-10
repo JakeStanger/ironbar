@@ -125,7 +125,7 @@
               glib
               glib-networking
               shared-mime-info
-              gnome.adwaita-icon-theme
+              adwaita-icon-theme
               hicolor-icon-theme
               gsettings-desktop-schemas
               libxkbcommon
