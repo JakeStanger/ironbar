@@ -1653,7 +1653,7 @@ checksum = "12b6ee2129af8d4fb011108c73d99a1b83a85977f23b82460c0ae2e25bb4b57f"
 
 [[package]]
 name = "ironbar"
-version = "0.16.0-pre"
+version = "0.16.0"
 dependencies = [
  "cairo-rs",
  "cfg-if",
