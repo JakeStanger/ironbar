@@ -8,7 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### :boom: BREAKING CHANGES
 - due to [`9dd7112`](https://github.com/JakeStanger/ironbar/commit/9dd711235f21d9016fec240f1be5c8d6de1596df) - improve CLI structure, add new commands *(commit by [@JakeStanger](https://github.com/JakeStanger))*:
 
-  `ok_value` responses will no longer print `ok` as the first line when using the CLI
+  - `ok_value` responses will no longer print `ok` as the first line when using the CLI
+  - All IPC commands have changed. Namely, `type` has been changed to `command`, and bar/var related commands are now under a `subcommand`. The full spec can be found on the wiki.
+  - Several CLI commands are now located under the `var` and `bar` categories. Usage of any commands to get/set Ironvars or control bar visibility will need to be updated.
+  - The `open_popup` and `close_popup` IPC commands are now called `show_popup` and `hide_popup` respectively.
+  - The popup `name` argument has been renamed to `widget_name` on all IPC commands.
+  - The `set-visibility` CLI command now takes a `true`/`false` positional argument in place of the `-v` flag.
 
 
 ### :sparkles: New Features
