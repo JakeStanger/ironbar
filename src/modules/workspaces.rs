@@ -184,7 +184,7 @@ fn find_btn(map: &HashMap<i64, Button>, workspace: &Workspace) -> Option<Button>
     map.get(&workspace.id)
         .or_else(|| {
             map.values()
-                .find(|btn| btn.label().unwrap_or_default() == workspace.name)
+                .find(|&btn| btn.widget_name() == workspace.name)
         })
         .cloned()
 }
