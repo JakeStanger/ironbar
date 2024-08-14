@@ -169,7 +169,7 @@ impl Popup {
                                 button_id,
                                 orientation,
                                 &window,
-                                output_size.clone(),
+                                &output_size,
                             );
                         }
                     }
@@ -202,7 +202,7 @@ impl Popup {
                 button_id,
                 self.pos.orientation(),
                 &self.window,
-                self.output_size.clone(),
+                &self.output_size,
             );
         }
     }
@@ -230,7 +230,7 @@ impl Popup {
         button_id: usize,
         orientation: Orientation,
         window: &ApplicationWindow,
-        output_size: Rc<RefCell<(i32, i32)>>,
+        output_size: &Rc<RefCell<(i32, i32)>>,
     ) {
         let button = buttons
             .iter()

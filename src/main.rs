@@ -88,7 +88,7 @@ fn run_with_args() {
     match args.command {
         Some(command) => {
             if args.debug {
-                eprintln!("REQUEST: {command:?}")
+                eprintln!("REQUEST: {command:?}");
             }
 
             let rt = create_runtime();
@@ -97,10 +97,10 @@ fn run_with_args() {
                 match ipc.send(command, args.debug).await {
                     Ok(res) => {
                         if args.debug {
-                            eprintln!("RESPONSE: {res:?}")
+                            eprintln!("RESPONSE: {res:?}");
                         }
 
-                        cli::handle_response(res, args.format.unwrap_or_default())
+                        cli::handle_response(res, args.format.unwrap_or_default());
                     }
                     Err(err) => error!("{err:?}"),
                 };
@@ -374,12 +374,11 @@ fn load_output_bars(
     let map = INDEX_MAP.get_or_init(|| Mutex::new(vec![]));
 
     let index = lock!(map).iter().position(|n| n == monitor_name);
-    let index = match index {
-        Some(index) => index,
-        None => {
-            lock!(map).push(monitor_name.clone());
-            lock!(map).len() - 1
-        }
+    let index = if let Some(index) = index {
+        index
+    } else {
+        lock!(map).push(monitor_name.clone());
+        lock!(map).len() - 1
     };
 
     let config = ironbar.config.borrow();

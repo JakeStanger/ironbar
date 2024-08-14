@@ -56,7 +56,7 @@ impl Client {
             T::EVENT_TYPE,
             Box::new(move |event| {
                 let event = T::from_event(event).expect("event type mismatch");
-                f(event)
+                f(event);
             }),
         )
         .await

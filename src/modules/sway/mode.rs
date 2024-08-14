@@ -70,10 +70,10 @@ impl Module<Label> for SwayModeModule {
             let on_mode = move |mode: ModeEvent| {
                 trace!("mode: {:?}", mode);
                 label.set_use_markup(mode.pango_markup);
-                if mode.change != "default" {
-                    label.set_markup(&mode.change)
-                } else {
+                if mode.change == "default" {
                     label.set_markup("");
+                } else {
+                    label.set_markup(&mode.change);
                 }
             };
 

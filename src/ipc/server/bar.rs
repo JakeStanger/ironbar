@@ -6,12 +6,13 @@ use crate::Ironbar;
 use std::rc::Rc;
 
 pub fn handle_command(command: BarCommand, ironbar: &Rc<Ironbar>) -> Response {
+    use BarCommandType::*;
+
     let bar = ironbar.bar_by_name(&command.name);
     let Some(bar) = bar else {
         return Response::error("Invalid bar name");
     };
 
-    use BarCommandType::*;
     match command.subcommand {
         Show => set_visible(&bar, true),
         Hide => set_visible(&bar, false),
@@ -21,14 +22,14 @@ pub fn handle_command(command: BarCommand, ironbar: &Rc<Ironbar>) -> Response {
             value: bar.visible().to_string(),
         },
 
-        ShowPopup { widget_name } => show_popup(&bar, widget_name),
+        ShowPopup { widget_name } => show_popup(&bar, &widget_name),
         HidePopup => hide_popup(&bar),
         SetPopupVisible {
             widget_name,
             visible,
         } => {
             if visible {
-                show_popup(&bar, widget_name)
+                show_popup(&bar, &widget_name)
             } else {
                 hide_popup(&bar)
             }
@@ -37,7 +38,7 @@ pub fn handle_command(command: BarCommand, ironbar: &Rc<Ironbar>) -> Response {
             if bar.popup().visible() {
                 hide_popup(&bar)
             } else {
-                show_popup(&bar, widget_name)
+                show_popup(&bar, &widget_name)
             }
         }
         GetPopupVisible => Response::OkValue {
@@ -56,7 +57,7 @@ fn set_visible(bar: &Bar, visible: bool) -> Response {
     Response::Ok
 }
 
-fn show_popup(bar: &Bar, widget_name: String) -> Response {
+fn show_popup(bar: &Bar, widget_name: &str) -> Response {
     let popup = bar.popup();
 
     // only one popup per bar, so hide if open for another widget
