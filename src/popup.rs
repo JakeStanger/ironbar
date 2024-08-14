@@ -3,10 +3,11 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
 
+use crate::clients::wayland::{OutputEvent, OutputEventType};
 use crate::config::BarPosition;
 use crate::gtk_helpers::{IronbarGtkExt, WidgetGeometry};
 use crate::modules::{ModuleInfo, ModulePopupParts, PopupButton};
-use crate::rc_mut;
+use crate::{glib_recv, rc_mut, Ironbar};
 use gtk::prelude::*;
 use gtk::{ApplicationWindow, Button, Orientation};
 use gtk_layer_shell::LayerShell;
@@ -25,14 +26,19 @@ pub struct Popup {
     pub button_cache: Rc<RefCell<Vec<Button>>>,
     pos: BarPosition,
     current_widget: Rc<RefCell<Option<(usize, usize)>>>,
-    output_size: (i32, i32),
+    output_size: Rc<RefCell<(i32, i32)>>,
 }
 
 impl Popup {
     /// Creates a new popup window.
     /// This includes setting up gtk-layer-shell
     /// and an empty `gtk::Box` container.
-    pub fn new(module_info: &ModuleInfo, output_size: (i32, i32), gap: i32) -> Self {
+    pub fn new(
+        ironbar: Rc<Ironbar>,
+        module_info: &ModuleInfo,
+        output_size: (i32, i32),
+        gap: i32,
+    ) -> Self {
         let pos = module_info.bar_position;
         let orientation = pos.orientation();
 
@@ -103,6 +109,27 @@ impl Popup {
             Propagation::Proceed
         });
 
+        let output_size = rc_mut!(output_size);
+
+        // respond to resolution changes
+        {
+            let output_size = output_size.clone();
+            let output_name = module_info.output_name.to_string();
+
+            let on_output_event = move |event: OutputEvent| {
+                if event.event_type == OutputEventType::Update
+                    && event.output.name.unwrap_or_default() == output_name
+                {
+                    *output_size.borrow_mut() = event.output.logical_size.unwrap_or_default();
+                }
+            };
+
+            glib_recv!(
+                ironbar.clients.borrow_mut().wayland().subscribe_outputs(),
+                on_output_event
+            );
+        }
+
         Self {
             window: win,
             container_cache: rc_mut!(HashMap::new()),
@@ -127,7 +154,7 @@ impl Popup {
         let cache = self.container_cache.clone();
         let button_cache = self.button_cache.clone();
 
-        let output_size = self.output_size;
+        let output_size = self.output_size.clone();
 
         content
             .container
@@ -142,7 +169,7 @@ impl Popup {
                                 button_id,
                                 orientation,
                                 &window,
-                                output_size,
+                                output_size.clone(),
                             );
                         }
                     }
@@ -175,7 +202,7 @@ impl Popup {
                 button_id,
                 self.pos.orientation(),
                 &self.window,
-                self.output_size,
+                self.output_size.clone(),
             );
         }
     }
@@ -193,7 +220,7 @@ impl Popup {
                 geometry,
                 self.pos.orientation(),
                 &self.window,
-                self.output_size,
+                *self.output_size.borrow(),
             );
         }
     }
@@ -203,7 +230,7 @@ impl Popup {
         button_id: usize,
         orientation: Orientation,
         window: &ApplicationWindow,
-        output_size: (i32, i32),
+        output_size: Rc<RefCell<(i32, i32)>>,
     ) {
         let button = buttons
             .iter()
@@ -211,7 +238,7 @@ impl Popup {
             .expect("to find valid button");
 
         let geometry = button.geometry(orientation);
-        Self::set_pos(geometry, orientation, window, output_size);
+        Self::set_pos(geometry, orientation, window, *output_size.borrow());
     }
 
     fn clear_window(&self) {
