@@ -94,7 +94,7 @@ fn get_image_from_pixmap(item: &TrayMenu, size: u32) -> Result<Image> {
         return Err(Report::msg("empty pixmap"));
     }
 
-    let mut pixels = pixmap.pixels.to_vec();
+    let mut pixels = pixmap.pixels.clone();
 
     for i in (0..pixels.len()).step_by(4) {
         let alpha = pixels[i];

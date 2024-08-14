@@ -74,7 +74,7 @@ impl Module<gtk::Box> for CairoModule {
     where
         <Self as Module<gtk::Box>>::SendMessage: Clone,
     {
-        let path = self.path.to_path_buf();
+        let path = self.path.clone();
 
         let tx = context.tx.clone();
         spawn(async move {
@@ -160,16 +160,14 @@ impl Module<gtk::Box> for CairoModule {
                 let ptr = unsafe { cr.clone().into_glib_ptr().cast() };
 
                 // mlua needs a valid return type, even if we don't return anything
-
                 if let Err(err) =
                     function.call::<_, Option<bool>>((id.as_str(), LightUserData(ptr)))
                 {
-                    match err {
-                        Error::RuntimeError(message) => {
-                            let message = message.split_once("]:").expect("to exist").1;
-                            error!("[lua runtime error] {}:{message}", path.display())
-                        }
-                        _ => error!("{err}"),
+                    if let Error::RuntimeError(message) = err {
+                        let message = message.split_once("]:").expect("to exist").1;
+                        error!("[lua runtime error] {}:{message}", path.display());
+                    } else {
+                        error!("{err}");
                     }
 
                     return Propagation::Stop;
@@ -196,10 +194,10 @@ impl Module<gtk::Box> for CairoModule {
             match res {
                 Ok(script) => {
                     match lua.load(&script).exec() {
-                        Ok(_) => {},
+                        Ok(()) => {},
                         Err(Error::SyntaxError { message, ..}) => {
                             let message = message.split_once("]:").expect("to exist").1;
-                            error!("[lua syntax error] {}:{message}", self.path.display())
+                            error!("[lua syntax error] {}:{message}", self.path.display());
                         },
                         Err(err) => error!("lua error: {err:?}")
                     }

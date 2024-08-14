@@ -346,7 +346,7 @@ impl Bar {
 
     /// Sets the window visibility status
     pub fn set_visible(&self, visible: bool) {
-        self.window.set_visible(visible)
+        self.window.set_visible(visible);
     }
 
     pub fn set_exclusive(&self, exclusive: bool) {

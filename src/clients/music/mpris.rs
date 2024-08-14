@@ -54,6 +54,7 @@ impl Client {
                             vec![]
                         }
                     });
+
                     // Acquire the lock of current_player before players to avoid deadlock.
                     // There are places where we lock on current_player and players, but we always lock on current_player first.
                     // This is because we almost never need to lock on players without locking on current_player.

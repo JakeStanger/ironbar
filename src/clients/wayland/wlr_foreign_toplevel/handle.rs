@@ -146,7 +146,7 @@ where
                     ToplevelHandle {
                         handle: handle.clone(),
                     },
-                )
+                );
             }
             Event::Done if !lock!(data.inner).closed => {
                 {

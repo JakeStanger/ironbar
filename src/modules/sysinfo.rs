@@ -33,7 +33,7 @@ pub struct SysInfoModule {
 
     /// The orientation of text for the labels.
     ///
-    /// **Valid options**: `horizontal`, `vertical, `h`, `v`
+    /// **Valid options**: `horizontal`, `vertical`, `h`, `v`
     /// <br>
     /// **Default** : `horizontal`
     #[serde(default)]
@@ -41,7 +41,7 @@ pub struct SysInfoModule {
 
     /// The orientation by which the labels are laid out.
     ///
-    /// **Valid options**: `horizontal`, `vertical, `h`, `v`
+    /// **Valid options**: `horizontal`, `vertical`, `h`, `v`
     /// <br>
     /// **Default** : `horizontal`
     direction: Option<ModuleOrientation>,
