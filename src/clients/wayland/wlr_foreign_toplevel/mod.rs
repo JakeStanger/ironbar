@@ -54,6 +54,11 @@ impl ToplevelHandleHandler for Environment {
 
         match handle.info() {
             Some(info) => {
+                if info.app_id.is_empty() {
+                    trace!("ignoring xwayland dialog");
+                    return;
+                }
+
                 trace!("Adding new handle: {info:?}");
                 self.handles.push(handle.clone());
                 if let Some(info) = handle.info() {
