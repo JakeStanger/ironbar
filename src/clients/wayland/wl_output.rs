@@ -12,7 +12,7 @@ pub struct OutputEvent {
     pub event_type: OutputEventType,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum OutputEventType {
     New,
     Update,

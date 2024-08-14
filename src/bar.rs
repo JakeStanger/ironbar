@@ -273,7 +273,12 @@ impl Bar {
         }
 
         // popup ignores module location so can bodge this for now
-        let popup = Popup::new(&info!(ModuleLocation::Left), output_size, config.popup_gap);
+        let popup = Popup::new(
+            self.ironbar.clone(),
+            &info!(ModuleLocation::Left),
+            output_size,
+            config.popup_gap,
+        );
         let popup = Rc::new(popup);
 
         if let Some(modules) = config.start {

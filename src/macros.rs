@@ -86,6 +86,8 @@ macro_rules! try_send {
 /// ```
 #[macro_export]
 macro_rules! glib_recv {
+    ($rx:expr, $func:ident) => { glib_recv!($rx, ev => $func(ev)) };
+
     ($rx:expr, $val:ident => $expr:expr) => {{
         glib::spawn_future_local(async move {
             // re-delcare in case ie `context.subscribe()` is passed directly
@@ -122,6 +124,8 @@ macro_rules! glib_recv {
 /// ```
 #[macro_export]
 macro_rules! glib_recv_mpsc {
+    ($rx:expr, $func:ident) => { glib_recv_mpsc!($rx, ev => $func(ev)) };
+
     ($rx:expr, $val:ident => $expr:expr) => {{
         glib::spawn_future_local(async move {
             // re-delcare in case ie `context.subscribe()` is passed directly
