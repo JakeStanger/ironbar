@@ -114,7 +114,7 @@ smithay-client-toolkit = { version = "0.18.1", default-features = false, feature
   "calloop",
 ] }
 universal-config = { version = "0.5.0", default-features = false }
-ctrlc = "3.4.4"
+ctrlc = "3.4.5"
 cfg-if = "1.0.0"
 
 # cli
