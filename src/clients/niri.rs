@@ -104,10 +104,10 @@ impl Connection {
         Ok(Self(stream))
     }
 
-    pub async fn send<'a>(
-        &'a mut self,
+    pub async fn send(
+        &mut self,
         request: Request,
-    ) -> io::Result<(Reply, impl FnMut() -> io::Result<Event> + 'a)> {
+    ) -> io::Result<(Reply, impl FnMut() -> io::Result<Event> + '_)> {
         let Self(stream) = self;
         let mut buf = serde_json::to_string(&request).unwrap();
         stream.write_all(buf.as_bytes()).await?;
