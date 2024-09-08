@@ -327,11 +327,8 @@ impl Client {
 }
 
 impl WorkspaceClient for Client {
-    fn focus(&self, id: String) {
-        let identifier = id.parse::<i32>().map_or_else(
-            |_| WorkspaceIdentifierWithSpecial::Name(&id),
-            WorkspaceIdentifierWithSpecial::Id,
-        );
+    fn focus(&self, id: i64) {
+        let identifier = WorkspaceIdentifierWithSpecial::Id(id as i32);
 
         if let Err(e) = Dispatch::call(DispatchType::Workspace(identifier)) {
             error!("Couldn't focus workspace '{id}': {e:#}");

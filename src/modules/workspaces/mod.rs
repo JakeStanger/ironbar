@@ -66,7 +66,8 @@ pub struct WorkspacesModule {
     ///
     /// If a workspace is not present in the map,
     /// it will fall back to using its actual name.
-    name_map: Option<HashMap<String, String>>,
+    #[serde(default)]
+    name_map: HashMap<String, String>,
 
     /// Workspaces which should always be shown.
     /// This can either be an array of workspace names,
@@ -140,7 +141,7 @@ pub struct WorkspaceItemContext {
     name_map: HashMap<String, String>,
     icon_theme: IconTheme,
     icon_size: i32,
-    tx: mpsc::Sender<String>,
+    tx: mpsc::Sender<i64>,
 }
 
 /// Re-orders the container children alphabetically,
@@ -182,7 +183,7 @@ fn reorder_workspaces(container: &gtk::Box, sort_order: SortOrder) {
 
 impl Module<gtk::Box> for WorkspacesModule {
     type SendMessage = WorkspaceUpdate;
-    type ReceiveMessage = String;
+    type ReceiveMessage = i64;
 
     module_impl!("workspaces");
 
@@ -212,8 +213,8 @@ impl Module<gtk::Box> for WorkspacesModule {
         spawn(async move {
             trace!("Setting up UI event handler");
 
-            while let Some(name) = rx.recv().await {
-                client.focus(name.clone());
+            while let Some(id) = rx.recv().await {
+                client.focus(id);
             }
 
             Ok::<(), Report>(())
@@ -229,12 +230,10 @@ impl Module<gtk::Box> for WorkspacesModule {
     ) -> Result<ModuleParts<gtk::Box>> {
         let container = gtk::Box::new(info.bar_position.orientation(), 0);
 
-        let name_map = self.name_map.clone().unwrap_or_default();
-
         let mut button_map = ButtonMap::new();
 
         let item_context = WorkspaceItemContext {
-            name_map,
+            name_map: self.name_map.clone(),
             icon_theme: info.icon_theme.clone(),
             icon_size: self.icon_size,
             tx: context.controller_tx.clone(),
@@ -312,6 +311,7 @@ impl Module<gtk::Box> for WorkspacesModule {
                 };
             }
 
+            let name_map = self.name_map;
             let mut handle_event = move |event: WorkspaceUpdate| match event {
                 WorkspaceUpdate::Init(workspaces) => {
                     if has_initialized {
@@ -381,7 +381,9 @@ impl Module<gtk::Box> for WorkspacesModule {
                         .or_else(|| button_map.get(&Identifier::Name(name.clone())))
                         .map(Button::button)
                     {
-                        button.set_label(&name);
+                        let display_name = name_map.get(&name).unwrap_or(&name);
+
+                        button.set_label(display_name);
                         button.set_widget_name(&name);
                     }
                 }

@@ -48,10 +48,10 @@ Ironbar is designed to support anything from a lightweight bar to a full desktop
 
 ## Features
 
-- First-class support for Sway and Hyprland
+- First-class support for Sway and Hyprland, and partial support for Niri
 - Fully themeable with hot-loaded CSS
 - Popups to show rich content
-- Ability to create custom widgets, run scripts and embed dynamic content
+- Ability to create custom widgets, run scripts and embed dynamic content (including via Lua)
 - Easy to configure anything from a single bar across all monitors, to multiple different unique bars per monitor 
 - Support for multiple config languages
 
