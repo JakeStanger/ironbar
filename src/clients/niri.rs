@@ -51,10 +51,7 @@ impl From<&Workspace> for compositor::Workspace {
     fn from(workspace: &Workspace) -> compositor::Workspace {
         compositor::Workspace {
             id: workspace.id as i64,
-            name: workspace
-                .name
-                .clone()
-                .unwrap_or(workspace.id.to_string()),
+            name: workspace.name.clone().unwrap_or(workspace.id.to_string()),
             monitor: workspace.output.clone().unwrap_or_default(),
             visibility: match workspace.is_focused {
                 true => Visibility::focused(),
@@ -96,12 +93,8 @@ impl FromStr for WorkspaceReferenceArg {
 pub struct Connection(UnixStream);
 impl Connection {
     pub async fn connect() -> io::Result<Self> {
-        let socket_path = env::var_os("NIRI_SOCKET").ok_or_else(|| {
-            io::Error::new(
-                io::ErrorKind::NotFound,
-                "NIRI_SOCKET not found!",
-            )
-        })?;
+        let socket_path = env::var_os("NIRI_SOCKET")
+            .ok_or_else(|| io::Error::new(io::ErrorKind::NotFound, "NIRI_SOCKET not found!"))?;
         Self::connect_to(socket_path).await
     }
 

@@ -8,10 +8,10 @@ use tracing::debug;
 
 #[cfg(feature = "workspaces+hyprland")]
 pub mod hyprland;
-#[cfg(feature = "workspaces+sway")]
-pub mod sway;
 #[cfg(feature = "workspaces+niri")]
 pub mod niri;
+#[cfg(feature = "workspaces+sway")]
+pub mod sway;
 
 pub enum Compositor {
     #[cfg(feature = "workspaces+sway")]
