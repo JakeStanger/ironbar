@@ -14,6 +14,8 @@ pub mod lua;
 pub mod music;
 #[cfg(feature = "network_manager")]
 pub mod networkmanager;
+#[cfg(feature = "niri")]
+pub mod niri;
 #[cfg(feature = "sway")]
 pub mod sway;
 #[cfg(feature = "notifications")]

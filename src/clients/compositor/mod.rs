@@ -10,12 +10,16 @@ use tracing::debug;
 pub mod hyprland;
 #[cfg(feature = "workspaces+sway")]
 pub mod sway;
+#[cfg(feature = "workspaces+niri")]
+pub mod niri;
 
 pub enum Compositor {
     #[cfg(feature = "workspaces+sway")]
     Sway,
     #[cfg(feature = "workspaces+hyprland")]
     Hyprland,
+    #[cfg(feature = "workspaces+niri")]
+    Niri,
     Unsupported,
 }
 
@@ -29,6 +33,8 @@ impl Display for Compositor {
                 Self::Sway => "Sway",
                 #[cfg(feature = "workspaces+hyprland")]
                 Self::Hyprland => "Hyprland",
+                #[cfg(feature = "workspaces+niri")]
+                Self::Niri => "Niri",
                 Self::Unsupported => "Unsupported",
             }
         )
@@ -49,6 +55,11 @@ impl Compositor {
                 if #[cfg(feature = "workspaces+hyprland")] { Self::Hyprland }
                 else { tracing::error!("Not compiled with Hyprland support"); Self::Unsupported }
             }
+        } else if std::env::var("NIRI_SOCKET").is_ok() {
+            cfg_if! {
+                if #[cfg(feature = "workspaces+niri")] { Self::Niri }
+                else {tracing::error!("Not compiled with Niri support"); Self::Unsupported }
+            }
         } else {
             Self::Unsupported
         }
@@ -68,8 +79,10 @@ impl Compositor {
                 .map(|client| client as Arc<dyn WorkspaceClient + Send + Sync>),
             #[cfg(feature = "workspaces+hyprland")]
             Self::Hyprland => Ok(Arc::new(hyprland::Client::new())),
+            #[cfg(feature = "workspaces+niri")]
+            Self::Niri => Ok(Arc::new(niri::Client::new())),
             Self::Unsupported => Err(Report::msg("Unsupported compositor")
-                .note("Currently workspaces are only supported by Sway and Hyprland")),
+                .note("Currently workspaces are only supported by Sway, Niri and Hyprland")),
         }
     }
 }
