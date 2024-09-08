@@ -76,22 +76,26 @@ impl WorkspaceClient for Client {
                             {
                                 let old_workspace = &workspace_state[old_index];
                                 let new_workspace = &new_workspaces[new_index];
-                                if old_workspace.id < new_workspace.id as i64 {
-                                    updates.push(WorkspaceUpdate::Remove(old_workspace.id));
-                                    old_index += 1;
-                                } else if old_workspace.id > new_workspace.id as i64 {
-                                    updates.push(WorkspaceUpdate::Add(new_workspace.clone()));
-                                    new_index += 1;
-                                } else {
-                                    if old_workspace.name != new_workspace.name {
-                                        updates.push(WorkspaceUpdate::Rename {
-                                            id: new_workspace.id,
-                                            name: new_workspace.name.clone(),
-                                        });
-                                        workspace_state[old_index] = new_workspace.clone();
+                                match old_workspace.id.cmp(&new_workspace.id) {
+                                    std::cmp::Ordering::Greater => {
+                                        updates.push(WorkspaceUpdate::Add(new_workspace.clone()));
+                                        new_index += 1;
                                     }
-                                    old_index += 1;
-                                    new_index += 1;
+                                    std::cmp::Ordering::Less => {
+                                        updates.push(WorkspaceUpdate::Remove(old_workspace.id));
+                                        old_index += 1;
+                                    }
+                                    std::cmp::Ordering::Equal => {
+                                        if old_workspace.name != new_workspace.name {
+                                            updates.push(WorkspaceUpdate::Rename {
+                                                id: new_workspace.id,
+                                                name: new_workspace.name.clone(),
+                                            });
+                                            workspace_state[old_index] = new_workspace.clone();
+                                        }
+                                        old_index += 1;
+                                        new_index += 1;
+                                    }
                                 }
                             }
                             while old_index < workspace_state.len() {

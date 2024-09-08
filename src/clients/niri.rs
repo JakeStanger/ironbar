@@ -54,8 +54,8 @@ impl From<&Workspace> for compositor::Workspace {
             name: workspace
                 .name
                 .clone()
-                .unwrap_or(String::from(workspace.id.to_string())),
-            monitor: workspace.output.clone().unwrap_or(String::new()),
+                .unwrap_or(workspace.id.to_string()),
+            monitor: workspace.output.clone().unwrap_or_default(),
             visibility: match workspace.is_focused {
                 true => Visibility::focused(),
                 false => match workspace.is_active {
@@ -99,7 +99,7 @@ impl Connection {
         let socket_path = env::var_os("NIRI_SOCKET").ok_or_else(|| {
             io::Error::new(
                 io::ErrorKind::NotFound,
-                format!("NIRI_SOCKET not found!"),
+                "NIRI_SOCKET not found!",
             )
         })?;
         Self::connect_to(socket_path).await
