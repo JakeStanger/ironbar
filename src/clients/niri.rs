@@ -14,7 +14,6 @@ use super::compositor::{self, Visibility};
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub enum Request {
-    Workspaces,
     Action(Action),
     EventStream,
 }

@@ -2,7 +2,7 @@ use crate::{
     await_sync,
     clients::{
         compositor::Visibility,
-        niri::{Action, Connection, Event, Request, Response, WorkspaceReferenceArg},
+        niri::{Action, Connection, Event, Request, WorkspaceReferenceArg},
     },
     send, spawn,
 };
@@ -39,34 +39,24 @@ impl WorkspaceClient for Client {
     ) -> tokio::sync::broadcast::Receiver<super::WorkspaceUpdate> {
         let (tx, rx) = channel(32);
 
-        await_sync(async {
-            let mut workspace_state = Vec::new();
+        spawn(async move {
             let mut conn = Connection::connect().await.unwrap();
-            match conn.send(Request::Workspaces).await.unwrap().0.unwrap() {
-                Response::Workspaces(workspaces) => {
-                    let conv_workspaces: Vec<Workspace> = workspaces
-                        .into_iter()
-                        .map(|w| Workspace::from(&w))
-                        .collect();
-                    let event = WorkspaceUpdate::Init(conv_workspaces.clone());
-                    workspace_state = conv_workspaces;
-                    send!(tx, event);
-                }
-                Response::Handled => {}
-            };
-            drop(conn);
-            spawn(async move {
-                let mut conn = Connection::connect().await.unwrap();
-                let mut event_listener = conn.send(Request::EventStream).await.unwrap().1;
-                loop {
-                    let event_niri = event_listener().unwrap();
-                    let events = match event_niri {
-                        Event::WorkspacesChanged { workspaces } => {
-                            let mut updates: Vec<WorkspaceUpdate> = vec![];
-                            let mut new_workspaces: Vec<Workspace> = workspaces
-                                .into_iter()
-                                .map(|w| Workspace::from(&w))
-                                .collect();
+            let mut event_listener = conn.send(Request::EventStream).await.unwrap().1;
+            let mut workspace_state: Vec<Workspace> = Vec::new();
+            let mut first_event = true;
+            loop {
+                let event_niri = event_listener().unwrap();
+                let events = match event_niri {
+                    Event::WorkspacesChanged { workspaces } => {
+                        let mut new_workspaces: Vec<Workspace> = workspaces
+                            .into_iter()
+                            .map(|w| Workspace::from(&w))
+                            .collect();
+                        let mut updates: Vec<WorkspaceUpdate> = vec![];
+                        if first_event {
+                            updates.push(WorkspaceUpdate::Init(new_workspaces.clone()));
+                            first_event = false;
+                        } else {
                             new_workspaces.sort_by_key(|w| w.id);
                             workspace_state.sort_by_key(|w| w.id);
                             let mut old_index = 0;
@@ -108,82 +98,81 @@ impl WorkspaceClient for Client {
                                     .push(WorkspaceUpdate::Add(new_workspaces[new_index].clone()));
                                 new_index += 1;
                             }
-                            workspace_state = new_workspaces;
-                            updates
                         }
-                        Event::WorkspaceActivated { id, focused } => {
-                            // workspace with id is activated, if focus is true then it is also focused
-                            // if focuesd is true then focus has changed => find old focused workspace. set it to inactive and set current
-                            match workspace_state.iter().position(|w| w.id == id as i64) {
-                                Some(new_index) => {
-                                    if focused {
-                                        match workspace_state
-                                            .iter()
-                                            .position(|w| w.visibility.is_focused())
-                                        {
-                                            Some(old_index) => {
-                                                workspace_state[new_index].visibility =
-                                                    Visibility::focused();
-                                                if workspace_state[old_index].monitor
-                                                    == workspace_state[new_index].monitor
-                                                {
-                                                    workspace_state[old_index].visibility =
-                                                        Visibility::Hidden;
-                                                } else {
-                                                    workspace_state[old_index].visibility =
-                                                        Visibility::visible();
-                                                }
-                                                vec![WorkspaceUpdate::Focus {
-                                                    old: Some(workspace_state[old_index].clone()),
-                                                    new: workspace_state[new_index].clone(),
-                                                }]
-                                            }
-                                            None => {
-                                                workspace_state[new_index].visibility =
-                                                    Visibility::focused();
-                                                vec![WorkspaceUpdate::Focus {
-                                                    old: None,
-                                                    new: workspace_state[new_index].clone(),
-                                                }]
-                                            }
-                                        }
-                                    } else {
-                                        // if focused is false means active workspace on a particular monitor has changed => change all workspaces on monitor to inactive and change current workspace as active
-                                        workspace_state[new_index].visibility =
-                                            Visibility::visible();
-                                        match workspace_state.iter().position(|w| {
-                                            (w.visibility.is_focused() || w.visibility.is_visible())
-                                                && w.monitor == workspace_state[new_index].monitor
-                                        }) {
-                                            Some(old_index) => {
+                        workspace_state = new_workspaces;
+                        updates
+                    }
+                    Event::WorkspaceActivated { id, focused } => {
+                        // workspace with id is activated, if focus is true then it is also focused
+                        // if focuesd is true then focus has changed => find old focused workspace. set it to inactive and set current
+                        match workspace_state.iter().position(|w| w.id == id as i64) {
+                            Some(new_index) => {
+                                if focused {
+                                    match workspace_state
+                                        .iter()
+                                        .position(|w| w.visibility.is_focused())
+                                    {
+                                        Some(old_index) => {
+                                            workspace_state[new_index].visibility =
+                                                Visibility::focused();
+                                            if workspace_state[old_index].monitor
+                                                == workspace_state[new_index].monitor
+                                            {
                                                 workspace_state[old_index].visibility =
                                                     Visibility::Hidden;
-                                                vec![]
+                                            } else {
+                                                workspace_state[old_index].visibility =
+                                                    Visibility::visible();
                                             }
-                                            None => {
-                                                vec![]
-                                            }
+                                            vec![WorkspaceUpdate::Focus {
+                                                old: Some(workspace_state[old_index].clone()),
+                                                new: workspace_state[new_index].clone(),
+                                            }]
+                                        }
+                                        None => {
+                                            workspace_state[new_index].visibility =
+                                                Visibility::focused();
+                                            vec![WorkspaceUpdate::Focus {
+                                                old: None,
+                                                new: workspace_state[new_index].clone(),
+                                            }]
+                                        }
+                                    }
+                                } else {
+                                    // if focused is false means active workspace on a particular monitor has changed => change all workspaces on monitor to inactive and change current workspace as active
+                                    workspace_state[new_index].visibility = Visibility::visible();
+                                    match workspace_state.iter().position(|w| {
+                                        (w.visibility.is_focused() || w.visibility.is_visible())
+                                            && w.monitor == workspace_state[new_index].monitor
+                                    }) {
+                                        Some(old_index) => {
+                                            workspace_state[old_index].visibility =
+                                                Visibility::Hidden;
+                                            vec![]
+                                        }
+                                        None => {
+                                            vec![]
                                         }
                                     }
                                 }
-                                None => {
-                                    tracing::warn!(
-                                        "No workspace with id for new focus/visible workspace found"
-                                    );
-                                    vec![]
-                                }
+                            }
+                            None => {
+                                tracing::warn!(
+                                    "No workspace with id for new focus/visible workspace found"
+                                );
+                                vec![]
                             }
                         }
-                        Event::Other => {
-                            vec![]
-                        }
-                    };
-                    for event in events {
-                        send!(tx, event);
                     }
-                    std::thread::sleep(Duration::from_millis(30));
+                    Event::Other => {
+                        vec![]
+                    }
+                };
+                for event in events {
+                    send!(tx, event);
                 }
-            });
+                std::thread::sleep(Duration::from_millis(30));
+            }
         });
         rx
     }
