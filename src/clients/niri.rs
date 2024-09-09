@@ -34,7 +34,7 @@ pub enum Action {
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub enum WorkspaceReferenceArg {
     Name(String),
-    Index(u8),
+    Id(u64),
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -74,16 +74,11 @@ impl FromStr for WorkspaceReferenceArg {
     type Err = &'static str;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let reference = if let Ok(index) = s.parse::<i32>() {
-            if let Ok(idx) = u8::try_from(index) {
-                Self::Index(idx)
-            } else {
-                return Err("workspace index must be between 0 and 255");
-            }
+        let reference = if let Ok(id) = s.parse::<u64>() {
+            Self::Id(id)
         } else {
             Self::Name(s.to_string())
         };
-
         Ok(reference)
     }
 }
