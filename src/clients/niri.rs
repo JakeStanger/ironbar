@@ -48,6 +48,7 @@ pub struct Workspace {
 
 impl From<&Workspace> for compositor::Workspace {
     fn from(workspace: &Workspace) -> compositor::Workspace {
+        // Workspaces in niri don't neccessarily have names. So if the niri workspace has a name then it is assigned as is but if it does not have a name, the id is assigned as name.
         compositor::Workspace {
             id: workspace.id as i64,
             name: workspace.name.clone().unwrap_or(workspace.id.to_string()),
@@ -72,7 +73,7 @@ pub enum Event {
 
 impl FromStr for WorkspaceReferenceArg {
     type Err = &'static str;
-
+    // When a WorkspaceReferenceArg is parsed from a string(name), if it parses to a u64, it means that the workspace did not have a name but an id and it is handled as an id.
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let reference = if let Ok(id) = s.parse::<u64>() {
             Self::Id(id)

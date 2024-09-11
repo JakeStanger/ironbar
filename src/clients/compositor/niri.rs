@@ -48,6 +48,7 @@ impl WorkspaceClient for Client {
                 let event_niri = event_listener().unwrap();
                 let events = match event_niri {
                     Event::WorkspacesChanged { workspaces } => {
+                        // Niri only has a WorkspacesChanged Event and Ironbar has 4 events which have to be handled: Add, Remove, Rename and Move. The way I am handling this here is by keeping a previous state of workspaces and comparing with the new state for changes. To do this efficiently, first I sort the new workspace state based on id. Then I do a linear scan on the states(old and new)  togethor. At the end, I over write the old workspace state with the new one. Because of this, on the next event, the old workspace state is already sorted.
                         let mut new_workspaces: Vec<Workspace> = workspaces
                             .into_iter()
                             .map(|w| Workspace::from(&w))
@@ -58,7 +59,6 @@ impl WorkspaceClient for Client {
                             first_event = false;
                         } else {
                             new_workspaces.sort_by_key(|w| w.id);
-                            workspace_state.sort_by_key(|w| w.id);
                             let mut old_index = 0;
                             let mut new_index = 0;
                             while old_index < workspace_state.len()
@@ -68,36 +68,33 @@ impl WorkspaceClient for Client {
                                 let new_workspace = &new_workspaces[new_index];
                                 match old_workspace.id.cmp(&new_workspace.id) {
                                     std::cmp::Ordering::Greater => {
+                                        //  If there is a new id, I send a WorkspaceUpdate::Add event.
                                         updates.push(WorkspaceUpdate::Add(new_workspace.clone()));
                                         new_index += 1;
                                     }
+                                    //  If an id is missing, then I send a WorkspaceUpdate::Remove event.
                                     std::cmp::Ordering::Less => {
                                         updates.push(WorkspaceUpdate::Remove(old_workspace.id));
                                         old_index += 1;
                                     }
                                     std::cmp::Ordering::Equal => {
-                                        let mut rename = false;
-                                        let mut mv = false;
+                                        // For workspaces with the same id, if the name of the workspace is different, WorkspaceUpdate::Rename is sent, if the name of the monitor is different then WorkspaceUpdate::Move is sent.
                                         if old_workspace.name != new_workspace.name {
                                             updates.push(WorkspaceUpdate::Rename {
                                                 id: new_workspace.id,
                                                 name: new_workspace.name.clone(),
                                             });
-                                            rename = true;
                                         }
                                         if old_workspace.monitor != new_workspace.monitor {
                                             updates
                                                 .push(WorkspaceUpdate::Move(new_workspace.clone()));
-                                            mv = true;
-                                        }
-                                        if rename || mv {
-                                            workspace_state[old_index] = new_workspace.clone();
                                         }
                                         old_index += 1;
                                         new_index += 1;
                                     }
                                 }
                             }
+                            // Handle remaining workspaces
                             while old_index < workspace_state.len() {
                                 updates
                                     .push(WorkspaceUpdate::Remove(workspace_state[old_index].id));
