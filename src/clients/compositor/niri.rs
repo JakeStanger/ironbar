@@ -76,11 +76,21 @@ impl WorkspaceClient for Client {
                                         old_index += 1;
                                     }
                                     std::cmp::Ordering::Equal => {
+                                        let mut rename = false;
+                                        let mut mv = false;
                                         if old_workspace.name != new_workspace.name {
                                             updates.push(WorkspaceUpdate::Rename {
                                                 id: new_workspace.id,
                                                 name: new_workspace.name.clone(),
                                             });
+                                            rename = true;
+                                        }
+                                        if old_workspace.monitor != new_workspace.monitor {
+                                            updates
+                                                .push(WorkspaceUpdate::Move(new_workspace.clone()));
+                                            mv = true;
+                                        }
+                                        if rename || mv {
                                             workspace_state[old_index] = new_workspace.clone();
                                         }
                                         old_index += 1;
