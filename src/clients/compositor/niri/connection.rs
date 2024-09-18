@@ -1,16 +1,14 @@
+use crate::clients::compositor::Workspace as IronWorkspace;
+use crate::{await_sync, clients::compositor::Visibility};
+use color_eyre::eyre::{eyre, Result};
 use core::str;
 use serde::{Deserialize, Serialize};
-use std::{env, io, path::Path};
+use std::str::FromStr;
+use std::{env, path::Path};
 use tokio::{
     io::{AsyncBufReadExt, AsyncWriteExt, BufReader},
     net::UnixStream,
 };
-
-use std::str::FromStr;
-
-use crate::await_sync;
-
-use super::compositor::{self, Visibility};
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub enum Request {
@@ -46,10 +44,10 @@ pub struct Workspace {
     pub is_focused: bool,
 }
 
-impl From<&Workspace> for compositor::Workspace {
-    fn from(workspace: &Workspace) -> compositor::Workspace {
+impl From<&Workspace> for IronWorkspace {
+    fn from(workspace: &Workspace) -> IronWorkspace {
         // Workspaces in niri don't neccessarily have names. So if the niri workspace has a name then it is assigned as is but if it does not have a name, the id is assigned as name.
-        compositor::Workspace {
+        IronWorkspace {
             id: workspace.id as i64,
             name: workspace.name.clone().unwrap_or(workspace.id.to_string()),
             monitor: workspace.output.clone().unwrap_or_default(),
@@ -87,13 +85,13 @@ impl FromStr for WorkspaceReferenceArg {
 #[derive(Debug)]
 pub struct Connection(UnixStream);
 impl Connection {
-    pub async fn connect() -> io::Result<Self> {
-        let socket_path = env::var_os("NIRI_SOCKET")
-            .ok_or_else(|| io::Error::new(io::ErrorKind::NotFound, "NIRI_SOCKET not found!"))?;
+    pub async fn connect() -> Result<Self> {
+        let socket_path =
+            env::var_os("NIRI_SOCKET").ok_or_else(|| eyre!("NIRI_SOCKET not found!"))?;
         Self::connect_to(socket_path).await
     }
 
-    pub async fn connect_to(path: impl AsRef<Path>) -> io::Result<Self> {
+    pub async fn connect_to(path: impl AsRef<Path>) -> Result<Self> {
         let raw_stream = UnixStream::connect(path.as_ref()).await?;
         let stream = raw_stream;
         Ok(Self(stream))
@@ -102,9 +100,9 @@ impl Connection {
     pub async fn send(
         &mut self,
         request: Request,
-    ) -> io::Result<(Reply, impl FnMut() -> io::Result<Event> + '_)> {
+    ) -> Result<(Reply, impl FnMut() -> Result<Event> + '_)> {
         let Self(stream) = self;
-        let mut buf = serde_json::to_string(&request).unwrap();
+        let mut buf = serde_json::to_string(&request)?;
         stream.write_all(buf.as_bytes()).await?;
         stream.shutdown().await?;
 
@@ -116,7 +114,7 @@ impl Connection {
         let events = move || {
             buf.clear();
             await_sync(async {
-                reader.read_line(&mut buf).await.unwrap();
+                reader.read_line(&mut buf).await.unwrap_or(0);
             });
             let event: Event = serde_json::from_str(&buf).unwrap_or(Event::Other);
             Ok(event)

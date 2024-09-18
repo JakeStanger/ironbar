@@ -78,9 +78,7 @@ workspaces = ["futures-lite"]
 "workspaces+all" = ["workspaces", "workspaces+sway", "workspaces+hyprland", "workspaces+niri"]
 "workspaces+sway" = ["workspaces", "sway"]
 "workspaces+hyprland" = ["workspaces", "hyprland"]
-"workspaces+niri" = ["workspaces", "niri"]
-
-niri = []
+"workspaces+niri" = ["workspaces"]
 
 sway = ["swayipc-async"]
 
