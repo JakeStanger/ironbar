@@ -151,7 +151,9 @@ fn create_button(
     {
         let tx = tx.clone();
         let name = name.to_string();
-        button.connect_clicked(move |_item| try_send!(tx, name.clone()));
+        button.connect_clicked(move |_item| {
+            try_send!(tx, name.clone());
+        });
     }
 
     button
