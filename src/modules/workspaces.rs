@@ -228,7 +228,7 @@ impl Module<gtk::Box> for WorkspacesModule {
 
             while let Some(name) = rx.recv().await {
                 if let Err(e) = client.focus(name.clone()) {
-                    warn!("Couln't focus workspace '{name}': {e}");
+                    warn!("Couldn't focus workspace '{name}': {e:#}");
                 };
             }
 
