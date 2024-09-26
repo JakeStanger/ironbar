@@ -413,6 +413,16 @@ impl Module<gtk::Box> for WorkspacesModule {
                             }
                         }
                     }
+                    WorkspaceUpdate::Urgent { id, urgent } => {
+                        let button = button_map.get(&id);
+                        if let Some(item) = button {
+                            if urgent {
+                                item.add_class("urgent");
+                            } else {
+                                item.style_context().remove_class("urgent");
+                            }
+                        }
+                    }
                     WorkspaceUpdate::Unknown => warn!("Received unknown type workspace event")
                 };
             });
