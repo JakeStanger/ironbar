@@ -1,6 +1,7 @@
 use crate::clients::clipboard::{self, ClipboardEvent};
 use crate::clients::wayland::{ClipboardItem, ClipboardValue};
 use crate::config::{CommonConfig, TruncateMode};
+use crate::gtk_helpers::IronbarLabelExt;
 use crate::image::new_icon_button;
 use crate::modules::{
     Module, ModuleInfo, ModuleParts, ModulePopup, ModuleUpdateEvent, PopupButton, WidgetContext,
@@ -195,7 +196,7 @@ impl Module<Button> for ClipboardModule {
                                 button.add(&label);
 
                                 if let Some(truncate) = self.truncate {
-                                    truncate.truncate_label(&label);
+                                    label.truncate(truncate);
                                 }
 
                                 button.style_context().add_class("text");

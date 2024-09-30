@@ -17,6 +17,7 @@ use crate::clients::music::{
 };
 use crate::clients::Clients;
 use crate::gtk_helpers::IronbarGtkExt;
+use crate::gtk_helpers::IronbarLabelExt;
 use crate::image::{new_icon_button, new_icon_label, ImageProvider};
 use crate::modules::PopupButton;
 use crate::modules::{
@@ -195,7 +196,7 @@ impl Module<Button> for MusicModule {
         label.set_angle(info.bar_position.get_angle());
 
         if let Some(truncate) = self.truncate {
-            truncate.truncate_label(&label);
+            label.truncate(truncate);
         }
 
         button_contents.add(&icon_pause);
@@ -414,7 +415,7 @@ impl Module<Button> for MusicModule {
                                 ImageProvider::parse(&cover_path, &icon_theme, false, image_size)
                             }) {
                                 album_image.show();
-                                image.load_into_image(album_image.clone())
+                                image.load_into_image(&album_image)
                             } else {
                                 album_image.set_from_pixbuf(None);
                                 album_image.hide();
