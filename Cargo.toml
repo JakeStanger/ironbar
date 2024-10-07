@@ -159,7 +159,7 @@ libpulse-binding = { version = "2.28.1", optional = true }
 # workspaces
 swayipc-async = { version = "2.0.1", optional = true }
 hyprland = { version = "0.4.0-alpha.3", features = ["silent"], optional = true }
-futures-util = { version = "0.3.30", optional = true }
+futures-util = { version = "0.3.31", optional = true }
 
 # shared
 futures-lite = { version = "2.3.0", optional = true } # network_manager, upower, workspaces
