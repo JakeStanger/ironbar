@@ -1,4 +1,5 @@
 use crate::config::{CommonConfig, TruncateMode};
+use crate::gtk_helpers::IronbarLabelExt;
 use crate::modules::{Module, ModuleInfo, ModuleParts, ModuleUpdateEvent, WidgetContext};
 use crate::{await_sync, glib_recv, module_impl, try_send};
 use color_eyre::{Report, Result};
@@ -59,6 +60,7 @@ impl Module<Label> for SwayModeModule {
         _info: &ModuleInfo,
     ) -> Result<ModuleParts<Label>> {
         let label = Label::new(None);
+        label.set_use_markup(true);
 
         {
             let label = label.clone();
@@ -71,9 +73,9 @@ impl Module<Label> for SwayModeModule {
                 trace!("mode: {:?}", mode);
                 label.set_use_markup(mode.pango_markup);
                 if mode.change == "default" {
-                    label.set_markup("");
+                    label.set_label_escaped("");
                 } else {
-                    label.set_markup(&mode.change);
+                    label.set_label_escaped(&mode.change);
                 }
             };
 

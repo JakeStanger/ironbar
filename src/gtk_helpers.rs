@@ -1,4 +1,4 @@
-use glib::IsA;
+use glib::{markup_escape_text, IsA};
 use gtk::prelude::*;
 use gtk::{Orientation, Widget};
 
@@ -73,5 +73,24 @@ impl<W: IsA<Widget>> IronbarGtkExt for W {
 
     fn set_tag<V: 'static>(&self, key: &str, value: V) {
         unsafe { self.set_data(key, value) }
+    }
+}
+
+pub trait IronbarLabelExt {
+    /// Sets the label value to the provided string.
+    ///
+    /// If the label does not contain markup `span` tags,
+    /// the text is escaped to avoid issues with special characters (ie `&`).
+    /// Otherwise, the text is used verbatim, and it is up to the user to escape.
+    fn set_label_escaped(&self, label: &str);
+}
+
+impl IronbarLabelExt for gtk::Label {
+    fn set_label_escaped(&self, label: &str) {
+        if !label.contains("<span") {
+            self.set_label(&markup_escape_text(label));
+        } else {
+            self.set_label(label);
+        }
     }
 }
