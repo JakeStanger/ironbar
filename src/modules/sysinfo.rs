@@ -1,5 +1,5 @@
 use crate::config::{CommonConfig, ModuleOrientation};
-use crate::gtk_helpers::IronbarGtkExt;
+use crate::gtk_helpers::{IronbarGtkExt, IronbarLabelExt};
 use crate::modules::{Module, ModuleInfo, ModuleParts, ModuleUpdateEvent, WidgetContext};
 use crate::{glib_recv, module_impl, send_async, spawn};
 use color_eyre::Result;
@@ -266,7 +266,7 @@ impl Module<gtk::Box> for SysInfoModule {
                             .to_string()
                     });
 
-                    label.set_markup(format_compiled.as_ref());
+                    label.set_label_escaped(format_compiled.as_ref());
                 }
             });
         }

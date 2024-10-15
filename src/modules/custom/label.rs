@@ -2,11 +2,11 @@ use gtk::prelude::*;
 use gtk::Label;
 use serde::Deserialize;
 
+use super::{CustomWidget, CustomWidgetContext};
 use crate::build;
 use crate::config::ModuleOrientation;
 use crate::dynamic_value::dynamic_string;
-
-use super::{CustomWidget, CustomWidgetContext};
+use crate::gtk_helpers::IronbarLabelExt;
 
 #[derive(Debug, Deserialize, Clone)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
@@ -50,7 +50,7 @@ impl CustomWidget for LabelWidget {
         {
             let label = label.clone();
             dynamic_string(&self.label, move |string| {
-                label.set_markup(&string);
+                label.set_label_escaped(&string);
             });
         }
 
