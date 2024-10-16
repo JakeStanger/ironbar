@@ -37,54 +37,23 @@ jobs:
           commit_message: 'chore: update CHANGELOG.md for ${{ github.ref_name }} [skip ci]'
           file_pattern: CHANGELOG.md
 
-
-  publish-crate:
-    name: 'Publish Crate'
+  publish-aur:
+    name: 'Publish AUR Package'
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v3
-
-      - uses: actions-rs/toolchain@v1
+      - uses: actions/checkoout@v3
+      
+      - uses: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_ENV
+        env:
+          GITHUB_REF: ${{ github.ref }}
+      
+      - uses: aksh1618/update-aur-package@v1.0.5
         with:
-          toolchain: stable
-          override: true
-
-      - name: Install build deps
-        run: ./.github/scripts/ubuntu_setup.sh
-
-      - name: Publish crate
-        uses: katyo/publish-crates@v1
-        with:
-          registry-token: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+          version: "${{ env.VERSION }}"
+          package_name: ironbar-test
+          commit_username: "punff"
+          commit_email: "marioantunovic13@gmail.com"
+          ssh_private_key: ${{ secrets.AUR_SSH_PRIVATE_KEY }}
 
 
-  publish-schema:
-    name: 'Publish Schema'
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/checkout@v3
-
-      - uses: Swatinem/rust-cache@v2
-        name: Cache dependencies
-
-      - name: Install build deps
-        run: ./.github/scripts/ubuntu_setup.sh
-
-      - name: Ensure target folder
-        run: mkdir -p target
-
-      - name: Build schema
-        run: cargo run --features schema -- --print-schema > target/schema-${{ github.ref_name }}.json
-
-      - name: Copy file via SSH
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: ${{ secrets.SSH_HOST }}
-          port: ${{ secrets.SSH_PORT }}
-          username: ${{ secrets.SSH_USERNAME }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          source: "target/schema-${{ github.ref_name }}.json"
-          target: /storage/Public/github/ironbar
-          strip_components: 1
