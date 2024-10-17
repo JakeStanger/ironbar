@@ -201,6 +201,10 @@ scale trough {
     background-color: @color_bg_dark;
 }
 
+.workspaces .item.urgent {
+    background-color: @color_urgent;
+}
+
 .workspaces .item:hover {
     box-shadow: inset 0 -3px;
 }
