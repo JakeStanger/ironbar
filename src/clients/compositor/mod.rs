@@ -86,29 +86,25 @@ pub struct Workspace {
     pub visibility: Visibility,
 }
 
-/// Indicates workspace visibility. Visible workspaces have a boolean flag to indicate if they are also focused.
-/// Yes, this is the same signature as Option<bool>, but it's impl is a lot more suited for our case.
+/// Indicates workspace visibility.
+/// Visible workspaces have a boolean flag to indicate if they are also focused.
 #[derive(Debug, Copy, Clone)]
 pub enum Visibility {
-    Visible(bool),
+    Visible { focused: bool },
     Hidden,
 }
 
 impl Visibility {
     pub fn visible() -> Self {
-        Self::Visible(false)
+        Self::Visible { focused: false }
     }
 
     pub fn focused() -> Self {
-        Self::Visible(true)
-    }
-
-    pub fn is_visible(self) -> bool {
-        matches!(self, Self::Visible(_))
+        Self::Visible { focused: true }
     }
 
     pub fn is_focused(self) -> bool {
-        if let Self::Visible(focused) = self {
+        if let Self::Visible { focused } = self {
             focused
         } else {
             false
