@@ -119,7 +119,7 @@ impl Client {
                     {
                         Self::send_focus_change(&mut prev_workspace, workspace, &tx);
                     } else {
-                        error!("Unable to locate workspace");
+                        error!("unable to locate workspace: {workspace_name}");
                     }
                 });
             }
@@ -154,6 +154,7 @@ impl Client {
 
                 event_listener.add_workspace_rename_handler(move |data| {
                     let _lock = lock!(lock);
+                    debug!("Received workspace rename: {data:?}");
 
                     send!(
                         tx,
