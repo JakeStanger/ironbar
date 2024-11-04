@@ -108,7 +108,7 @@ version = "0.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7c48ccdbf6ca6b121e0f586cbc0e73ae440e56c67c30fa0873b4e110d9c26d2b"
 dependencies = [
- "event-listener 2.5.3",
+ "event-listener",
  "futures-core",
 ]
 
@@ -119,7 +119,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cf46fee83e5ccffc220104713af3292ff9bc7c64c7de289f66dae8e38d826833"
 dependencies = [
  "concurrent-queue",
- "event-listener 2.5.3",
+ "event-listener",
  "futures-core",
 ]
 
@@ -129,7 +129,7 @@ version = "1.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6fa3dc5f2a8564f07759c008b9109dc0d39de92a88d5588b8a5036d286383afb"
 dependencies = [
- "async-lock 2.7.0",
+ "async-lock",
  "async-task",
  "concurrent-queue",
  "fastrand 1.9.0",
@@ -143,7 +143,7 @@ version = "1.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "279cf904654eeebfa37ac9bb1598880884924aab82e290aa65c9e77a0e142e06"
 dependencies = [
- "async-lock 2.7.0",
+ "async-lock",
  "autocfg",
  "blocking",
  "futures-lite 1.13.0",
@@ -155,7 +155,7 @@ version = "1.13.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0fc5b45d93ef0529756f812ca52e44c221b35341892d3dcc34132ac02f3dd2af"
 dependencies = [
- "async-lock 2.7.0",
+ "async-lock",
  "autocfg",
  "cfg-if",
  "concurrent-queue",
@@ -170,51 +170,21 @@ dependencies = [
 ]
 
 [[package]]
-name = "async-io"
-version = "2.3.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "444b0228950ee6501b3568d3c93bf1176a1fdbc3b758dcd9475046d30f4dc7e8"
-dependencies = [
- "async-lock 3.4.0",
- "cfg-if",
- "concurrent-queue",
- "futures-io",
- "futures-lite 2.3.0",
- "parking",
- "polling 3.3.1",
- "rustix 0.38.28",
- "slab",
- "tracing",
- "windows-sys 0.59.0",
-]
-
-[[package]]
 name = "async-lock"
 version = "2.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fa24f727524730b077666307f2734b4a1a1c57acb79193127dcc8914d5242dd7"
 dependencies = [
- "event-listener 2.5.3",
+ "event-listener",
 ]
 
 [[package]]
-name = "async-lock"
-version = "3.4.0"
+name = "async-pidfd"
+version = "0.1.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ff6e472cdea888a4bd64f342f09b3f50e1886d32afe8df3d663c01140b811b18"
+checksum = "12177058299bb8e3507695941b6d0d7dc0e4e6515b8bc1bf4609d9e32ef51799"
 dependencies = [
- "event-listener 5.2.0",
- "event-listener-strategy",
- "pin-project-lite",
-]
-
-[[package]]
-name = "async-pidfd-next"
-version = "0.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8d735ceae68fef3fc01e2b54e3f8971db1e5f5f3774bd7ff4a679c96ce2c145c"
-dependencies = [
- "async-io 2.3.4",
+ "async-io",
  "libc",
 ]
 
@@ -224,12 +194,12 @@ version = "1.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7a9d28b1d97e08915212e2e45310d47854eafa69600756fc735fb788f75199c9"
 dependencies = [
- "async-io 1.13.0",
- "async-lock 2.7.0",
+ "async-io",
+ "async-lock",
  "autocfg",
  "blocking",
  "cfg-if",
- "event-listener 2.5.3",
+ "event-listener",
  "futures-lite 1.13.0",
  "rustix 0.37.27",
  "signal-hook",
@@ -241,28 +211,6 @@ name = "async-recursion"
 version = "1.0.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0e97ce7de6cf12de5d7226c73f5ba9811622f4db3a5b91b55c53e987e5f91cba"
-dependencies = [
- "proc-macro2",
- "quote 1.0.35",
- "syn 2.0.85",
-]
-
-[[package]]
-name = "async-stream"
-version = "0.3.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0b5a71a6f37880a80d1d7f19efd781e4b5de42c88f0722cc13bcb6cc2cfe8476"
-dependencies = [
- "async-stream-impl",
- "futures-core",
- "pin-project-lite",
-]
-
-[[package]]
-name = "async-stream-impl"
-version = "0.3.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c7c24de15d275a1ecfd47a380fb4d5ec9bfe0933f309ed5e705b775596a3574d"
 dependencies = [
  "proc-macro2",
  "quote 1.0.35",
@@ -379,7 +327,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "77231a1c8f801696fc0123ec6150ce92cffb8e164a02afb9c8ddee0e9b65ad65"
 dependencies = [
  "async-channel",
- "async-lock 2.7.0",
+ "async-lock",
  "async-task",
  "atomic-waker",
  "fastrand 1.9.0",
@@ -830,9 +778,9 @@ checksum = "0d6ef0072f8a535281e4876be788938b528e9a1d43900b82c2569af7da799125"
 
 [[package]]
 name = "either"
-version = "1.13.0"
+version = "1.8.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "60b1af1c220855b6ceac025d3f6ecdd2b7c4894bfe9cd9bda4fbb4bc7c0d4cf0"
+checksum = "7fcaabb2fef8c910e7f4c7ce9f67a1283a1715879a7c230ca9d6d1ae31f16d91"
 
 [[package]]
 name = "enum-kinds"
@@ -887,27 +835,6 @@ name = "event-listener"
 version = "2.5.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0206175f82b8d6bf6652ff7d71a1e27fd2e4efde587fd368662814d6ec1d9ce0"
-
-[[package]]
-name = "event-listener"
-version = "5.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2b5fb89194fa3cad959b833185b3063ba881dbfc7030680b314250779fb4cc91"
-dependencies = [
- "concurrent-queue",
- "parking",
- "pin-project-lite",
-]
-
-[[package]]
-name = "event-listener-strategy"
-version = "0.5.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0f214dc438f977e6d4e3500aaa277f5ad94ca83fbbd9b1a15713ce2344ccc5a1"
-dependencies = [
- "event-listener 5.2.0",
- "pin-project-lite",
-]
 
 [[package]]
 name = "eyre"
@@ -1589,20 +1516,17 @@ dependencies = [
 
 [[package]]
 name = "hyprland"
-version = "0.4.0-beta.1"
+version = "0.4.0-alpha.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2d0a3d0bf7f9ea70bb186e6369ce7bd2e7b33dfd1ccdfbc07e15d599a05698d7"
+checksum = "2de3f836e02af5a12f374d3a986867c1dc487a63a6d19477d66c7de50f715895"
 dependencies = [
  "ahash",
- "async-stream",
  "derive_more",
- "either",
- "futures-lite 2.3.0",
  "hyprland-macros",
  "num-traits",
  "once_cell",
  "paste",
- "phf",
+ "regex",
  "serde",
  "serde_json",
  "serde_repr",
@@ -1611,11 +1535,10 @@ dependencies = [
 
 [[package]]
 name = "hyprland-macros"
-version = "0.4.0-beta.1"
+version = "0.4.0-alpha.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "02ded8aa5ba76d8ed3bf9799be7d1e8055ef67db58fd8f9fa51f8b80312257b2"
+checksum = "5dd8ce4c182ce77e485918f49262425ee51a2746fe97f14084869aeff2fbc38e"
 dependencies = [
- "proc-macro2",
  "quote 1.0.35",
  "syn 2.0.85",
 ]
@@ -1735,6 +1658,7 @@ dependencies = [
  "dirs",
  "futures-lite 2.3.0",
  "futures-signals",
+ "futures-util",
  "glib",
  "gtk",
  "gtk-layer-shell",
@@ -2365,48 +2289,6 @@ dependencies = [
  "once_cell",
  "pest",
  "sha2",
-]
-
-[[package]]
-name = "phf"
-version = "0.11.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ade2d8b8f33c7333b51bcf0428d37e217e9f32192ae4772156f65063b8ce03dc"
-dependencies = [
- "phf_macros",
- "phf_shared",
-]
-
-[[package]]
-name = "phf_generator"
-version = "0.11.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "48e4cc64c2ad9ebe670cb8fd69dd50ae301650392e81c05f9bfcb2d5bdbc24b0"
-dependencies = [
- "phf_shared",
- "rand",
-]
-
-[[package]]
-name = "phf_macros"
-version = "0.11.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3444646e286606587e49f3bcf1679b8cef1dc2c5ecc29ddacaffc305180d464b"
-dependencies = [
- "phf_generator",
- "phf_shared",
- "proc-macro2",
- "quote 1.0.35",
- "syn 2.0.85",
-]
-
-[[package]]
-name = "phf_shared"
-version = "0.11.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "90fcb95eef784c2ac79119d1dd819e162b5da872ce6f3c3abe1e8ca1c082f72b"
-dependencies = [
- "siphasher",
 ]
 
 [[package]]
@@ -3079,12 +2961,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "siphasher"
-version = "0.3.11"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "38b58827f4464d87d377d175e90bf58eb00fd8716ff0a62f80356b5e61555d0d"
-
-[[package]]
 name = "slab"
 version = "0.4.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3185,13 +3061,13 @@ checksum = "0d0208408ba0c3df17ed26eb06992cb1a1268d41b2c0e12e65203fbe3972cee5"
 
 [[package]]
 name = "swayipc-async"
-version = "2.0.3"
+version = "2.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "11b34de4d2b05f583b29e29271443e2f05dab823c2539000ab584aeddb60a23e"
+checksum = "812eaecd6f9e658587570dffe2768d7b58410cbcaad6579dd44414a890594f74"
 dependencies = [
- "async-io 2.3.4",
- "async-pidfd-next",
- "futures-lite 2.3.0",
+ "async-io",
+ "async-pidfd",
+ "futures-lite 1.13.0",
  "serde",
  "serde_json",
  "swayipc-types",
@@ -3199,9 +3075,9 @@ dependencies = [
 
 [[package]]
 name = "swayipc-types"
-version = "1.4.0"
+version = "1.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "150570ddeab049ddd51930539fe05834054795d5db1a6735285e9534a5f56931"
+checksum = "44b43b4059d825ccc04adf9726f944d0e3aa20938f4cff3b5c6b53198afcd6b3"
 dependencies = [
  "serde",
  "serde_json",
@@ -4361,8 +4237,8 @@ dependencies = [
  "async-broadcast",
  "async-executor",
  "async-fs",
- "async-io 1.13.0",
- "async-lock 2.7.0",
+ "async-io",
+ "async-lock",
  "async-process",
  "async-recursion",
  "async-task",
@@ -4371,7 +4247,7 @@ dependencies = [
  "byteorder",
  "derivative",
  "enumflags2",
- "event-listener 2.5.3",
+ "event-listener",
  "futures-core",
  "futures-sink",
  "futures-util",
