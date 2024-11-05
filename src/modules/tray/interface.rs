@@ -276,8 +276,9 @@ impl TrayMenuItem {
                     let tx = tx.clone();
                     let id = info.id;
 
-                    widget.connect_activate(move |_item| {
+                    widget.connect_button_press_event(move |_item, _event| {
                         try_send!(tx, id);
+                        Propagation::Proceed
                     });
                 }
 
