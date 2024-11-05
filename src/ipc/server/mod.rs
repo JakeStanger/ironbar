@@ -143,7 +143,7 @@ impl Ipc {
             }
             Command::LoadCss { path } => {
                 if path.exists() {
-                    load_css(path);
+                    load_css(path, application.clone());
                     Response::Ok
                 } else {
                     Response::error("File not found")

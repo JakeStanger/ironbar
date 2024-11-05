@@ -179,7 +179,7 @@ impl Ironbar {
             );
 
             if style_path.exists() {
-                load_css(style_path);
+                load_css(style_path, app.clone());
             }
 
             let (tx, rx) = mpsc::channel();
