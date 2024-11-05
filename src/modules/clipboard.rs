@@ -209,16 +209,24 @@ impl Module<Button> for ClipboardModule {
                                     64,
                                     true,
                                     Some(&Cancellable::new()),
-                                )
-                                .expect("Failed to read Pixbuf from stream");
-                                let image = Image::from_pixbuf(Some(&pixbuf));
+                                );
 
-                                let button = RadioButton::from_widget(&hidden_option);
-                                button.set_image(Some(&image));
-                                button.set_always_show_image(true);
-                                button.style_context().add_class("image");
+                                match pixbuf {
+                                    Ok(pixbuf) => {
+                                        let image = Image::from_pixbuf(Some(&pixbuf));
 
-                                button
+                                        let button = RadioButton::from_widget(&hidden_option);
+                                        button.set_image(Some(&image));
+                                        button.set_always_show_image(true);
+                                        button.style_context().add_class("image");
+
+                                        button
+                                    },
+                                    Err(err) => {
+                                        error!("{err:?}");
+                                        return;
+                                    }
+                                }
                             }
                             ClipboardValue::Other => unreachable!(),
                         };
