@@ -16,7 +16,7 @@ use std::collections::HashMap;
 use system_tray::client::Event;
 use system_tray::client::{ActivateRequest, UpdateEvent};
 use tokio::sync::mpsc;
-use tracing::{debug, error, warn};
+use tracing::{debug, error, trace, warn};
 
 #[derive(Debug, Deserialize, Clone)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
@@ -198,7 +198,8 @@ fn on_update(
             menus.insert(address.into(), menu_item);
         }
         Event::Update(address, update) => {
-            debug!("Received tray update for '{address}': {update:?}");
+            debug!("Received tray update for '{address}'");
+            trace!("Tray update for '{address}: {update:?}'");
 
             let Some(menu_item) = menus.get_mut(address.as_str()) else {
                 error!("Attempted to update menu at '{address}' but could not find it");
