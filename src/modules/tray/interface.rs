@@ -343,9 +343,13 @@ impl TrayMenuItem {
         }
 
         // TODO: Image support
-        // if let Some(icon_name) = diff.icon_name {
-        //
-        // }
+        if let Some(_icon_name) = diff.icon_name {
+            warn!("received unimplemented menu icon update");
+        }
+
+        if let Some(_icon_data) = diff.icon_data {
+            warn!("received unimplemented menu icon update");
+        }
 
         if let Some(enabled) = diff.enabled {
             match &self.widget {
