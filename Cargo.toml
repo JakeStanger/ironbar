@@ -68,7 +68,7 @@ notifications = ["zbus"]
 
 sys_info = ["sysinfo", "regex"]
 
-tray = ["system-tray"]
+tray = ["system-tray", "png"]
 
 upower = ["upower_dbus", "zbus", "futures-lite"]
 
