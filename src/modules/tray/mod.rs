@@ -211,13 +211,12 @@ fn on_update(
                 }
                 UpdateEvent::Icon(icon) => {
                     if icon.as_ref() != menu_item.icon_name() {
+                        menu_item.set_icon_name(icon);
                         match icon::get_image(menu_item, icon_theme, icon_size, prefer_icons) {
                             Ok(image) => menu_item.set_image(&image),
                             Err(_) => menu_item.show_label(),
                         };
                     }
-
-                    menu_item.set_icon_name(icon);
                 }
                 UpdateEvent::OverlayIcon(_icon) => {
                     warn!("received unimplemented NewOverlayIcon event");
