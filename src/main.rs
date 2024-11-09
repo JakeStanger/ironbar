@@ -464,7 +464,7 @@ where
 /// Blocks on a `Future` until it resolves.
 ///
 /// This is not an `async` operation
-/// so can be used outside of an async function.
+/// so can be used outside an async function.
 ///
 /// Use sparingly, as this risks blocking the UI thread!
 /// Prefer async functions wherever possible.

@@ -1,4 +1,4 @@
-use crate::{await_sync, Ironbar};
+use crate::await_sync;
 use color_eyre::Result;
 use std::path::Path;
 use std::rc::Rc;
@@ -151,9 +151,7 @@ impl Clients {
         let client = match &self.tray {
             Some(client) => client.clone(),
             None => {
-                let service_name = format!("{}-{}", env!("CARGO_CRATE_NAME"), Ironbar::unique_id());
-
-                let client = await_sync(async { tray::Client::new(&service_name).await })?;
+                let client = await_sync(async { tray::Client::new().await })?;
                 let client = Arc::new(client);
                 self.tray.replace(client.clone());
                 client

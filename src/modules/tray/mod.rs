@@ -16,7 +16,7 @@ use std::collections::HashMap;
 use system_tray::client::Event;
 use system_tray::client::{ActivateRequest, UpdateEvent};
 use tokio::sync::mpsc;
-use tracing::{debug, error, warn};
+use tracing::{debug, error, trace, warn};
 
 #[derive(Debug, Deserialize, Clone)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
@@ -198,7 +198,8 @@ fn on_update(
             menus.insert(address.into(), menu_item);
         }
         Event::Update(address, update) => {
-            debug!("Received tray update for '{address}': {update:?}");
+            debug!("Received tray update for '{address}'");
+            trace!("Tray update for '{address}: {update:?}'");
 
             let Some(menu_item) = menus.get_mut(address.as_str()) else {
                 error!("Attempted to update menu at '{address}' but could not find it");
@@ -211,13 +212,12 @@ fn on_update(
                 }
                 UpdateEvent::Icon(icon) => {
                     if icon.as_ref() != menu_item.icon_name() {
+                        menu_item.set_icon_name(icon);
                         match icon::get_image(menu_item, icon_theme, icon_size, prefer_icons) {
                             Ok(image) => menu_item.set_image(&image),
                             Err(_) => menu_item.show_label(),
                         };
                     }
-
-                    menu_item.set_icon_name(icon);
                 }
                 UpdateEvent::OverlayIcon(_icon) => {
                     warn!("received unimplemented NewOverlayIcon event");

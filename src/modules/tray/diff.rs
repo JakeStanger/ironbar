@@ -18,7 +18,9 @@ pub struct MenuItemDiff {
     /// True if the item is visible in the menu.
     pub visible: Option<bool>,
     /// Icon name of the item, following the freedesktop.org icon spec.
-    // pub icon_name: Option<Option<String>>,
+    pub icon_name: Option<Option<String>>,
+    /// PNG icon data.
+    pub icon_data: Option<Option<Vec<u8>>>,
     /// Describe the current state of a "togglable" item. Can be one of:
     ///   - Some(true): on
     ///   - Some(false): off
@@ -52,7 +54,8 @@ impl MenuItemDiff {
             label: diff!(&label),
             enabled: diff!(enabled),
             visible: diff!(visible),
-            // icon_name: diff!(&icon_name),
+            icon_name: diff!(&icon_name),
+            icon_data: diff!(&icon_data),
             toggle_state: diff!(toggle_state),
             submenu: get_diffs(&old.submenu, &new.submenu),
         }
