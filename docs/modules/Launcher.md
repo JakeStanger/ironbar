@@ -19,6 +19,7 @@ Optionally displays a launchable set of favourites.
 | `show_icons`                | `boolean`                                   | `true`   | Whether to show app icons on the button.                                                                                 |
 | `icon_size`                 | `integer`                                   | `32`     | Size to render icon at (image icons only).                                                                               |
 | `reversed`                  | `boolean`                                   | `false`  | Whether to reverse the order of favorites/items                                                                          |
+| `minimize_focused`   | `boolean`  | `true`  | Whether to minimize a focused window when its icon is clicked. Only minimizes single windows.       |
 | `truncate.mode`             | `'start'` or `'middle'` or `'end'` or `off` | `end`    | The location of the ellipses and where to truncate text from. Applies to application names when `show_names` is enabled. |
 | `truncate.length`           | `integer`                                   | `null`   | The fixed width (in chars) of the widget. Leave blank to let GTK automatically handle.                                   |
 | `truncate.max_length`       | `integer`                                   | `null`   | The maximum number of characters before truncating. Leave blank to let GTK automatically handle.                         |

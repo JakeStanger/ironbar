@@ -36,6 +36,15 @@ impl Client {
         }
     }
 
+    /// Minimizes the toplevel with the provided ID.
+    #[cfg(feature = "launcher")]
+    pub fn toplevel_minimize(&self, handle_id: usize) {
+        match self.send_request(Request::ToplevelMinimize(handle_id)) {
+            Response::Ok => (),
+            _ => unreachable!(),
+        }
+    }
+
     /// Subscribes to events from toplevels.
     pub fn subscribe_toplevels(&self) -> broadcast::Receiver<ToplevelEvent> {
         self.toplevel_channel.0.subscribe()

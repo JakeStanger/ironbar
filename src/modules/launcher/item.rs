@@ -193,23 +193,30 @@ impl ItemButton {
             button.add_class("focused");
         }
 
+        let menu_state = Rc::new(RwLock::new(MenuState {
+            num_windows: item.windows.len(),
+        }));
+
         {
             let app_id = item.app_id.clone();
             let tx = controller_tx.clone();
+            let menu_state = menu_state.clone();
             button.connect_clicked(move |button| {
                 // lazy check :| TODO: Improve this
                 let style_context = button.style_context();
                 if style_context.has_class("open") {
-                    try_send!(tx, ItemEvent::FocusItem(app_id.clone()));
+                    let menu_state = read_lock!(menu_state);
+
+                    if style_context.has_class("focused") && menu_state.num_windows == 1 {
+                        try_send!(tx, ItemEvent::MinimizeItem(app_id.clone()));
+                    } else {
+                        try_send!(tx, ItemEvent::FocusItem(app_id.clone()));
+                    }
                 } else {
                     try_send!(tx, ItemEvent::OpenItem(app_id.clone()));
                 }
             });
         }
-
-        let menu_state = Rc::new(RwLock::new(MenuState {
-            num_windows: item.windows.len(),
-        }));
 
         {
             let app_id = item.app_id.clone();
