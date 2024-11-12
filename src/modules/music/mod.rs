@@ -5,7 +5,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use color_eyre::Result;
-use glib::{markup_escape_text, Propagation, PropertySet};
+use glib::{Propagation, PropertySet};
 use gtk::prelude::*;
 use gtk::{Button, IconTheme, Label, Orientation, Scale};
 use regex::Regex;
@@ -16,7 +16,7 @@ use crate::clients::music::{
     self, MusicClient, PlayerState, PlayerUpdate, ProgressTick, Status, Track,
 };
 use crate::clients::Clients;
-use crate::gtk_helpers::IronbarGtkExt;
+use crate::gtk_helpers::{IronbarGtkExt, IronbarLabelExt};
 use crate::image::{new_icon_button, new_icon_label, ImageProvider};
 use crate::modules::PopupButton;
 use crate::modules::{
@@ -189,10 +189,11 @@ impl Module<Button> for MusicModule {
 
         let icon_play = new_icon_label(&self.icons.play, info.icon_theme, self.icon_size);
         let icon_pause = new_icon_label(&self.icons.pause, info.icon_theme, self.icon_size);
-        let label = Label::new(None);
 
-        label.set_use_markup(true);
-        label.set_angle(info.bar_position.get_angle());
+        let label = Label::builder()
+            .use_markup(true)
+            .angle(info.bar_position.get_angle())
+            .build();
 
         if let Some(truncate) = self.truncate {
             truncate.truncate_label(&label);
@@ -222,7 +223,7 @@ impl Module<Button> for MusicModule {
                 };
 
                 if let Some(event) = event.take() {
-                    label.set_label(&event.display_string);
+                    label.set_label_escaped(&event.display_string);
 
                     button.show();
 
@@ -473,7 +474,7 @@ impl Module<Button> for MusicModule {
                         if let (Some(elapsed), Some(duration)) =
                             (progress_tick.elapsed, progress_tick.duration)
                         {
-                            progress_label.set_label(&format!(
+                            progress_label.set_label_escaped(&format!(
                                 "{}/{}",
                                 format_time(elapsed),
                                 format_time(duration)
@@ -498,7 +499,7 @@ impl Module<Button> for MusicModule {
 fn update_popup_metadata_label(text: Option<String>, label: &IconLabel) {
     match text {
         Some(value) => {
-            label.label.set_text(&value);
+            label.label.set_label_escaped(&value);
             label.container.show_all();
         }
         None => {
@@ -531,7 +532,6 @@ fn get_token_value(song: &Track, token: &str) -> String {
         "track" => song.track.map(|x| x.to_string()),
         _ => Some(token.to_string()),
     }
-    .map(|str| markup_escape_text(str.as_str()).to_string())
     .unwrap_or_default()
 }
 

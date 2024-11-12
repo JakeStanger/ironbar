@@ -1,9 +1,9 @@
 use crate::config::CommonConfig;
 use crate::dynamic_value::dynamic_string;
+use crate::gtk_helpers::IronbarLabelExt;
 use crate::modules::{Module, ModuleInfo, ModuleParts, ModuleUpdateEvent, WidgetContext};
 use crate::{glib_recv, module_impl, try_send};
 use color_eyre::Result;
-use gtk::prelude::*;
 use gtk::Label;
 use serde::Deserialize;
 use tokio::sync::mpsc;
@@ -56,12 +56,11 @@ impl Module<Label> for LabelModule {
         context: WidgetContext<Self::SendMessage, Self::ReceiveMessage>,
         _info: &ModuleInfo,
     ) -> Result<ModuleParts<Label>> {
-        let label = Label::new(None);
-        label.set_use_markup(true);
+        let label = Label::builder().use_markup(true).build();
 
         {
             let label = label.clone();
-            glib_recv!(context.subscribe(), string => label.set_markup(&string));
+            glib_recv!(context.subscribe(), string => label.set_label_escaped(&string));
         }
 
         Ok(ModuleParts {

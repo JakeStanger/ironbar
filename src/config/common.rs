@@ -246,6 +246,13 @@ impl CommonConfig {
             let script = match event.direction() {
                 ScrollDirection::Up => scroll_up_script.as_ref(),
                 ScrollDirection::Down => scroll_down_script.as_ref(),
+                ScrollDirection::Smooth => {
+                    if event.scroll_deltas().unwrap_or_default().1 > 0.0 {
+                        scroll_down_script.as_ref()
+                    } else {
+                        scroll_up_script.as_ref()
+                    }
+                }
                 _ => None,
             };
 

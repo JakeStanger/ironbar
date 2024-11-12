@@ -229,7 +229,9 @@ impl Module<gtk::Box> for WorkspacesModule {
             trace!("Setting up UI event handler");
 
             while let Some(name) = rx.recv().await {
-                client.focus(name)?;
+                if let Err(e) = client.focus(name.clone()) {
+                    warn!("Couldn't focus workspace '{name}': {e:#}");
+                };
             }
 
             Ok::<(), Report>(())

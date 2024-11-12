@@ -1,13 +1,19 @@
 use super::diff::{Diff, MenuItemDiff};
+use crate::image::ImageProvider;
+use crate::modules::tray::icon::PngData;
 use crate::{spawn, try_send};
 use glib::Propagation;
 use gtk::prelude::*;
-use gtk::{CheckMenuItem, Image, Label, Menu, MenuItem, SeparatorMenuItem};
+use gtk::{
+    CheckMenuItem, Container, IconTheme, Image, Label, Menu, MenuItem, Orientation,
+    SeparatorMenuItem,
+};
 use std::collections::HashMap;
 use system_tray::client::ActivateRequest;
 use system_tray::item::{IconPixmap, StatusNotifierItem};
 use system_tray::menu::{MenuItem as MenuItemInfo, MenuType, ToggleState, ToggleType};
 use tokio::sync::mpsc;
+use tracing::{error, warn};
 
 /// Calls a method on the underlying widget,
 /// passing in a single argument.
@@ -214,6 +220,37 @@ enum TrayMenuWidget {
     Checkbox(CheckMenuItem),
 }
 
+fn setup_item<W>(widget: &W, info: &MenuItemInfo)
+where
+    W: IsA<MenuItem> + IsA<Container>,
+{
+    let container = gtk::Box::new(Orientation::Horizontal, 10);
+    widget.add(&container);
+
+    if let Some(icon) = &info.icon_name {
+        // TODO: Get theme here
+        let image = Image::new();
+        match ImageProvider::parse(icon, &IconTheme::new(), true, 24)
+            .map(|provider| provider.load_into_image(image.clone()))
+        {
+            Some(Ok(())) => container.add(&image),
+            _ => warn!("Failed to load icon: {icon}"),
+        }
+    }
+
+    if let Some(icon_data) = &info.icon_data {
+        match Image::try_from(PngData(icon_data.as_slice())) {
+            Ok(image) => container.add(&image),
+            Err(err) => error!("{err:?}"),
+        };
+    }
+
+    let label = Label::new(info.label.as_deref());
+    container.add(&label);
+
+    container.show_all();
+}
+
 impl TrayMenuItem {
     fn new(info: &MenuItemInfo, tx: mpsc::Sender<i32>) -> Self {
         let mut submenu = HashMap::new();
@@ -234,7 +271,9 @@ impl TrayMenuItem {
         }
 
         let widget = match (info.menu_type, info.toggle_type) {
-            (MenuType::Separator, _) => TrayMenuWidget::Separator(SeparatorMenuItem::new()),
+            (MenuType::Separator, _) => {
+                TrayMenuWidget::Separator(SeparatorMenuItem::builder().visible(true).build())
+            }
             (MenuType::Standard, ToggleType::Checkmark) => {
                 let widget = CheckMenuItem::builder()
                     .visible(info.visible)
@@ -242,10 +281,7 @@ impl TrayMenuItem {
                     .active(info.toggle_state == ToggleState::On)
                     .build();
 
-                if let Some(label) = &info.label {
-                    widget.set_label(label);
-                }
-
+                setup_item(&widget, info);
                 add_submenu!(menu, widget);
 
                 {
@@ -266,18 +302,16 @@ impl TrayMenuItem {
                     .sensitive(info.enabled)
                     .build();
 
-                if let Some(label) = &info.label {
-                    widget.set_label(label);
-                }
-
+                setup_item(&widget, info);
                 add_submenu!(menu, widget);
 
                 {
                     let tx = tx.clone();
                     let id = info.id;
 
-                    widget.connect_activate(move |_item| {
+                    widget.connect_button_press_event(move |_item, _event| {
                         try_send!(tx, id);
+                        Propagation::Proceed
                     });
                 }
 
@@ -309,9 +343,13 @@ impl TrayMenuItem {
         }
 
         // TODO: Image support
-        // if let Some(icon_name) = diff.icon_name {
-        //
-        // }
+        if let Some(_icon_name) = diff.icon_name {
+            warn!("received unimplemented menu icon update");
+        }
+
+        if let Some(_icon_data) = diff.icon_data {
+            warn!("received unimplemented menu icon update");
+        }
 
         if let Some(enabled) = diff.enabled {
             match &self.widget {

@@ -571,7 +571,7 @@ pub fn wrap_widget<W: IsA<Widget>>(
     let container = EventBox::new();
     container.add_class("widget-container");
 
-    container.add_events(EventMask::SCROLL_MASK);
+    container.add_events(EventMask::SCROLL_MASK | EventMask::SMOOTH_SCROLL_MASK);
     container.add(&revealer);
 
     common.install_events(&container, &revealer);

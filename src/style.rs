@@ -1,8 +1,8 @@
 use crate::{glib_recv_mpsc, spawn, try_send};
 use color_eyre::{Help, Report};
 use gtk::ffi::GTK_STYLE_PROVIDER_PRIORITY_USER;
-use gtk::prelude::CssProviderExt;
-use gtk::{gdk, gio, CssProvider, StyleContext};
+use gtk::prelude::*;
+use gtk::{gdk, gio, Application, CssProvider, StyleContext};
 use notify::event::ModifyKind;
 use notify::{recommended_watcher, Event, EventKind, RecursiveMode, Result, Watcher};
 use std::env;
@@ -17,7 +17,7 @@ use tracing::{debug, error, info};
 ///
 /// Installs a file watcher and reloads CSS when
 /// write changes are detected on the file.
-pub fn load_css(style_path: PathBuf) {
+pub fn load_css(style_path: PathBuf, application: Application) {
     // file watcher requires absolute path
     let style_path = if style_path.is_absolute() {
         style_path
@@ -80,6 +80,10 @@ pub fn load_css(style_path: PathBuf) {
                 .suggestion("Check the CSS file for errors")
                 .suggestion("GTK CSS uses a subset of the full CSS spec and many properties are not available. Ensure you are not using any unsupported property.")
             );
+        } else {
+            for win in application.windows() {
+                win.queue_draw();
+            }
         }
     });
 }

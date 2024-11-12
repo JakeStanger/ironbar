@@ -7,6 +7,7 @@ use gtk::ffi::gtk_icon_theme_get_search_path;
 use gtk::gdk_pixbuf::{Colorspace, InterpType, Pixbuf};
 use gtk::prelude::IconThemeExt;
 use gtk::{IconLookupFlags, IconTheme, Image};
+use png::ColorType;
 use std::collections::HashSet;
 use std::ffi::CStr;
 use std::os::raw::{c_char, c_int};
@@ -124,4 +125,37 @@ fn get_image_from_pixmap(item: &TrayMenu, size: u32) -> Result<Image> {
     let image = Image::new();
     ImageProvider::create_and_load_surface(&pixbuf, &image)?;
     Ok(image)
+}
+
+pub struct PngData<'a>(pub &'a [u8]);
+impl TryFrom<PngData<'_>> for Image {
+    type Error = Report;
+
+    fn try_from(value: PngData) -> std::result::Result<Self, Self::Error> {
+        let data = value.0;
+
+        let decoder = png::Decoder::new(data);
+        let mut reader = decoder.read_info()?;
+        let mut buf = vec![0; reader.output_buffer_size()];
+
+        let info = reader.next_frame(&mut buf)?;
+        let bytes = glib::Bytes::from(&buf[..info.buffer_size()]);
+
+        let has_alpha = matches!(info.color_type, ColorType::Rgba | ColorType::GrayscaleAlpha);
+        let row_stride_multiplier = if has_alpha { 4 } else { 3 };
+
+        let pixbuf = Pixbuf::from_bytes(
+            &bytes,
+            Colorspace::Rgb,
+            has_alpha,
+            info.bit_depth as i32,
+            info.width as i32,
+            info.height as i32,
+            (info.width * row_stride_multiplier) as i32,
+        );
+
+        let image = Image::new();
+        ImageProvider::create_and_load_surface(&pixbuf, &image)?;
+        Ok(image)
+    }
 }
