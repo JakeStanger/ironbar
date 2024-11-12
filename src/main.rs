@@ -267,17 +267,18 @@ impl Ironbar {
             .clone()
     }
 
-    /// Gets a clone of a bar by its unique name.
+    /// Gets a clone of a bar by its name.
     ///
     /// Since the bar contains mostly GTK objects,
     /// the clone is cheap enough to not worry about.
     #[must_use]
-    pub fn bar_by_name(&self, name: &str) -> Option<Bar> {
+    pub fn bar_by_name(&self, name: &str) -> Vec<Bar> {
         self.bars
             .borrow()
             .iter()
-            .find(|&bar| bar.name() == name)
+            .filter(|&bar| bar.name() == name)
             .cloned()
+            .collect()
     }
 
     /// Re-reads the config file from disk and replaces the active config.

@@ -8,46 +8,62 @@ use std::rc::Rc;
 pub fn handle_command(command: BarCommand, ironbar: &Rc<Ironbar>) -> Response {
     use BarCommandType::*;
 
-    let bar = ironbar.bar_by_name(&command.name);
-    let Some(bar) = bar else {
+    let bars = ironbar.bar_by_name(&command.name);
+    if bars.is_empty() {
         return Response::error("Invalid bar name");
-    };
+    }
 
-    match command.subcommand {
-        Show => set_visible(&bar, true),
-        Hide => set_visible(&bar, false),
-        SetVisible { visible } => set_visible(&bar, visible),
-        ToggleVisible => set_visible(&bar, !bar.visible()),
-        GetVisible => Response::OkValue {
-            value: bar.visible().to_string(),
-        },
-
-        ShowPopup { widget_name } => show_popup(&bar, &widget_name),
-        HidePopup => hide_popup(&bar),
-        SetPopupVisible {
-            widget_name,
-            visible,
-        } => {
-            if visible {
-                show_popup(&bar, &widget_name)
-            } else {
-                hide_popup(&bar)
+    let mut responses = bars.into_iter()
+        .map(|bar| match &command.subcommand {
+            Show => set_visible(&bar, true),
+            Hide => set_visible(&bar, false),
+            SetVisible { visible } => set_visible(&bar, *visible),
+            ToggleVisible => set_visible(&bar, !bar.visible()),
+            GetVisible => Response::OkValue { value: bar.visible().to_string() },
+            ShowPopup { widget_name } => show_popup(&bar, widget_name),
+            HidePopup => hide_popup(&bar),
+            SetPopupVisible {
+                widget_name,
+                visible,
+            } => {
+                if *visible {
+                    show_popup(&bar, widget_name)
+                } else {
+                    hide_popup(&bar)
+                };
+                Response::Ok
             }
-        }
-        TogglePopup { widget_name } => {
-            if bar.popup().visible() {
-                hide_popup(&bar)
-            } else {
-                show_popup(&bar, &widget_name)
+            TogglePopup { widget_name } => {
+                if bar.popup().visible() {
+                    hide_popup(&bar)
+                } else {
+                    show_popup(&bar, widget_name)
+                };
+                Response::Ok
             }
-        }
-        GetPopupVisible => Response::OkValue {
-            value: bar.popup().visible().to_string(),
-        },
-        SetExclusive { exclusive } => {
-            bar.set_exclusive(exclusive);
+            GetPopupVisible => Response::OkValue { value: bar.popup().visible().to_string() },
+            SetExclusive { exclusive } => {
+                bar.set_exclusive(*exclusive);
+                Response::Ok
+            }
+        }).collect::<Vec<_>>();
 
-            Response::Ok
+    match responses.len() {
+        0 => unreachable!(),
+        1 => responses.remove(0),
+        _ => {
+            // if any error occurred, return that.
+            if let Some(index) = responses.iter().position(|r| matches!(r, Response::Err { .. })) {
+                return responses.remove(index);
+            };
+            // otherwise, return a Multi of all the responses
+            Response::Multi {
+                values: responses.into_iter().map(|r| match r {
+                    Response::Ok => "ok".to_string(),
+                    Response::OkValue { value } => value,
+                    Response::Err { .. } | Response::Multi { .. } => unreachable!()
+                }).collect()
+            }
         }
     }
 }
