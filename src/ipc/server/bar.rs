@@ -13,7 +13,7 @@ pub fn handle_command(command: BarCommand, ironbar: &Rc<Ironbar>) -> Response {
         return Response::error("Invalid bar name");
     }
 
-    let mut responses = bars
+    let responses = bars
         .into_iter()
         .map(|bar| match &command.subcommand {
             Show => set_visible(&bar, true),
