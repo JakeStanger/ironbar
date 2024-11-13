@@ -8,18 +8,21 @@ use std::rc::Rc;
 pub fn handle_command(command: BarCommand, ironbar: &Rc<Ironbar>) -> Response {
     use BarCommandType::*;
 
-    let bars = ironbar.bar_by_name(&command.name);
+    let bars = ironbar.bars_by_name(&command.name);
     if bars.is_empty() {
         return Response::error("Invalid bar name");
     }
 
-    let mut responses = bars.into_iter()
+    let mut responses = bars
+        .into_iter()
         .map(|bar| match &command.subcommand {
             Show => set_visible(&bar, true),
             Hide => set_visible(&bar, false),
             SetVisible { visible } => set_visible(&bar, *visible),
             ToggleVisible => set_visible(&bar, !bar.visible()),
-            GetVisible => Response::OkValue { value: bar.visible().to_string() },
+            GetVisible => Response::OkValue {
+                value: bar.visible().to_string(),
+            },
             ShowPopup { widget_name } => show_popup(&bar, widget_name),
             HidePopup => hide_popup(&bar),
             SetPopupVisible {
@@ -41,31 +44,32 @@ pub fn handle_command(command: BarCommand, ironbar: &Rc<Ironbar>) -> Response {
                 };
                 Response::Ok
             }
-            GetPopupVisible => Response::OkValue { value: bar.popup().visible().to_string() },
+            GetPopupVisible => Response::OkValue {
+                value: bar.popup().visible().to_string(),
+            },
             SetExclusive { exclusive } => {
                 bar.set_exclusive(*exclusive);
                 Response::Ok
             }
-        }).collect::<Vec<_>>();
+        })
+        .collect::<Vec<_>>();
 
-    match responses.len() {
-        0 => unreachable!(),
-        1 => responses.remove(0),
-        _ => {
-            // if any error occurred, return that.
-            if let Some(index) = responses.iter().position(|r| matches!(r, Response::Err { .. })) {
-                return responses.remove(index);
-            };
-            // otherwise, return a Multi of all the responses
-            Response::Multi {
-                values: responses.into_iter().map(|r| match r {
-                    Response::Ok => "ok".to_string(),
-                    Response::OkValue { value } => value,
-                    Response::Err { .. } | Response::Multi { .. } => unreachable!()
-                }).collect()
+    responses
+        .into_iter()
+        .reduce(|acc, rsp| match (acc, rsp) {
+            // If all responses are Ok, return one Ok. We assume we'll never mix Ok and OkValue.
+            (Response::Ok, _) => Response::Ok,
+            // Two or more OkValues create a multi:
+            (Response::OkValue { value: v1 }, Response::OkValue { value: v2 }) => Response::Multi {
+                values: vec![v1, v2],
+            },
+            (Response::Multi { mut values }, Response::OkValue { value: v }) => {
+                values.push(v);
+                Response::Multi { values }
             }
-        }
-    }
+            _ => unreachable!(),
+        })
+        .unwrap()
 }
 
 fn set_visible(bar: &Bar, visible: bool) -> Response {

@@ -267,12 +267,12 @@ impl Ironbar {
             .clone()
     }
 
-    /// Gets a clone of a bar by its name.
+    /// Gets clones of bars by their name.
     ///
-    /// Since the bar contains mostly GTK objects,
+    /// Since the bars contain mostly GTK objects,
     /// the clone is cheap enough to not worry about.
     #[must_use]
-    pub fn bar_by_name(&self, name: &str) -> Vec<Bar> {
+    pub fn bars_by_name(&self, name: &str) -> Vec<Bar> {
         self.bars
             .borrow()
             .iter()
