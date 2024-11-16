@@ -1,11 +1,13 @@
+use glib::Propagation;
+use gtk::gdk::Gravity;
 use gtk::prelude::*;
-use gtk::{Image, Label, MenuItem};
+use gtk::{EventBox, Image, Label, MenuItem};
 use system_tray::item::{IconPixmap, StatusNotifierItem, Tooltip};
 
 /// Main tray icon to show on the bar
 pub(crate) struct TrayMenu {
+    pub event_box: EventBox,
     pub widget: MenuItem,
-    menu_widget: Option<system_tray::gtk_menu::Menu>,
     image_widget: Option<Image>,
     label_widget: Option<Label>,
 
@@ -17,12 +19,17 @@ pub(crate) struct TrayMenu {
 
 impl TrayMenu {
     pub fn new(item: StatusNotifierItem) -> Self {
+        let event_box = EventBox::new();
+
         let widget = MenuItem::new();
         widget.style_context().add_class("item");
+        event_box.add(&widget);
+
+        event_box.show_all();
 
         Self {
+            event_box,
             widget,
-            menu_widget: None,
             image_widget: None,
             label_widget: None,
             title: item.title,
@@ -99,7 +106,10 @@ impl TrayMenu {
     }
 
     pub fn set_menu_widget(&mut self, menu: system_tray::gtk_menu::Menu) {
-        self.widget.set_submenu(Some(&menu));
-        self.menu_widget = Some(menu);
+        self.event_box
+            .connect_button_press_event(move |event_box, _event| {
+                menu.popup_at_widget(event_box, Gravity::North, Gravity::South, None);
+                Propagation::Proceed
+            });
     }
 }
