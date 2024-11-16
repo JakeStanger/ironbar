@@ -9,12 +9,8 @@ pub fn handle_command(command: BarCommand, ironbar: &Rc<Ironbar>) -> Response {
     use BarCommandType::*;
 
     let bars = ironbar.bars_by_name(&command.name);
-    if bars.is_empty() {
-        return Response::error("Invalid bar name");
-    }
 
-    let responses = bars
-        .into_iter()
+    bars.into_iter()
         .map(|bar| match &command.subcommand {
             Show => set_visible(&bar, true),
             Hide => set_visible(&bar, false),
@@ -52,10 +48,6 @@ pub fn handle_command(command: BarCommand, ironbar: &Rc<Ironbar>) -> Response {
                 Response::Ok
             }
         })
-        .collect::<Vec<_>>();
-
-    responses
-        .into_iter()
         .reduce(|acc, rsp| match (acc, rsp) {
             // If all responses are Ok, return one Ok. We assume we'll never mix Ok and OkValue.
             (Response::Ok, _) => Response::Ok,
@@ -69,7 +61,7 @@ pub fn handle_command(command: BarCommand, ironbar: &Rc<Ironbar>) -> Response {
             }
             _ => unreachable!(),
         })
-        .unwrap()
+        .unwrap_or(Response::error("Invalid bar name"))
 }
 
 fn set_visible(bar: &Bar, visible: bool) -> Response {
