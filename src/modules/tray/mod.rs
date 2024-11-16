@@ -2,12 +2,12 @@ mod icon;
 mod interface;
 
 use crate::clients::tray;
-use crate::config::CommonConfig;
+use crate::config::{CommonConfig, ModuleOrientation};
 use crate::modules::{Module, ModuleInfo, ModuleParts, ModuleUpdateEvent, WidgetContext};
 use crate::{glib_recv, lock, module_impl, send_async, spawn};
 use color_eyre::{Report, Result};
-use gtk::{prelude::*, PackDirection};
-use gtk::{IconTheme, MenuBar};
+use gtk::prelude::*;
+use gtk::{IconTheme, Orientation};
 use interface::TrayMenu;
 use serde::Deserialize;
 use std::collections::HashMap;
@@ -32,15 +32,13 @@ pub struct TrayModule {
     #[serde(default = "default_icon_size")]
     icon_size: u32,
 
-    /// Direction to display the tray items.
+    /// The direction in which to pack tray icons.
     ///
-    /// **Valid options**: `top_to_bottom`, `bottom_to_top`, `left_to_right`, `right_to_left`
+    /// **Valid options**: `horizontal`, `vertical`
     /// <br>
-    /// **Default**: `left_to_right` if bar is horizontal, `top_to_bottom` if bar is vertical
-    #[serde(default, deserialize_with = "deserialize_pack_direction")]
-    #[cfg_attr(feature = "schema", schemars(schema_with = "schema_pack_direction"))]
-    direction: Option<PackDirection>,
-
+    /// **Default**: `horizontal` for horizontal bars, `vertical` for vertical bars
+    #[serde(default)]
+    direction: Option<ModuleOrientation>,
     /// See [common options](module-level-options#common-options).
     #[serde(flatten)]
     pub common: Option<CommonConfig>,
@@ -50,36 +48,7 @@ const fn default_icon_size() -> u32 {
     16
 }
 
-fn deserialize_pack_direction<'de, D>(deserializer: D) -> Result<Option<PackDirection>, D::Error>
-where
-    D: serde::Deserializer<'de>,
-{
-    let value = Option::<String>::deserialize(deserializer)?;
-    value
-        .map(|v| match v.as_str() {
-            "left_to_right" => Ok(PackDirection::Ltr),
-            "right_to_left" => Ok(PackDirection::Rtl),
-            "top_to_bottom" => Ok(PackDirection::Ttb),
-            "bottom_to_top" => Ok(PackDirection::Btt),
-            _ => Err(serde::de::Error::custom("invalid value for direction")),
-        })
-        .transpose()
-}
-
-#[cfg(feature = "schema")]
-fn schema_pack_direction(gen: &mut schemars::gen::SchemaGenerator) -> schemars::schema::Schema {
-    use schemars::JsonSchema;
-    let mut schema: schemars::schema::SchemaObject = <String>::json_schema(gen).into();
-    schema.enum_values = Some(vec![
-        "top_to_bottom".into(),
-        "bottom_to_top".into(),
-        "left_to_right".into(),
-        "right_to_left".into(),
-    ]);
-    schema.into()
-}
-
-impl Module<MenuBar> for TrayModule {
+impl Module<gtk::Box> for TrayModule {
     type SendMessage = Event;
     type ReceiveMessage = ActivateRequest;
 
@@ -137,19 +106,17 @@ impl Module<MenuBar> for TrayModule {
         self,
         context: WidgetContext<Self::SendMessage, Self::ReceiveMessage>,
         info: &ModuleInfo,
-    ) -> Result<ModuleParts<MenuBar>> {
-        let container = MenuBar::new();
+    ) -> Result<ModuleParts<gtk::Box>> {
+        let orientation = self
+            .direction
+            .map(Orientation::from)
+            .unwrap_or(info.bar_position.orientation());
 
-        let direction = self.direction.unwrap_or(
-            if info.bar_position.orientation() == gtk::Orientation::Vertical {
-                PackDirection::Ttb
-            } else {
-                PackDirection::Ltr
-            },
-        );
-
-        container.set_pack_direction(direction);
-        container.set_child_pack_direction(direction);
+        // We use a `Box` here instead of the (supposedly correct) `MenuBar`
+        // as the latter has issues on Sway with menus focus-stealing from the bar.
+        //
+        // Each widget is wrapped in an EventBox, copying what Waybar does here.
+        let container = gtk::Box::new(orientation, 10);
 
         {
             let container = container.clone();
@@ -173,7 +140,7 @@ impl Module<MenuBar> for TrayModule {
 /// getting the diff since the previous update and applying it to the menu.
 fn on_update(
     update: Event,
-    container: &MenuBar,
+    container: &gtk::Box,
     menus: &mut HashMap<Box<str>, TrayMenu>,
     icon_theme: &IconTheme,
     icon_size: u32,
@@ -184,7 +151,7 @@ fn on_update(
             debug!("Received new tray item at '{address}': {item:?}");
 
             let mut menu_item = TrayMenu::new(*item);
-            container.add(&menu_item.widget);
+            container.pack_start(&menu_item.event_box, true, true, 0);
 
             if let Ok(image) = icon::get_image(&menu_item, icon_theme, icon_size, prefer_icons) {
                 menu_item.set_image(&image);
