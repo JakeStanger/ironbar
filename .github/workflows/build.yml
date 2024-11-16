@@ -55,6 +55,8 @@ jobs:
 
       - name: Clippy
         run: cargo clippy --all-targets --all-features
+        env:
+          RUSTFLAGS: '-W clippy::unwrap_used'
 
 
   build:
