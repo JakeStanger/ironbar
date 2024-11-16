@@ -1,10 +1,8 @@
-mod diff;
 mod icon;
 mod interface;
 
 use crate::clients::tray;
 use crate::config::CommonConfig;
-use crate::modules::tray::diff::get_diffs;
 use crate::modules::{Module, ModuleInfo, ModuleParts, ModuleUpdateEvent, WidgetContext};
 use crate::{glib_recv, lock, module_impl, send_async, spawn};
 use color_eyre::{Report, Result};
@@ -124,7 +122,9 @@ impl Module<MenuBar> for TrayModule {
         // send tray commands
         spawn(async move {
             while let Some(cmd) = rx.recv().await {
-                client.activate(cmd).await?;
+                if let Err(err) = client.activate(cmd).await {
+                    error!("{err:?}");
+                };
             }
 
             Ok::<_, Report>(())
@@ -158,7 +158,7 @@ impl Module<MenuBar> for TrayModule {
 
             // listen for UI updates
             glib_recv!(context.subscribe(), update =>
-                on_update(update, &container, &mut menus, &icon_theme, self.icon_size, self.prefer_theme_icons, &context.controller_tx)
+                on_update(update, &container, &mut menus, &icon_theme, self.icon_size, self.prefer_theme_icons)
             );
         };
 
@@ -178,13 +178,12 @@ fn on_update(
     icon_theme: &IconTheme,
     icon_size: u32,
     prefer_icons: bool,
-    tx: &mpsc::Sender<ActivateRequest>,
 ) {
     match update {
         Event::Add(address, item) => {
             debug!("Received new tray item at '{address}': {item:?}");
 
-            let mut menu_item = TrayMenu::new(tx.clone(), address.clone(), *item);
+            let mut menu_item = TrayMenu::new(*item);
             container.add(&menu_item.widget);
 
             if let Ok(image) = icon::get_image(&menu_item, icon_theme, icon_size, prefer_icons) {
@@ -230,17 +229,14 @@ fn on_update(
                         label_widget.set_label(&title.unwrap_or_default());
                     }
                 }
-                // UpdateEvent::Tooltip(_tooltip) => {
-                //     warn!("received unimplemented NewAttentionIcon event");
-                // }
-                UpdateEvent::Menu(menu) => {
-                    debug!("received new menu for '{}'", address);
-
-                    let diffs = get_diffs(menu_item.state(), &menu.submenus);
-
-                    menu_item.apply_diffs(diffs);
-                    menu_item.set_state(menu.submenus);
+                UpdateEvent::Tooltip(tooltip) => {
+                    menu_item.set_tooltip(tooltip);
                 }
+                UpdateEvent::MenuConnect(menu) => {
+                    let menu = system_tray::gtk_menu::Menu::new(&address, &menu);
+                    menu_item.set_menu_widget(menu);
+                }
+                UpdateEvent::Menu(_) | UpdateEvent::MenuDiff(_) => {}
             }
         }
         Event::Remove(address) => {
