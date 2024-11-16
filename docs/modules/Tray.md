@@ -55,12 +55,10 @@ end:
 
 ```corn
 {
-end = [
-    {
+  end = [{
     type = "tray"
     direction = "top_to_bottom"
-    }
-    ]
+  }]
 }
 ```
 
