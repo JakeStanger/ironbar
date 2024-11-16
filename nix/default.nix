@@ -12,6 +12,7 @@
   gtk-layer-shell,
   gnome,
   libxkbcommon,
+  libdbusmenu-gtk3,
   libpulseaudio,
   openssl,
   luajit,
@@ -54,9 +55,10 @@
       hicolor-icon-theme
       gsettings-desktop-schemas
       libxkbcommon ]
-      ++ (if hasFeature "http" then [ openssl ] else [])
-      ++ (if hasFeature "volume" then [ libpulseaudio ] else [])
-      ++ (if hasFeature "cairo" then [ luajit ] else []);
+      ++ lib.optionals (hasFeature "http") [ openssl ]
+      ++ lib.optionals (hasFeature "tray") [ libdbusmenu-gtk3 ]
+      ++ lib.optionals (hasFeature "volume")[ libpulseaudio ]
+      ++ lib.optionals (hasFeature "cairo") [ luajit ];
 
     propagatedBuildInputs = [ gtk3 ];
 
@@ -72,10 +74,10 @@
             # gtk-launch
             --suffix PATH : "${lib.makeBinPath [ gtk3 ]}"
     ''
-    + (if hasFeature "cairo" then ''
+    + lib.optionalString (hasFeature "cairo") ''
         --prefix LUA_PATH : "./?.lua;${lgi}/share/lua/5.1/?.lua;${lgi}/share/lua/5.1/?/init.lua;${luajit}/share/lua/5.1/\?.lua;${luajit}/share/lua/5.1/?/init.lua"
         --prefix LUA_CPATH : "./?.so;${lgi}/lib/lua/5.1/?.so;${luajit}/lib/lua/5.1/?.so;${luajit}/lib/lua/5.1/loadall.so"
-    '' else "");
+    '';
 
     preFixup = ''
       gappsWrapperArgs+=(

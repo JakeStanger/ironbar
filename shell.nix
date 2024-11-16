@@ -9,6 +9,7 @@ pkgs.mkShell {
     gtk-layer-shell
     gcc
     openssl
+    libdbusmenu-gtk3
     libpulseaudio
     luajit
     luajitPackages.lgi

@@ -129,6 +129,7 @@
               hicolor-icon-theme
               gsettings-desktop-schemas
               libxkbcommon
+              libdbusmenu-gtk3
               libpulseaudio
               luajit
               luajitPackages.lgi

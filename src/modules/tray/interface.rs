@@ -1,119 +1,34 @@
-use super::diff::{Diff, MenuItemDiff};
-use crate::image::ImageProvider;
-use crate::modules::tray::icon::PngData;
-use crate::{spawn, try_send};
-use glib::Propagation;
 use gtk::prelude::*;
-use gtk::{
-    CheckMenuItem, Container, IconTheme, Image, Label, Menu, MenuItem, Orientation,
-    SeparatorMenuItem,
-};
-use std::collections::HashMap;
-use system_tray::client::ActivateRequest;
-use system_tray::item::{IconPixmap, StatusNotifierItem};
-use system_tray::menu::{MenuItem as MenuItemInfo, MenuType, ToggleState, ToggleType};
-use tokio::sync::mpsc;
-use tracing::{error, warn};
-
-/// Calls a method on the underlying widget,
-/// passing in a single argument.
-///
-/// This is useful to avoid matching on
-/// `TrayMenuWidget` constantly.
-///
-/// # Example
-/// ```rust
-/// call!(container, add, my_widget)
-/// ```
-/// is the same as:
-/// ```
-/// match &my_widget {
-///     TrayMenuWidget::Separator(w) => {
-///         container.add(w);
-///     }
-///     TrayMenuWidget::Standard(w) => {
-///         container.add(w);
-///     }
-///     TrayMenuWidget::Checkbox(w) => {
-///         container.add(w);
-///     }
-/// }
-/// ```
-macro_rules! call {
-    ($parent:expr, $method:ident, $child:expr) => {
-        match &$child {
-            TrayMenuWidget::Separator(w) => {
-                $parent.$method(w);
-            }
-            TrayMenuWidget::Standard(w) => {
-                $parent.$method(w);
-            }
-            TrayMenuWidget::Checkbox(w) => {
-                $parent.$method(w);
-            }
-        }
-    };
-}
+use gtk::{Image, Label, MenuItem};
+use system_tray::item::{IconPixmap, StatusNotifierItem, Tooltip};
 
 /// Main tray icon to show on the bar
 pub(crate) struct TrayMenu {
     pub widget: MenuItem,
-    menu_widget: Menu,
+    menu_widget: Option<system_tray::gtk_menu::Menu>,
     image_widget: Option<Image>,
     label_widget: Option<Label>,
-
-    menu: HashMap<i32, TrayMenuItem>,
-    state: Vec<MenuItemInfo>,
 
     pub title: Option<String>,
     pub icon_name: Option<String>,
     pub icon_theme_path: Option<String>,
     pub icon_pixmap: Option<Vec<IconPixmap>>,
-
-    tx: mpsc::Sender<i32>,
 }
 
 impl TrayMenu {
-    pub fn new(
-        tx: mpsc::Sender<ActivateRequest>,
-        address: String,
-        item: StatusNotifierItem,
-    ) -> Self {
+    pub fn new(item: StatusNotifierItem) -> Self {
         let widget = MenuItem::new();
         widget.style_context().add_class("item");
 
-        let (item_tx, mut item_rx) = mpsc::channel(8);
-
-        if let Some(menu) = item.menu {
-            spawn(async move {
-                while let Some(id) = item_rx.recv().await {
-                    try_send!(
-                        tx,
-                        ActivateRequest {
-                            submenu_id: id,
-                            menu_path: menu.clone(),
-                            address: address.clone(),
-                        }
-                    );
-                }
-            });
-        }
-
-        let menu = Menu::new();
-        widget.set_submenu(Some(&menu));
-
         Self {
             widget,
-            menu_widget: menu,
+            menu_widget: None,
             image_widget: None,
             label_widget: None,
-            state: vec![],
             title: item.title,
             icon_name: item.icon_name,
             icon_theme_path: item.icon_theme_path,
             icon_pixmap: item.icon_pixmap,
-            menu: HashMap::new(),
-            tx: item_tx,
         }
     }
 
@@ -159,40 +74,8 @@ impl TrayMenu {
         image.show();
     }
 
-    /// Applies a diff set to the submenu.
-    pub fn apply_diffs(&mut self, diffs: Vec<Diff>) {
-        for diff in diffs {
-            match diff {
-                Diff::Add(info) => {
-                    let item = TrayMenuItem::new(&info, self.tx.clone());
-                    call!(self.menu_widget, add, item.widget);
-                    self.menu.insert(item.id, item);
-                    // self.widget.show_all();
-                }
-                Diff::Update(id, info) => {
-                    if let Some(item) = self.menu.get_mut(&id) {
-                        item.apply_diff(info);
-                    }
-                }
-                Diff::Remove(id) => {
-                    if let Some(item) = self.menu.remove(&id) {
-                        call!(self.menu_widget, remove, item.widget);
-                    }
-                }
-            }
-        }
-    }
-
     pub fn label_widget(&self) -> Option<&Label> {
         self.label_widget.as_ref()
-    }
-
-    pub fn state(&self) -> &[MenuItemInfo] {
-        &self.state
-    }
-
-    pub fn set_state(&mut self, state: Vec<MenuItemInfo>) {
-        self.state = state;
     }
 
     pub fn icon_name(&self) -> Option<&String> {
@@ -202,205 +85,21 @@ impl TrayMenu {
     pub fn set_icon_name(&mut self, icon_name: Option<String>) {
         self.icon_name = icon_name;
     }
-}
 
-#[derive(Debug)]
-struct TrayMenuItem {
-    id: i32,
-    widget: TrayMenuWidget,
-    menu_widget: Menu,
-    submenu: HashMap<i32, TrayMenuItem>,
-    tx: mpsc::Sender<i32>,
-}
+    pub fn set_tooltip(&self, tooltip: Option<Tooltip>) {
+        let title = tooltip.map(|t| t.title);
 
-#[derive(Debug)]
-enum TrayMenuWidget {
-    Separator(SeparatorMenuItem),
-    Standard(MenuItem),
-    Checkbox(CheckMenuItem),
-}
+        if let Some(widget) = &self.image_widget {
+            widget.set_tooltip_text(title.as_deref());
+        }
 
-fn setup_item<W>(widget: &W, info: &MenuItemInfo)
-where
-    W: IsA<MenuItem> + IsA<Container>,
-{
-    let container = gtk::Box::new(Orientation::Horizontal, 10);
-    widget.add(&container);
-
-    if let Some(icon) = &info.icon_name {
-        // TODO: Get theme here
-        let image = Image::new();
-        match ImageProvider::parse(icon, &IconTheme::new(), true, 24)
-            .map(|provider| provider.load_into_image(image.clone()))
-        {
-            Some(Ok(())) => container.add(&image),
-            _ => warn!("Failed to load icon: {icon}"),
+        if let Some(widget) = &self.label_widget {
+            widget.set_tooltip_text(title.as_deref());
         }
     }
 
-    if let Some(icon_data) = &info.icon_data {
-        match Image::try_from(PngData(icon_data.as_slice())) {
-            Ok(image) => container.add(&image),
-            Err(err) => error!("{err:?}"),
-        };
-    }
-
-    let label = Label::new(info.label.as_deref());
-    container.add(&label);
-
-    container.show_all();
-}
-
-impl TrayMenuItem {
-    fn new(info: &MenuItemInfo, tx: mpsc::Sender<i32>) -> Self {
-        let mut submenu = HashMap::new();
-        let menu = Menu::new();
-
-        macro_rules! add_submenu {
-            ($menu:expr, $widget:expr) => {
-                if !info.submenu.is_empty() {
-                    for sub_item in &info.submenu {
-                        let sub_item = TrayMenuItem::new(sub_item, tx.clone());
-                        call!($menu, add, sub_item.widget);
-                        submenu.insert(sub_item.id, sub_item);
-                    }
-
-                    $widget.set_submenu(Some(&menu));
-                }
-            };
-        }
-
-        let widget = match (info.menu_type, info.toggle_type) {
-            (MenuType::Separator, _) => {
-                TrayMenuWidget::Separator(SeparatorMenuItem::builder().visible(true).build())
-            }
-            (MenuType::Standard, ToggleType::Checkmark) => {
-                let widget = CheckMenuItem::builder()
-                    .visible(info.visible)
-                    .sensitive(info.enabled)
-                    .active(info.toggle_state == ToggleState::On)
-                    .build();
-
-                setup_item(&widget, info);
-                add_submenu!(menu, widget);
-
-                {
-                    let tx = tx.clone();
-                    let id = info.id;
-
-                    widget.connect_button_press_event(move |_item, _button| {
-                        try_send!(tx, id);
-                        Propagation::Proceed
-                    });
-                }
-
-                TrayMenuWidget::Checkbox(widget)
-            }
-            (MenuType::Standard, _) => {
-                let widget = MenuItem::builder()
-                    .visible(info.visible)
-                    .sensitive(info.enabled)
-                    .build();
-
-                setup_item(&widget, info);
-                add_submenu!(menu, widget);
-
-                {
-                    let tx = tx.clone();
-                    let id = info.id;
-
-                    widget.connect_button_press_event(move |_item, _event| {
-                        try_send!(tx, id);
-                        Propagation::Proceed
-                    });
-                }
-
-                TrayMenuWidget::Standard(widget)
-            }
-        };
-
-        Self {
-            id: info.id,
-            widget,
-            menu_widget: menu,
-            submenu,
-            tx,
-        }
-    }
-
-    /// Applies a diff to this submenu item.
-    ///
-    /// This is called recursively,
-    /// applying the submenu diffs to any further submenu items.
-    fn apply_diff(&mut self, diff: MenuItemDiff) {
-        if let Some(label) = diff.label {
-            let label = label.unwrap_or_default();
-            match &self.widget {
-                TrayMenuWidget::Separator(widget) => widget.set_label(&label),
-                TrayMenuWidget::Standard(widget) => widget.set_label(&label),
-                TrayMenuWidget::Checkbox(widget) => widget.set_label(&label),
-            }
-        }
-
-        // TODO: Image support
-        if let Some(_icon_name) = diff.icon_name {
-            warn!("received unimplemented menu icon update");
-        }
-
-        if let Some(_icon_data) = diff.icon_data {
-            warn!("received unimplemented menu icon update");
-        }
-
-        if let Some(enabled) = diff.enabled {
-            match &self.widget {
-                TrayMenuWidget::Separator(widget) => widget.set_sensitive(enabled),
-                TrayMenuWidget::Standard(widget) => widget.set_sensitive(enabled),
-                TrayMenuWidget::Checkbox(widget) => widget.set_sensitive(enabled),
-            }
-        }
-
-        if let Some(visible) = diff.visible {
-            match &self.widget {
-                TrayMenuWidget::Separator(widget) => widget.set_visible(visible),
-                TrayMenuWidget::Standard(widget) => widget.set_visible(visible),
-                TrayMenuWidget::Checkbox(widget) => widget.set_visible(visible),
-            }
-        }
-
-        if let Some(toggle_state) = diff.toggle_state {
-            if let TrayMenuWidget::Checkbox(widget) = &self.widget {
-                widget.set_active(toggle_state == ToggleState::On);
-            }
-        }
-
-        for sub_diff in diff.submenu {
-            match sub_diff {
-                Diff::Add(info) => {
-                    let menu_item = TrayMenuItem::new(&info, self.tx.clone());
-                    call!(self.menu_widget, add, menu_item.widget);
-
-                    if let TrayMenuWidget::Standard(widget) = &self.widget {
-                        widget.set_submenu(Some(&self.menu_widget));
-                    }
-
-                    self.submenu.insert(menu_item.id, menu_item);
-                }
-                Diff::Update(id, diff) => {
-                    if let Some(sub) = self.submenu.get_mut(&id) {
-                        sub.apply_diff(diff);
-                    }
-                }
-                Diff::Remove(id) => {
-                    if let Some(sub) = self.submenu.remove(&id) {
-                        call!(self.menu_widget, remove, sub.widget);
-                    }
-                    if let TrayMenuWidget::Standard(widget) = &self.widget {
-                        if self.submenu.is_empty() {
-                            widget.set_submenu(None::<&Menu>);
-                        }
-                    }
-                }
-            }
-        }
+    pub fn set_menu_widget(&mut self, menu: system_tray::gtk_menu::Menu) {
+        self.widget.set_submenu(Some(&menu));
+        self.menu_widget = Some(menu);
     }
 }

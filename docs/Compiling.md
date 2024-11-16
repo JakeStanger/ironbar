@@ -22,6 +22,8 @@ You also need rust; only the latest stable version is supported.
 pacman -S gtk3 gtk-layer-shell
 # for http support
 pacman -S openssl
+# for tray support
+pacman -S libdbusmenu-gtk3
 # for volume support
 pacman -S libpulse
 # for lua/cairo support
@@ -34,6 +36,8 @@ pacman -S luajit lua51-lgi
 apt install build-essential libgtk-3-dev libgtk-layer-shell-dev
 # for http support
 apt install libssl-dev
+# for tray support
+apt install libdbusmenu-gtk3-dev
 # for volume support
 apt install libpulse-dev
 # for lua/cairo support
@@ -46,6 +50,8 @@ apt install luajit-dev lua-lgi
 dnf install gtk3-devel gtk-layer-shell-devel
 # for http support
 dnf install openssl-devel
+# for tray support
+dnf install libdbusmenu-gtk3-devel
 # for volume support
 dnf install pulseaudio-libs-devel
 # for lua/cairo support
