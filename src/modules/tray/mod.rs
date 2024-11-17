@@ -160,7 +160,7 @@ fn on_update(
                 menu_item.set_label(&label);
             };
 
-            menu_item.widget.show();
+            menu_item.event_box.show();
             menus.insert(address.into(), menu_item);
         }
         Event::Update(address, update) => {
@@ -210,7 +210,7 @@ fn on_update(
             debug!("Removing tray item at '{address}'");
 
             if let Some(menu) = menus.get(address.as_str()) {
-                container.remove(&menu.widget);
+                container.remove(&menu.event_box);
             }
         }
     };
