@@ -150,7 +150,7 @@ fn on_update(
         Event::Add(address, item) => {
             debug!("Received new tray item at '{address}': {item:?}");
 
-            let mut menu_item = TrayMenu::new(*item);
+            let mut menu_item = TrayMenu::new(&address, *item);
             container.pack_start(&menu_item.event_box, true, true, 0);
 
             if let Ok(image) = icon::get_image(&menu_item, icon_theme, icon_size, prefer_icons) {
