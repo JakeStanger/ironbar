@@ -7,7 +7,7 @@ use system_tray::item::{IconPixmap, StatusNotifierItem, Tooltip};
 /// Main tray icon to show on the bar
 pub(crate) struct TrayMenu {
     pub event_box: EventBox,
-    pub widget: MenuItem,
+    widget: MenuItem,
     image_widget: Option<Image>,
     label_widget: Option<Label>,
 
@@ -18,7 +18,7 @@ pub(crate) struct TrayMenu {
 }
 
 impl TrayMenu {
-    pub fn new(item: StatusNotifierItem) -> Self {
+    pub fn new(address: &str, item: StatusNotifierItem) -> Self {
         let event_box = EventBox::new();
 
         let widget = MenuItem::new();
@@ -27,7 +27,7 @@ impl TrayMenu {
 
         event_box.show_all();
 
-        Self {
+        let mut slf = Self {
             event_box,
             widget,
             image_widget: None,
@@ -36,7 +36,14 @@ impl TrayMenu {
             icon_name: item.icon_name,
             icon_theme_path: item.icon_theme_path,
             icon_pixmap: item.icon_pixmap,
+        };
+
+        if let Some(menu) = item.menu {
+            let menu = system_tray::gtk_menu::Menu::new(address, &menu);
+            slf.set_menu_widget(menu);
         }
+
+        slf
     }
 
     /// Updates the label text, and shows it in favour of the image.
