@@ -20,6 +20,8 @@ pub struct WidgetGeometry {
 pub trait IronbarGtkExt {
     /// Adds a new CSS class to the widget.
     fn add_class(&self, class: &str);
+    /// Removes a CSS class to the widget.
+    fn remove_class(&self, class: &str);
     /// Gets the geometry for the widget
     fn geometry(&self, orientation: Orientation) -> WidgetGeometry;
 
@@ -32,6 +34,10 @@ pub trait IronbarGtkExt {
 impl<W: IsA<Widget>> IronbarGtkExt for W {
     fn add_class(&self, class: &str) {
         self.style_context().add_class(class);
+    }
+
+    fn remove_class(&self, class: &str) {
+        self.style_context().remove_class(class);
     }
 
     fn geometry(&self, orientation: Orientation) -> WidgetGeometry {

@@ -14,6 +14,8 @@
   libxkbcommon,
   libdbusmenu-gtk3,
   libpulseaudio,
+  libinput,
+  libevdev,
   openssl,
   luajit,
   luajitPackages,
@@ -59,7 +61,8 @@
       ++ lib.optionals (hasFeature "http") [ openssl ]
       ++ lib.optionals (hasFeature "tray") [ libdbusmenu-gtk3 ]
       ++ lib.optionals (hasFeature "volume")[ libpulseaudio ]
-      ++ lib.optionals (hasFeature "cairo") [ luajit ];
+      ++ lib.optionals (hasFeature "cairo") [ luajit ]
+      ++ lib.optionals (hasFeature "keys") [ libinput libevdev ];
 
     propagatedBuildInputs = [ gtk3 ];
 

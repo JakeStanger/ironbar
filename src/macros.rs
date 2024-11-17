@@ -41,7 +41,7 @@ macro_rules! send_async {
     };
 }
 
-/// Sends a message on an synchronous `Sender` using `send()`
+/// Sends a message on a synchronous `Sender` using `send()`
 /// Panics if the message cannot be sent.
 ///
 /// # Usage:
@@ -56,7 +56,7 @@ macro_rules! send {
     };
 }
 
-/// Sends a message on an synchronous `Sender` using `try_send()`
+/// Sends a message on a synchronous `Sender` using `try_send()`
 /// Panics if the message cannot be sent.
 ///
 /// # Usage:
@@ -68,6 +68,26 @@ macro_rules! send {
 macro_rules! try_send {
     ($tx:expr, $msg:expr) => {
         $tx.try_send($msg).expect($crate::error::ERR_CHANNEL_SEND)
+    };
+}
+
+/// Sends a message, wrapped inside a `ModuleUpdateEvent::Update` variant,
+/// on an asynchronous `Sender` using `send()`.
+///
+/// This is a convenience wrapper around `send_async`
+/// to avoid needing to write the full enum every time.
+///
+/// Panics if the message cannot be sent.
+///
+/// # Usage:
+///
+/// ```rs
+/// module_update!(tx, "my event");
+/// ```
+#[macro_export]
+macro_rules! module_update {
+    ($tx:expr, $msg:expr) => {
+        send_async!($tx, $crate::modules::ModuleUpdateEvent::Update($msg))
     };
 }
 
