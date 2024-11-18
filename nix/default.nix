@@ -18,6 +18,7 @@
   luajit,
   luajitPackages,
   pkg-config,
+  adwaita-icon-theme,
   hicolor-icon-theme,
   rustPlatform,
   lib,
@@ -51,7 +52,7 @@
       gtk-layer-shell
       glib-networking
       shared-mime-info
-      gnome.adwaita-icon-theme
+      adwaita-icon-theme
       hicolor-icon-theme
       gsettings-desktop-schemas
       libxkbcommon ]
