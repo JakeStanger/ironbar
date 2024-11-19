@@ -133,26 +133,27 @@ fn create_button(
     let button = new_icon_button(label, icon_theme, icon_size);
     button.set_widget_name(name);
 
-    let style_context = button.style_context();
-    style_context.add_class("item");
+    button.add_class("item");
 
     if visibility.is_visible() {
-        style_context.add_class("visible");
+        button.add_class("visible");
     }
 
     if visibility.is_focused() {
-        style_context.add_class("focused");
+        button.add_class("focused");
     }
 
     if !visibility.is_visible() {
-        style_context.add_class("inactive");
+        button.add_class("inactive");
     }
 
     {
         let tx = tx.clone();
         let name = name.to_string();
-        button.connect_clicked(move |_item| {
-            try_send!(tx, name.clone());
+        button.connect_clicked(move |button| {
+            if !button.style_context().has_class("focused") {
+                try_send!(tx, name.clone());
+            }
         });
     }
 
