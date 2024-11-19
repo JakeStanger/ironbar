@@ -1,4 +1,4 @@
-use glib::Propagation;
+use glib::{Propagation, SignalHandlerId};
 use gtk::gdk::Gravity;
 use gtk::prelude::*;
 use gtk::{EventBox, Image, Label, MenuItem};
@@ -7,6 +7,7 @@ use system_tray::item::{IconPixmap, StatusNotifierItem, Tooltip};
 /// Main tray icon to show on the bar
 pub(crate) struct TrayMenu {
     pub event_box: EventBox,
+    button_handler: Option<SignalHandlerId>,
     widget: MenuItem,
     image_widget: Option<Image>,
     label_widget: Option<Label>,
@@ -29,6 +30,7 @@ impl TrayMenu {
 
         let mut slf = Self {
             event_box,
+            button_handler: None,
             widget,
             image_widget: None,
             label_widget: None,
@@ -113,10 +115,14 @@ impl TrayMenu {
     }
 
     pub fn set_menu_widget(&mut self, menu: system_tray::gtk_menu::Menu) {
-        self.event_box
+        let button_handler = self
+            .event_box
             .connect_button_press_event(move |event_box, _event| {
                 menu.popup_at_widget(event_box, Gravity::North, Gravity::South, None);
                 Propagation::Proceed
             });
+        if let Some(handler) = self.button_handler.replace(button_handler) {
+            self.event_box.disconnect(handler);
+        }
     }
 }
