@@ -196,7 +196,7 @@ impl Module<Button> for MusicModule {
             .build();
 
         if let Some(truncate) = self.truncate {
-            truncate.truncate_label(&label);
+            label.truncate(truncate);
         }
 
         button_contents.add(&icon_pause);
@@ -415,7 +415,7 @@ impl Module<Button> for MusicModule {
                                 ImageProvider::parse(&cover_path, &icon_theme, false, image_size)
                             }) {
                                 album_image.show();
-                                image.load_into_image(album_image.clone())
+                                image.load_into_image(&album_image)
                             } else {
                                 album_image.set_from_pixbuf(None);
                                 album_image.hide();

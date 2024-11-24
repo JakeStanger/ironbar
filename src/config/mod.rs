@@ -44,7 +44,7 @@ use std::collections::HashMap;
 use schemars::JsonSchema;
 
 pub use self::common::{CommonConfig, ModuleOrientation, TransitionType};
-pub use self::truncate::TruncateMode;
+pub use self::truncate::{EllipsizeMode, TruncateMode};
 
 #[derive(Debug, Deserialize, Clone)]
 #[serde(tag = "type", rename_all = "snake_case")]

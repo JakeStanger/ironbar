@@ -12,13 +12,21 @@ Optionally displays a launchable set of favourites.
 
 > Type: `launcher`
 
-|              | Type       | Default | Description                                                                                         |
-|--------------|------------|---------|-----------------------------------------------------------------------------------------------------|
-| `favorites`  | `string[]` | `[]`    | List of app IDs (or classes) to always show at the start of the launcher                            |
-| `show_names` | `boolean`  | `false` | Whether to show app names on the button label. Names will still show on tooltips when set to false. |
-| `show_icons` | `boolean`  | `true`  | Whether to show app icons on the button.                                                            |
-| `icon_size`  | `integer`  | `32`    | Size to render icon at (image icons only).                                                          |
-| `reversed`   | `boolean`  | `false` | Whether to reverse the order of favorites/items                                                     |
+|                             | Type                                        | Default  | Description                                                                                                              |
+|-----------------------------|---------------------------------------------|----------|--------------------------------------------------------------------------------------------------------------------------|
+| `favorites`                 | `string[]`                                  | `[]`     | List of app IDs (or classes) to always show at the start of the launcher                                                 |
+| `show_names`                | `boolean`                                   | `false`  | Whether to show app names on the button label. Names will still show on tooltips when set to false.                      |
+| `show_icons`                | `boolean`                                   | `true`   | Whether to show app icons on the button.                                                                                 |
+| `icon_size`                 | `integer`                                   | `32`     | Size to render icon at (image icons only).                                                                               |
+| `reversed`                  | `boolean`                                   | `false`  | Whether to reverse the order of favorites/items                                                                          |
+| `truncate.mode`             | `'start'` or `'middle'` or `'end'` or `off` | `end`    | The location of the ellipses and where to truncate text from. Applies to application names when `show_names` is enabled. |
+| `truncate.length`           | `integer`                                   | `null`   | The fixed width (in chars) of the widget. Leave blank to let GTK automatically handle.                                   |
+| `truncate.max_length`       | `integer`                                   | `null`   | The maximum number of characters before truncating. Leave blank to let GTK automatically handle.                         |
+| `truncate_popup.mode`       | `'start'` or `'middle'` or `'end'` or `off` | `middle` | The location of the ellipses and where to truncate text from. Applies to window names within a group popup.              |
+| `truncate_popup.length`     | `integer`                                   | `null`   | The fixed width (in chars) of the widget. Leave blank to let GTK automatically handle.                                   |
+| `truncate_popup.max_length` | `integer`                                   | `25`     | The maximum number of characters before truncating. Leave blank to let GTK automatically handle.                         |
+
+
 <details>
 <summary>JSON</summary>
 

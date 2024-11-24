@@ -210,7 +210,7 @@ impl Module<gtk::Button> for UpowerModule {
             icon_name.push_str(&properties.icon_name);
 
             ImageProvider::parse(&icon_name, &icon_theme, false, self.icon_size)
-                    .map(|provider| provider.load_into_image(icon.clone()));
+                    .map(|provider| provider.load_into_image(&icon));
 
             label.set_label_escaped(&format);
         });
