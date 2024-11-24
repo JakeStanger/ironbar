@@ -56,6 +56,12 @@ pub struct LauncherModule {
     #[serde(default = "crate::config::default_false")]
     reversed: bool,
 
+    /// Whether to minimize a window if it is focused when clicked.
+    ///
+    /// **Default**: `true`
+    #[serde(default = "crate::config::default_true")]
+    minimize_focused: bool,
+
     // -- common --
     /// Truncate application names on the bar if they get too long.
     /// See [truncate options](module-level-options#truncate-mode).
@@ -111,6 +117,7 @@ pub enum ItemEvent {
     FocusItem(String),
     FocusWindow(usize),
     OpenItem(String),
+    MinimizeItem(String),
 }
 
 enum ItemOrWindow {
@@ -290,6 +297,7 @@ impl Module<gtk::Box> for LauncherModule {
         });
 
         // listen to ui events
+        let minimize_focused = self.minimize_focused;
         let wl = context.client::<wayland::Client>();
         spawn(async move {
             while let Some(event) = rx.recv().await {
@@ -318,8 +326,10 @@ impl Module<gtk::Box> for LauncherModule {
                 } else {
                     send_async!(tx, ModuleUpdateEvent::ClosePopup);
 
+                    let minimize_window = matches!(event, ItemEvent::MinimizeItem(_));
+
                     let id = match event {
-                        ItemEvent::FocusItem(app_id) => {
+                        ItemEvent::FocusItem(app_id) | ItemEvent::MinimizeItem(app_id) => {
                             lock!(items).get(&app_id).and_then(|item| {
                                 item.windows
                                     .iter()
@@ -338,7 +348,11 @@ impl Module<gtk::Box> for LauncherModule {
                             .find_map(|(_, item)| item.windows.get(&id))
                         {
                             debug!("Focusing window {id}: {}", window.name);
-                            wl.toplevel_focus(window.id);
+                            if minimize_window && minimize_focused {
+                                wl.toplevel_minimize(window.id);
+                            } else {
+                                wl.toplevel_focus(window.id);
+                            }
                         }
                     }
                 }

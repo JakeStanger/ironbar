@@ -33,6 +33,11 @@ impl ToplevelHandle {
         trace!("Activating handle");
         self.handle.activate(seat);
     }
+
+    pub fn minimize(&self) {
+        trace!("Minimizing handle");
+        self.handle.set_minimized();
+    }
 }
 
 #[derive(Debug, Default)]

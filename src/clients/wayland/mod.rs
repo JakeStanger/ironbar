@@ -76,6 +76,8 @@ pub enum Request {
     ToplevelInfoAll,
     #[cfg(feature = "launcher")]
     ToplevelFocus(usize),
+    #[cfg(feature = "launcher")]
+    ToplevelMinimize(usize),
 
     #[cfg(feature = "clipboard")]
     CopyToClipboard(ClipboardItem),
@@ -346,6 +348,19 @@ impl Environment {
                 if let Some(handle) = handle {
                     let seat = env.default_seat();
                     handle.focus(&seat);
+                }
+
+                send!(env.response_tx, Response::Ok);
+            }
+            #[cfg(feature = "launcher")]
+            Msg(Request::ToplevelMinimize(id)) => {
+                let handle = env
+                    .handles
+                    .iter()
+                    .find(|handle| handle.info().map_or(false, |info| info.id == id));
+
+                if let Some(handle) = handle {
+                    handle.minimize();
                 }
 
                 send!(env.response_tx, Response::Ok);
