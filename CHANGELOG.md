@@ -46,6 +46,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [`ff3f541`](https://github.com/JakeStanger/ironbar/commit/ff3f541183260c786d28e5c9e0a01af0f45408a9) - **tray**: fix formatting *(commit by [@JakeStanger](https://github.com/JakeStanger))*
 - [`f161429`](https://github.com/JakeStanger/ironbar/commit/f161429dfc4e3faa815a00ee9f9afe01ccc959cc) - **clock**: align table columns *(commit by [@JakeStanger](https://github.com/JakeStanger))*
 
+### Note to maintainers
+
+The tray module now depends on `libdbusmenu-gtk3` , which must be present at build time and runtime.
 
 ## [v0.16.0] - 2024-08-10
 ### :boom: BREAKING CHANGES
