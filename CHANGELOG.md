@@ -4,6 +4,49 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.16.1] - 2024-11-24
+### :boom: BREAKING CHANGES
+- due to [`e4e9632`](https://github.com/JakeStanger/ironbar/commit/e4e9632caab66f6a8627ffb03b2f82cd5404003f) - menu causing bar to lose focus on sway *(commit by [@JakeStanger](https://github.com/JakeStanger))*:
+
+  The `direction` option has been changed to only accept `horizontal` or `vertical`
+
+
+### :sparkles: New Features
+- [`662ddb6`](https://github.com/JakeStanger/ironbar/commit/662ddb69464ab45546231d337f7f4f3e5efcdc98) - **tray**: image support in menu items *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`e1f3b1b`](https://github.com/JakeStanger/ironbar/commit/e1f3b1bb72f3aa6562f7c7d98a0ef8d131e86600) - route gtk logging through tracing *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+
+### :bug: Bug Fixes
+- [`82a6660`](https://github.com/JakeStanger/ironbar/commit/82a6660c8568fc6fe7661a7703173c0c8cd93085) - **workspaces**: incorrectly checking focus using name_map value *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`2aa55d8`](https://github.com/JakeStanger/ironbar/commit/2aa55d8d66c69ed02089811af4f3f2eaee11f2ee) - **popup**: incorrect pos when resolution changes *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`d8b68fd`](https://github.com/JakeStanger/ironbar/commit/d8b68fd378b4ece7260511386115b363ed8eec2e) - **launcher**: showing xwayland menus and tooltips *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`e08027f`](https://github.com/JakeStanger/ironbar/commit/e08027fe6992756f8cb4800ec19782024543b19b) - **workspaces**: prevent crash when clicking current workspace *(PR [#733](https://github.com/JakeStanger/ironbar/pull/733) by [@Leshuguita](https://github.com/Leshuguita))*
+- [`b2db7b0`](https://github.com/JakeStanger/ironbar/commit/b2db7b0bb546f0fc4b642a83cbe6303213480723) - markup escape issues *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`d87888d`](https://github.com/JakeStanger/ironbar/commit/d87888d173b2737bc5a3ae5ff4ae192cca2a87c7) - `on_scroll` events broken on touchpad *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`80403e3`](https://github.com/JakeStanger/ironbar/commit/80403e3ca9b1261d8374baf29d6971236494929c) - not properly redrawing on style reload *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`81c48fe`](https://github.com/JakeStanger/ironbar/commit/81c48fecadb629a0f915d58f59c0523ab54af162) - **clipboard**: crash when unsupported image type *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`e53a906`](https://github.com/JakeStanger/ironbar/commit/e53a9067b03de002a07f85e5302e3774e53521f2) - **tray**: cannot activate with mixed left/right click *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`55c0940`](https://github.com/JakeStanger/ironbar/commit/55c0940e1dc90069018e40254a2b079b31bc2da2) - **tray**: update `system-tray` dep to bring in a whole load of fixes *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`fb17995`](https://github.com/JakeStanger/ironbar/commit/fb1799531b4638f8cd3a36ccb94425643aaa6082) - **tray**: image updates lag 1 behind *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`05530cf`](https://github.com/JakeStanger/ironbar/commit/05530cf7769a47a49a185d228afaa934d6df7575) - regression caused by [#652](https://github.com/JakeStanger/ironbar/pull/652) *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`e4e9632`](https://github.com/JakeStanger/ironbar/commit/e4e9632caab66f6a8627ffb03b2f82cd5404003f) - **tray**: menu causing bar to lose focus on sway *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`42e25f5`](https://github.com/JakeStanger/ironbar/commit/42e25f5ef2ce9886d8fafb42aff9ced7ef183726) - **ipc**: support querying against duplicate bar names *(commit by [@zeroeightysix](https://github.com/zeroeightysix))*
+- [`5aa9f37`](https://github.com/JakeStanger/ironbar/commit/5aa9f37fe4ff76d9ef61e8c0aacc110ecb9a89c3) - **tray**: menus not attaching to secondary bars *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`f364bb6`](https://github.com/JakeStanger/ironbar/commit/f364bb64fbfaef31a55bdc3c9e4cbb6f90fcdab5) - **tray**: tray icons not disappearing on close *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`ce48fc9`](https://github.com/JakeStanger/ironbar/commit/ce48fc9d0d8e603e69f01e58f3a717fc845888f7) - **tray**: prevent widget buttons from piling up *(PR [#788](https://github.com/JakeStanger/ironbar/pull/788) by [@cmeissl](https://github.com/cmeissl))*
+- [`230dd8b`](https://github.com/JakeStanger/ironbar/commit/230dd8b13b024eb039613c579f940802ea5857e5) - **workspaces**: clicking currently focused workspace attempts to focus it *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+
+### :recycle: Refactors
+- [`04f45cc`](https://github.com/JakeStanger/ironbar/commit/04f45ccae1498630a81edd34923c5920e864bacc) - fix some pedantic clippy warnings *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`486beff`](https://github.com/JakeStanger/ironbar/commit/486beff8a550e0bc757e79ea37c450cab3a810eb) - put in basic placeholders for menu icon diffs *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`cf38c37`](https://github.com/JakeStanger/ironbar/commit/cf38c37fe3223280bf89e50b6869e1912a8ed8bf) - **tray**: move some debug logging to trace logging *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`30de23d`](https://github.com/JakeStanger/ironbar/commit/30de23dc6487635c0e71edfb7a8780bea7ae23e1) - **tray**: switch over to `libdbusmenu-gtk3` *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+
+### :memo: Documentation Changes
+- [`56153f1`](https://github.com/JakeStanger/ironbar/commit/56153f189a6496d01cbc42cdc9086d52d69a235a) - **dynamic values**: fix missing backtick *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`ff3f541`](https://github.com/JakeStanger/ironbar/commit/ff3f541183260c786d28e5c9e0a01af0f45408a9) - **tray**: fix formatting *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`f161429`](https://github.com/JakeStanger/ironbar/commit/f161429dfc4e3faa815a00ee9f9afe01ccc959cc) - **clock**: align table columns *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+
+
 ## [v0.16.0] - 2024-08-10
 ### :boom: BREAKING CHANGES
 - due to [`9dd7112`](https://github.com/JakeStanger/ironbar/commit/9dd711235f21d9016fec240f1be5c8d6de1596df) - improve CLI structure, add new commands *(commit by [@JakeStanger](https://github.com/JakeStanger))*:
@@ -640,3 +683,4 @@ It also requires `lua-lgi` as a runtime dependency.
 [v0.15.0]: https://github.com/JakeStanger/ironbar/compare/v0.14.3...v0.15.0
 [v0.15.1]: https://github.com/JakeStanger/ironbar/compare/v0.15.0...v0.15.1
 [v0.16.0]: https://github.com/JakeStanger/ironbar/compare/v0.15.1...v0.16.0
+[v0.16.1]: https://github.com/JakeStanger/ironbar/compare/v0.16.0...v0.16.1
