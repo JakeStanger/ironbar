@@ -98,15 +98,16 @@ end:
 
 ## Styling
 
-| Selector                       | Description                          |
-|--------------------------------|--------------------------------------|
-| `.workspaces`                  | Workspaces widget box                |
-| `.workspaces .item`            | Workspace button                     |
-| `.workspaces .item.focused`    | Workspace button (workspace focused) |
+| Selector                       | Description                                             |
+| ------------------------------ | ------------------------------------------------------- |
+| `.workspaces`                  | Workspaces widget box                                   |
+| `.workspaces .item`            | Workspace button                                        |
+| `.workspaces .item.focused`    | Workspace button (workspace focused)                    |
 | `.workspaces .item.visible`    | Workspace button (workspace visible, including focused) |
-| `.workspaces .item.inactive`   | Workspace button (favourite, not currently open)
-| `.workspaces .item .icon`      | Workspace button icon (any type)     |
-| `.workspaces .item .text-icon` | Workspace button icon (textual only) |
-| `.workspaces .item .image`     | Workspace button icon (image only)   |
+| `.workspaces .item.urgent`     | Workspace button (workspace contains urgent window)     |
+| `.workspaces .item.inactive`   | Workspace button (favourite, not currently open)        |
+| `.workspaces .item .icon`      | Workspace button icon (any type)                        |
+| `.workspaces .item .text-icon` | Workspace button icon (textual only)                    |
+| `.workspaces .item .image`     | Workspace button icon (image only)                      |
 
 For more information on styling, please see the [styling guide](styling-guide).

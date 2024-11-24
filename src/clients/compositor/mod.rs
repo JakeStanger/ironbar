@@ -135,6 +135,12 @@ pub enum WorkspaceUpdate {
         name: String,
     },
 
+    /// The urgent state of a node changed.
+    Urgent {
+        id: i64,
+        urgent: bool,
+    },
+
     /// An update was triggered by the compositor but this was not mapped by Ironbar.
     ///
     /// This is purely used for ergonomics within the compositor clients

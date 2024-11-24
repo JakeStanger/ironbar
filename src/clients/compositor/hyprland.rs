@@ -166,10 +166,42 @@ impl Client {
             }
 
             {
+                let tx = tx.clone();
+                let lock = lock.clone();
+
                 event_listener.add_workspace_destroy_handler(move |data| {
                     let _lock = lock!(lock);
                     debug!("Received workspace destroy: {data:?}");
                     send!(tx, WorkspaceUpdate::Remove(data.workspace_id as i64));
+                });
+            }
+
+            {
+                event_listener.add_urgent_state_handler(move |address| {
+                    let _lock = lock!(lock);
+                    debug!("Received urgent state: {address:?}");
+
+                    let clients = match hyprland::data::Clients::get() {
+                        Ok(clients) => clients,
+                        Err(err) => {
+                            error!("Failed to get clients: {err}");
+                            return;
+                        }
+                    };
+                    clients.iter().find(|c| c.address == address).map_or_else(
+                        || {
+                            error!("Unable to locate client");
+                        },
+                        |c| {
+                            send!(
+                                tx,
+                                WorkspaceUpdate::Urgent {
+                                    id: c.workspace.id as i64,
+                                    urgent: true,
+                                }
+                            );
+                        },
+                    );
                 });
             }
 
@@ -191,6 +223,14 @@ impl Client {
             WorkspaceUpdate::Focus {
                 old: prev_workspace.take(),
                 new: workspace.clone(),
+            }
+        );
+
+        send!(
+            tx,
+            WorkspaceUpdate::Urgent {
+                id: workspace.id,
+                urgent: false,
             }
         );
 
