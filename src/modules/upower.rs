@@ -175,7 +175,7 @@ impl Module<gtk::Button> for UpowerModule {
             .build();
         label.add_class("label");
 
-        let container = gtk::Box::new(Orientation::Horizontal, 5);
+        let container = gtk::Box::new(info.bar_position.orientation(), 5);
         container.add_class("contents");
 
         let button = Button::new();
