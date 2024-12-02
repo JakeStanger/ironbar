@@ -109,6 +109,16 @@ impl From<WorkspaceEvent> for WorkspaceUpdate {
             WorkspaceChange::Move => {
                 Self::Move(event.current.expect("Missing current workspace").into())
             }
+            WorkspaceChange::Rename => {
+                if let Some(node) = event.current {
+                    Self::Rename {
+                        id: node.id,
+                        name: node.name.unwrap_or_default(),
+                    }
+                } else {
+                    Self::Unknown
+                }
+            }
             WorkspaceChange::Urgent => {
                 if let Some(node) = event.current {
                     Self::Urgent {

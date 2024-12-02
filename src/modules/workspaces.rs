@@ -164,7 +164,15 @@ fn reorder_workspaces(container: &gtk::Box) {
     let mut buttons = container
         .children()
         .into_iter()
-        .map(|child| (child.widget_name().to_string(), child))
+        .map(|child| {
+            let label = child
+                .downcast_ref::<Button>()
+                .and_then(|button| button.label())
+                .unwrap_or_else(|| child.widget_name())
+                .to_string();
+
+            (label, child)
+        })
         .collect::<Vec<_>>();
 
     buttons.sort_by(|(label_a, _), (label_b, _a)| {
@@ -345,6 +353,10 @@ impl Module<gtk::Box> for WorkspacesModule {
                         if let Some(btn) = button_map.get(&id) {
                             let name = name_map.get(&name).unwrap_or(&name);
                             btn.set_label(name);
+                        }
+
+                        if self.sort == SortOrder::Alphanumeric {
+                            reorder_workspaces(&container);
                         }
                     }
                     WorkspaceUpdate::Add(workspace) => {
