@@ -154,7 +154,7 @@ system-tray = { version = "0.4.0", features = ["dbusmenu-gtk3"], optional = true
 upower_dbus = { version = "0.3.2", optional = true }
 
 # volume
-libpulse-binding = { version = "2.28.1", optional = true }
+libpulse-binding = { version = "2.28.2", optional = true }
 
 # workspaces
 swayipc-async = { version = "2.0.1", optional = true }
