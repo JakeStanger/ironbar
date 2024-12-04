@@ -99,7 +99,7 @@ tokio = { version = "1.41.1", features = [
 ] }
 tracing = "0.1.41"
 tracing-subscriber = { version = "0.3.17", features = ["env-filter"] }
-tracing-error = { version = "0.2.0" , default-features = false }
+tracing-error = { version = "0.2.1" , default-features = false }
 tracing-appender = "0.2.3"
 strip-ansi-escapes = "0.2.0"
 color-eyre = "0.6.3"
