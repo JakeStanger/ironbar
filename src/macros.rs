@@ -71,6 +71,13 @@ macro_rules! try_send {
     };
 }
 
+#[macro_export]
+macro_rules! module_update {
+    ($tx:expr, $msg:expr) => {
+        send_async!($tx, $crate::modules::ModuleUpdateEvent::Update($msg))
+    };
+}
+
 /// Spawns a `GLib` future on the local thread, and calls `rx.recv()`
 /// in a loop.
 ///
