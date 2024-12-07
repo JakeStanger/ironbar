@@ -160,6 +160,16 @@ fn create_button(
     button
 }
 
+// Function to extract numeric prefix and remaining string
+fn extract_numeric_and_rest(label: &str) -> (Option<i32>, &str) {
+    if let Some((prefix, rest)) = label.split_once(':') {
+        if let Ok(number) = prefix.trim().parse::<i32>() {
+            return (Some(number), rest); // Successfully parsed number
+        }
+    }
+    (None, label) // Return None if no numeric prefix is found
+}
+
 fn reorder_workspaces(container: &gtk::Box) {
     let mut buttons = container
         .children()
@@ -175,12 +185,16 @@ fn reorder_workspaces(container: &gtk::Box) {
         })
         .collect::<Vec<_>>();
 
-    buttons.sort_by(|(label_a, _), (label_b, _a)| {
-        match (label_a.parse::<i32>(), label_b.parse::<i32>()) {
-            (Ok(a), Ok(b)) => a.cmp(&b),
-            (Ok(_), Err(_)) => Ordering::Less,
-            (Err(_), Ok(_)) => Ordering::Greater,
-            (Err(_), Err(_)) => label_a.cmp(label_b),
+    // Sort by numeric prefix first, then lexicographical order
+    buttons.sort_by(|(label_a, _), (label_b, _)| {
+        let (num_a, _rest_a) = extract_numeric_and_rest(label_a);
+        let (num_b, _rest_b) = extract_numeric_and_rest(label_b);
+
+        match (num_a, num_b) {
+            (Some(a), Some(b)) => a.cmp(&b), // Compare numbers if both are numeric
+            (Some(_), None) => Ordering::Less, // Numeric comes before non-numeric
+            (None, Some(_)) => Ordering::Greater, // Non-numeric comes after numeric
+            (None, None) => label_a.cmp(label_b), // Fallback to lexicographical order
         }
     });
 
