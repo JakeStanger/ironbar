@@ -11,7 +11,6 @@
 
     crane = {
       url = "github:ipetkov/crane";
-      inputs.nixpkgs.follows = "nixpkgs";
     };
 
     naersk.url = "github:nix-community/naersk";
