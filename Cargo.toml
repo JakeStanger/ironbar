@@ -173,4 +173,4 @@ schemars = { version = "0.8.21", optional = true }
 
 # -- PATCH --
 # temp fix for tracing-appender/time
-time = "0.3.36"
+time = "0.3.37"
