@@ -3,7 +3,8 @@
 
 Windows-style taskbar that displays running windows, grouped by program.
 Hovering over a program with multiple windows open shows a popup with each window.
-Clicking an icon/popup item focuses or launches the program.
+Left clicking an icon/popup item focuses the program if it has any open instances or otherwise launches a new instance of the program.
+Middle clicking an icon always launches a new instance of the program.
 Optionally displays a launchable set of favourites.
 
 ![Screenshot showing several open applications, including a popup showing multiple terminal windows.](https://f.jstanger.dev/github/ironbar/launcher.png)

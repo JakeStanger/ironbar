@@ -7,6 +7,7 @@ use crate::modules::launcher::{ItemEvent, LauncherUpdate};
 use crate::modules::ModuleUpdateEvent;
 use crate::{read_lock, try_send};
 use glib::Propagation;
+use gtk::gdk::{BUTTON_MIDDLE, BUTTON_PRIMARY};
 use gtk::prelude::*;
 use gtk::{Button, IconTheme, Image, Label, Orientation};
 use indexmap::IndexMap;
@@ -201,20 +202,27 @@ impl ItemButton {
             let app_id = item.app_id.clone();
             let tx = controller_tx.clone();
             let menu_state = menu_state.clone();
-            button.connect_clicked(move |button| {
-                // lazy check :| TODO: Improve this
-                let style_context = button.style_context();
-                if style_context.has_class("open") {
-                    let menu_state = read_lock!(menu_state);
 
-                    if style_context.has_class("focused") && menu_state.num_windows == 1 {
-                        try_send!(tx, ItemEvent::MinimizeItem(app_id.clone()));
+            button.connect_button_release_event(move |button, event| {
+                if event.button() == BUTTON_PRIMARY {
+                    // lazy check :| TODO: Improve this
+                    let style_context = button.style_context();
+                    if style_context.has_class("open") {
+                        let menu_state = read_lock!(menu_state);
+
+                        if style_context.has_class("focused") && menu_state.num_windows == 1 {
+                            try_send!(tx, ItemEvent::MinimizeItem(app_id.clone()));
+                        } else {
+                            try_send!(tx, ItemEvent::FocusItem(app_id.clone()));
+                        }
                     } else {
-                        try_send!(tx, ItemEvent::FocusItem(app_id.clone()));
+                        try_send!(tx, ItemEvent::OpenItem(app_id.clone()));
                     }
-                } else {
+                } else if event.button() == BUTTON_MIDDLE {
                     try_send!(tx, ItemEvent::OpenItem(app_id.clone()));
                 }
+
+                Propagation::Proceed
             });
         }
 
