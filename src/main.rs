@@ -205,7 +205,7 @@ impl Ironbar {
         });
 
         {
-            let instance = instance2;
+            let instance = instance2.clone();
             let app = app.clone();
 
             glib::spawn_future_local(async move {
