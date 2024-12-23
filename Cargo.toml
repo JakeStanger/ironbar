@@ -148,7 +148,7 @@ futures-signals = { version = "0.3.34", optional = true }
 sysinfo = { version = "0.29.11", optional = true }
 
 # tray
-system-tray = { version = "0.4.0", features = ["dbusmenu-gtk3"], optional = true }
+system-tray = { version = "0.5.0", features = ["dbusmenu-gtk3"], optional = true }
 
 # upower
 upower_dbus = { version = "0.3.2", optional = true }
