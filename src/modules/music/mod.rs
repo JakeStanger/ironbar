@@ -1,4 +1,5 @@
 use std::cell::RefMut;
+use std::ops::Deref;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
@@ -17,7 +18,7 @@ use crate::clients::music::{
 };
 use crate::clients::Clients;
 use crate::gtk_helpers::{IronbarGtkExt, IronbarLabelExt};
-use crate::image::{new_icon_button, new_icon_label, ImageProvider};
+use crate::image::{new_icon_button, IconLabel, ImageProvider};
 use crate::modules::PopupButton;
 use crate::modules::{
     Module, ModuleInfo, ModuleParts, ModulePopup, ModuleUpdateEvent, WidgetContext,
@@ -187,8 +188,8 @@ impl Module<Button> for MusicModule {
 
         button.add(&button_contents);
 
-        let icon_play = new_icon_label(&self.icons.play, info.icon_theme, self.icon_size);
-        let icon_pause = new_icon_label(&self.icons.pause, info.icon_theme, self.icon_size);
+        let icon_play = IconLabel::new(&self.icons.play, info.icon_theme, self.icon_size);
+        let icon_pause = IconLabel::new(&self.icons.pause, info.icon_theme, self.icon_size);
 
         let label = Label::builder()
             .use_markup(true)
@@ -199,8 +200,8 @@ impl Module<Button> for MusicModule {
             label.truncate(truncate);
         }
 
-        button_contents.add(&icon_pause);
-        button_contents.add(&icon_play);
+        button_contents.add(icon_pause.deref());
+        button_contents.add(icon_play.deref());
         button_contents.add(&label);
 
         {
@@ -282,9 +283,9 @@ impl Module<Button> for MusicModule {
         let icons = self.icons;
 
         let info_box = gtk::Box::new(Orientation::Vertical, 10);
-        let title_label = IconLabel::new(&icons.track, None, icon_theme);
-        let album_label = IconLabel::new(&icons.album, None, icon_theme);
-        let artist_label = IconLabel::new(&icons.artist, None, icon_theme);
+        let title_label = IconPrefixedLabel::new(&icons.track, None, icon_theme);
+        let album_label = IconPrefixedLabel::new(&icons.album, None, icon_theme);
+        let artist_label = IconPrefixedLabel::new(&icons.artist, None, icon_theme);
 
         title_label.container.add_class("title");
         album_label.container.add_class("album");
@@ -323,11 +324,11 @@ impl Module<Button> for MusicModule {
         volume_slider.set_inverted(true);
         volume_slider.add_class("slider");
 
-        let volume_icon = new_icon_label(&icons.volume, icon_theme, self.icon_size);
+        let volume_icon = IconLabel::new(&icons.volume, icon_theme, self.icon_size);
         volume_icon.add_class("icon");
 
         volume_box.pack_start(&volume_slider, true, true, 0);
-        volume_box.pack_end(&volume_icon, false, false, 0);
+        volume_box.pack_end(volume_icon.deref(), false, false, 0);
 
         main_container.add(&album_image);
         main_container.add(&info_box);
@@ -496,7 +497,7 @@ impl Module<Button> for MusicModule {
     }
 }
 
-fn update_popup_metadata_label(text: Option<String>, label: &IconLabel) {
+fn update_popup_metadata_label(text: Option<String>, label: &IconPrefixedLabel) {
     match text {
         Some(value) => {
             label.label.set_label_escaped(&value);
@@ -536,16 +537,16 @@ fn get_token_value(song: &Track, token: &str) -> String {
 }
 
 #[derive(Clone, Debug)]
-struct IconLabel {
+struct IconPrefixedLabel {
     label: Label,
     container: gtk::Box,
 }
 
-impl IconLabel {
+impl IconPrefixedLabel {
     fn new(icon_input: &str, label: Option<&str>, icon_theme: &IconTheme) -> Self {
         let container = gtk::Box::new(Orientation::Horizontal, 5);
 
-        let icon = new_icon_label(icon_input, icon_theme, 24);
+        let icon = IconLabel::new(icon_input, icon_theme, 24);
 
         let mut builder = Label::builder().use_markup(true);
 
@@ -558,7 +559,7 @@ impl IconLabel {
         icon.add_class("icon-box");
         label.add_class("label");
 
-        container.add(&icon);
+        container.add(icon.deref());
         container.add(&label);
 
         Self { label, container }

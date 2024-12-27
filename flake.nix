@@ -130,6 +130,8 @@
               libxkbcommon
               libdbusmenu-gtk3
               libpulseaudio
+              libinput
+              libevdev
               luajit
               luajitPackages.lgi
             ];

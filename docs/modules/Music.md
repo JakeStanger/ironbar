@@ -33,8 +33,6 @@ in MPRIS mode, the widget will listen to all players and automatically detect/di
 | `host`                | `string`                                             | `localhost:6600`     | [MPD Only] TCP or Unix socket for the MPD server.                                                                                                     |
 | `music_dir`           | `string`                                             | `$HOME/Music`        | [MPD Only] Path to MPD server's music directory on disc. Required for album art.                                                                      |
 
-See [here](images) for information on images.
-
 <details>
 <summary>JSON</summary>
 

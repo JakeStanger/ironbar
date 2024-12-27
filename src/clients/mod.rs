@@ -1,5 +1,6 @@
 use crate::await_sync;
 use color_eyre::Result;
+use std::collections::HashMap;
 use std::path::Path;
 use std::rc::Rc;
 use std::sync::Arc;
@@ -8,6 +9,8 @@ use std::sync::Arc;
 pub mod clipboard;
 #[cfg(feature = "workspaces")]
 pub mod compositor;
+#[cfg(feature = "keys")]
+pub mod libinput;
 #[cfg(feature = "cairo")]
 pub mod lua;
 #[cfg(feature = "music")]
@@ -37,10 +40,12 @@ pub struct Clients {
     sway: Option<Arc<sway::Client>>,
     #[cfg(feature = "clipboard")]
     clipboard: Option<Arc<clipboard::Client>>,
+    #[cfg(feature = "keys")]
+    libinput: HashMap<Box<str>, Arc<libinput::Client>>,
     #[cfg(feature = "cairo")]
     lua: Option<Rc<lua::LuaEngine>>,
     #[cfg(feature = "music")]
-    music: std::collections::HashMap<music::ClientType, Arc<dyn music::MusicClient>>,
+    music: HashMap<music::ClientType, Arc<dyn music::MusicClient>>,
     #[cfg(feature = "network_manager")]
     network_manager: Option<Arc<networkmanager::Client>>,
     #[cfg(feature = "notifications")]
@@ -108,6 +113,14 @@ impl Clients {
     pub fn lua(&mut self, config_dir: &Path) -> Rc<lua::LuaEngine> {
         self.lua
             .get_or_insert_with(|| Rc::new(lua::LuaEngine::new(config_dir)))
+            .clone()
+    }
+
+    #[cfg(feature = "keys")]
+    pub fn libinput(&mut self, seat: &str) -> Arc<libinput::Client> {
+        self.libinput
+            .entry(seat.into())
+            .or_insert_with(|| libinput::Client::init(seat.to_string()))
             .clone()
     }
 

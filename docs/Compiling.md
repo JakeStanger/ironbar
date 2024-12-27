@@ -26,6 +26,8 @@ pacman -S openssl
 pacman -S libdbusmenu-gtk3
 # for volume support
 pacman -S libpulse
+# for keys support
+pacman -S libinput
 # for lua/cairo support
 pacman -S luajit lua51-lgi
 ```
@@ -40,6 +42,8 @@ apt install libssl-dev
 apt install libdbusmenu-gtk3-dev
 # for volume support
 apt install libpulse-dev
+# for keys support
+apt install libinput-dev
 # for lua/cairo support
 apt install luajit-dev lua-lgi
 ```
@@ -54,6 +58,8 @@ dnf install openssl-devel
 dnf install libdbusmenu-gtk3-devel
 # for volume support
 dnf install pulseaudio-libs-devel
+# for keys support
+dnf install libinput-devel
 # for lua/cairo support
 dnf install luajit-devel lua-lgi
 ```
