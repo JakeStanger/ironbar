@@ -23,7 +23,7 @@ impl DataControlSourceDataExt for DataControlSourceData {
 ///
 /// The functions defined in this trait are called as `DataSource` events are received from the compositor.
 pub trait DataControlSourceHandler: Sized {
-    /// This may be called multiple times, once for each accepted mime type from the destination, if any.
+    // /// This may be called multiple times, once for each accepted mime type from the destination, if any.
     // fn accept_mime(
     //     &mut self,
     //     conn: &Connection,
