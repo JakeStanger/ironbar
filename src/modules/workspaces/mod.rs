@@ -18,21 +18,29 @@ use std::collections::HashMap;
 use tokio::sync::mpsc;
 use tracing::{debug, trace, warn};
 
-#[derive(Debug, Deserialize, Clone, Copy, Eq, PartialEq)]
+#[derive(Debug, Deserialize, Default, Clone, Copy, Eq, PartialEq)]
 #[serde(rename_all = "snake_case")]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 pub enum SortOrder {
     /// Shows workspaces in the order they're added
     Added,
-    /// Shows workspaces in numeric order.
-    /// Named workspaces are added to the end in alphabetical order.
-    Alphanumeric,
-}
 
-impl Default for SortOrder {
-    fn default() -> Self {
-        Self::Alphanumeric
-    }
+    /// Shows workspaces in the order of their displayed labels,
+    /// accounting for any mappings supplied in `name_map`.
+    /// In most cases, this is likely their number.
+    ///
+    /// Workspaces are sorted numerically first,
+    /// and named workspaces are added to the end in alphabetical order.
+    #[default]
+    Label,
+
+    /// Shows workspaces in the order of their real names,
+    /// as supplied by the compositor.
+    /// In most cases, this is likely their number.
+    ///
+    /// Workspaces are sorted numerically first,
+    /// and named workspaces are added to the end in alphabetical order.
+    Name,
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -101,11 +109,14 @@ pub struct WorkspacesModule {
     all_monitors: bool,
 
     /// The method used for sorting workspaces.
-    /// `added` always appends to the end, `alphanumeric` sorts by number/name.
     ///
-    /// **Valid options**: `added`, `alphanumeric`
+    /// - `added` always appends to the end.
+    /// - `label` sorts by displayed value.
+    /// - `name` sorts by workspace name.
+    ///
+    /// **Valid options**: `added`, `label`, `name`.
     /// <br>
-    /// **Default**: `alphanumeric`
+    /// **Default**: `label`
     #[serde(default)]
     sort: SortOrder,
 
@@ -136,11 +147,23 @@ pub struct WorkspaceItemContext {
 /// using their widget names.
 ///
 /// Named workspaces are always sorted before numbered ones.
-fn reorder_workspaces(container: &gtk::Box) {
+fn reorder_workspaces(container: &gtk::Box, sort_order: SortOrder) {
     let mut buttons = container
         .children()
         .into_iter()
-        .map(|child| (child.widget_name().to_string(), child))
+        .map(|child| {
+            let label = if sort_order == SortOrder::Label {
+                child
+                    .downcast_ref::<gtk::Button>()
+                    .and_then(|button| button.label())
+                    .unwrap_or_else(|| child.widget_name())
+            } else {
+                child.widget_name()
+            }
+            .to_string();
+
+            (label, child)
+        })
         .collect::<Vec<_>>();
 
     buttons.sort_by(|(label_a, _), (label_b, _a)| {
@@ -285,8 +308,8 @@ impl Module<gtk::Box> for WorkspacesModule {
 
             macro_rules! reorder {
                 () => {
-                    if self.sort == SortOrder::Alphanumeric {
-                        reorder_workspaces(&container);
+                    if self.sort != SortOrder::Added {
+                        reorder_workspaces(&container, self.sort);
                     }
                 };
             }
