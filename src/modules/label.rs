@@ -1,8 +1,9 @@
+use crate::channels::{AsyncSenderExt, BroadcastReceiverExt};
 use crate::config::CommonConfig;
 use crate::dynamic_value::dynamic_string;
 use crate::gtk_helpers::IronbarLabelExt;
-use crate::modules::{Module, ModuleInfo, ModuleParts, ModuleUpdateEvent, WidgetContext};
-use crate::{glib_recv, module_impl, try_send};
+use crate::module_impl;
+use crate::modules::{Module, ModuleInfo, ModuleParts, WidgetContext};
 use color_eyre::Result;
 use gtk::Label;
 use serde::Deserialize;
@@ -45,7 +46,7 @@ impl Module<Label> for LabelModule {
     ) -> Result<()> {
         let tx = context.tx.clone();
         dynamic_string(&self.label, move |string| {
-            try_send!(tx, ModuleUpdateEvent::Update(string));
+            tx.send_update_spawn(string);
         });
 
         Ok(())
@@ -60,7 +61,9 @@ impl Module<Label> for LabelModule {
 
         {
             let label = label.clone();
-            glib_recv!(context.subscribe(), string => label.set_label_escaped(&string));
+            context
+                .subscribe()
+                .recv_glib(move |string| label.set_label_escaped(&string));
         }
 
         Ok(ModuleParts {

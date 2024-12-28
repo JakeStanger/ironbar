@@ -1,10 +1,10 @@
 use super::{Visibility, Workspace, WorkspaceClient, WorkspaceUpdate};
-use crate::{await_sync, send};
+use crate::await_sync;
+use crate::channels::SyncSenderExt;
+use crate::clients::sway::Client;
 use color_eyre::Result;
 use swayipc_async::{Node, WorkspaceChange, WorkspaceEvent};
 use tokio::sync::broadcast::{channel, Receiver};
-
-use crate::clients::sway::Client;
 
 impl WorkspaceClient for Client {
     fn focus(&self, id: String) -> Result<()> {
@@ -27,13 +27,13 @@ impl WorkspaceClient for Client {
             let event =
                 WorkspaceUpdate::Init(workspaces.into_iter().map(Workspace::from).collect());
 
-            send!(tx, event);
+            tx.send_expect(event);
 
             drop(client);
 
             self.add_listener::<swayipc_async::WorkspaceEvent>(move |event| {
                 let update = WorkspaceUpdate::from(event.clone());
-                send!(tx, update);
+                tx.send_expect(update);
             })
             .await
             .expect("to add listener");

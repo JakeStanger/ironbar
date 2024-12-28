@@ -1,7 +1,8 @@
+use crate::channels::{AsyncSenderExt, MpscReceiverExt};
 use crate::script::Script;
-use crate::{glib_recv_mpsc, spawn, try_send};
+use crate::spawn;
 #[cfg(feature = "ipc")]
-use crate::{send_async, Ironbar};
+use crate::Ironbar;
 use cfg_if::cfg_if;
 use serde::Deserialize;
 use tokio::sync::mpsc;
@@ -18,7 +19,7 @@ pub enum DynamicBool {
 }
 
 impl DynamicBool {
-    pub fn subscribe<F>(self, mut f: F)
+    pub fn subscribe<F>(self, f: F)
     where
         F: FnMut(bool) + 'static,
     {
@@ -41,15 +42,14 @@ impl DynamicBool {
         };
 
         let (tx, rx) = mpsc::channel(32);
-
-        glib_recv_mpsc!(rx, val => f(val));
+        rx.recv_glib(f);
 
         spawn(async move {
             match value {
                 DynamicBool::Script(script) => {
                     script
                         .run(None, |_, success| {
-                            try_send!(tx, success);
+                            tx.send_spawn(success);
                         })
                         .await;
                 }
@@ -62,7 +62,7 @@ impl DynamicBool {
 
                     while let Ok(value) = rx.recv().await {
                         let has_value = value.is_some_and(|s| is_truthy(&s));
-                        send_async!(tx, has_value);
+                        tx.send_expect(has_value).await;
                     }
                 }
                 DynamicBool::Unknown(_) => unreachable!(),

@@ -4,12 +4,13 @@ use serde::Deserialize;
 use std::ops::Deref;
 use tokio::sync::mpsc;
 
-use super::{Module, ModuleInfo, ModuleParts, ModuleUpdateEvent, WidgetContext};
+use super::{Module, ModuleInfo, ModuleParts, WidgetContext};
+use crate::channels::{AsyncSenderExt, BroadcastReceiverExt};
 use crate::clients::libinput::{Event, Key, KeyEvent};
 use crate::config::CommonConfig;
 use crate::gtk_helpers::IronbarGtkExt;
 use crate::image::IconLabel;
-use crate::{glib_recv, module_impl, module_update, send_async, spawn};
+use crate::{module_impl, spawn};
 
 #[derive(Debug, Deserialize, Clone)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
@@ -150,17 +151,15 @@ impl Module<gtk::Box> for KeysModule {
                 match ev {
                     Event::Device => {
                         for key in [Key::Caps, Key::Num, Key::Scroll] {
-                            module_update!(
-                                tx,
-                                KeyEvent {
-                                    key: Key::Caps,
-                                    state: client.get_state(key)
-                                }
-                            );
+                            tx.send_update(KeyEvent {
+                                key: Key::Caps,
+                                state: client.get_state(key),
+                            })
+                            .await;
                         }
                     }
                     Event::Key(ev) => {
-                        send_async!(tx, ModuleUpdateEvent::Update(ev));
+                        tx.send_update(ev).await;
                     }
                 }
             }
@@ -199,7 +198,7 @@ impl Module<gtk::Box> for KeysModule {
         }
 
         let icons = self.icons;
-        let handle_event = move |ev: KeyEvent| {
+        context.subscribe().recv_glib(move |ev| {
             let parts = match (ev.key, ev.state) {
                 (Key::Caps, true) if self.show_caps => Some((&caps, icons.caps_on.as_str())),
                 (Key::Caps, false) if self.show_caps => Some((&caps, icons.caps_off.as_str())),
@@ -223,9 +222,8 @@ impl Module<gtk::Box> for KeysModule {
                     label.remove_class("enabled");
                 }
             }
-        };
+        });
 
-        glib_recv!(context.subscribe(), handle_event);
         Ok(ModuleParts::new(container, None))
     }
 }

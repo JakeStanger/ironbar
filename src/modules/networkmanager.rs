@@ -6,12 +6,13 @@ use gtk::{Box as GtkBox, Image};
 use serde::Deserialize;
 use tokio::sync::mpsc::Receiver;
 
+use crate::channels::{AsyncSenderExt, BroadcastReceiverExt};
 use crate::clients::networkmanager::{Client, ClientState};
 use crate::config::CommonConfig;
 use crate::gtk_helpers::IronbarGtkExt;
 use crate::image::ImageProvider;
-use crate::modules::{Module, ModuleInfo, ModuleParts, ModuleUpdateEvent, WidgetContext};
-use crate::{glib_recv, module_impl, send_async, spawn};
+use crate::modules::{Module, ModuleInfo, ModuleParts, WidgetContext};
+use crate::{module_impl, spawn};
 
 #[derive(Debug, Deserialize, Clone)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
@@ -41,11 +42,11 @@ impl Module<GtkBox> for NetworkManagerModule {
     ) -> Result<()> {
         let client = context.try_client::<Client>()?;
         let mut client_signal = client.subscribe().to_stream();
-        let widget_transmitter = context.tx.clone();
+        let tx = context.tx.clone();
 
         spawn(async move {
             while let Some(state) = client_signal.next().await {
-                send_async!(widget_transmitter, ModuleUpdateEvent::Update(state));
+                tx.send_update(state).await;
             }
         });
 
@@ -68,8 +69,7 @@ impl Module<GtkBox> for NetworkManagerModule {
         ImageProvider::parse(initial_icon_name, &icon_theme, false, self.icon_size)
             .map(|provider| provider.load_into_image(&icon));
 
-        let widget_receiver = context.subscribe();
-        glib_recv!(widget_receiver, state => {
+        context.subscribe().recv_glib(move |state| {
             let icon_name = match state {
                 ClientState::WiredConnected => "network-wired-symbolic",
                 ClientState::WifiConnected => "network-wireless-symbolic",

@@ -4,13 +4,13 @@ use serde::Deserialize;
 use tokio::sync::mpsc;
 use tracing::error;
 
+use super::{CustomWidget, CustomWidgetContext};
+use crate::channels::{AsyncSenderExt, MpscReceiverExt};
 use crate::config::ModuleOrientation;
 use crate::dynamic_value::dynamic_string;
 use crate::modules::custom::set_length;
 use crate::script::{OutputStream, Script, ScriptInput};
-use crate::{build, glib_recv_mpsc, spawn, try_send};
-
-use super::{CustomWidget, CustomWidgetContext};
+use crate::{build, spawn};
 
 #[derive(Debug, Deserialize, Clone)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
@@ -87,7 +87,7 @@ impl CustomWidget for ProgressWidget {
                 script
                     .run(None, move |stream, _success| match stream {
                         OutputStream::Stdout(out) => match out.parse::<f64>() {
-                            Ok(value) => try_send!(tx, value),
+                            Ok(value) => tx.send_spawn(value),
                             Err(err) => error!("{err:?}"),
                         },
                         OutputStream::Stderr(err) => error!("{err:?}"),
@@ -95,7 +95,7 @@ impl CustomWidget for ProgressWidget {
                     .await;
             });
 
-            glib_recv_mpsc!(rx, value => progress.set_fraction(value / self.max));
+            rx.recv_glib(move |value| progress.set_fraction(value / self.max));
         }
 
         if let Some(text) = self.label {

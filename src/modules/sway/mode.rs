@@ -1,7 +1,8 @@
+use crate::channels::{AsyncSenderExt, BroadcastReceiverExt};
 use crate::config::{CommonConfig, TruncateMode};
 use crate::gtk_helpers::IronbarLabelExt;
-use crate::modules::{Module, ModuleInfo, ModuleParts, ModuleUpdateEvent, WidgetContext};
-use crate::{await_sync, glib_recv, module_impl, try_send};
+use crate::modules::{Module, ModuleInfo, ModuleParts, WidgetContext};
+use crate::{await_sync, module_impl};
 use color_eyre::{Report, Result};
 use gtk::prelude::*;
 use gtk::Label;
@@ -42,9 +43,9 @@ impl Module<Label> for SwayModeModule {
         await_sync(async move {
             let client = context.ironbar.clients.borrow_mut().sway()?;
             client
-                .add_listener::<swayipc_async::ModeEvent>(move |mode| {
+                .add_listener::<ModeEvent>(move |mode| {
                     trace!("mode: {:?}", mode);
-                    try_send!(tx, ModuleUpdateEvent::Update(mode.clone()));
+                    tx.send_update_spawn(mode.clone());
                 })
                 .await?;
 
@@ -69,7 +70,7 @@ impl Module<Label> for SwayModeModule {
                 label.truncate(truncate);
             }
 
-            let on_mode = move |mode: ModeEvent| {
+            context.subscribe().recv_glib(move |mode| {
                 trace!("mode: {:?}", mode);
                 label.set_use_markup(mode.pango_markup);
                 if mode.change == "default" {
@@ -77,9 +78,7 @@ impl Module<Label> for SwayModeModule {
                 } else {
                     label.set_label_escaped(&mode.change);
                 }
-            };
-
-            glib_recv!(context.subscribe(), mode => on_mode(mode));
+            });
         }
 
         Ok(ModuleParts {

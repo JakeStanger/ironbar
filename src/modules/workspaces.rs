@@ -1,9 +1,10 @@
+use crate::channels::{AsyncSenderExt, BroadcastReceiverExt};
 use crate::clients::compositor::{Visibility, Workspace, WorkspaceClient, WorkspaceUpdate};
 use crate::config::CommonConfig;
 use crate::gtk_helpers::IronbarGtkExt;
 use crate::image::new_icon_button;
-use crate::modules::{Module, ModuleInfo, ModuleParts, ModuleUpdateEvent, WidgetContext};
-use crate::{glib_recv, module_impl, send_async, spawn, try_send, Ironbar};
+use crate::modules::{Module, ModuleInfo, ModuleParts, WidgetContext};
+use crate::{module_impl, spawn, Ironbar};
 use color_eyre::{Report, Result};
 use gtk::prelude::*;
 use gtk::{Button, IconTheme};
@@ -152,7 +153,7 @@ fn create_button(
         let name = name.to_string();
         button.connect_clicked(move |button| {
             if !button.style_context().has_class("focused") {
-                try_send!(tx, name.clone());
+                tx.send_spawn(name.clone());
             }
         });
     }
@@ -227,7 +228,7 @@ impl Module<gtk::Box> for WorkspacesModule {
 
             while let Ok(payload) = srx.recv().await {
                 debug!("Received update: {payload:?}");
-                send_async!(tx, ModuleUpdateEvent::Update(payload));
+                tx.send_update(payload).await;
             }
         });
 
@@ -272,7 +273,7 @@ impl Module<gtk::Box> for WorkspacesModule {
             // since it fires for every workspace subscriber
             let mut has_initialized = false;
 
-            glib_recv!(context.subscribe(), event => {
+            context.subscribe().recv_glib(move |event| {
                 match event {
                     WorkspaceUpdate::Init(workspaces) => {
                         if !has_initialized {
@@ -280,24 +281,29 @@ impl Module<gtk::Box> for WorkspacesModule {
 
                             let mut added = HashSet::new();
 
-                            let mut add_workspace = |id: i64, name: &str, visibility: Visibility| {
-                                let item = create_button(
-                                    name,
-                                    visibility,
-                                    &name_map,
-                                    &icon_theme,
-                                    icon_size,
-                                    &context.controller_tx,
-                                );
+                            let mut add_workspace =
+                                |id: i64, name: &str, visibility: Visibility| {
+                                    let item = create_button(
+                                        name,
+                                        visibility,
+                                        &name_map,
+                                        &icon_theme,
+                                        icon_size,
+                                        &context.controller_tx,
+                                    );
 
-                                container.add(&item);
-                                button_map.insert(id, item);
-                            };
+                                    container.add(&item);
+                                    button_map.insert(id, item);
+                                };
 
                             // add workspaces from client
                             for workspace in &workspaces {
                                 if self.show_workspace_check(&output_name, workspace) {
-                                    add_workspace(workspace.id, &workspace.name, workspace.visibility);
+                                    add_workspace(
+                                        workspace.id,
+                                        &workspace.name,
+                                        workspace.visibility,
+                                    );
                                     added.insert(workspace.name.to_string());
                                 }
                             }
@@ -311,7 +317,11 @@ impl Module<gtk::Box> for WorkspacesModule {
                                         // as Hyprland will initialize them this way.
                                         // Since existing workspaces are added above,
                                         // this means there shouldn't be any issues with renaming.
-                                        add_workspace(-(Ironbar::unique_id() as i64), name, Visibility::Hidden);
+                                        add_workspace(
+                                            -(Ironbar::unique_id() as i64),
+                                            name,
+                                            Visibility::Hidden,
+                                        );
                                         added.insert(name.to_string());
                                     }
                                 }
@@ -337,7 +347,9 @@ impl Module<gtk::Box> for WorkspacesModule {
                     }
                     WorkspaceUpdate::Focus { old, new } => {
                         if let Some(btn) = old.as_ref().and_then(|w| find_btn(&button_map, w)) {
-                            if Some(new.monitor.as_str()) == old.as_ref().map(|w| w.monitor.as_str()) {
+                            if Some(new.monitor.as_str())
+                                == old.as_ref().map(|w| w.monitor.as_str())
+                            {
                                 btn.style_context().remove_class("visible");
                             }
 
@@ -421,7 +433,7 @@ impl Module<gtk::Box> for WorkspacesModule {
                         let button = button_map.get(&workspace);
                         if let Some(item) = button {
                             if workspace < 0 {
-                            // if fav_names.contains(&workspace) {
+                                // if fav_names.contains(&workspace) {
                                 item.style_context().add_class("inactive");
                             } else {
                                 container.remove(item);
@@ -438,7 +450,7 @@ impl Module<gtk::Box> for WorkspacesModule {
                             }
                         }
                     }
-                    WorkspaceUpdate::Unknown => warn!("Received unknown type workspace event")
+                    WorkspaceUpdate::Unknown => warn!("Received unknown type workspace event"),
                 };
             });
         }

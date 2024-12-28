@@ -1,5 +1,6 @@
 use super::{percent_to_volume, volume_to_percent, ArcMutVec, Client, ConnectionState, Event};
-use crate::{lock, send};
+use crate::channels::SyncSenderExt;
+use crate::lock;
 use libpulse_binding::callbacks::ListResult;
 use libpulse_binding::context::introspect::SinkInputInfo;
 use libpulse_binding::context::subscribe::Operation;
@@ -47,7 +48,7 @@ impl Client {
                 let ListResult::Item(info) = info else {
                     return;
                 };
-                send!(tx, info.volume);
+                tx.send_expect(info.volume);
             });
 
             let new_volume = percent_to_volume(volume_percent);
@@ -113,7 +114,7 @@ pub fn add(
     };
 
     lock!(inputs).push(info.into());
-    send!(tx, Event::AddInput(info.into()));
+    tx.send_expect(Event::AddInput(info.into()));
 }
 
 fn update(
@@ -135,7 +136,7 @@ fn update(
         inputs[pos] = info.into();
     }
 
-    send!(tx, Event::UpdateInput(info.into()));
+    tx.send_expect(Event::UpdateInput(info.into()));
 }
 
 fn remove(index: u32, inputs: &ArcMutVec<SinkInput>, tx: &broadcast::Sender<Event>) {
@@ -143,6 +144,6 @@ fn remove(index: u32, inputs: &ArcMutVec<SinkInput>, tx: &broadcast::Sender<Even
 
     if let Some(pos) = inputs.iter().position(|s| s.index == index) {
         let info = inputs.remove(pos);
-        send!(tx, Event::RemoveInput(info.index));
+        tx.send_expect(Event::RemoveInput(info.index));
     }
 }

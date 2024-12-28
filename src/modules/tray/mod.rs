@@ -1,10 +1,11 @@
 mod icon;
 mod interface;
 
+use crate::channels::{AsyncSenderExt, BroadcastReceiverExt};
 use crate::clients::tray;
 use crate::config::{CommonConfig, ModuleOrientation};
-use crate::modules::{Module, ModuleInfo, ModuleParts, ModuleUpdateEvent, WidgetContext};
-use crate::{glib_recv, lock, module_impl, send_async, spawn};
+use crate::modules::{Module, ModuleInfo, ModuleParts, WidgetContext};
+use crate::{lock, module_impl, spawn};
 use color_eyre::{Report, Result};
 use gtk::prelude::*;
 use gtk::{IconTheme, Orientation};
@@ -70,21 +71,16 @@ impl Module<gtk::Box> for TrayModule {
         // listen to tray updates
         spawn(async move {
             for (key, (item, menu)) in initial_items {
-                send_async!(
-                    tx,
-                    ModuleUpdateEvent::Update(Event::Add(key.clone(), item.into()))
-                );
+                tx.send_update(Event::Add(key.clone(), item.into())).await;
 
                 if let Some(menu) = menu.clone() {
-                    send_async!(
-                        tx,
-                        ModuleUpdateEvent::Update(Event::Update(key, UpdateEvent::Menu(menu)))
-                    );
+                    tx.send_update(Event::Update(key, UpdateEvent::Menu(menu)))
+                        .await;
                 }
             }
 
             while let Ok(message) = tray_rx.recv().await {
-                send_async!(tx, ModuleUpdateEvent::Update(message));
+                tx.send_update(message).await;
             }
         });
 
@@ -124,9 +120,16 @@ impl Module<gtk::Box> for TrayModule {
             let icon_theme = info.icon_theme.clone();
 
             // listen for UI updates
-            glib_recv!(context.subscribe(), update =>
-                on_update(update, &container, &mut menus, &icon_theme, self.icon_size, self.prefer_theme_icons)
-            );
+            context.subscribe().recv_glib(move |update| {
+                on_update(
+                    update,
+                    &container,
+                    &mut menus,
+                    &icon_theme,
+                    self.icon_size,
+                    self.prefer_theme_icons,
+                );
+            });
         };
 
         Ok(ModuleParts {

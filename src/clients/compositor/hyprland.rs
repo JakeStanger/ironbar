@@ -1,5 +1,6 @@
 use super::{Visibility, Workspace, WorkspaceClient, WorkspaceUpdate};
-use crate::{arc_mut, lock, send, spawn_blocking};
+use crate::channels::SyncSenderExt;
+use crate::{arc_mut, lock, spawn_blocking};
 use color_eyre::Result;
 use hyprland::data::{Workspace as HWorkspace, Workspaces};
 use hyprland::dispatch::{Dispatch, DispatchType, WorkspaceIdentifierWithSpecial};
@@ -58,7 +59,7 @@ impl Client {
                     let workspace = Self::get_workspace(&workspace_name, prev_workspace.as_ref());
 
                     if let Some(workspace) = workspace {
-                        send!(tx, WorkspaceUpdate::Add(workspace));
+                        tx.send_expect(WorkspaceUpdate::Add(workspace));
                     }
                 });
             }
@@ -139,7 +140,7 @@ impl Client {
                     let workspace = Self::get_workspace(&workspace_name, prev_workspace.as_ref());
 
                     if let Some(workspace) = workspace {
-                        send!(tx, WorkspaceUpdate::Move(workspace.clone()));
+                        tx.send_expect(WorkspaceUpdate::Move(workspace.clone()));
 
                         if !workspace.visibility.is_focused() {
                             Self::send_focus_change(&mut prev_workspace, workspace, &tx);
@@ -155,13 +156,10 @@ impl Client {
                 event_listener.add_workspace_rename_handler(move |data| {
                     let _lock = lock!(lock);
 
-                    send!(
-                        tx,
-                        WorkspaceUpdate::Rename {
-                            id: data.workspace_id as i64,
-                            name: data.workspace_name
-                        }
-                    );
+                    tx.send_expect(WorkspaceUpdate::Rename {
+                        id: data.workspace_id as i64,
+                        name: data.workspace_name,
+                    });
                 });
             }
 
@@ -172,7 +170,7 @@ impl Client {
                 event_listener.add_workspace_destroy_handler(move |data| {
                     let _lock = lock!(lock);
                     debug!("Received workspace destroy: {data:?}");
-                    send!(tx, WorkspaceUpdate::Remove(data.workspace_id as i64));
+                    tx.send_expect(WorkspaceUpdate::Remove(data.workspace_id as i64));
                 });
             }
 
@@ -193,13 +191,10 @@ impl Client {
                             error!("Unable to locate client");
                         },
                         |c| {
-                            send!(
-                                tx,
-                                WorkspaceUpdate::Urgent {
-                                    id: c.workspace.id as i64,
-                                    urgent: true,
-                                }
-                            );
+                            tx.send_expect(WorkspaceUpdate::Urgent {
+                                id: c.workspace.id as i64,
+                                urgent: true,
+                            });
                         },
                     );
                 });
@@ -218,21 +213,15 @@ impl Client {
         workspace: Workspace,
         tx: &Sender<WorkspaceUpdate>,
     ) {
-        send!(
-            tx,
-            WorkspaceUpdate::Focus {
-                old: prev_workspace.take(),
-                new: workspace.clone(),
-            }
-        );
+        tx.send_expect(WorkspaceUpdate::Focus {
+            old: prev_workspace.take(),
+            new: workspace.clone(),
+        });
 
-        send!(
-            tx,
-            WorkspaceUpdate::Urgent {
-                id: workspace.id,
-                urgent: false,
-            }
-        );
+        tx.send_expect(WorkspaceUpdate::Urgent {
+            id: workspace.id,
+            urgent: false,
+        });
 
         prev_workspace.replace(workspace);
     }
@@ -292,7 +281,7 @@ impl WorkspaceClient for Client {
                 })
                 .collect();
 
-            send!(tx, WorkspaceUpdate::Init(workspaces));
+            tx.send_expect(WorkspaceUpdate::Init(workspaces));
         }
 
         rx

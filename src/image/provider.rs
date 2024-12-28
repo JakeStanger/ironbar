@@ -1,6 +1,7 @@
+use crate::channels::{AsyncSenderExt, MpscReceiverExt};
 use crate::desktop_file::get_desktop_icon_name;
 #[cfg(feature = "http")]
-use crate::{glib_recv_mpsc, send_async, spawn};
+use crate::spawn;
 use cfg_if::cfg_if;
 use color_eyre::{Help, Report, Result};
 use gtk::cairo::Surface;
@@ -151,14 +152,14 @@ impl<'a> ImageProvider<'a> {
             spawn(async move {
                 let bytes = Self::get_bytes_from_http(url).await;
                 if let Ok(bytes) = bytes {
-                    send_async!(tx, bytes);
+                    tx.send_expect(bytes).await;
                 }
             });
 
             {
                 let size = self.size;
                 let image = image.clone();
-                glib_recv_mpsc!(rx, bytes => {
+                rx.recv_glib(move |bytes| {
                     let stream = MemoryInputStream::from_bytes(&bytes);
 
                     let scale = image.scale_factor();
@@ -173,8 +174,7 @@ impl<'a> ImageProvider<'a> {
                     );
 
                     // Different error types makes this a bit awkward
-                    match pixbuf.map(|pixbuf| Self::create_and_load_surface(&pixbuf, &image))
-                    {
+                    match pixbuf.map(|pixbuf| Self::create_and_load_surface(&pixbuf, &image)) {
                         Ok(Err(err)) => error!("{err:?}"),
                         Err(err) => error!("{err:?}"),
                         _ => {}

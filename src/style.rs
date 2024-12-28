@@ -1,4 +1,5 @@
-use crate::{glib_recv_mpsc, spawn, try_send};
+use crate::channels::{AsyncSenderExt, MpscReceiverExt};
+use crate::spawn;
 use color_eyre::{Help, Report};
 use gtk::ffi::GTK_STYLE_PROVIDER_PRIORITY_USER;
 use gtk::prelude::*;
@@ -51,7 +52,7 @@ pub fn load_css(style_path: PathBuf, application: Application) {
             Ok(event) if matches!(event.kind, EventKind::Modify(ModifyKind::Data(_))) => {
                 debug!("{event:?}");
                 if event.paths.first().is_some_and(|p| p == &style_path2) {
-                    try_send!(tx, style_path2.clone());
+                    tx.send_spawn(style_path2.clone());
                 }
             }
             Err(e) => error!("Error occurred when watching stylesheet: {:?}", e),
@@ -72,7 +73,7 @@ pub fn load_css(style_path: PathBuf, application: Application) {
         }
     });
 
-    glib_recv_mpsc!(rx, path => {
+    rx.recv_glib(move |path| {
         info!("Reloading CSS");
         if let Err(err) = provider.load_from_file(&gio::File::for_path(path)) {
             error!("{:?}", Report::new(err)

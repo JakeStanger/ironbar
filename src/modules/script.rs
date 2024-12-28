@@ -1,8 +1,9 @@
+use crate::channels::{AsyncSenderExt, BroadcastReceiverExt};
 use crate::config::CommonConfig;
 use crate::gtk_helpers::IronbarLabelExt;
-use crate::modules::{Module, ModuleInfo, ModuleParts, ModuleUpdateEvent, WidgetContext};
+use crate::modules::{Module, ModuleInfo, ModuleParts, WidgetContext};
 use crate::script::{OutputStream, Script, ScriptMode};
-use crate::{glib_recv, module_impl, spawn, try_send};
+use crate::{module_impl, spawn};
 use color_eyre::{Help, Report, Result};
 use gtk::prelude::*;
 use gtk::Label;
@@ -79,7 +80,7 @@ impl Module<Label> for ScriptModule {
         spawn(async move {
             script.run(None, move |out, _| match out {
                OutputStream::Stdout(stdout) => {
-                   try_send!(tx, ModuleUpdateEvent::Update(stdout));
+                   tx.send_update_spawn(stdout);
                },
                OutputStream::Stderr(stderr) => {
                    error!("{:?}", Report::msg(stderr)
@@ -104,7 +105,9 @@ impl Module<Label> for ScriptModule {
 
         {
             let label = label.clone();
-            glib_recv!(context.subscribe(), s => label.set_label_escaped(&s));
+            context
+                .subscribe()
+                .recv_glib(move |s| label.set_label_escaped(&s));
         }
 
         Ok(ModuleParts {

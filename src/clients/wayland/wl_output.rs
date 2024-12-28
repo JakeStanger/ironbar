@@ -1,5 +1,5 @@
 use super::{Client, Environment, Event};
-use crate::try_send;
+use crate::channels::AsyncSenderExt;
 use smithay_client_toolkit::output::{OutputHandler, OutputInfo, OutputState};
 use tokio::sync::broadcast;
 use tracing::{debug, error};
@@ -63,13 +63,10 @@ impl OutputHandler for Environment {
     fn new_output(&mut self, _conn: &Connection, _qh: &QueueHandle<Self>, output: WlOutput) {
         debug!("Handler received new output");
         if let Some(info) = self.output_state.info(&output) {
-            try_send!(
-                self.event_tx,
-                Event::Output(OutputEvent {
-                    output: info,
-                    event_type: OutputEventType::New
-                })
-            );
+            self.event_tx.send_spawn(Event::Output(OutputEvent {
+                output: info,
+                event_type: OutputEventType::New,
+            }));
         } else {
             error!("Output is missing information!");
         }
@@ -78,13 +75,10 @@ impl OutputHandler for Environment {
     fn update_output(&mut self, _conn: &Connection, _qh: &QueueHandle<Self>, output: WlOutput) {
         debug!("Handle received output update");
         if let Some(info) = self.output_state.info(&output) {
-            try_send!(
-                self.event_tx,
-                Event::Output(OutputEvent {
-                    output: info,
-                    event_type: OutputEventType::Update
-                })
-            );
+            self.event_tx.send_spawn(Event::Output(OutputEvent {
+                output: info,
+                event_type: OutputEventType::Update,
+            }));
         } else {
             error!("Output is missing information!");
         }
@@ -93,13 +87,10 @@ impl OutputHandler for Environment {
     fn output_destroyed(&mut self, _conn: &Connection, _qh: &QueueHandle<Self>, output: WlOutput) {
         debug!("Handle received output destruction");
         if let Some(info) = self.output_state.info(&output) {
-            try_send!(
-                self.event_tx,
-                Event::Output(OutputEvent {
-                    output: info,
-                    event_type: OutputEventType::Destroyed
-                })
-            );
+            self.event_tx.send_spawn(Event::Output(OutputEvent {
+                output: info,
+                event_type: OutputEventType::Destroyed,
+            }));
         } else {
             error!("Output is missing information!");
         }

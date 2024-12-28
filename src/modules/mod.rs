@@ -10,11 +10,12 @@ use gtk::{Application, Button, EventBox, IconTheme, Orientation, Revealer, Widge
 use tokio::sync::{broadcast, mpsc};
 use tracing::debug;
 
+use crate::channels::{MpscReceiverExt, SyncSenderExt};
 use crate::clients::{ClientResult, ProvidesClient, ProvidesFallibleClient};
 use crate::config::{BarPosition, CommonConfig, TransitionType};
 use crate::gtk_helpers::{IronbarGtkExt, WidgetGeometry};
 use crate::popup::Popup;
-use crate::{glib_recv_mpsc, send, Ironbar};
+use crate::Ironbar;
 
 #[cfg(feature = "cairo")]
 pub mod cairo;
@@ -383,37 +384,41 @@ impl ModuleFactory for BarModuleFactory {
         TSend: Debug + Clone + Send + 'static,
     {
         let popup = self.popup.clone();
-        glib_recv_mpsc!(rx, ev => {
-            match ev {
-                ModuleUpdateEvent::Update(update) => {
-                    send!(tx, update);
-                }
-                ModuleUpdateEvent::TogglePopup(button_id) if !disable_popup => {
-                    debug!("Toggling popup for {} [#{}] (button id: {button_id})", name, id);
-                    if popup.visible() && popup.current_widget().unwrap_or_default() == id {
-                        popup.hide();
-                    } else {
-                        popup.show(id, button_id);
-                    }
-                }
-                ModuleUpdateEvent::OpenPopup(button_id) if !disable_popup => {
-                    debug!("Opening popup for {} [#{}] (button id: {button_id})", name, id);
+        rx.recv_glib(move |ev| match ev {
+            ModuleUpdateEvent::Update(update) => {
+                tx.send_expect(update);
+            }
+            ModuleUpdateEvent::TogglePopup(button_id) if !disable_popup => {
+                debug!(
+                    "Toggling popup for {} [#{}] (button id: {button_id})",
+                    name, id
+                );
+                if popup.visible() && popup.current_widget().unwrap_or_default() == id {
                     popup.hide();
+                } else {
                     popup.show(id, button_id);
                 }
-                #[cfg(feature = "launcher")]
-                ModuleUpdateEvent::OpenPopupAt(geometry) if !disable_popup => {
-                    debug!("Opening popup for {} [#{}]", name, id);
-
-                    popup.hide();
-                    popup.show_at(id, geometry);
-                }
-                ModuleUpdateEvent::ClosePopup if !disable_popup => {
-                    debug!("Closing popup for {} [#{}]", name, id);
-                    popup.hide();
-                },
-                _ => {}
             }
+            ModuleUpdateEvent::OpenPopup(button_id) if !disable_popup => {
+                debug!(
+                    "Opening popup for {} [#{}] (button id: {button_id})",
+                    name, id
+                );
+                popup.hide();
+                popup.show(id, button_id);
+            }
+            #[cfg(feature = "launcher")]
+            ModuleUpdateEvent::OpenPopupAt(geometry) if !disable_popup => {
+                debug!("Opening popup for {} [#{}]", name, id);
+
+                popup.hide();
+                popup.show_at(id, geometry);
+            }
+            ModuleUpdateEvent::ClosePopup if !disable_popup => {
+                debug!("Closing popup for {} [#{}]", name, id);
+                popup.hide();
+            }
+            _ => {}
         });
     }
 
@@ -456,37 +461,41 @@ impl ModuleFactory for PopupModuleFactory {
     {
         let popup = self.popup.clone();
         let button_id = self.button_id;
-        glib_recv_mpsc!(rx, ev => {
-            match ev {
-                ModuleUpdateEvent::Update(update) => {
-                    send!(tx, update);
-                }
-                ModuleUpdateEvent::TogglePopup(_) if !disable_popup => {
-                    debug!("Toggling popup for {} [#{}] (button id: {button_id})", name, id);
-                    if popup.visible() && popup.current_widget().unwrap_or_default() == id {
-                        popup.hide();
-                    } else {
-                        popup.show(id, button_id);
-                    }
-                }
-                ModuleUpdateEvent::OpenPopup(_) if !disable_popup => {
-                    debug!("Opening popup for {} [#{}] (button id: {button_id})", name, id);
+        rx.recv_glib(move |ev| match ev {
+            ModuleUpdateEvent::Update(update) => {
+                tx.send_expect(update);
+            }
+            ModuleUpdateEvent::TogglePopup(_) if !disable_popup => {
+                debug!(
+                    "Toggling popup for {} [#{}] (button id: {button_id})",
+                    name, id
+                );
+                if popup.visible() && popup.current_widget().unwrap_or_default() == id {
                     popup.hide();
+                } else {
                     popup.show(id, button_id);
                 }
-                #[cfg(feature = "launcher")]
-                ModuleUpdateEvent::OpenPopupAt(geometry) if !disable_popup => {
-                    debug!("Opening popup for {} [#{}]", name, id);
-
-                    popup.hide();
-                    popup.show_at(id, geometry);
-                }
-                ModuleUpdateEvent::ClosePopup if !disable_popup => {
-                    debug!("Closing popup for {} [#{}]", name, id);
-                    popup.hide();
-                },
-                _ => {}
             }
+            ModuleUpdateEvent::OpenPopup(_) if !disable_popup => {
+                debug!(
+                    "Opening popup for {} [#{}] (button id: {button_id})",
+                    name, id
+                );
+                popup.hide();
+                popup.show(id, button_id);
+            }
+            #[cfg(feature = "launcher")]
+            ModuleUpdateEvent::OpenPopupAt(geometry) if !disable_popup => {
+                debug!("Opening popup for {} [#{}]", name, id);
+
+                popup.hide();
+                popup.show_at(id, geometry);
+            }
+            ModuleUpdateEvent::ClosePopup if !disable_popup => {
+                debug!("Closing popup for {} [#{}]", name, id);
+                popup.hide();
+            }
+            _ => {}
         });
     }
 

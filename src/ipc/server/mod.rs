@@ -13,11 +13,11 @@ use tokio::net::{UnixListener, UnixStream};
 use tokio::sync::mpsc::{self, Receiver, Sender};
 use tracing::{debug, error, info, warn};
 
+use super::Ipc;
+use crate::channels::{AsyncSenderExt, MpscReceiverExt};
 use crate::ipc::{Command, Response};
 use crate::style::load_css;
-use crate::{glib_recv_mpsc, send_async, spawn, try_send, Ironbar};
-
-use super::Ipc;
+use crate::{spawn, Ironbar};
 
 impl Ipc {
     /// Starts the IPC server on its socket.
@@ -66,9 +66,9 @@ impl Ipc {
         });
 
         let application = application.clone();
-        glib_recv_mpsc!(cmd_rx, command => {
+        cmd_rx.recv_glib(move |command| {
             let res = Self::handle_command(command, &application, &ironbar);
-            try_send!(res_tx, res);
+            res_tx.send_spawn(res);
         });
     }
 
@@ -91,7 +91,7 @@ impl Ipc {
 
         debug!("Received command: {command:?}");
 
-        send_async!(cmd_tx, command);
+        cmd_tx.send_expect(command).await;
         let res = res_rx
             .recv()
             .await

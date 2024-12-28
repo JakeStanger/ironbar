@@ -1,4 +1,5 @@
-use crate::{arc_rw, read_lock, send, spawn, spawn_blocking, write_lock};
+use crate::channels::SyncSenderExt;
+use crate::{arc_rw, read_lock, spawn, spawn_blocking, write_lock};
 use color_eyre::{Report, Result};
 use evdev_rs::enums::{int_to_ev_key, EventCode, EV_KEY, EV_LED};
 use evdev_rs::DeviceWrapper;
@@ -182,7 +183,7 @@ impl Client {
                                 let data = KeyData { device_path, key };
 
                                 if let Ok(event) = data.try_into() {
-                                    send!(tx, event);
+                                    tx.send_expect(event);
                                 }
                             });
                         }
@@ -210,7 +211,7 @@ impl Client {
                             if caps_event.is_ok() {
                                 debug!("new keyboard device: {name} | {}", device_path.display());
                                 write_lock!(self.known_devices).push(device_path.to_path_buf());
-                                send!(self.tx, Event::Device);
+                                self.tx.send_expect(Event::Device);
                             }
                         }
                     }

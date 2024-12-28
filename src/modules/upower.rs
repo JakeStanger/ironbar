@@ -8,6 +8,7 @@ use upower_dbus::BatteryState;
 use zbus;
 use zbus::fdo::PropertiesProxy;
 
+use crate::channels::{AsyncSenderExt, BroadcastReceiverExt};
 use crate::config::CommonConfig;
 use crate::gtk_helpers::{IronbarGtkExt, IronbarLabelExt};
 use crate::image::ImageProvider;
@@ -15,7 +16,7 @@ use crate::modules::PopupButton;
 use crate::modules::{
     Module, ModuleInfo, ModuleParts, ModulePopup, ModuleUpdateEvent, WidgetContext,
 };
-use crate::{glib_recv, module_impl, send_async, spawn, try_send};
+use crate::{module_impl, spawn};
 
 const DAY: i64 = 24 * 60 * 60;
 const HOUR: i64 = 60 * 60;
@@ -111,7 +112,7 @@ impl Module<gtk::Button> for UpowerModule {
                 time_to_empty,
             };
 
-            send_async!(tx, ModuleUpdateEvent::Update(properties.clone()));
+            tx.send_update(properties.clone()).await;
 
             while let Some(signal) = prop_changed_stream.next().await {
                 let args = signal.args().expect("Invalid signal arguments");
@@ -151,7 +152,8 @@ impl Module<gtk::Button> for UpowerModule {
                     }
                 }
 
-                send_async!(tx, ModuleUpdateEvent::Update(properties.clone()));
+                tx.send_expect(ModuleUpdateEvent::Update(properties.clone()))
+                    .await;
             }
 
             Result::<()>::Ok(())
@@ -187,22 +189,22 @@ impl Module<gtk::Button> for UpowerModule {
 
         let tx = context.tx.clone();
         button.connect_clicked(move |button| {
-            try_send!(tx, ModuleUpdateEvent::TogglePopup(button.popup_id()));
+            tx.send_spawn(ModuleUpdateEvent::TogglePopup(button.popup_id()));
         });
 
         let format = self.format.clone();
 
-        let rx = context.subscribe();
-        glib_recv!(rx, properties => {
+        context.subscribe().recv_glib(move |properties| {
             let state = properties.state;
-            let is_charging = state == BatteryState::Charging || state == BatteryState::PendingCharge;
+            let is_charging =
+                state == BatteryState::Charging || state == BatteryState::PendingCharge;
             let time_remaining = if is_charging {
                 seconds_to_string(properties.time_to_full)
-            }
-            else {
+            } else {
                 seconds_to_string(properties.time_to_empty)
             };
-            let format = format.replace("{percentage}", &properties.percentage.to_string())
+            let format = format
+                .replace("{percentage}", &properties.percentage.to_string())
                 .replace("{time_remaining}", &time_remaining)
                 .replace("{state}", battery_state_to_string(state));
 
@@ -210,7 +212,7 @@ impl Module<gtk::Button> for UpowerModule {
             icon_name.push_str(&properties.icon_name);
 
             ImageProvider::parse(&icon_name, &icon_theme, false, self.icon_size)
-                    .map(|provider| provider.load_into_image(&icon));
+                .map(|provider| provider.load_into_image(&icon));
 
             label.set_label_escaped(&format);
         });
@@ -241,7 +243,7 @@ impl Module<gtk::Button> for UpowerModule {
         label.add_class("upower-details");
         container.add(&label);
 
-        glib_recv!(rx, properties => {
+        rx.recv_glib(move |properties| {
             let state = properties.state;
             let format = match state {
                 BatteryState::Charging | BatteryState::PendingCharge => {

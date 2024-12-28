@@ -1,5 +1,6 @@
 use super::wayland::{self, ClipboardItem};
-use crate::{arc_mut, lock, register_client, spawn, try_send};
+use crate::channels::AsyncSenderExt;
+use crate::{arc_mut, lock, register_client, spawn};
 use indexmap::map::Iter;
 use indexmap::IndexMap;
 use std::sync::{Arc, Mutex};
@@ -46,7 +47,7 @@ impl Client {
                     let senders = lock!(senders);
                     let iter = senders.iter();
                     for (tx, _) in iter {
-                        try_send!(tx, ClipboardEvent::Add(item.clone()));
+                        tx.send_spawn(ClipboardEvent::Add(item.clone()));
                     }
 
                     lock!(cache).insert(item, senders.len());
@@ -74,16 +75,16 @@ impl Client {
                                     let removed_id = lock!(cache)
                                         .remove_ref_first()
                                         .expect("Clipboard cache unexpectedly empty");
-                                    try_send!(tx, ClipboardEvent::Remove(removed_id));
+                                    tx.send_spawn(ClipboardEvent::Remove(removed_id));
                                 }
-                                try_send!(tx, ClipboardEvent::Add(item.clone()));
+                                tx.send_spawn(ClipboardEvent::Add(item.clone()));
                             }
                         },
                         |existing_id| {
                             let senders = lock!(senders);
                             let iter = senders.iter();
                             for (tx, _) in iter {
-                                try_send!(tx, ClipboardEvent::Activate(existing_id));
+                                tx.send_spawn(ClipboardEvent::Activate(existing_id));
                             }
                         },
                     );
@@ -106,7 +107,7 @@ impl Client {
 
             let iter = cache.iter();
             for (_, (item, _)) in iter {
-                try_send!(tx, ClipboardEvent::Add(item.clone()));
+                tx.send_spawn(ClipboardEvent::Add(item.clone()));
             }
         }
 
@@ -130,7 +131,7 @@ impl Client {
         let senders = lock!(self.senders);
         let iter = senders.iter();
         for (tx, _) in iter {
-            try_send!(tx, ClipboardEvent::Activate(id));
+            tx.send_spawn(ClipboardEvent::Activate(id));
         }
     }
 
@@ -140,7 +141,7 @@ impl Client {
         let senders = lock!(self.senders);
         let iter = senders.iter();
         for (tx, _) in iter {
-            try_send!(tx, ClipboardEvent::Remove(id));
+            tx.send_spawn(ClipboardEvent::Remove(id));
         }
     }
 }

@@ -4,12 +4,13 @@ mod open_state;
 use self::item::{AppearanceOptions, Item, ItemButton, Window};
 use self::open_state::OpenState;
 use super::{Module, ModuleInfo, ModuleParts, ModulePopup, ModuleUpdateEvent, WidgetContext};
+use crate::channels::{AsyncSenderExt, BroadcastReceiverExt};
 use crate::clients::wayland::{self, ToplevelEvent};
 use crate::config::{CommonConfig, EllipsizeMode, TruncateMode};
 use crate::desktop_file::find_desktop_file;
 use crate::gtk_helpers::{IronbarGtkExt, IronbarLabelExt};
 use crate::modules::launcher::item::ImageTextButton;
-use crate::{arc_mut, glib_recv, lock, module_impl, send_async, spawn, try_send, write_lock};
+use crate::{arc_mut, lock, module_impl, spawn, write_lock};
 use color_eyre::{Help, Report};
 use gtk::prelude::*;
 use gtk::{Button, Orientation};
@@ -185,18 +186,22 @@ impl Module<gtk::Box> for LauncherModule {
                 }
             }
 
+            // init
             {
-                let items = lock!(items);
-                let items = items.iter();
-                for (_, item) in items {
-                    try_send!(
-                        tx,
-                        ModuleUpdateEvent::Update(LauncherUpdate::AddItem(item.clone()))
-                    );
+                let items = {
+                    let items = lock!(items);
+                    items
+                        .iter()
+                        .map(|(_, item)| LauncherUpdate::AddItem(item.clone()))
+                        .collect::<Vec<_>>()
+                };
+
+                for item in items {
+                    tx.send_update(item).await;
                 }
             }
 
-            let send_update = |update: LauncherUpdate| tx.send(ModuleUpdateEvent::Update(update));
+            let send_update = |update: LauncherUpdate| tx.send_update(update);
 
             while let Ok(event) = wlrx.recv().await {
                 trace!("event: {:?}", event);
@@ -225,12 +230,12 @@ impl Module<gtk::Box> for LauncherModule {
 
                         match new_item {
                             ItemOrWindow::Item(item) => {
-                                send_update(LauncherUpdate::AddItem(item)).await
+                                send_update(LauncherUpdate::AddItem(item)).await;
                             }
                             ItemOrWindow::Window(window) => {
-                                send_update(LauncherUpdate::AddWindow(app_id, window)).await
+                                send_update(LauncherUpdate::AddWindow(app_id, window)).await;
                             }
-                        }?;
+                        };
                     }
                     ToplevelEvent::Update(info) => {
                         // check if open, as updates can be sent as program closes
@@ -248,13 +253,13 @@ impl Module<gtk::Box> for LauncherModule {
                             info.app_id.clone(),
                             is_open && info.focused,
                         ))
-                        .await?;
+                        .await;
                         send_update(LauncherUpdate::Title(
                             info.app_id.clone(),
                             info.id,
                             info.title.clone(),
                         ))
-                        .await?;
+                        .await;
                     }
                     ToplevelEvent::Remove(info) => {
                         let remove_item = {
@@ -277,15 +282,14 @@ impl Module<gtk::Box> for LauncherModule {
 
                         match remove_item {
                             Some(ItemOrWindowId::Item) => {
-                                send_update(LauncherUpdate::RemoveItem(info.app_id.clone()))
-                                    .await?;
+                                send_update(LauncherUpdate::RemoveItem(info.app_id.clone())).await;
                             }
                             Some(ItemOrWindowId::Window) => {
                                 send_update(LauncherUpdate::RemoveWindow(
                                     info.app_id.clone(),
                                     info.id,
                                 ))
-                                .await?;
+                                .await;
                             }
                             None => {}
                         };
@@ -324,7 +328,7 @@ impl Module<gtk::Box> for LauncherModule {
                         },
                     );
                 } else {
-                    send_async!(tx, ModuleUpdateEvent::ClosePopup);
+                    tx.send_expect(ModuleUpdateEvent::ClosePopup).await;
 
                     let minimize_window = matches!(event, ItemEvent::MinimizeItem(_));
 
@@ -391,7 +395,7 @@ impl Module<gtk::Box> for LauncherModule {
 
             let tx = context.tx.clone();
             let rx = context.subscribe();
-            glib_recv!(rx, event => {
+            rx.recv_glib(move |event| {
                 match event {
                     LauncherUpdate::AddItem(item) => {
                         debug!("Adding item with id '{}' to the bar: {item:?}", item.app_id);
@@ -503,7 +507,7 @@ impl Module<gtk::Box> for LauncherModule {
 
         {
             let container = container.clone();
-            glib_recv!(rx, event => {
+            rx.recv_glib(move |event| {
                 match event {
                     LauncherUpdate::AddItem(item) => {
                         let app_id = item.app_id.clone();
@@ -522,7 +526,7 @@ impl Module<gtk::Box> for LauncherModule {
                                 {
                                     let tx = controller_tx.clone();
                                     button.connect_clicked(move |_| {
-                                        try_send!(tx, ItemEvent::FocusWindow(win.id));
+                                        tx.send_spawn(ItemEvent::FocusWindow(win.id));
                                     });
                                 }
 
@@ -548,7 +552,7 @@ impl Module<gtk::Box> for LauncherModule {
                             {
                                 let tx = controller_tx.clone();
                                 button.connect_clicked(move |_button| {
-                                    try_send!(tx, ItemEvent::FocusWindow(win.id));
+                                    tx.send_spawn(ItemEvent::FocusWindow(win.id));
                                 });
                             }
 

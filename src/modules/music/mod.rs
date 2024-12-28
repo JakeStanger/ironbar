@@ -13,6 +13,9 @@ use regex::Regex;
 use tokio::sync::{broadcast, mpsc};
 use tracing::error;
 
+pub use self::config::MusicModule;
+use self::config::PlayerType;
+use crate::channels::{AsyncSenderExt, BroadcastReceiverExt};
 use crate::clients::music::{
     self, MusicClient, PlayerState, PlayerUpdate, ProgressTick, Status, Track,
 };
@@ -23,10 +26,7 @@ use crate::modules::PopupButton;
 use crate::modules::{
     Module, ModuleInfo, ModuleParts, ModulePopup, ModuleUpdateEvent, WidgetContext,
 };
-use crate::{glib_recv, module_impl, send_async, spawn, try_send};
-
-pub use self::config::MusicModule;
-use self::config::PlayerType;
+use crate::{module_impl, spawn};
 
 mod config;
 
@@ -130,24 +130,14 @@ impl Module<Button> for MusicModule {
                                         display_string,
                                     };
 
-                                    send_async!(
-                                        tx,
-                                        ModuleUpdateEvent::Update(ControllerEvent::Update(Some(
-                                            update
-                                        )))
-                                    );
+                                    tx.send_update(ControllerEvent::Update(Some(update))).await;
                                 }
-                                None => send_async!(
-                                    tx,
-                                    ModuleUpdateEvent::Update(ControllerEvent::Update(None))
-                                ),
+                                None => tx.send_update(ControllerEvent::Update(None)).await,
                             },
-                            PlayerUpdate::ProgressTick(progress_tick) => send_async!(
-                                tx,
-                                ModuleUpdateEvent::Update(ControllerEvent::UpdateProgress(
-                                    progress_tick
-                                ))
-                            ),
+                            PlayerUpdate::ProgressTick(progress_tick) => {
+                                tx.send_update(ControllerEvent::UpdateProgress(progress_tick))
+                                    .await;
+                            }
                         }
                     }
                 }
@@ -208,7 +198,7 @@ impl Module<Button> for MusicModule {
             let tx = context.tx.clone();
 
             button.connect_clicked(move |button| {
-                try_send!(tx, ModuleUpdateEvent::TogglePopup(button.popup_id()));
+                tx.send_spawn(ModuleUpdateEvent::TogglePopup(button.popup_id()));
             });
         }
 
@@ -216,11 +206,10 @@ impl Module<Button> for MusicModule {
             let button = button.clone();
 
             let tx = context.tx.clone();
-            let rx = context.subscribe();
 
-            glib_recv!(rx, event => {
+            context.subscribe().recv_glib(move |event| {
                 let ControllerEvent::Update(mut event) = event else {
-                    continue;
+                    return;
                 };
 
                 if let Some(event) = event.take() {
@@ -249,7 +238,7 @@ impl Module<Button> for MusicModule {
                     }
                 } else {
                     button.hide();
-                    try_send!(tx, ModuleUpdateEvent::ClosePopup);
+                    tx.send_spawn(ModuleUpdateEvent::ClosePopup);
                 }
             });
         };
@@ -337,27 +326,27 @@ impl Module<Button> for MusicModule {
 
         let tx_prev = tx.clone();
         btn_prev.connect_clicked(move |_| {
-            try_send!(tx_prev, PlayerCommand::Previous);
+            tx_prev.send_spawn(PlayerCommand::Previous);
         });
 
         let tx_play = tx.clone();
         btn_play.connect_clicked(move |_| {
-            try_send!(tx_play, PlayerCommand::Play);
+            tx_play.send_spawn(PlayerCommand::Play);
         });
 
         let tx_pause = tx.clone();
         btn_pause.connect_clicked(move |_| {
-            try_send!(tx_pause, PlayerCommand::Pause);
+            tx_pause.send_spawn(PlayerCommand::Pause);
         });
 
         let tx_next = tx.clone();
         btn_next.connect_clicked(move |_| {
-            try_send!(tx_next, PlayerCommand::Next);
+            tx_next.send_spawn(PlayerCommand::Next);
         });
 
         let tx_vol = tx.clone();
         volume_slider.connect_change_value(move |_, _, val| {
-            try_send!(tx_vol, PlayerCommand::Volume(val as u8));
+            tx_vol.send_spawn(PlayerCommand::Volume(val as u8));
             Propagation::Proceed
         });
 
@@ -391,7 +380,7 @@ impl Module<Button> for MusicModule {
             let drag_lock = drag_lock.clone();
             progress.connect_button_release_event(move |scale, _| {
                 let value = scale.value();
-                try_send!(tx, PlayerCommand::Seek(Duration::from_secs_f64(value)));
+                tx.send_spawn(PlayerCommand::Seek(Duration::from_secs_f64(value)));
 
                 drag_lock.set(false);
                 Propagation::Proceed
@@ -405,7 +394,7 @@ impl Module<Button> for MusicModule {
             let image_size = self.cover_image_size;
 
             let mut prev_cover = None;
-            glib_recv!(rx, event =>  {
+            rx.recv_glib(move |event| {
                 match event {
                     ControllerEvent::Update(Some(update)) => {
                         // only update art when album changes

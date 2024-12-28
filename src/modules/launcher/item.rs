@@ -1,11 +1,12 @@
 use super::open_state::OpenState;
+use crate::channels::AsyncSenderExt;
 use crate::clients::wayland::ToplevelInfo;
 use crate::config::{BarPosition, TruncateMode};
 use crate::gtk_helpers::{IronbarGtkExt, IronbarLabelExt};
 use crate::image::ImageProvider;
 use crate::modules::launcher::{ItemEvent, LauncherUpdate};
 use crate::modules::ModuleUpdateEvent;
-use crate::{read_lock, try_send};
+use crate::read_lock;
 use glib::Propagation;
 use gtk::gdk::{BUTTON_MIDDLE, BUTTON_PRIMARY};
 use gtk::prelude::*;
@@ -211,15 +212,15 @@ impl ItemButton {
                         let menu_state = read_lock!(menu_state);
 
                         if style_context.has_class("focused") && menu_state.num_windows == 1 {
-                            try_send!(tx, ItemEvent::MinimizeItem(app_id.clone()));
+                            tx.send_spawn(ItemEvent::MinimizeItem(app_id.clone()));
                         } else {
-                            try_send!(tx, ItemEvent::FocusItem(app_id.clone()));
+                            tx.send_spawn(ItemEvent::FocusItem(app_id.clone()));
                         }
                     } else {
-                        try_send!(tx, ItemEvent::OpenItem(app_id.clone()));
+                        tx.send_spawn(ItemEvent::OpenItem(app_id.clone()));
                     }
                 } else if event.button() == BUTTON_MIDDLE {
-                    try_send!(tx, ItemEvent::OpenItem(app_id.clone()));
+                    tx.send_spawn(ItemEvent::OpenItem(app_id.clone()));
                 }
 
                 Propagation::Proceed
@@ -235,17 +236,13 @@ impl ItemButton {
                 let menu_state = read_lock!(menu_state);
 
                 if menu_state.num_windows > 1 {
-                    try_send!(
-                        tx,
-                        ModuleUpdateEvent::Update(LauncherUpdate::Hover(app_id.clone(),))
-                    );
+                    tx.send_update_spawn(LauncherUpdate::Hover(app_id.clone()));
 
-                    try_send!(
-                        tx,
-                        ModuleUpdateEvent::OpenPopupAt(button.geometry(bar_position.orientation()))
-                    );
+                    tx.send_spawn(ModuleUpdateEvent::OpenPopupAt(
+                        button.geometry(bar_position.orientation()),
+                    ));
                 } else {
-                    try_send!(tx, ModuleUpdateEvent::ClosePopup);
+                    tx.send_spawn(ModuleUpdateEvent::ClosePopup);
                 }
 
                 Propagation::Proceed
@@ -270,7 +267,7 @@ impl ItemButton {
                 };
 
                 if close {
-                    try_send!(tx, ModuleUpdateEvent::ClosePopup);
+                    tx.send_spawn(ModuleUpdateEvent::ClosePopup);
                 }
 
                 Propagation::Proceed

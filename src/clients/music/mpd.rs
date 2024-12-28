@@ -1,7 +1,8 @@
 use super::{
     MusicClient, PlayerState, PlayerUpdate, ProgressTick, Status, Track, TICK_INTERVAL_MS,
 };
-use crate::{await_sync, send, spawn, Ironbar};
+use crate::channels::SyncSenderExt;
+use crate::{await_sync, spawn, Ironbar};
 use color_eyre::Report;
 use color_eyre::Result;
 use mpd_client::client::{ConnectionEvent, Subsystem};
@@ -97,7 +98,7 @@ impl Client {
             let status = Status::from(status);
 
             let update = PlayerUpdate::Update(Box::new(track), status);
-            send!(tx, update);
+            tx.send_expect(update);
         }
 
         Ok(())
@@ -113,7 +114,7 @@ impl Client {
                     elapsed: status.elapsed,
                 });
 
-                send!(tx, update);
+                tx.send_expect(update);
             }
         }
     }

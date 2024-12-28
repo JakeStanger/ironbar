@@ -1,6 +1,6 @@
 #![doc = include_str!("../docs/Ironvars.md")]
 
-use crate::send;
+use crate::channels::SyncSenderExt;
 use color_eyre::{Report, Result};
 use std::collections::HashMap;
 use tokio::sync::broadcast;
@@ -94,14 +94,14 @@ impl IronVar {
     /// The change is broadcast to all receivers.
     fn set(&mut self, value: Option<String>) {
         self.value.clone_from(&value);
-        send!(self.tx, value);
+        self.tx.send_expect(value);
     }
 
     /// Subscribes to the variable.
     /// The latest value is immediately sent to all receivers.
     fn subscribe(&self) -> broadcast::Receiver<Option<String>> {
         let rx = self.tx.subscribe();
-        send!(self.tx, self.value.clone());
+        self.tx.send_expect(self.value.clone());
         rx
     }
 }

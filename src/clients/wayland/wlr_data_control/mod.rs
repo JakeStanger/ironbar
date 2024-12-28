@@ -7,7 +7,8 @@ use self::device::{DataControlDeviceDataExt, DataControlDeviceHandler};
 use self::offer::{DataControlDeviceOffer, DataControlOfferHandler, SelectionOffer};
 use self::source::DataControlSourceHandler;
 use super::{Client, Environment, Event, Request, Response};
-use crate::{lock, try_send, Ironbar};
+use crate::channels::AsyncSenderExt;
+use crate::{lock, Ironbar};
 use device::DataControlDevice;
 use glib::Bytes;
 use nix::fcntl::{fcntl, F_GETPIPE_SZ, F_SETPIPE_SZ};
@@ -226,14 +227,11 @@ impl DataControlDeviceHandler for Environment {
             let Some(mime_type) = MimeType::parse_multiple(&mime_types) else {
                 lock!(self.clipboard).take();
                 // send an event so the clipboard module is aware it's changed
-                try_send!(
-                    self.event_tx,
-                    Event::Clipboard(ClipboardItem {
-                        id: usize::MAX,
-                        mime_type: String::new().into(),
-                        value: Arc::new(ClipboardValue::Other)
-                    })
-                );
+                self.event_tx.send_spawn(Event::Clipboard(ClipboardItem {
+                    id: usize::MAX,
+                    mime_type: String::new().into(),
+                    value: Arc::new(ClipboardValue::Other),
+                }));
                 return;
             };
 
@@ -258,7 +256,8 @@ impl DataControlDeviceHandler for Environment {
                             match Self::read_file(&mime_type, file.get_mut()) {
                                 Ok(item) => {
                                     lock!(clipboard).replace(item.clone());
-                                    try_send!(tx, Event::Clipboard(item));
+
+                                    tx.send_spawn(Event::Clipboard(item));
                                 }
                                 Err(err) => error!("{err:?}"),
                             }

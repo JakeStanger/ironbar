@@ -1,8 +1,9 @@
+use crate::channels::{AsyncSenderExt, BroadcastReceiverExt};
 use crate::clients::swaync;
 use crate::config::CommonConfig;
 use crate::gtk_helpers::IronbarGtkExt;
-use crate::modules::{Module, ModuleInfo, ModuleParts, ModuleUpdateEvent, WidgetContext};
-use crate::{glib_recv, module_impl, send_async, spawn, try_send};
+use crate::modules::{Module, ModuleInfo, ModuleParts, WidgetContext};
+use crate::{module_impl, spawn};
 use gtk::prelude::*;
 use gtk::{Align, Button, Label, Overlay};
 use serde::Deserialize;
@@ -153,12 +154,12 @@ impl Module<Overlay> for NotificationsModule {
                 let initial_state = client.state().await;
 
                 match initial_state {
-                    Ok(ev) => send_async!(tx, ModuleUpdateEvent::Update(ev)),
+                    Ok(ev) => tx.send_update(ev).await,
                     Err(err) => error!("{err:?}"),
                 };
 
                 while let Ok(ev) = rx.recv().await {
-                    send_async!(tx, ModuleUpdateEvent::Update(ev));
+                    tx.send_update(ev).await;
                 }
             });
         }
@@ -200,13 +201,13 @@ impl Module<Overlay> for NotificationsModule {
 
         let ctx = context.controller_tx.clone();
         button.connect_clicked(move |_| {
-            try_send!(ctx, UiEvent::ToggleVisibility);
+            ctx.send_spawn(UiEvent::ToggleVisibility);
         });
 
         {
             let button = button.clone();
 
-            glib_recv!(context.subscribe(), ev => {
+            context.subscribe().recv_glib(move |ev| {
                 let icon = self.icons.icon(ev);
                 button.set_label(icon);
 

@@ -1,7 +1,7 @@
 mod sink;
 mod sink_input;
 
-use crate::{arc_mut, lock, register_client, send, spawn_blocking, APP_ID};
+use crate::{arc_mut, lock, register_client, spawn_blocking, APP_ID};
 use libpulse_binding::callbacks::ListResult;
 use libpulse_binding::context::introspect::{Introspector, ServerInfo};
 use libpulse_binding::context::subscribe::{Facility, InterestMaskSet, Operation};
@@ -14,6 +14,7 @@ use std::sync::{Arc, Mutex};
 use tokio::sync::broadcast;
 use tracing::{debug, error, info, warn};
 
+use crate::channels::SyncSenderExt;
 pub use sink::Sink;
 pub use sink_input::SinkInput;
 
@@ -269,7 +270,7 @@ fn set_default_sink(
             {
                 sink.active = true;
                 debug!("Set sink active: {}", sink.name);
-                send!(tx, Event::UpdateSink(sink.clone()));
+                tx.send_expect(Event::UpdateSink(sink.clone()));
             } else {
                 warn!("Couldn't find sink: {}", default_sink_name);
             }

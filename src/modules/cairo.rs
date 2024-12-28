@@ -1,6 +1,7 @@
+use crate::channels::{AsyncSenderExt, BroadcastReceiverExt};
 use crate::config::CommonConfig;
-use crate::modules::{Module, ModuleInfo, ModuleParts, ModuleUpdateEvent, WidgetContext};
-use crate::{glib_recv, module_impl, spawn, try_send};
+use crate::modules::{Module, ModuleInfo, ModuleParts, WidgetContext};
+use crate::{module_impl, spawn};
 use cairo::{Format, ImageSurface};
 use glib::translate::IntoGlibPtr;
 use glib::Propagation;
@@ -87,7 +88,7 @@ impl Module<gtk::Box> for CairoModule {
                         debug!("{event:?}");
 
                         if event.paths.first().is_some_and(|p| p == &path) {
-                            try_send!(tx, ModuleUpdateEvent::Update(()));
+                            tx.send_update_spawn(());
                         }
                     }
                     Err(e) => error!("Error occurred when watching stylesheet: {:?}", e),
@@ -187,22 +188,20 @@ impl Module<gtk::Box> for CairoModule {
             }
         });
 
-        glib_recv!(context.subscribe(), _ev => {
+        context.subscribe().recv_glib(move |_ev| {
             let res = fs::read_to_string(&self.path)
                 .map(|s| s.replace("function draw", format!("function __draw_{id}").as_str()));
 
             match res {
-                Ok(script) => {
-                    match lua.load(&script).exec() {
-                        Ok(()) => {},
-                        Err(Error::SyntaxError { message, ..}) => {
-                            let message = message.split_once("]:").expect("to exist").1;
-                            error!("[lua syntax error] {}:{message}", self.path.display());
-                        },
-                        Err(err) => error!("lua error: {err:?}")
+                Ok(script) => match lua.load(&script).exec() {
+                    Ok(()) => {}
+                    Err(Error::SyntaxError { message, .. }) => {
+                        let message = message.split_once("]:").expect("to exist").1;
+                        error!("[lua syntax error] {}:{message}", self.path.display());
                     }
+                    Err(err) => error!("lua error: {err:?}"),
                 },
-                Err(err) => error!("{err:?}")
+                Err(err) => error!("{err:?}"),
             }
         });
 

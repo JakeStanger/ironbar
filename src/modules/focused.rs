@@ -1,10 +1,11 @@
+use crate::channels::{AsyncSenderExt, BroadcastReceiverExt};
 use crate::clients::wayland::{self, ToplevelEvent};
 use crate::config::{CommonConfig, TruncateMode};
 use crate::gtk_helpers::IronbarGtkExt;
 use crate::gtk_helpers::IronbarLabelExt;
 use crate::image::ImageProvider;
 use crate::modules::{Module, ModuleInfo, ModuleParts, ModuleUpdateEvent, WidgetContext};
-use crate::{glib_recv, module_impl, send_async, spawn, try_send};
+use crate::{module_impl, spawn};
 use color_eyre::Result;
 use gtk::prelude::*;
 use gtk::Label;
@@ -85,10 +86,8 @@ impl Module<gtk::Box> for FocusedModule {
             if let Some(focused) = focused {
                 current = Some(focused.id);
 
-                try_send!(
-                    tx,
-                    ModuleUpdateEvent::Update(Some((focused.title.clone(), focused.app_id)))
-                );
+                tx.send_update(Some((focused.title.clone(), focused.app_id)))
+                    .await;
             };
 
             while let Ok(event) = wlrx.recv().await {
@@ -99,24 +98,22 @@ impl Module<gtk::Box> for FocusedModule {
 
                             current = Some(info.id);
 
-                            send_async!(
-                                tx,
-                                ModuleUpdateEvent::Update(Some((
-                                    info.title.clone(),
-                                    info.app_id.clone()
-                                )))
-                            );
+                            tx.send_expect(ModuleUpdateEvent::Update(Some((
+                                info.title.clone(),
+                                info.app_id.clone(),
+                            ))))
+                            .await;
                         } else if info.id == current.unwrap_or_default() {
                             debug!("Clearing focus");
                             current = None;
-                            send_async!(tx, ModuleUpdateEvent::Update(None));
+                            tx.send_update(None).await;
                         }
                     }
                     ToplevelEvent::Remove(info) => {
                         if info.focused {
                             debug!("Clearing focus");
                             current = None;
-                            send_async!(tx, ModuleUpdateEvent::Update(None));
+                            tx.send_update(None).await;
                         }
                     }
                     ToplevelEvent::New(_) => {}
@@ -153,7 +150,7 @@ impl Module<gtk::Box> for FocusedModule {
 
         {
             let icon_theme = icon_theme.clone();
-            glib_recv!(context.subscribe(), data => {
+            context.subscribe().recv_glib(move |data| {
                 if let Some((name, id)) = data {
                     if self.show_icon {
                         match ImageProvider::parse(&id, &icon_theme, true, self.icon_size)

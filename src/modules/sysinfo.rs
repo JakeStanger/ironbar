@@ -1,7 +1,8 @@
+use crate::channels::{AsyncSenderExt, BroadcastReceiverExt};
 use crate::config::{CommonConfig, ModuleOrientation};
 use crate::gtk_helpers::{IronbarGtkExt, IronbarLabelExt};
-use crate::modules::{Module, ModuleInfo, ModuleParts, ModuleUpdateEvent, WidgetContext};
-use crate::{glib_recv, module_impl, send_async, spawn};
+use crate::modules::{Module, ModuleInfo, ModuleParts, WidgetContext};
+use crate::{module_impl, spawn};
 use color_eyre::Result;
 use gtk::prelude::*;
 use gtk::Label;
@@ -193,7 +194,7 @@ impl Module<gtk::Box> for SysInfoModule {
                 let tx = refresh_tx.clone();
                 spawn(async move {
                     loop {
-                        send_async!(tx, $refresh_type);
+                        tx.send_expect($refresh_type).await;
                         sleep(Duration::from_secs(interval.$func())).await;
                     }
                 });
@@ -223,7 +224,7 @@ impl Module<gtk::Box> for SysInfoModule {
                     RefreshType::System => refresh_system_tokens(&mut format_info, &sys),
                 };
 
-                send_async!(tx, ModuleUpdateEvent::Update(format_info.clone()));
+                tx.send_update(format_info.clone()).await;
             }
         });
 
@@ -258,7 +259,7 @@ impl Module<gtk::Box> for SysInfoModule {
 
         {
             let formats = self.format;
-            glib_recv!(context.subscribe(), info => {
+            context.subscribe().recv_glib(move |info| {
                 for (format, label) in formats.iter().zip(labels.clone()) {
                     let format_compiled = re.replace_all(format, |caps: &Captures| {
                         info.get(&caps[1])

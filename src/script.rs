@@ -1,4 +1,5 @@
-use crate::{send_async, spawn};
+use crate::channels::AsyncSenderExt;
+use crate::spawn;
 use color_eyre::eyre::WrapErr;
 use color_eyre::{Report, Result};
 use serde::Deserialize;
@@ -302,11 +303,11 @@ impl Script {
                     _ = handle.wait() => break,
                     Ok(Some(line)) = stdout_lines.next_line() => {
                         debug!("sending stdout line: '{line}'");
-                        send_async!(tx, OutputStream::Stdout(line));
+                        tx.send_expect(OutputStream::Stdout(line)).await;
                     }
                     Ok(Some(line)) = stderr_lines.next_line() => {
                         debug!("sending stderr line: '{line}'");
-                        send_async!(tx, OutputStream::Stderr(line));
+                        tx.send_expect(OutputStream::Stderr(line)).await;
                     }
                 }
             }

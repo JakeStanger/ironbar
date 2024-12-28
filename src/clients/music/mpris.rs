@@ -1,6 +1,7 @@
 use super::{MusicClient, PlayerState, PlayerUpdate, Status, Track, TICK_INTERVAL_MS};
+use crate::channels::SyncSenderExt;
 use crate::clients::music::ProgressTick;
-use crate::{arc_mut, lock, send, spawn_blocking};
+use crate::{arc_mut, lock, spawn_blocking};
 use color_eyre::Result;
 use mpris::{DBusError, Event, Metadata, PlaybackStatus, Player, PlayerFinder};
 use std::cmp;
@@ -137,7 +138,7 @@ impl Client {
                     let mut players_locked = lock!(players);
                     players_locked.remove(identity);
                     if players_locked.is_empty() {
-                        send!(tx, PlayerUpdate::Update(Box::new(None), Status::default()));
+                        tx.send_expect(PlayerUpdate::Update(Box::new(None), Status::default()));
                     }
                 };
 
@@ -212,7 +213,7 @@ impl Client {
         let track = Track::from(metadata);
 
         let player_update = PlayerUpdate::Update(Box::new(Some(track)), status);
-        send!(tx, player_update);
+        tx.send_expect(player_update);
 
         Ok(())
     }
@@ -242,7 +243,7 @@ impl Client {
                     duration: metadata.length(),
                 });
 
-                send!(tx, update);
+                tx.send_expect(update);
             }
         }
     }
@@ -319,7 +320,9 @@ impl MusicClient for Client {
                 state: PlayerState::Stopped,
                 volume_percent: None,
             };
-            send!(self.tx, PlayerUpdate::Update(Box::new(None), status));
+
+            self.tx
+                .send_expect(PlayerUpdate::Update(Box::new(None), status));
         }
 
         rx

@@ -3,10 +3,11 @@ mod wl_output;
 mod wl_seat;
 
 use crate::error::{ExitCode, ERR_CHANNEL_RECV};
-use crate::{arc_mut, lock, register_client, send, spawn, spawn_blocking};
+use crate::{arc_mut, lock, register_client, spawn, spawn_blocking};
 use std::process::exit;
 use std::sync::{Arc, Mutex};
 
+use crate::channels::SyncSenderExt;
 use calloop_channel::Event::Msg;
 use cfg_if::cfg_if;
 use color_eyre::Report;
@@ -152,11 +153,11 @@ impl Client {
             spawn(async move {
                 while let Some(event) = event_rx.recv().await {
                     match event {
-                        Event::Output(event) => send!(output_tx, event),
+                        Event::Output(event) => output_tx.send_expect(event),
                         #[cfg(any(feature = "focused", feature = "launcher"))]
-                        Event::Toplevel(event) => send!(toplevel_tx, event),
+                        Event::Toplevel(event) => toplevel_tx.send_expect(event),
                         #[cfg(feature = "clipboard")]
-                        Event::Clipboard(item) => send!(clipboard_tx, item),
+                        Event::Clipboard(item) => clipboard_tx.send_expect(item),
                     };
                 }
             });
@@ -177,7 +178,7 @@ impl Client {
     /// Sends a request to the environment event loop,
     /// and returns the response.
     fn send_request(&self, request: Request) -> Response {
-        send!(self.tx, request);
+        self.tx.send_expect(request);
         lock!(self.rx).recv().expect(ERR_CHANNEL_RECV)
     }
 
@@ -322,12 +323,12 @@ impl Environment {
         match event {
             Msg(Request::Roundtrip) => {
                 debug!("received roundtrip request");
-                send!(env.response_tx, Response::Ok);
+                env.response_tx.send_expect(Response::Ok);
             }
             #[cfg(feature = "ipc")]
             Msg(Request::OutputInfoAll) => {
                 let infos = env.output_info_all();
-                send!(env.response_tx, Response::OutputInfoAll(infos));
+                env.response_tx.send_expect(Response::OutputInfoAll(infos));
             }
             #[cfg(any(feature = "focused", feature = "launcher"))]
             Msg(Request::ToplevelInfoAll) => {
@@ -336,7 +337,8 @@ impl Environment {
                     .iter()
                     .filter_map(ToplevelHandle::info)
                     .collect();
-                send!(env.response_tx, Response::ToplevelInfoAll(infos));
+                env.response_tx
+                    .send_expect(Response::ToplevelInfoAll(infos));
             }
             #[cfg(feature = "launcher")]
             Msg(Request::ToplevelFocus(id)) => {
@@ -350,7 +352,7 @@ impl Environment {
                     handle.focus(&seat);
                 }
 
-                send!(env.response_tx, Response::Ok);
+                env.response_tx.send_expect(Response::Ok);
             }
             #[cfg(feature = "launcher")]
             Msg(Request::ToplevelMinimize(id)) => {
@@ -363,17 +365,17 @@ impl Environment {
                     handle.minimize();
                 }
 
-                send!(env.response_tx, Response::Ok);
+                env.response_tx.send_expect(Response::Ok);
             }
             #[cfg(feature = "clipboard")]
             Msg(Request::CopyToClipboard(item)) => {
                 env.copy_to_clipboard(item);
-                send!(env.response_tx, Response::Ok);
+                env.response_tx.send_expect(Response::Ok);
             }
             #[cfg(feature = "clipboard")]
             Msg(Request::ClipboardItem) => {
                 let item = lock!(env.clipboard).clone();
-                send!(env.response_tx, Response::ClipboardItem(item));
+                env.response_tx.send_expect(Response::ClipboardItem(item));
             }
             calloop_channel::Event::Closed => error!("request channel unexpectedly closed"),
         }

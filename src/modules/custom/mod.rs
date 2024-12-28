@@ -9,6 +9,7 @@ use self::image::ImageWidget;
 use self::label::LabelWidget;
 use self::r#box::BoxWidget;
 use self::slider::SliderWidget;
+use crate::channels::AsyncSenderExt;
 use crate::config::{CommonConfig, ModuleConfig};
 use crate::modules::custom::button::ButtonWidget;
 use crate::modules::custom::progress::ProgressWidget;
@@ -17,7 +18,7 @@ use crate::modules::{
     ModuleUpdateEvent, PopupButton, PopupModuleFactory, WidgetContext,
 };
 use crate::script::Script;
-use crate::{module_impl, send_async, spawn};
+use crate::{module_impl, spawn};
 use color_eyre::Result;
 use gtk::prelude::*;
 use gtk::{Button, IconTheme, Orientation};
@@ -207,11 +208,12 @@ impl Module<gtk::Box> for CustomModule {
                         error!("{err:?}");
                     }
                 } else if event.cmd == "popup:toggle" {
-                    send_async!(tx, ModuleUpdateEvent::TogglePopup(event.id));
+                    tx.send_expect(ModuleUpdateEvent::TogglePopup(event.id))
+                        .await;
                 } else if event.cmd == "popup:open" {
-                    send_async!(tx, ModuleUpdateEvent::OpenPopup(event.id));
+                    tx.send_expect(ModuleUpdateEvent::OpenPopup(event.id)).await;
                 } else if event.cmd == "popup:close" {
-                    send_async!(tx, ModuleUpdateEvent::ClosePopup);
+                    tx.send_expect(ModuleUpdateEvent::ClosePopup).await;
                 } else {
                     error!("Received invalid command: '{}'", event.cmd);
                 }

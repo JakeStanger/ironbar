@@ -4,11 +4,11 @@ pub mod manager;
 use self::handle::ToplevelHandleHandler;
 use self::manager::ToplevelManagerHandler;
 use super::{Client, Environment, Event, Request, Response};
-use crate::try_send;
 use tokio::sync::broadcast;
 use tracing::{debug, error, trace};
 use wayland_client::{Connection, QueueHandle};
 
+use crate::channels::AsyncSenderExt;
 pub use handle::{ToplevelHandle, ToplevelInfo};
 
 #[derive(Debug, Clone)]
@@ -71,7 +71,8 @@ impl ToplevelHandleHandler for Environment {
                 trace!("Adding new handle: {info:?}");
                 self.handles.push(handle.clone());
                 if let Some(info) = handle.info() {
-                    try_send!(self.event_tx, Event::Toplevel(ToplevelEvent::New(info)));
+                    self.event_tx
+                        .send_spawn(Event::Toplevel(ToplevelEvent::New(info)));
                 }
             }
             None => {
@@ -92,7 +93,8 @@ impl ToplevelHandleHandler for Environment {
             Some(info) => {
                 trace!("Updating handle: {info:?}");
                 if let Some(info) = handle.info() {
-                    try_send!(self.event_tx, Event::Toplevel(ToplevelEvent::Update(info)));
+                    self.event_tx
+                        .send_spawn(Event::Toplevel(ToplevelEvent::Update(info)));
                 }
             }
             None => {
@@ -111,7 +113,8 @@ impl ToplevelHandleHandler for Environment {
 
         self.handles.retain(|h| h != &handle);
         if let Some(info) = handle.info() {
-            try_send!(self.event_tx, Event::Toplevel(ToplevelEvent::Remove(info)));
+            self.event_tx
+                .send_spawn(Event::Toplevel(ToplevelEvent::Remove(info)));
         }
     }
 }
