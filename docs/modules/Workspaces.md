@@ -8,14 +8,14 @@ Shows all current workspaces. Clicking a workspace changes focus to it.
 
 > Type: `workspaces`
 
-| Name           | Type                                  | Default        | Description                                                                                                                                                               |
-|----------------|---------------------------------------|----------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `name_map`     | `Map<string, string or image>`        | `{}`           | A map of actual workspace names to their display labels/images. Workspaces use their actual name if not present in the map. See [here](images) for information on images. |
-| `favorites`    | `Map<string, string[]>` or `string[]` | `[]`           | Workspaces to always show. This can be for all monitors, or a map to set per monitor.                                                                                     |
-| `hidden`       | `string[]`                            | `[]`           | A list of workspace names to never show                                                                                                                                   |
-| `icon_size`    | `integer`                             | `32`           | Size to render icon at (image icons only).                                                                                                                                |
-| `all_monitors` | `boolean`                             | `false`        | Whether to display workspaces from all monitors. When `false`, only shows workspaces on the current monitor.                                                              |
-| `sort`         | `'added'` or `'alphanumeric'`         | `alphanumeric` | The method used for sorting workspaces. `added` always appends to the end, `alphanumeric` sorts by number/name.                                                           |
+| Name           | Type                                  | Default | Description                                                                                                                                                               |
+|----------------|---------------------------------------|---------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `name_map`     | `Map<string, string or image>`        | `{}`    | A map of actual workspace names to their display labels/images. Workspaces use their actual name if not present in the map. See [here](images) for information on images. |
+| `favorites`    | `Map<string, string[]>` or `string[]` | `[]`    | Workspaces to always show. This can be for all monitors, or a map to set per monitor.                                                                                     |
+| `hidden`       | `string[]`                            | `[]`    | A list of workspace names to never show                                                                                                                                   |
+| `icon_size`    | `integer`                             | `32`    | Size to render icon at (image icons only).                                                                                                                                |
+| `all_monitors` | `boolean`                             | `false` | Whether to display workspaces from all monitors. When `false`, only shows workspaces on the current monitor.                                                              |
+| `sort`         | `'added'` or `'label'` or `'name'`    | `label` | The method used for sorting workspaces. `added` always appends to the end, `label` sorts by displayed value, and `name` sorts by workspace name.                          |
 
 <details>
 <summary>JSON</summary>
