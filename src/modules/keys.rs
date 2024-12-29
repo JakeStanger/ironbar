@@ -1,7 +1,6 @@
 use color_eyre::Result;
 use gtk::prelude::*;
 use serde::Deserialize;
-use std::ops::Deref;
 use tokio::sync::mpsc;
 
 use super::{Module, ModuleInfo, ModuleParts, ModuleUpdateEvent, WidgetContext};
@@ -183,19 +182,19 @@ impl Module<gtk::Box> for KeysModule {
         if self.show_caps {
             caps.add_class("key");
             caps.add_class("caps");
-            container.add(caps.deref());
+            container.add(&*caps);
         }
 
         if self.show_num {
             num.add_class("key");
             num.add_class("num");
-            container.add(num.deref());
+            container.add(&*num);
         }
 
         if self.show_scroll {
             scroll.add_class("key");
             scroll.add_class("scroll");
-            container.add(scroll.deref());
+            container.add(&*scroll);
         }
 
         let icons = self.icons;

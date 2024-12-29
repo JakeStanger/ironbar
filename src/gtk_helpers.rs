@@ -97,10 +97,10 @@ pub trait IronbarLabelExt {
 
 impl IronbarLabelExt for Label {
     fn set_label_escaped(&self, label: &str) {
-        if !label.contains("<span") {
-            self.set_label(&markup_escape_text(label));
-        } else {
+        if label.contains("<span") {
             self.set_label(label);
+        } else {
+            self.set_label(&markup_escape_text(label));
         }
     }
 

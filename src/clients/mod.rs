@@ -82,13 +82,12 @@ impl Clients {
 
     #[cfg(feature = "workspaces")]
     pub fn workspaces(&mut self) -> ClientResult<dyn compositor::WorkspaceClient> {
-        let client = match &self.workspaces {
-            Some(workspaces) => workspaces.clone(),
-            None => {
-                let client = compositor::Compositor::create_workspace_client(self)?;
-                self.workspaces.replace(client.clone());
-                client
-            }
+        let client = if let Some(workspaces) = &self.workspaces {
+            workspaces.clone()
+        } else {
+            let client = compositor::Compositor::create_workspace_client(self)?;
+            self.workspaces.replace(client.clone());
+            client
         };
 
         Ok(client)
@@ -96,14 +95,13 @@ impl Clients {
 
     #[cfg(feature = "sway")]
     pub fn sway(&mut self) -> ClientResult<sway::Client> {
-        let client = match &self.sway {
-            Some(client) => client.clone(),
-            None => {
-                let client = await_sync(async { sway::Client::new().await })?;
-                let client = Arc::new(client);
-                self.sway.replace(client.clone());
-                client
-            }
+        let client = if let Some(client) = &self.sway {
+            client.clone()
+        } else {
+            let client = await_sync(async { sway::Client::new().await })?;
+            let client = Arc::new(client);
+            self.sway.replace(client.clone());
+            client
         };
 
         Ok(client)
@@ -134,26 +132,24 @@ impl Clients {
 
     #[cfg(feature = "network_manager")]
     pub fn network_manager(&mut self) -> ClientResult<networkmanager::Client> {
-        match &self.network_manager {
-            Some(client) => Ok(client.clone()),
-            None => {
-                let client = networkmanager::create_client()?;
-                self.network_manager = Some(client.clone());
-                Ok(client)
-            }
+        if let Some(client) = &self.network_manager {
+            Ok(client.clone())
+        } else {
+            let client = networkmanager::create_client()?;
+            self.network_manager = Some(client.clone());
+            Ok(client)
         }
     }
 
     #[cfg(feature = "notifications")]
     pub fn notifications(&mut self) -> ClientResult<swaync::Client> {
-        let client = match &self.notifications {
-            Some(client) => client.clone(),
-            None => {
-                let client = await_sync(async { swaync::Client::new().await })?;
-                let client = Arc::new(client);
-                self.notifications.replace(client.clone());
-                client
-            }
+        let client = if let Some(client) = &self.notifications {
+            client.clone()
+        } else {
+            let client = await_sync(async { swaync::Client::new().await })?;
+            let client = Arc::new(client);
+            self.notifications.replace(client.clone());
+            client
         };
 
         Ok(client)
@@ -161,14 +157,13 @@ impl Clients {
 
     #[cfg(feature = "tray")]
     pub fn tray(&mut self) -> ClientResult<tray::Client> {
-        let client = match &self.tray {
-            Some(client) => client.clone(),
-            None => {
-                let client = await_sync(async { tray::Client::new().await })?;
-                let client = Arc::new(client);
-                self.tray.replace(client.clone());
-                client
-            }
+        let client = if let Some(client) = &self.tray {
+            client.clone()
+        } else {
+            let client = await_sync(async { tray::Client::new().await })?;
+            let client = Arc::new(client);
+            self.tray.replace(client.clone());
+            client
         };
 
         Ok(client)
@@ -176,13 +171,12 @@ impl Clients {
 
     #[cfg(feature = "upower")]
     pub fn upower(&mut self) -> ClientResult<zbus::fdo::PropertiesProxy<'static>> {
-        let client = match &self.upower {
-            Some(client) => client.clone(),
-            None => {
-                let client = await_sync(async { upower::create_display_proxy().await })?;
-                self.upower.replace(client.clone());
-                client
-            }
+        let client = if let Some(client) = &self.upower {
+            client.clone()
+        } else {
+            let client = await_sync(async { upower::create_display_proxy().await })?;
+            self.upower.replace(client.clone());
+            client
         };
 
         Ok(client)

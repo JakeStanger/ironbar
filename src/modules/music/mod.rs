@@ -1,5 +1,4 @@
 use std::cell::RefMut;
-use std::ops::Deref;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
@@ -200,8 +199,8 @@ impl Module<Button> for MusicModule {
             label.truncate(truncate);
         }
 
-        button_contents.add(icon_pause.deref());
-        button_contents.add(icon_play.deref());
+        button_contents.add(&*icon_pause);
+        button_contents.add(&*icon_play);
         button_contents.add(&label);
 
         {
@@ -328,7 +327,7 @@ impl Module<Button> for MusicModule {
         volume_icon.add_class("icon");
 
         volume_box.pack_start(&volume_slider, true, true, 0);
-        volume_box.pack_end(volume_icon.deref(), false, false, 0);
+        volume_box.pack_end(&*volume_icon, false, false, 0);
 
         main_container.add(&album_image);
         main_container.add(&info_box);
@@ -559,7 +558,7 @@ impl IconPrefixedLabel {
         icon.add_class("icon-box");
         label.add_class("label");
 
-        container.add(icon.deref());
+        container.add(&*icon);
         container.add(&label);
 
         Self { label, container }

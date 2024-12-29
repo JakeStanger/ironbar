@@ -155,7 +155,7 @@ fn reorder_workspaces(container: &gtk::Box, sort_order: SortOrder) {
             let label = if sort_order == SortOrder::Label {
                 child
                     .downcast_ref::<gtk::Button>()
-                    .and_then(|button| button.label())
+                    .and_then(ButtonExt::label)
                     .unwrap_or_else(|| child.widget_name())
             } else {
                 child.widget_name()

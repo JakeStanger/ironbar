@@ -109,8 +109,7 @@ impl Module<gtk::Box> for TrayModule {
     ) -> Result<ModuleParts<gtk::Box>> {
         let orientation = self
             .direction
-            .map(Orientation::from)
-            .unwrap_or(info.bar_position.orientation());
+            .map_or(info.bar_position.orientation(), Orientation::from);
 
         // We use a `Box` here instead of the (supposedly correct) `MenuBar`
         // as the latter has issues on Sway with menus focus-stealing from the bar.
