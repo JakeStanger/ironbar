@@ -1,6 +1,5 @@
 use crate::error::ExitCode;
-use crate::ipc::commands::Command;
-use crate::ipc::responses::Response;
+use crate::ipc::{Command, Response};
 use clap::{Parser, ValueEnum};
 use serde::{Deserialize, Serialize};
 use std::process::exit;

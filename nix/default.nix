@@ -20,6 +20,7 @@
   luajit,
   luajitPackages,
   pkg-config,
+  installShellFiles,
   adwaita-icon-theme,
   hicolor-icon-theme,
   rustPlatform,
@@ -45,6 +46,7 @@
         pkg-config
         wrapGAppsHook
         gobject-introspection
+        installShellFiles
     ];
 
     buildInputs = [
@@ -87,6 +89,13 @@
       gappsWrapperArgs+=(
         ${gappsWrapperArgs}
       )
+    '';
+
+    postInstall = ''
+      installShellCompletion --cmd ironbar \
+        --bash target/completions/ironbar.bash \
+        --fish target/completions/ironbar.fish \
+        --zsh target/completions/_ironbar
     '';
 
     passthru = {
