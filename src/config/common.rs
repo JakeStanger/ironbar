@@ -206,7 +206,7 @@ pub enum ModuleJustification {
     Left,
     Right,
     Center,
-    Fill
+    Fill,
 }
 
 impl From<ModuleJustification> for Justification {
@@ -215,7 +215,7 @@ impl From<ModuleJustification> for Justification {
             ModuleJustification::Left => Self::Left,
             ModuleJustification::Right => Self::Right,
             ModuleJustification::Center => Self::Center,
-            ModuleJustification::Fill => Self::Fill
+            ModuleJustification::Fill => Self::Fill,
         }
     }
 }

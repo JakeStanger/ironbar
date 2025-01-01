@@ -68,7 +68,7 @@ pub struct ClockModule {
     /// <br>
     /// **Default**: `left`
     #[serde(default)]
-    justify: ModuleJustification
+    justify: ModuleJustification,
 }
 
 impl Default for ClockModule {
@@ -79,7 +79,7 @@ impl Default for ClockModule {
             locale: default_locale(),
             orientation: ModuleOrientation::Horizontal,
             common: Some(CommonConfig::default()),
-            justify: ModuleJustification::Left
+            justify: ModuleJustification::Left,
         }
     }
 }

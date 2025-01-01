@@ -43,7 +43,7 @@ pub struct LabelWidget {
     /// <br>
     /// **Default**: `left`
     #[serde(default)]
-    justify: ModuleJustification
+    justify: ModuleJustification,
 }
 
 impl CustomWidget for LabelWidget {
