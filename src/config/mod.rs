@@ -45,7 +45,7 @@ use std::collections::HashMap;
 #[cfg(feature = "schema")]
 use schemars::JsonSchema;
 
-pub use self::common::{CommonConfig, ModuleOrientation, TransitionType};
+pub use self::common::{CommonConfig, ModuleJustification, ModuleOrientation, TransitionType};
 pub use self::truncate::{EllipsizeMode, TruncateMode};
 
 #[derive(Debug, Deserialize, Clone)]

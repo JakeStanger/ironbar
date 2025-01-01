@@ -54,10 +54,11 @@ A text label. Pango markup is supported.
 
 > Type `label`
 
-| Name    | Type                                            | Default | Description                                                         |
-|---------|-------------------------------------------------|---------|---------------------------------------------------------------------|
-| `label` | [Dynamic String](dynamic-values#dynamic-string) | `null`  | Widget text label. Pango markup and embedded scripts are supported. |
-| `orientation` | `'horizontal'` or `'vertical'` (shorthand: `'h'` or `'v'`) | `'horizontal'` | Orientation of the label.                                                                                                      |
+| Name          | Type                                                       | Default        | Description                                                          |
+|---------------|------------------------------------------------------------|----------------|----------------------------------------------------------------------|
+| `label`       | [Dynamic String](dynamic-values#dynamic-string)            | `null`         | Widget text label. Pango markup and embedded scripts are supported.  |
+| `orientation` | `'horizontal'` or `'vertical'` (shorthand: `'h'` or `'v'`) | `'horizontal'` | Orientation of the label text.                                       |
+| `justify`     | `'left'`, `'right'`, `'center'`, or `'fill'`               | `'left'`       | Justification (alignment) of the label text.                         |
 
 #### Button
 

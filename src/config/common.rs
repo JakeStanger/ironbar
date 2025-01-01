@@ -3,7 +3,7 @@ use crate::script::{Script, ScriptInput};
 use glib::Propagation;
 use gtk::gdk::ScrollDirection;
 use gtk::prelude::*;
-use gtk::{EventBox, Orientation, Revealer, RevealerTransitionType};
+use gtk::{EventBox, Justification, Orientation, Revealer, RevealerTransitionType};
 use serde::Deserialize;
 use tracing::trace;
 
@@ -194,6 +194,28 @@ impl From<ModuleOrientation> for Orientation {
         match o {
             ModuleOrientation::Horizontal => Self::Horizontal,
             ModuleOrientation::Vertical => Self::Vertical,
+        }
+    }
+}
+
+#[derive(Debug, Default, Deserialize, Clone, Copy)]
+#[serde(rename_all = "snake_case")]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+pub enum ModuleJustification {
+    #[default]
+    Left,
+    Right,
+    Center,
+    Fill
+}
+
+impl From<ModuleJustification> for Justification {
+    fn from(o: ModuleJustification) -> Self {
+        match o {
+            ModuleJustification::Left => Self::Left,
+            ModuleJustification::Right => Self::Right,
+            ModuleJustification::Center => Self::Center,
+            ModuleJustification::Fill => Self::Fill
         }
     }
 }
