@@ -8,7 +8,7 @@ use serde::Deserialize;
 use tokio::sync::{broadcast, mpsc};
 use tokio::time::sleep;
 
-use crate::config::{CommonConfig, ModuleOrientation};
+use crate::config::{CommonConfig, ModuleJustification, ModuleOrientation};
 use crate::gtk_helpers::IronbarGtkExt;
 use crate::modules::{
     Module, ModuleInfo, ModuleParts, ModulePopup, ModuleUpdateEvent, PopupButton, WidgetContext,
@@ -58,6 +58,14 @@ pub struct ClockModule {
     #[serde(default)]
     orientation: ModuleOrientation,
 
+    /// The justification (alignment) of the date/time shown on the bar.
+    ///
+    /// **Valid options**: `left`, `right`, `center`, `fill`
+    /// <br>
+    /// **Default**: `left`
+    #[serde(default)]
+    justify: ModuleJustification,
+
     /// See [common options](module-level-options#common-options).
     #[serde(flatten)]
     pub common: Option<CommonConfig>,
@@ -71,6 +79,7 @@ impl Default for ClockModule {
             locale: default_locale(),
             orientation: ModuleOrientation::Horizontal,
             common: Some(CommonConfig::default()),
+            justify: ModuleJustification::Left,
         }
     }
 }
@@ -129,6 +138,7 @@ impl Module<Button> for ClockModule {
         let label = Label::builder()
             .angle(self.orientation.to_angle())
             .use_markup(true)
+            .justify(self.justify.into())
             .build();
         button.add(&label);
 

@@ -4,7 +4,7 @@ use serde::Deserialize;
 
 use super::{CustomWidget, CustomWidgetContext};
 use crate::build;
-use crate::config::ModuleOrientation;
+use crate::config::{ModuleJustification, ModuleOrientation};
 use crate::dynamic_value::dynamic_string;
 use crate::gtk_helpers::IronbarLabelExt;
 
@@ -36,6 +36,14 @@ pub struct LabelWidget {
     /// **Default**: `horizontal`
     #[serde(default)]
     orientation: ModuleOrientation,
+
+    /// The justification (alignment) of the label text.
+    ///
+    /// **Valid options**: `left`, `right`, `center`, `fill`
+    /// <br>
+    /// **Default**: `left`
+    #[serde(default)]
+    justify: ModuleJustification,
 }
 
 impl CustomWidget for LabelWidget {
@@ -45,6 +53,7 @@ impl CustomWidget for LabelWidget {
         let label = build!(self, Self::Widget);
 
         label.set_angle(self.orientation.to_angle());
+        label.set_justify(self.justify.into());
         label.set_use_markup(true);
 
         {
