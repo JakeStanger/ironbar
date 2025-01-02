@@ -58,10 +58,6 @@ pub struct ClockModule {
     #[serde(default)]
     orientation: ModuleOrientation,
 
-    /// See [common options](module-level-options#common-options).
-    #[serde(flatten)]
-    pub common: Option<CommonConfig>,
-
     /// The justification (alignment) of the date/time shown on the bar.
     ///
     /// **Valid options**: `left`, `right`, `center`, `fill`
@@ -69,6 +65,10 @@ pub struct ClockModule {
     /// **Default**: `left`
     #[serde(default)]
     justify: ModuleJustification,
+
+    /// See [common options](module-level-options#common-options).
+    #[serde(flatten)]
+    pub common: Option<CommonConfig>,
 }
 
 impl Default for ClockModule {
