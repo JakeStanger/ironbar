@@ -21,6 +21,8 @@ pub mod networkmanager;
 pub mod sway;
 #[cfg(feature = "notifications")]
 pub mod swaync;
+#[cfg(feature = "sys_info")]
+pub mod sysinfo;
 #[cfg(feature = "tray")]
 pub mod tray;
 #[cfg(feature = "upower")]
@@ -54,6 +56,8 @@ pub struct Clients {
     network_manager: Option<Arc<networkmanager::Client>>,
     #[cfg(feature = "notifications")]
     notifications: Option<Arc<swaync::Client>>,
+    #[cfg(feature = "sys_info")]
+    sys_info: Option<Arc<sysinfo::Client>>,
     #[cfg(feature = "tray")]
     tray: Option<Arc<tray::Client>>,
     #[cfg(feature = "upower")]
@@ -183,6 +187,13 @@ impl Clients {
         };
 
         Ok(client)
+    }
+
+    #[cfg(feature = "sys_info")]
+    pub fn sys_info(&mut self) -> Arc<sysinfo::Client> {
+        self.sys_info
+            .get_or_insert_with(|| Arc::new(sysinfo::Client::new()))
+            .clone()
     }
 
     #[cfg(feature = "tray")]
