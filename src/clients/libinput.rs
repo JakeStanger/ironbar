@@ -217,6 +217,9 @@ impl Client {
                     _ => {}
                 }
             }
+
+            // we need to sleep for a short period to avoid hogging cpu
+            std::thread::sleep(Duration::from_millis(20));
         }
     }
 
