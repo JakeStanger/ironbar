@@ -18,7 +18,7 @@ default = [
     "focused",
     "http",
     "ipc",
-    "keys",
+    "keys+all",
     "launcher",
     "music+all",
     "network_manager",
@@ -57,6 +57,9 @@ clock = ["chrono"]
 focused = []
 
 keys = ["dep:input", "dep:evdev-rs", "dep:libc", "dep:nix"]
+"keys+all" = ["keys", "keys+sway", "keys+hyprland"]
+"keys+sway" = ["keys", "sway"]
+"keys+hyprland" = ["keys", "hyprland"]
 
 launcher = []
 
