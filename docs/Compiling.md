@@ -85,7 +85,7 @@ cargo build --release --no-default-features \
 > ⚠ Make sure you enable at least one `config` feature otherwise you will not be able to start the bar!
 
 | Feature             | Description                                                                       |
-|---------------------|-----------------------------------------------------------------------------------|
+| ------------------- | --------------------------------------------------------------------------------- |
 | **Core**            |                                                                                   |
 | http                | Enables HTTP features. Currently this includes the ability to load remote images. |
 | ipc                 | Enables the IPC server.                                                           |
@@ -101,6 +101,10 @@ cargo build --release --no-default-features \
 | clipboard           | Enables the `clipboard` module.                                                   |
 | clock               | Enables the `clock` module.                                                       |
 | focused             | Enables the `focused` module.                                                     |
+| keys                | Enables the `keys` module without keyboard layout support.                        |
+| keys+all            | Enables the `keys` module with keyboard layout support for all compositors.       |
+| keys+sway           | Enables the `keys` module with keyboard layout support for Sway.                  |
+| keys+hyprland       | Enables the `keys` module with keyboard layout support for Hyprland.              |
 | launcher            | Enables the `launcher` module.                                                    |
 | music+all           | Enables the `music` module with support for all player types.                     |
 | music+mpris         | Enables the `music` module with MPRIS support.                                    |
