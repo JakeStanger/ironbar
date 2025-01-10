@@ -54,6 +54,26 @@ impl Compositor {
         }
     }
 
+    pub fn create_keyboard_layout_client(
+        clients: &mut super::Clients,
+    ) -> Result<Arc<dyn KeyboardLayoutClient + Send + Sync>> {
+        let current = Self::get_current();
+        debug!("Getting keyboard_layout client for: {current}");
+        match current {
+            #[cfg(feature = "keys+sway")]
+            Self::Sway => clients
+                .sway()
+                .map(|client| client as Arc<dyn KeyboardLayoutClient + Send + Sync>),
+            #[cfg(feature = "keys+hyprland")]
+            Self::Hyprland => clients
+                .hyprland()
+                .map(|client| client as Arc<dyn KeyboardLayoutClient + Send + Sync>),
+            Self::Unsupported => Err(Report::msg("Unsupported compositor").note(
+                "Currently keyboard layout functionality are only supported by Sway and Hyprland",
+            )),
+        }
+    }
+
     /// Creates a new instance of
     /// the workspace client for the current compositor.
     pub fn create_workspace_client(
@@ -67,7 +87,9 @@ impl Compositor {
                 .sway()
                 .map(|client| client as Arc<dyn WorkspaceClient + Send + Sync>),
             #[cfg(feature = "workspaces+hyprland")]
-            Self::Hyprland => Ok(Arc::new(hyprland::Client::new())),
+            Self::Hyprland => clients
+                .hyprland()
+                .map(|client| client as Arc<dyn WorkspaceClient + Send + Sync>),
             Self::Unsupported => Err(Report::msg("Unsupported compositor")
                 .note("Currently workspaces are only supported by Sway and Hyprland")),
         }
@@ -113,6 +135,9 @@ impl Visibility {
 }
 
 #[derive(Debug, Clone)]
+pub struct KeyboardLayoutUpdate(pub String);
+
+#[derive(Debug, Clone)]
 pub enum WorkspaceUpdate {
     /// Provides an initial list of workspaces.
     /// This is re-sent to all subscribers when a new subscription is created.
@@ -146,10 +171,20 @@ pub enum WorkspaceUpdate {
 
 pub trait WorkspaceClient: Debug + Send + Sync {
     /// Requests the workspace with this name is focused.
-    fn focus(&self, name: String) -> Result<()>;
+    fn focus(&self, name: String);
 
     /// Creates a new to workspace event receiver.
-    fn subscribe_workspace_change(&self) -> broadcast::Receiver<WorkspaceUpdate>;
+    fn subscribe(&self) -> broadcast::Receiver<WorkspaceUpdate>;
 }
 
 register_fallible_client!(dyn WorkspaceClient, workspaces);
+
+pub trait KeyboardLayoutClient: Debug + Send + Sync {
+    /// Switches to the next layout.
+    fn set_next_active(&self);
+
+    /// Creates a new to keyboard layout event receiver.
+    fn subscribe(&self) -> broadcast::Receiver<KeyboardLayoutUpdate>;
+}
+
+register_fallible_client!(dyn KeyboardLayoutClient, keyboard_layout);

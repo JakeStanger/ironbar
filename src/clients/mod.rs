@@ -38,10 +38,14 @@ pub struct Clients {
     workspaces: Option<Arc<dyn compositor::WorkspaceClient>>,
     #[cfg(feature = "sway")]
     sway: Option<Arc<sway::Client>>,
+    #[cfg(feature = "hyprland")]
+    hyprland: Option<Arc<compositor::hyprland::Client>>,
     #[cfg(feature = "clipboard")]
     clipboard: Option<Arc<clipboard::Client>>,
     #[cfg(feature = "keys")]
     libinput: HashMap<Box<str>, Arc<libinput::Client>>,
+    #[cfg(any(feature = "keys+sway", feature = "keys+hyprland"))]
+    keyboard_layout: Option<Arc<dyn compositor::KeyboardLayoutClient>>,
     #[cfg(feature = "cairo")]
     lua: Option<Rc<lua::LuaEngine>>,
     #[cfg(feature = "music")]
@@ -93,6 +97,19 @@ impl Clients {
         Ok(client)
     }
 
+    #[cfg(any(feature = "keys+sway", feature = "keys+hyprland"))]
+    pub fn keyboard_layout(&mut self) -> ClientResult<dyn compositor::KeyboardLayoutClient> {
+        let client = if let Some(keyboard_layout) = &self.keyboard_layout {
+            keyboard_layout.clone()
+        } else {
+            let client = compositor::Compositor::create_keyboard_layout_client(self)?;
+            self.keyboard_layout.replace(client.clone());
+            client
+        };
+
+        Ok(client)
+    }
+
     #[cfg(feature = "sway")]
     pub fn sway(&mut self) -> ClientResult<sway::Client> {
         let client = if let Some(client) = &self.sway {
@@ -101,6 +118,19 @@ impl Clients {
             let client = await_sync(async { sway::Client::new().await })?;
             let client = Arc::new(client);
             self.sway.replace(client.clone());
+            client
+        };
+
+        Ok(client)
+    }
+
+    #[cfg(feature = "hyprland")]
+    pub fn hyprland(&mut self) -> ClientResult<compositor::hyprland::Client> {
+        let client = if let Some(client) = &self.hyprland {
+            client.clone()
+        } else {
+            let client = Arc::new(compositor::hyprland::Client::new());
+            self.hyprland.replace(client.clone());
             client
         };
 

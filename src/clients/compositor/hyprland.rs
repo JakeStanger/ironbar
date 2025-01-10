@@ -1,7 +1,11 @@
-use super::{Visibility, Workspace, WorkspaceClient, WorkspaceUpdate};
+use super::{
+    KeyboardLayoutClient, KeyboardLayoutUpdate, Visibility, Workspace, WorkspaceClient,
+    WorkspaceUpdate,
+};
 use crate::{arc_mut, lock, send, spawn_blocking};
 use color_eyre::Result;
-use hyprland::data::{Workspace as HWorkspace, Workspaces};
+use hyprland::ctl::switch_xkb_layout;
+use hyprland::data::{Devices, Workspace as HWorkspace, Workspaces};
 use hyprland::dispatch::{Dispatch, DispatchType, WorkspaceIdentifierWithSpecial};
 use hyprland::event_listener::EventListener;
 use hyprland::prelude::*;
@@ -13,15 +17,21 @@ use tracing::{debug, error, info};
 pub struct Client {
     workspace_tx: Sender<WorkspaceUpdate>,
     _workspace_rx: Receiver<WorkspaceUpdate>,
+
+    keyboard_layout_tx: Sender<KeyboardLayoutUpdate>,
+    _keyboard_layout_rx: Receiver<KeyboardLayoutUpdate>,
 }
 
 impl Client {
     pub(crate) fn new() -> Self {
         let (workspace_tx, workspace_rx) = channel(16);
+        let (keyboard_layout_tx, keyboard_layout_rx) = channel(4);
 
         let instance = Self {
             workspace_tx,
             _workspace_rx: workspace_rx,
+            keyboard_layout_tx,
+            _keyboard_layout_rx: keyboard_layout_rx,
         };
 
         instance.listen_workspace_events();
@@ -32,6 +42,7 @@ impl Client {
         info!("Starting Hyprland event listener");
 
         let tx = self.workspace_tx.clone();
+        let keyboard_layout_tx = self.keyboard_layout_tx.clone();
 
         spawn_blocking(move || {
             let mut event_listener = EventListener::new();
@@ -178,6 +189,9 @@ impl Client {
             }
 
             {
+                let tx = tx.clone();
+                let lock = lock.clone();
+
                 event_listener.add_urgent_state_handler(move |address| {
                     let _lock = lock!(lock);
                     debug!("Received urgent state: {address:?}");
@@ -203,6 +217,55 @@ impl Client {
                             );
                         },
                     );
+                });
+            }
+
+            {
+                let tx = keyboard_layout_tx.clone();
+                let lock = lock.clone();
+
+                event_listener.add_keyboard_layout_change_handler(move |layout_event| {
+                    let _lock = lock!(lock);
+
+                    let layout = if layout_event.layout_name.is_empty() {
+                        // FIXME: This field is empty due to bug in `hyprland-rs_0.4.0-alpha.3`. Which is already fixed in last betas
+
+                        // The layout may be empty due to a bug in `hyprland-rs`, because of which the `layout_event` is incorrect.
+                        //
+                        // Instead of:
+                        // ```
+                        // LayoutEvent {
+                        //     keyboard_name: "keychron-keychron-c2",
+                        //     layout_name: "English (US)",
+                        // }
+                        // ```
+                        //
+                        // We get:
+                        // ```
+                        // LayoutEvent {
+                        //     keyboard_name: "keychron-keychron-c2,English (US)",
+                        //     layout_name: "",
+                        // }
+                        // ```
+                        // 
+                        // Here we are trying to recover `layout_name` from `keyboard_name`
+
+                        let layout = layout_event.keyboard_name.as_str().split(",").nth(1);
+                        let Some(layout) = layout else {
+                            error!(
+                                "Failed to get layout from string: {}. The failed logic is a workaround for a bug in `hyprland 0.4.0-alpha.3`", layout_event.keyboard_name);
+                            return;
+                        };
+
+                        layout.into()
+                    }
+                    else {
+                        layout_event.layout_name
+                    };
+
+                    debug!("Received layout: {layout:?}");
+
+                    send!(tx, KeyboardLayoutUpdate(layout));
                 });
             }
 
@@ -264,36 +327,73 @@ impl Client {
 }
 
 impl WorkspaceClient for Client {
-    fn focus(&self, id: String) -> Result<()> {
+    fn focus(&self, id: String) {
         let identifier = id.parse::<i32>().map_or_else(
             |_| WorkspaceIdentifierWithSpecial::Name(&id),
             WorkspaceIdentifierWithSpecial::Id,
         );
 
-        Dispatch::call(DispatchType::Workspace(identifier))?;
-        Ok(())
+        if let Err(e) = Dispatch::call(DispatchType::Workspace(identifier)) {
+            error!("Couldn't focus workspace '{id}': {e:#}");
+        }
     }
 
-    fn subscribe_workspace_change(&self) -> Receiver<WorkspaceUpdate> {
+    fn subscribe(&self) -> Receiver<WorkspaceUpdate> {
         let rx = self.workspace_tx.subscribe();
 
-        {
-            let tx = self.workspace_tx.clone();
+        let active_id = HWorkspace::get_active().ok().map(|active| active.name);
+        let is_visible = create_is_visible();
 
-            let active_id = HWorkspace::get_active().ok().map(|active| active.name);
-            let is_visible = create_is_visible();
+        let workspaces = Workspaces::get()
+            .expect("Failed to get workspaces")
+            .into_iter()
+            .map(|w| {
+                let vis = Visibility::from((&w, active_id.as_deref(), &is_visible));
 
-            let workspaces = Workspaces::get()
-                .expect("Failed to get workspaces")
-                .into_iter()
-                .map(|w| {
-                    let vis = Visibility::from((&w, active_id.as_deref(), &is_visible));
+                Workspace::from((vis, w))
+            })
+            .collect();
 
-                    Workspace::from((vis, w))
-                })
-                .collect();
+        send!(self.workspace_tx, WorkspaceUpdate::Init(workspaces));
 
-            send!(tx, WorkspaceUpdate::Init(workspaces));
+        rx
+    }
+}
+
+impl KeyboardLayoutClient for Client {
+    fn set_next_active(&self) {
+        let device = Devices::get()
+            .expect("Failed to get devices")
+            .keyboards
+            .iter()
+            .find(|k| k.main)
+            .map(|k| k.name.clone());
+
+        if let Some(device) = device {
+            if let Err(e) =
+                switch_xkb_layout::call(device, switch_xkb_layout::SwitchXKBLayoutCmdTypes::Next)
+            {
+                error!("Failed to switch keyboard layout due to Hyprland error: {e}");
+            }
+        } else {
+            error!("Failed to get keyboard device from hyprland");
+        }
+    }
+
+    fn subscribe(&self) -> Receiver<KeyboardLayoutUpdate> {
+        let rx = self.keyboard_layout_tx.subscribe();
+
+        let layout = Devices::get()
+            .expect("Failed to get devices")
+            .keyboards
+            .iter()
+            .find(|k| k.main)
+            .map(|k| k.active_keymap.clone());
+
+        if let Some(layout) = layout {
+            send!(self.keyboard_layout_tx, KeyboardLayoutUpdate(layout));
+        } else {
+            error!("Failed to get current keyboard layout hyprland");
         }
 
         rx
