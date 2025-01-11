@@ -15,6 +15,7 @@ use gtk::prelude::*;
 use gtk::{Button, Orientation};
 use indexmap::IndexMap;
 use serde::Deserialize;
+use std::collections::HashMap;
 use std::process::{Command, Stdio};
 use std::sync::Arc;
 use tokio::sync::{broadcast, mpsc};
@@ -28,6 +29,12 @@ pub struct LauncherModule {
     ///
     /// **Default**: `null`
     favorites: Option<Vec<String>>,
+
+    /// Map of app IDs (or classes) to icon names,
+    /// overriding the app's default icon.
+    ///
+    /// **Default**; `null`
+    icon_overrides: Option<HashMap<String, String>>,
 
     /// Whether to show application names on the bar.
     ///
@@ -149,17 +156,25 @@ impl Module<gtk::Box> for LauncherModule {
                 favorites
                     .iter()
                     .map(|app_id| {
+                        let icon_override = self
+                            .icon_overrides
+                            .as_ref()
+                            .and_then(|overrides| overrides.get(app_id))
+                            .map_or_else(String::new, |v| v.to_string());
+
                         (
                             app_id.to_string(),
-                            Item::new(app_id.to_string(), OpenState::Closed, true),
+                            Item::new(app_id.to_string(), icon_override, OpenState::Closed, true),
                         )
                     })
                     .collect::<IndexMap<_, _>>()
             });
 
         let items = arc_mut!(items);
-
         let items2 = Arc::clone(&items);
+
+        let icon_overrides = arc_mut!(self.icon_overrides.clone());
+        let icon_overrides2 = Arc::clone(&icon_overrides);
 
         let tx = context.tx.clone();
         let tx2 = context.tx.clone();
@@ -167,6 +182,7 @@ impl Module<gtk::Box> for LauncherModule {
         let wl = context.client::<wayland::Client>();
         spawn(async move {
             let items = items2;
+            let icon_overrides = icon_overrides2;
             let tx = tx2;
 
             let mut wlrx = wl.subscribe_toplevels();
@@ -180,7 +196,16 @@ impl Module<gtk::Box> for LauncherModule {
                         item.merge_toplevel(info.clone());
                     }
                     None => {
-                        items.insert(info.app_id.clone(), Item::from(info.clone()));
+                        let mut item = Item::from(info.clone());
+                        let icon_overrides = lock!(icon_overrides);
+
+                        if let Some(overrides) = icon_overrides.as_ref() {
+                            if let Some(icon) = overrides.get(&info.app_id) {
+                                item.icon_override = icon.clone();
+                            }
+                        }
+
+                        items.insert(info.app_id.clone(), item);
                     }
                 }
             }
@@ -210,7 +235,14 @@ impl Module<gtk::Box> for LauncherModule {
                             let item = items.get_mut(&info.app_id);
                             match item {
                                 None => {
-                                    let item: Item = info.into();
+                                    let mut item: Item = info.into();
+                                    let icon_overrides = lock!(icon_overrides);
+
+                                    if let Some(overrides) = icon_overrides.as_ref() {
+                                        if let Some(icon) = overrides.get(&app_id) {
+                                            item.icon_override = icon.clone();
+                                        }
+                                    }
 
                                     items.insert(app_id.clone(), item.clone());
 
