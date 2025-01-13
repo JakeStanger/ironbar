@@ -26,6 +26,7 @@
 # Modules
 
 - [Bindmode](bindmode)
+- [Bluetooth](bluetooth)
 - [Cairo](cairo)
 - [Clipboard](clipboard)
 - [Clock](clock)
