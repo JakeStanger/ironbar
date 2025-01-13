@@ -1059,9 +1059,9 @@ dependencies = [
 
 [[package]]
 name = "futures-lite"
-version = "2.5.0"
+version = "2.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cef40d21ae2c515b51041df9ed313ed21e572df340ea58a922a0aefe7e8891a1"
+checksum = "f5edaec856126859abb19ed65f39e90fea3a9574b9707f13539acf4abf7eb532"
 dependencies = [
  "fastrand 2.0.1",
  "futures-core",
@@ -1736,7 +1736,7 @@ dependencies = [
  "ctrlc",
  "dirs",
  "evdev-rs",
- "futures-lite 2.5.0",
+ "futures-lite 2.6.0",
  "futures-signals",
  "glib",
  "gtk",
