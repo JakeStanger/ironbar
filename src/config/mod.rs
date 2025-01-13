@@ -3,6 +3,8 @@ mod r#impl;
 mod layout;
 mod truncate;
 
+#[cfg(feature = "bluetooth")]
+use crate::modules::bluetooth::BluetoothModule;
 #[cfg(feature = "cairo")]
 use crate::modules::cairo::CairoModule;
 #[cfg(feature = "clipboard")]
@@ -57,6 +59,8 @@ pub use self::truncate::{EllipsizeMode, TruncateMode};
 #[serde(tag = "type", rename_all = "snake_case")]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub enum ModuleConfig {
+    #[cfg(feature = "bluetooth")]
+    Bluetooth(Box<BluetoothModule>),
     #[cfg(feature = "cairo")]
     Cairo(Box<CairoModule>),
     #[cfg(feature = "clipboard")]
@@ -109,6 +113,8 @@ impl ModuleConfig {
         }
 
         match self {
+            #[cfg(feature = "bluetooth")]
+            Self::Bluetooth(module) => create!(module),
             #[cfg(feature = "cairo")]
             Self::Cairo(module) => create!(module),
             #[cfg(feature = "clipboard")]
