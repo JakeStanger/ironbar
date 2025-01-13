@@ -5,6 +5,8 @@ mod truncate;
 
 #[cfg(feature = "bindmode")]
 use crate::modules::bindmode::Bindmode;
+#[cfg(feature = "bluetooth")]
+use crate::modules::bluetooth::BluetoothModule;
 #[cfg(feature = "cairo")]
 use crate::modules::cairo::CairoModule;
 #[cfg(feature = "clipboard")]
@@ -60,6 +62,8 @@ pub use self::truncate::{EllipsizeMode, TruncateMode};
 pub enum ModuleConfig {
     #[cfg(feature = "bindmode")]
     Bindmode(Box<Bindmode>),
+    #[cfg(feature = "bluetooth")]
+    Bluetooth(Box<BluetoothModule>),
     #[cfg(feature = "cairo")]
     Cairo(Box<CairoModule>),
     #[cfg(feature = "clipboard")]
@@ -114,6 +118,8 @@ impl ModuleConfig {
         match self {
             #[cfg(feature = "bindmode")]
             Self::Bindmode(module) => create!(module),
+            #[cfg(feature = "bluetooth")]
+            Self::Bluetooth(module) => create!(module),
             #[cfg(feature = "cairo")]
             Self::Cairo(module) => create!(module),
             #[cfg(feature = "clipboard")]

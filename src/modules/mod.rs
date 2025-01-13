@@ -19,6 +19,8 @@ use crate::popup::Popup;
 
 #[cfg(feature = "bindmode")]
 pub mod bindmode;
+#[cfg(feature = "bluetooth")]
+pub mod bluetooth;
 #[cfg(feature = "cairo")]
 pub mod cairo;
 #[cfg(feature = "clipboard")]
