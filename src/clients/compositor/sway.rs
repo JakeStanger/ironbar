@@ -1,7 +1,10 @@
-use super::{Visibility, Workspace, WorkspaceClient, WorkspaceUpdate};
-use crate::{await_sync, send};
-use color_eyre::Result;
-use swayipc_async::{Node, WorkspaceChange, WorkspaceEvent};
+use super::{
+    KeyboardLayoutClient, KeyboardLayoutUpdate, Visibility, Workspace, WorkspaceClient,
+    WorkspaceUpdate,
+};
+use crate::{await_sync, error, send};
+use color_eyre::{eyre::eyre, Result};
+use swayipc_async::{InputChange, InputEvent, Node, WorkspaceChange, WorkspaceEvent};
 use tokio::sync::broadcast::{channel, Receiver};
 
 use crate::clients::sway::Client;
@@ -130,6 +133,78 @@ impl From<WorkspaceEvent> for WorkspaceUpdate {
                 }
             }
             _ => Self::Unknown,
+        }
+    }
+}
+
+impl KeyboardLayoutClient for Client {
+    fn next_keyboard_layout(&self) -> Result<()> {
+        await_sync(async move {
+            let mut client = self.connection().lock().await;
+
+            let inputs = client.get_inputs().await.expect("to get inputs");
+
+            if let Some(keyboard) = inputs
+                .into_iter()
+                .find(|i| i.xkb_active_layout_name.is_some())
+            {
+                client
+                    .run_command(format!(
+                        "input {} xkb_switch_layout next",
+                        keyboard.identifier
+                    ))
+                    .await?;
+                Ok(())
+            } else {
+                Err(eyre!("Failed to get keyboard identifier from Sway!"))
+            }
+        })?;
+        Ok(())
+    }
+
+    fn subscribe_keyboard_layout_change(&self) -> Receiver<KeyboardLayoutUpdate> {
+        let (tx, rx) = channel(16);
+
+        let client = self.connection().clone();
+
+        await_sync(async {
+            let mut client = client.lock().await;
+            let inputs = client.get_inputs().await.expect("to get inputs");
+
+            if let Some(layout) = inputs.into_iter().find_map(|i| i.xkb_active_layout_name) {
+                send!(tx, KeyboardLayoutUpdate(layout));
+            } else {
+                error!("Failed to get keyboard layout from Sway!");
+            }
+
+            drop(client);
+
+            self.add_listener::<InputEvent>(move |event| {
+                if let Ok(layout) = KeyboardLayoutUpdate::try_from(event.clone()) {
+                    send!(tx, layout);
+                }
+            })
+            .await
+            .expect("to add listener");
+        });
+
+        rx
+    }
+}
+
+impl TryFrom<InputEvent> for KeyboardLayoutUpdate {
+    type Error = ();
+
+    fn try_from(value: InputEvent) -> std::result::Result<Self, Self::Error> {
+        match value.change {
+            InputChange::XkbLayout => {
+                if let Some(layout) = value.input.xkb_active_layout_name {
+                    Ok(KeyboardLayoutUpdate(layout))
+                } else {
+                    Err(())
+                }
+            }
+            _ => Err(()),
         }
     }
 }
