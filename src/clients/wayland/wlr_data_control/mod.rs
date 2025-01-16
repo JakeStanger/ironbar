@@ -162,7 +162,7 @@ impl Environment {
 
         let source = self
             .data_control_device_manager_state
-            .create_copy_paste_source(&self.queue_handle, [INTERNAL_MIME_TYPE, &item.mime_type]);
+            .create_copy_paste_source(&self.queue_handle, [&item.mime_type, INTERNAL_MIME_TYPE]);
 
         source.set_selection(&device.device);
         self.copy_paste_sources.push(source);
@@ -372,7 +372,7 @@ impl DataControlSourceHandler for Environment {
 
                 debug!("Done writing");
             } else {
-                error!("Failed to find source");
+                error!("Failed to find source (mime: '{mime}')");
             }
         }
 
