@@ -20,6 +20,7 @@ use std::ffi::c_int;
 use std::fmt::{Debug, Formatter};
 use std::fs::File;
 use std::io::{ErrorKind, Write};
+use std::os::fd::RawFd;
 use std::os::fd::{AsFd, BorrowedFd, OwnedFd};
 use std::sync::Arc;
 use std::{fs, io};
@@ -156,7 +157,7 @@ impl Environment {
 
         let source = self
             .data_control_device_manager_state
-            .create_copy_paste_source(&self.queue_handle, [&item.mime_type, INTERNAL_MIME_TYPE]);
+            .create_copy_paste_source(&self.queue_handle, [INTERNAL_MIME_TYPE, &item.mime_type]);
 
         source.set_selection(&device.device);
         self.copy_paste_sources.push(source);
@@ -331,7 +332,7 @@ impl DataControlSourceHandler for Environment {
 
                 debug!("Done writing");
             } else {
-                error!("Failed to find source (mime: '{mime}')");
+                error!("Failed to find source");
             }
         }
 
