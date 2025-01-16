@@ -1,7 +1,6 @@
 use super::manager::DataControlDeviceManagerState;
 use crate::lock;
-use nix::fcntl::OFlag;
-use nix::unistd::pipe2;
+use rustix::pipe::{pipe_with, PipeFlags};
 use smithay_client_toolkit::data_device_manager::data_offer::DataOfferError;
 use smithay_client_toolkit::data_device_manager::ReadPipe;
 use std::ops::DerefMut;
@@ -174,7 +173,7 @@ pub unsafe fn receive(
     mime_type: String,
 ) -> std::io::Result<ReadPipe> {
     // create a pipe
-    let (readfd, writefd) = pipe2(OFlag::O_CLOEXEC)?;
+    let (readfd, writefd) = pipe_with(PipeFlags::CLOEXEC)?;
 
     offer.receive(mime_type, writefd.as_fd());
 
