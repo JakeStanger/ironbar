@@ -1,6 +1,6 @@
 use super::manager::DataControlDeviceManagerState;
 use crate::lock;
-use rustix::pipe::{pipe_with, PipeFlags};
+use rustix::pipe::{PipeFlags, pipe_with};
 use smithay_client_toolkit::data_device_manager::data_offer::DataOfferError;
 use std::ops::DerefMut;
 use std::os::fd::AsFd;

@@ -11,18 +11,19 @@ use crate::{Ironbar, lock, spawn, try_send};
 use color_eyre::Result;
 use device::DataControlDevice;
 use glib::Bytes;
+use rustix::buffer::spare_capacity;
 use rustix::event::epoll;
 use rustix::event::epoll::CreateFlags;
+use rustix::fs::Timespec;
 use rustix::pipe::{fcntl_getpipe_size, fcntl_setpipe_size};
 use smithay_client_toolkit::data_device_manager::WritePipe;
 use std::cmp::min;
-use std::ffi::c_int;
 use std::fmt::{Debug, Formatter};
 use std::fs::File;
 use std::io::{ErrorKind, Write};
-use std::os::fd::RawFd;
 use std::os::fd::{AsFd, BorrowedFd, OwnedFd};
 use std::sync::Arc;
+use std::time::Duration;
 use std::{fs, io};
 use tokio::io::AsyncReadExt;
 use tokio::sync::broadcast;
@@ -157,7 +158,7 @@ impl Environment {
 
         let source = self
             .data_control_device_manager_state
-            .create_copy_paste_source(&self.queue_handle, [INTERNAL_MIME_TYPE, &item.mime_type]);
+            .create_copy_paste_source(&self.queue_handle, [&item.mime_type, INTERNAL_MIME_TYPE]);
 
         source.set_selection(&device.device);
         self.copy_paste_sources.push(source);
@@ -311,12 +312,16 @@ impl DataControlSourceHandler for Environment {
                     epoll::EventFlags::OUT,
                 )?;
 
-                let mut events = epoll::EventVec::with_capacity(16);
+                let mut events = Vec::with_capacity(16);
 
                 while !bytes.is_empty() {
                     let chunk = &bytes[..min(pipe_size, bytes.len())];
 
-                    epoll::wait(&epoll, &mut events, 100u16 as c_int)?;
+                    epoll::wait(
+                        &epoll,
+                        spare_capacity(&mut events),
+                        Some(&Timespec::try_from(Duration::from_millis(100))?),
+                    )?;
 
                     match file.write(chunk) {
                         Ok(written) => {
@@ -332,7 +337,7 @@ impl DataControlSourceHandler for Environment {
 
                 debug!("Done writing");
             } else {
-                error!("Failed to find source");
+                error!("Failed to find source (mime: '{mime}')");
             }
         }
 
