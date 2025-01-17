@@ -133,6 +133,7 @@ impl Module<gtk::Box> for FocusedModule {
         info: &ModuleInfo,
     ) -> Result<ModuleParts<gtk::Box>> {
         let icon_theme = info.icon_theme;
+        let icon_overrides = info.icon_overrides;
 
         let container = gtk::Box::new(info.bar_position.orientation(), 5);
 
@@ -153,9 +154,17 @@ impl Module<gtk::Box> for FocusedModule {
 
         {
             let icon_theme = icon_theme.clone();
+            let icon_overrides = icon_overrides.clone();
             glib_recv!(context.subscribe(), data => {
-                if let Some((name, id)) = data {
+                if let Some((name, mut id)) = data {
                     if self.show_icon {
+
+                        if let Some(ref overrides) = icon_overrides {
+                            if let Some(icon) = overrides.get(&id) {
+                                id = icon.clone();
+                            }
+                        }
+
                         match ImageProvider::parse(&id, &icon_theme, true, self.icon_size)
                             .map(|image| image.load_into_image(&icon))
                         {

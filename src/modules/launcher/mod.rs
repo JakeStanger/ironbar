@@ -15,7 +15,6 @@ use gtk::prelude::*;
 use gtk::{Button, Orientation};
 use indexmap::IndexMap;
 use serde::Deserialize;
-use std::collections::HashMap;
 use std::process::{Command, Stdio};
 use std::sync::Arc;
 use tokio::sync::{broadcast, mpsc};
@@ -29,12 +28,6 @@ pub struct LauncherModule {
     ///
     /// **Default**: `null`
     favorites: Option<Vec<String>>,
-
-    /// Map of app IDs (or classes) to icon names,
-    /// overriding the app's default icon.
-    ///
-    /// **Default**; `null`
-    icon_overrides: Option<HashMap<String, String>>,
 
     /// Whether to show application names on the bar.
     ///
@@ -156,7 +149,7 @@ impl Module<gtk::Box> for LauncherModule {
                 favorites
                     .iter()
                     .map(|app_id| {
-                        let icon_override = self
+                        let icon_override = _info
                             .icon_overrides
                             .as_ref()
                             .and_then(|overrides| overrides.get(app_id))
@@ -173,7 +166,7 @@ impl Module<gtk::Box> for LauncherModule {
         let items = arc_mut!(items);
         let items2 = Arc::clone(&items);
 
-        let icon_overrides = arc_mut!(self.icon_overrides.clone());
+        let icon_overrides = arc_mut!(_info.icon_overrides.clone());
         let icon_overrides2 = Arc::clone(&icon_overrides);
 
         let tx = context.tx.clone();
