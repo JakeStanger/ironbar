@@ -15,7 +15,7 @@ Optionally displays a launchable set of favourites.
 
 |                             | Type                                        | Default  | Description                                                                                                              |
 |-----------------------------|---------------------------------------------|----------|--------------------------------------------------------------------------------------------------------------------------|
-| `favorites`                 | `string[]`                                  | `[]`     | List of app IDs (or classes) to always show at the start of the launcher                                                 |
+| `favorites`                 | `string[]`                                  | `[]`     | List of app IDs (or classes) to always show at the start of the launcher.                                                |
 | `show_names`                | `boolean`                                   | `false`  | Whether to show app names on the button label. Names will still show on tooltips when set to false.                      |
 | `show_icons`                | `boolean`                                   | `true`   | Whether to show app icons on the button.                                                                                 |
 | `icon_size`                 | `integer`                                   | `32`     | Size to render icon at (image icons only).                                                                               |
