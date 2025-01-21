@@ -31,8 +31,8 @@ pub mod clock;
 pub mod custom;
 #[cfg(feature = "focused")]
 pub mod focused;
-#[cfg(feature = "keys")]
-pub mod keys;
+#[cfg(feature = "keyboard")]
+pub mod keyboard;
 pub mod label;
 #[cfg(feature = "launcher")]
 pub mod launcher;

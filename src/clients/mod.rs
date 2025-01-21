@@ -9,7 +9,7 @@ use std::sync::Arc;
 pub mod clipboard;
 #[cfg(feature = "workspaces")]
 pub mod compositor;
-#[cfg(feature = "keys")]
+#[cfg(feature = "keyboard")]
 pub mod libinput;
 #[cfg(feature = "cairo")]
 pub mod lua;
@@ -42,9 +42,9 @@ pub struct Clients {
     hyprland: Option<Arc<compositor::hyprland::Client>>,
     #[cfg(feature = "clipboard")]
     clipboard: Option<Arc<clipboard::Client>>,
-    #[cfg(feature = "keys")]
+    #[cfg(feature = "keyboard")]
     libinput: HashMap<Box<str>, Arc<libinput::Client>>,
-    #[cfg(any(feature = "keys+sway", feature = "keys+hyprland"))]
+    #[cfg(any(feature = "keyboard+sway", feature = "keyboard+hyprland"))]
     keyboard_layout: Option<Arc<dyn compositor::KeyboardLayoutClient>>,
     #[cfg(feature = "cairo")]
     lua: Option<Rc<lua::LuaEngine>>,
@@ -97,7 +97,7 @@ impl Clients {
         Ok(client)
     }
 
-    #[cfg(any(feature = "keys+sway", feature = "keys+hyprland"))]
+    #[cfg(any(feature = "keyboard+sway", feature = "keyboard+hyprland"))]
     pub fn keyboard_layout(&mut self) -> ClientResult<dyn compositor::KeyboardLayoutClient> {
         let client = if let Some(keyboard_layout) = &self.keyboard_layout {
             keyboard_layout.clone()
@@ -144,7 +144,7 @@ impl Clients {
             .clone()
     }
 
-    #[cfg(feature = "keys")]
+    #[cfg(feature = "keyboard")]
     pub fn libinput(&mut self, seat: &str) -> Arc<libinput::Client> {
         self.libinput
             .entry(seat.into())

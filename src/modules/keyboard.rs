@@ -17,7 +17,7 @@ use crate::{glib_recv, module_impl, module_update, send_async, spawn, try_send};
 
 #[derive(Debug, Deserialize, Clone)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
-pub struct KeysModule {
+pub struct KeyboardModule {
     /// Whether to show capslock indicator.
     ///
     /// **Default**: `true`
@@ -116,7 +116,7 @@ struct Icons {
     ///
     /// ```corn
     /// {
-    ///   type = "keys"
+    ///   type = "keyboard"
     ///   show_layout = true
     ///   icons.layout_map.'English (US)' = "EN"
     ///   icons.layout_map.Ukrainian = "UA"
@@ -161,16 +161,16 @@ fn default_icon_scroll() -> String {
 }
 
 #[derive(Debug, Clone)]
-pub enum KeysUpdate {
+pub enum KeyboardUpdate {
     Key(KeyEvent),
     Layout(KeyboardLayoutUpdate),
 }
 
-impl Module<gtk::Box> for KeysModule {
-    type SendMessage = KeysUpdate;
+impl Module<gtk::Box> for KeyboardModule {
+    type SendMessage = KeyboardUpdate;
     type ReceiveMessage = ();
 
-    module_impl!("keys");
+    module_impl!("keyboard");
 
     fn spawn_controller(
         &self,
@@ -191,11 +191,11 @@ impl Module<gtk::Box> for KeysModule {
                                 key,
                                 state: client.get_state(key),
                             };
-                            module_update!(tx, KeysUpdate::Key(event));
+                            module_update!(tx, KeyboardUpdate::Key(event));
                         }
                     }
                     Event::Key(ev) => {
-                        module_update!(tx, KeysUpdate::Key(ev));
+                        module_update!(tx, KeyboardUpdate::Key(ev));
                     }
                 }
             }
@@ -212,7 +212,7 @@ impl Module<gtk::Box> for KeysModule {
 
                 while let Ok(payload) = srx.recv().await {
                     debug!("Received update: {payload:?}");
-                    module_update!(tx, KeysUpdate::Layout(payload));
+                    module_update!(tx, KeyboardUpdate::Layout(payload));
                 }
             });
         }
@@ -277,8 +277,8 @@ impl Module<gtk::Box> for KeysModule {
         }
 
         let icons = self.icons;
-        let handle_event = move |ev: KeysUpdate| match ev {
-            KeysUpdate::Key(ev) => {
+        let handle_event = move |ev: KeyboardUpdate| match ev {
+            KeyboardUpdate::Key(ev) => {
                 let parts = match (ev.key, ev.state) {
                     (Key::Caps, true) if self.show_caps => Some((&caps, icons.caps_on.as_str())),
                     (Key::Caps, false) if self.show_caps => Some((&caps, icons.caps_off.as_str())),
@@ -303,7 +303,7 @@ impl Module<gtk::Box> for KeysModule {
                     }
                 }
             }
-            KeysUpdate::Layout(KeyboardLayoutUpdate(language)) => {
+            KeyboardUpdate::Layout(KeyboardLayoutUpdate(language)) => {
                 let text = icons.layout_map.get(&language).unwrap_or(&language);
                 layout.set_label(Some(text));
             }

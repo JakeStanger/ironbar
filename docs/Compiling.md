@@ -26,7 +26,7 @@ pacman -S openssl
 pacman -S libdbusmenu-gtk3
 # for volume support
 pacman -S libpulse
-# for keys support
+# for keyboard support
 pacman -S libinput
 # for lua/cairo support
 pacman -S luajit lua51-lgi
@@ -42,7 +42,7 @@ apt install libssl-dev
 apt install libdbusmenu-gtk3-dev
 # for volume support
 apt install libpulse-dev
-# for keys support
+# for keyboard support
 apt install libinput-dev
 # for lua/cairo support
 apt install luajit-dev lua-lgi
@@ -58,7 +58,7 @@ dnf install openssl-devel
 dnf install libdbusmenu-gtk3-devel
 # for volume support
 dnf install pulseaudio-libs-devel
-# for keys support
+# for keyboard support
 dnf install libinput-devel
 # for lua/cairo support
 dnf install luajit-devel lua-lgi
@@ -101,10 +101,10 @@ cargo build --release --no-default-features \
 | clipboard           | Enables the `clipboard` module.                                                   |
 | clock               | Enables the `clock` module.                                                       |
 | focused             | Enables the `focused` module.                                                     |
-| keys                | Enables the `keys` module without keyboard layout support.                        |
-| keys+all            | Enables the `keys` module with keyboard layout support for all compositors.       |
-| keys+sway           | Enables the `keys` module with keyboard layout support for Sway.                  |
-| keys+hyprland       | Enables the `keys` module with keyboard layout support for Hyprland.              |
+| keyboard            | Enables the `keyboard` module without keyboard layout support.                    |
+| keyboard+all        | Enables the `keyboard` module with keyboard layout support for all compositors.   |
+| keyboard+sway       | Enables the `keyboard` module with keyboard layout support for Sway.              |
+| keyboard+hyprland   | Enables the `keyboard` module with keyboard layout support for Hyprland.          |
 | launcher            | Enables the `launcher` module.                                                    |
 | music+all           | Enables the `music` module with support for all player types.                     |
 | music+mpris         | Enables the `music` module with MPRIS support.                                    |

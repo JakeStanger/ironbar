@@ -6,11 +6,11 @@
 
 Displays the toggle state of the capslock, num lock and scroll lock keys, and the current keyboard layout.
 
-![Screenshot of keys widget](https://f.jstanger.dev/github/ironbar/keys.png)
+![Screenshot of keyboard widget](https://f.jstanger.dev/github/ironbar/keys.png)
 
 ## Configuration
 
-> Type: `keys`
+> Type: `keyboard`
 
 | Name               | Type                           | Default | Description                                                                                                               |
 | ------------------ | ------------------------------ | ------- | ------------------------------------------------------------------------------------------------------------------------- |
@@ -34,7 +34,7 @@ Displays the toggle state of the capslock, num lock and scroll lock keys, and th
 {
   "end": [
     {
-      "type": "keys",
+      "type": "keyboard",
       "show_scroll": false,
       "icons": {
         "caps_on": "󰪛",
@@ -55,7 +55,7 @@ Displays the toggle state of the capslock, num lock and scroll lock keys, and th
 
 ```toml
 [[end]]
-type = "keys"
+type = "keyboard"
 show_scroll = false
 
 [end.icons]
@@ -73,7 +73,7 @@ Ukrainian = "🇺🇦"
 
 ```yaml
 end:
-  - type: keys
+  - type: keyboard
     show_scroll: false
     icons:
       caps_on: 󰪛
@@ -92,7 +92,7 @@ end:
 {
 end = [ 
         { 
-            type = "keys" 
+            type = "keyboard" 
             show_scroll = false 
             icons.caps_on = "󰪛" 
             icons.layout_map.'English (US)' = "🇺🇸"
@@ -106,16 +106,16 @@ end = [
 
 ## Styling
 
-| Selector               | Description                                |
-| ---------------------- | ------------------------------------------ |
-| `.keys`                | Keys box container widget.                 |
-| `.keys .key`           | Individual key indicator container widget. |
-| `.keys .key.enabled`   | Key indicator where key is toggled on.     |
-| `.keys .key.caps`      | Capslock key indicator.                    |
-| `.keys .key.num`       | Num lock key indicator.                    |
-| `.keys .key.scroll`    | Scroll lock key indicator.                 |
-| `.keys .key.image`     | Key indicator image icon.                  |
-| `.keys .key.text-icon` | Key indicator textual icon.                |
-| `.keys .layout`        | Keyboard layout indicator.                 |
+| Selector                   | Description                                |
+| -------------------------- | ------------------------------------------ |
+| `.keyboard`                | Keys box container widget.                 |
+| `.keyboard .key`           | Individual key indicator container widget. |
+| `.keyboard .key.enabled`   | Key indicator where key is toggled on.     |
+| `.keyboard .key.caps`      | Capslock key indicator.                    |
+| `.keyboard .key.num`       | Num lock key indicator.                    |
+| `.keyboard .key.scroll`    | Scroll lock key indicator.                 |
+| `.keyboard .key.image`     | Key indicator image icon.                  |
+| `.keyboard .key.text-icon` | Key indicator textual icon.                |
+| `.keyboard .layout`        | Keyboard layout indicator.                 |
 
 For more information on styling, please see the [styling guide](styling-guide).

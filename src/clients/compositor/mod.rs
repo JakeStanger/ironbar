@@ -60,11 +60,11 @@ impl Compositor {
         let current = Self::get_current();
         debug!("Getting keyboard_layout client for: {current}");
         match current {
-            #[cfg(feature = "keys+sway")]
+            #[cfg(feature = "keyboard+sway")]
             Self::Sway => clients
                 .sway()
                 .map(|client| client as Arc<dyn KeyboardLayoutClient + Send + Sync>),
-            #[cfg(feature = "keys+hyprland")]
+            #[cfg(feature = "keyboard+hyprland")]
             Self::Hyprland => clients
                 .hyprland()
                 .map(|client| client as Arc<dyn KeyboardLayoutClient + Send + Sync>),

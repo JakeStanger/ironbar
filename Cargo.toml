@@ -18,7 +18,7 @@ default = [
     "focused",
     "http",
     "ipc",
-    "keys+all",
+    "keyboard+all",
     "launcher",
     "music+all",
     "network_manager",
@@ -56,10 +56,10 @@ clock = ["chrono"]
 
 focused = []
 
-keys = ["dep:input", "dep:evdev-rs", "dep:libc", "dep:nix"]
-"keys+all" = ["keys", "keys+sway", "keys+hyprland"]
-"keys+sway" = ["keys", "sway"]
-"keys+hyprland" = ["keys", "hyprland"]
+keyboard = ["dep:input", "dep:evdev-rs", "dep:libc", "dep:nix"]
+"keyboard+all" = ["keyboard", "keyboard+sway", "keyboard+hyprland"]
+"keyboard+sway" = ["keyboard", "sway"]
+"keyboard+hyprland" = ["keyboard", "hyprland"]
 
 launcher = []
 
@@ -140,7 +140,7 @@ cairo-rs = { version = "0.18.5", optional = true, features = ["png"] }
 # clock
 chrono = { version = "0.4.39", optional = true, default-features = false, features = ["clock", "unstable-locales"] }
 
-# keys
+# keyboard
 input = { version = "0.9.1", optional = true }
 evdev-rs = { version = "0.6.1", optional = true }
 libc = { version = "0.2.164", optional = true }
@@ -171,8 +171,8 @@ regex = { version = "1.11.1", default-features = false, features = [
   "std",
 ], optional = true } # music, sys_info
 zbus = { version = "3.15.2", default-features = false, features = ["tokio"], optional = true } # network_manager, notifications, upower
-swayipc-async = { version = "2.0.1", optional = true } # workspaces, keys
-hyprland = { version = "0.4.0-alpha.3", features = ["silent"], optional = true } # workspaces, keys
+swayipc-async = { version = "2.0.1", optional = true } # workspaces, keyboard
+hyprland = { version = "0.4.0-alpha.3", features = ["silent"], optional = true } # workspaces, keyboard
 
 # schema
 schemars = { version = "0.8.21", optional = true }

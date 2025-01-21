@@ -64,7 +64,7 @@
       ++ lib.optionals (hasFeature "tray") [ libdbusmenu-gtk3 ]
       ++ lib.optionals (hasFeature "volume")[ libpulseaudio ]
       ++ lib.optionals (hasFeature "cairo") [ luajit ]
-      ++ lib.optionals (hasFeature "keys") [ libinput libevdev ];
+      ++ lib.optionals (hasFeature "keyboard") [ libinput libevdev ];
 
     propagatedBuildInputs = [ gtk3 ];
 
