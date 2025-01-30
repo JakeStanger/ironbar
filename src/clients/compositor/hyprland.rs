@@ -10,10 +10,21 @@ use hyprland::shared::{HyprDataVec, WorkspaceType};
 use tokio::sync::broadcast::{Receiver, Sender, channel};
 use tracing::{debug, error, info};
 
+#[cfg(feature = "bindmode+hyprland")]
+use super::{BindModeClient, BindModeUpdate};
+#[cfg(feature = "keyboard+hyprland")]
+use super::{KeyboardLayoutClient, KeyboardLayoutUpdate};
+
 #[derive(Debug)]
 struct TxRx<T> {
     tx: Sender<T>,
     _rx: Receiver<T>,
+}
+impl<T: Clone> TxRx<T> {
+    fn new() -> Self {
+        let (tx, rx) = channel(16);
+        Self { tx, _rx: rx }
+    }
 }
 
 #[derive(Debug)]
@@ -23,27 +34,20 @@ pub struct Client {
 
     #[cfg(feature = "keyboard+hyprland")]
     keyboard_layout: TxRx<KeyboardLayoutUpdate>,
+
+    #[cfg(feature = "bindmode+hyprland")]
+    bindmode: TxRx<BindModeUpdate>,
 }
 
 impl Client {
     pub(crate) fn new() -> Self {
-        #[cfg(feature = "workspaces+hyprland")]
-        let (workspace_tx, workspace_rx) = channel(16);
-
-        #[cfg(feature = "keyboard+hyprland")]
-        let (keyboard_layout_tx, keyboard_layout_rx) = channel(16);
-
         let instance = Self {
             #[cfg(feature = "workspaces+hyprland")]
-            workspace: TxRx {
-                tx: workspace_tx,
-                _rx: workspace_rx,
-            },
+            workspace: TxRx::new(),
             #[cfg(feature = "keyboard+hyprland")]
-            keyboard_layout: TxRx {
-                tx: keyboard_layout_tx,
-                _rx: keyboard_layout_rx,
-            },
+            keyboard_layout: TxRx::new(),
+            #[cfg(feature = "bindmode+hyprland")]
+            bindmode: TxRx::new(),
         };
 
         instance.listen_events();
@@ -54,10 +58,13 @@ impl Client {
         info!("Starting Hyprland event listener");
 
         #[cfg(feature = "workspaces+hyprland")]
-        let tx = self.workspace.tx.clone();
+        let workspace_tx = self.workspace.tx.clone();
 
         #[cfg(feature = "keyboard+hyprland")]
         let keyboard_layout_tx = self.keyboard_layout.tx.clone();
+
+        #[cfg(feature = "bindmode+hyprland")]
+        let bindmode_tx = self.bindmode.tx.clone();
 
         spawn_blocking(move || {
             let mut event_listener = EventListener::new();
@@ -67,10 +74,13 @@ impl Client {
 
             // cache the active workspace since Hyprland doesn't give us the prev active
             #[cfg(feature = "workspaces+hyprland")]
-            Self::listen_workspace_events(tx, &mut event_listener, &lock);
+            Self::listen_workspace_events(workspace_tx, &mut event_listener, &lock);
 
             #[cfg(feature = "keyboard+hyprland")]
-            Self::listen_keyboard_events(keyboard_layout_tx, &mut event_listener, lock);
+            Self::listen_keyboard_events(keyboard_layout_tx, &mut event_listener, &lock);
+
+            #[cfg(feature = "bindmode+hyprland")]
+            Self::listen_bindmode_events(bindmode_tx, &mut event_listener, &lock);
 
             event_listener
                 .start_listener()
@@ -257,7 +267,7 @@ impl Client {
     fn listen_keyboard_events(
         keyboard_layout_tx: Sender<KeyboardLayoutUpdate>,
         event_listener: &mut EventListener,
-        lock: std::sync::Arc<std::sync::Mutex<()>>,
+        lock: &std::sync::Arc<std::sync::Mutex<()>>,
     ) {
         let tx = keyboard_layout_tx.clone();
         let lock = lock.clone();
@@ -304,6 +314,29 @@ impl Client {
             debug!("Received layout: {layout:?}");
 
             send!(tx, KeyboardLayoutUpdate(layout));
+        });
+    }
+
+    #[cfg(feature = "bindmode+hyprland")]
+    fn listen_bindmode_events(
+        bindmode_tx: Sender<BindModeUpdate>,
+        event_listener: &mut EventListener,
+        lock: &std::sync::Arc<std::sync::Mutex<()>>,
+    ) {
+        let tx = bindmode_tx.clone();
+        let lock = lock.clone();
+
+        event_listener.add_sub_map_change_handler(move |bind_mode| {
+            let _lock = lock!(lock);
+            debug!("Received bind mode: {bind_mode:?}");
+
+            send!(
+                tx,
+                BindModeUpdate {
+                    name: bind_mode,
+                    pango_markup: false,
+                }
+            );
         });
     }
 
@@ -393,9 +426,6 @@ impl super::WorkspaceClient for Client {
 }
 
 #[cfg(feature = "keyboard+hyprland")]
-use super::{KeyboardLayoutClient, KeyboardLayoutUpdate};
-
-#[cfg(feature = "keyboard+hyprland")]
 impl KeyboardLayoutClient for Client {
     fn set_next_active(&self) {
         let device = Devices::get()
@@ -433,6 +463,13 @@ impl KeyboardLayoutClient for Client {
         }
 
         rx
+    }
+}
+
+#[cfg(feature = "bindmode+hyprland")]
+impl BindModeClient for Client {
+    fn subscribe(&self) -> Result<Receiver<BindModeUpdate>> {
+        Ok(self.bindmode.tx.subscribe())
     }
 }
 

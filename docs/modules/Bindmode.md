@@ -1,12 +1,12 @@
-Displays the current sway mode in a label. If the current sway mode is
-"default", nothing is displayed.
+> [!IMPORTANT]
+> This module is currently only available on Sway and Hyprland.
 
-> [!NOTE]
-> This module only works under the [Sway](https://swaywm.org/) compositor.
+Displays Sway's current binding mode or [Hyprland's current submap](https://wiki.hyprland.org/Configuring/Binds/#submaps)
+in a label. Nothing is displayed if no binding mode is active.
 
 ## Configuration
 
-> Type: `sway-mode`
+> Type: `bindmode`
 
 | Name                  | Type                                        | Default | Description                                                                                                                                           |
 | --------------------- | ------------------------------------------- | ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -22,7 +22,7 @@ Displays the current sway mode in a label. If the current sway mode is
 {
   "end": [
     {
-      "type": "sway-mode",
+      "type": "bindmode",
       "truncate": "start"
     }
   ]
@@ -36,7 +36,7 @@ Displays the current sway mode in a label. If the current sway mode is
 
 ```toml
 [[end]]
-type = "sway-mode"
+type = "bindmode"
 truncate = "start"
 ```
 
@@ -47,7 +47,7 @@ truncate = "start"
 
 ```yaml
 end:
-  - type: "sway-mode"
+  - type: "bindmode"
     truncate: "start"
 ```
 
@@ -60,7 +60,7 @@ end:
 {
   end = [
     {
-      type = "sway-mode"
+      type = "bindmode"
       truncate = "start"
     }
   ]
@@ -71,8 +71,8 @@ end:
 
 ## Styling
 
-| Selector     | Description            |
-| ------------ | ---------------------- |
-| `.sway_mode` | Sway mode label widget |
+| Selector    | Description            |
+| ----------- | ---------------------- |
+| `.bindmode` | Bind mode label widget |
 
 For more information on styling, please see the [styling guide](styling-guide).

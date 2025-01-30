@@ -29,6 +29,7 @@ A full list of feature flags can be found [here](Compiling#features).
 
 | Module          | Status | Notes                                                                                                                                    |
 |-----------------|--------|------------------------------------------------------------------------------------------------------------------------------------------|
+| Bindmode        | ❌      |                                                                                                                                          |
 | Cairo           | ✅      |                                                                                                                                          |
 | Clipboard       | ✅      |                                                                                                                                          |
 | Clock           | ✅      |                                                                                                                                          |
@@ -41,7 +42,6 @@ A full list of feature flags can be found [here](Compiling#features).
 | Network Manager | ❌      |                                                                                                                                          |
 | Notifications   | ✅      |                                                                                                                                          |
 | Script          | ✅      |                                                                                                                                          |
-| Sway Mode       | ❌      |                                                                                                                                          |
 | SysInfo         | ✅      |                                                                                                                                          |
 | Tray            | ❌      | GTK4 removes widgets required to move the tray. No `libdbusmenu-gtk4` either. will need to manually re-create menus with custom widgets. |
 | UPower          | ❌      |                                                                                                                                          |

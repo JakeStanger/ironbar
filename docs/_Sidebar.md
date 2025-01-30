@@ -25,6 +25,7 @@
 
 # Modules
 
+- [Bindmode](bindmode)
 - [Cairo](cairo)
 - [Clipboard](clipboard)
 - [Clock](clock)
@@ -37,7 +38,6 @@
 - [Network Manager](network-manager)
 - [Notifications](notifications)
 - [Script](script)
-- [Sway-mode](sway-mode)
 - [Sys_Info](sys-info)
 - [Tray](tray)
 - [Upower](upower)

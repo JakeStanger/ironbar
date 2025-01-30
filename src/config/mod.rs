@@ -3,6 +3,8 @@ mod r#impl;
 mod layout;
 mod truncate;
 
+#[cfg(any(feature = "bindmode"))]
+use crate::modules::bindmode::Bindmode;
 #[cfg(feature = "cairo")]
 use crate::modules::cairo::CairoModule;
 #[cfg(feature = "clipboard")]
@@ -27,8 +29,6 @@ use crate::modules::networkmanager::NetworkManagerModule;
 use crate::modules::notifications::NotificationsModule;
 #[cfg(feature = "script")]
 use crate::modules::script::ScriptModule;
-#[cfg(feature = "sway")]
-use crate::modules::sway::mode::SwayModeModule;
 #[cfg(feature = "sys_info")]
 use crate::modules::sysinfo::SysInfoModule;
 #[cfg(feature = "tray")]
@@ -57,6 +57,8 @@ pub use self::truncate::{EllipsizeMode, TruncateMode};
 #[serde(tag = "type", rename_all = "snake_case")]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub enum ModuleConfig {
+    #[cfg(feature = "bindmode")]
+    Bindmode(Box<Bindmode>),
     #[cfg(feature = "cairo")]
     Cairo(Box<CairoModule>),
     #[cfg(feature = "clipboard")]
@@ -83,8 +85,6 @@ pub enum ModuleConfig {
     Script(Box<ScriptModule>),
     #[cfg(feature = "sys_info")]
     SysInfo(Box<SysInfoModule>),
-    #[cfg(feature = "sway")]
-    SwayMode(Box<SwayModeModule>),
     #[cfg(feature = "tray")]
     Tray(Box<TrayModule>),
     #[cfg(feature = "upower")]
@@ -109,6 +109,8 @@ impl ModuleConfig {
         }
 
         match self {
+            #[cfg(feature = "bindmode")]
+            Self::Bindmode(module) => create!(module),
             #[cfg(feature = "cairo")]
             Self::Cairo(module) => create!(module),
             #[cfg(feature = "clipboard")]
@@ -135,8 +137,6 @@ impl ModuleConfig {
             Self::Script(module) => create!(module),
             #[cfg(feature = "sys_info")]
             Self::SysInfo(module) => create!(module),
-            #[cfg(feature = "sway")]
-            Self::SwayMode(module) => create!(module),
             #[cfg(feature = "tray")]
             Self::Tray(module) => create!(module),
             #[cfg(feature = "upower")]
