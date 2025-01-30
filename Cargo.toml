@@ -19,6 +19,7 @@ default = [
     "focused",
     "http",
     "ipc",
+    "bindmode+all",
     "keyboard+all",
     "launcher",
     "label",
@@ -37,6 +38,11 @@ cli = ["ipc"]
 ipc = ["dep:serde_json", "dep:clap"]
 
 http = ["dep:reqwest"]
+
+bindmode = []
+"bindmode+all" = ["bindmode+sway", "bindmode+hyprland"]
+"bindmode+sway" = ["bindmode", "sway"]
+"bindmode+hyprland" = ["bindmode", "hyprland"]
 
 "config+all" = [
     "config+json",

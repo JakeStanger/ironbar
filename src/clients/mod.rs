@@ -7,7 +7,12 @@ use std::sync::Arc;
 
 #[cfg(feature = "clipboard")]
 pub mod clipboard;
-#[cfg(any(feature = "keyboard", feature = "workspaces", feature = "hyprland"))]
+#[cfg(any(
+    feature = "bindmode",
+    feature = "hyprland",
+    feature = "keyboard",
+    feature = "workspaces",
+))]
 pub mod compositor;
 #[cfg(feature = "keyboard")]
 pub mod libinput;
@@ -42,6 +47,8 @@ pub struct Clients {
     sway: Option<Arc<sway::Client>>,
     #[cfg(feature = "hyprland")]
     hyprland: Option<Arc<compositor::hyprland::Client>>,
+    #[cfg(feature = "bindmode")]
+    bindmode: Option<Arc<dyn compositor::BindModeClient>>,
     #[cfg(feature = "clipboard")]
     clipboard: Option<Arc<clipboard::Client>>,
     #[cfg(feature = "keyboard")]
@@ -108,6 +115,19 @@ impl Clients {
         } else {
             let client = compositor::Compositor::create_keyboard_layout_client(self)?;
             self.keyboard_layout.replace(client.clone());
+            client
+        };
+
+        Ok(client)
+    }
+
+    #[cfg(feature = "bindmode")]
+    pub fn bindmode(&mut self) -> ClientResult<dyn compositor::BindModeClient> {
+        let client = if let Some(client) = &self.bindmode {
+            client.clone()
+        } else {
+            let client = compositor::Compositor::create_bindmode_client(self)?;
+            self.bindmode.replace(client.clone());
             client
         };
 
