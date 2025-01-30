@@ -77,7 +77,7 @@ impl Compositor {
                 .sway()
                 .map(|client| client as Arc<dyn KeyboardLayoutClient + Send + Sync>),
             #[cfg(feature = "keyboard+hyprland")]
-            Self::Hyprland => Ok(clients.hyprland()),
+            Self::Hyprland => Ok(clients.hyprland()?),
             Self::Niri | Self::Unsupported => Err(Report::msg("Unsupported compositor").note(
                 "Currently keyboard layout functionality are only supported by Sway and Hyprland",
             )),
@@ -97,7 +97,7 @@ impl Compositor {
                 .sway()
                 .map(|client| client as Arc<dyn WorkspaceClient + Send + Sync>),
             #[cfg(feature = "workspaces+hyprland")]
-            Self::Hyprland => Ok(clients.hyprland()),
+            Self::Hyprland => Ok(clients.hyprland()?),
             #[cfg(feature = "workspaces+niri")]
             Self::Niri => Ok(Arc::new(niri::Client::new())),
             Self::Unsupported => Err(Report::msg("Unsupported compositor")
