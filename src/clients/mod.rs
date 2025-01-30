@@ -7,7 +7,12 @@ use std::sync::Arc;
 
 #[cfg(feature = "clipboard")]
 pub mod clipboard;
-#[cfg(any(feature = "keyboard", feature = "workspaces", feature = "hyprland"))]
+#[cfg(any(
+    feature = "bindmode",
+    feature = "hyprland",
+    feature = "keyboard",
+    feature = "workspaces",
+))]
 pub mod compositor;
 #[cfg(feature = "keyboard")]
 pub mod libinput;
@@ -42,6 +47,8 @@ pub struct Clients {
     sway: Option<Arc<sway::Client>>,
     #[cfg(feature = "hyprland")]
     hyprland: Option<Arc<compositor::hyprland::Client>>,
+    #[cfg(feature = "bindmode")]
+    bindmode: Option<Arc<dyn compositor::BindModeClient>>,
     #[cfg(feature = "clipboard")]
     clipboard: Option<Arc<clipboard::Client>>,
     #[cfg(feature = "keyboard")]
@@ -114,6 +121,19 @@ impl Clients {
         Ok(client)
     }
 
+    #[cfg(feature = "bindmode")]
+    pub fn bindmode(&mut self) -> ClientResult<dyn compositor::BindModeClient> {
+        let client = if let Some(client) = &self.bindmode {
+            client.clone()
+        } else {
+            let client = compositor::Compositor::create_bindmode_client(self)?;
+            self.bindmode.replace(client.clone());
+            client
+        };
+
+        Ok(client)
+    }
+
     #[cfg(feature = "sway")]
     pub fn sway(&mut self) -> ClientResult<sway::Client> {
         let client = if let Some(client) = &self.sway {
@@ -129,13 +149,13 @@ impl Clients {
     }
 
     #[cfg(feature = "hyprland")]
-    pub fn hyprland(&mut self) -> Arc<compositor::hyprland::Client> {
+    pub fn hyprland(&mut self) -> ClientResult<compositor::hyprland::Client> {
         if let Some(client) = &self.hyprland {
-            client.clone()
+            Ok(client.clone())
         } else {
-            let client = Arc::new(compositor::hyprland::Client::new());
+            let client = Arc::new(compositor::hyprland::Client::new()?);
             self.hyprland.replace(client.clone());
-            client
+            Ok(client)
         }
     }
 

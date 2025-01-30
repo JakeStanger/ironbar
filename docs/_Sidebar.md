@@ -25,6 +25,7 @@
 
 # Modules
 
+- [Bindmode](bindmode)
 - [Cairo](cairo)
 - [Clipboard](clipboard)
 - [Clock](clock)
