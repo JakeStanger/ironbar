@@ -9,7 +9,7 @@ use std::sync::Arc;
 pub mod clipboard;
 #[cfg(feature = "workspaces")]
 pub mod compositor;
-#[cfg(feature = "keys")]
+#[cfg(feature = "keyboard")]
 pub mod libinput;
 #[cfg(feature = "cairo")]
 pub mod lua;
@@ -38,10 +38,14 @@ pub struct Clients {
     workspaces: Option<Arc<dyn compositor::WorkspaceClient>>,
     #[cfg(feature = "sway")]
     sway: Option<Arc<sway::Client>>,
+    #[cfg(feature = "hyprland")]
+    hyprland: Option<Arc<compositor::hyprland::Client>>,
     #[cfg(feature = "clipboard")]
     clipboard: Option<Arc<clipboard::Client>>,
-    #[cfg(feature = "keys")]
+    #[cfg(feature = "keyboard")]
     libinput: HashMap<Box<str>, Arc<libinput::Client>>,
+    #[cfg(any(feature = "keyboard+sway", feature = "keyboard+hyprland"))]
+    keyboard_layout: Option<Arc<dyn compositor::KeyboardLayoutClient>>,
     #[cfg(feature = "cairo")]
     lua: Option<Rc<lua::LuaEngine>>,
     #[cfg(feature = "music")]
@@ -93,6 +97,19 @@ impl Clients {
         Ok(client)
     }
 
+    #[cfg(any(feature = "keyboard+sway", feature = "keyboard+hyprland"))]
+    pub fn keyboard_layout(&mut self) -> ClientResult<dyn compositor::KeyboardLayoutClient> {
+        let client = if let Some(keyboard_layout) = &self.keyboard_layout {
+            keyboard_layout.clone()
+        } else {
+            let client = compositor::Compositor::create_keyboard_layout_client(self)?;
+            self.keyboard_layout.replace(client.clone());
+            client
+        };
+
+        Ok(client)
+    }
+
     #[cfg(feature = "sway")]
     pub fn sway(&mut self) -> ClientResult<sway::Client> {
         let client = if let Some(client) = &self.sway {
@@ -107,6 +124,19 @@ impl Clients {
         Ok(client)
     }
 
+    #[cfg(feature = "hyprland")]
+    pub fn hyprland(&mut self) -> ClientResult<compositor::hyprland::Client> {
+        let client = if let Some(client) = &self.hyprland {
+            client.clone()
+        } else {
+            let client = Arc::new(compositor::hyprland::Client::new());
+            self.hyprland.replace(client.clone());
+            client
+        };
+
+        Ok(client)
+    }
+
     #[cfg(feature = "cairo")]
     pub fn lua(&mut self, config_dir: &Path) -> Rc<lua::LuaEngine> {
         self.lua
@@ -114,7 +144,7 @@ impl Clients {
             .clone()
     }
 
-    #[cfg(feature = "keys")]
+    #[cfg(feature = "keyboard")]
     pub fn libinput(&mut self, seat: &str) -> Arc<libinput::Client> {
         self.libinput
             .entry(seat.into())

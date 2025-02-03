@@ -29,7 +29,7 @@
 - [Clock](clock)
 - [Custom](custom)
 - [Focused](focused)
-- [Keys](keys)
+- [Keyboard](keyboard)
 - [Label](label)
 - [Launcher](launcher)
 - [Music](music)

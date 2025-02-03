@@ -196,7 +196,7 @@ impl Module<gtk::Box> for WorkspacesModule {
         let client = context.ironbar.clients.borrow_mut().workspaces()?;
         // Subscribe & send events
         spawn(async move {
-            let mut srx = client.subscribe_workspace_change();
+            let mut srx = client.subscribe();
 
             trace!("Set up workspace subscription");
 
@@ -213,9 +213,7 @@ impl Module<gtk::Box> for WorkspacesModule {
             trace!("Setting up UI event handler");
 
             while let Some(name) = rx.recv().await {
-                if let Err(e) = client.focus(name.clone()) {
-                    warn!("Couldn't focus workspace '{name}': {e:#}");
-                };
+                client.focus(name.clone());
             }
 
             Ok::<(), Report>(())

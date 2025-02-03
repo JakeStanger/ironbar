@@ -11,8 +11,8 @@ use crate::modules::clock::ClockModule;
 use crate::modules::custom::CustomModule;
 #[cfg(feature = "focused")]
 use crate::modules::focused::FocusedModule;
-#[cfg(feature = "keys")]
-use crate::modules::keys::KeysModule;
+#[cfg(feature = "keyboard")]
+use crate::modules::keyboard::KeyboardModule;
 use crate::modules::label::LabelModule;
 #[cfg(feature = "launcher")]
 use crate::modules::launcher::LauncherModule;
@@ -61,8 +61,8 @@ pub enum ModuleConfig {
     Custom(Box<CustomModule>),
     #[cfg(feature = "focused")]
     Focused(Box<FocusedModule>),
-    #[cfg(feature = "keys")]
-    Keys(Box<KeysModule>),
+    #[cfg(feature = "keyboard")]
+    Keyboard(Box<KeyboardModule>),
     Label(Box<LabelModule>),
     #[cfg(feature = "launcher")]
     Launcher(Box<LauncherModule>),
@@ -110,8 +110,8 @@ impl ModuleConfig {
             Self::Custom(module) => create!(module),
             #[cfg(feature = "focused")]
             Self::Focused(module) => create!(module),
-            #[cfg(feature = "keys")]
-            Self::Keys(module) => create!(module),
+            #[cfg(feature = "keyboard")]
+            Self::Keyboard(module) => create!(module),
             Self::Label(module) => create!(module),
             #[cfg(feature = "launcher")]
             Self::Launcher(module) => create!(module),
