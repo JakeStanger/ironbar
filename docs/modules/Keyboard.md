@@ -17,6 +17,7 @@ Displays the toggle state of the capslock, num lock and scroll lock keys, and th
 | `show_caps`        | `boolean`                      | `true`  | Whether to show capslock indicator.                                                                                       |
 | `show_num`         | `boolean`                      | `true`  | Whether to show num lock indicator.                                                                                       |
 | `show_scroll`      | `boolean`                      | `true`  | Whether to show scroll lock indicator.                                                                                    |
+| `show_layout`      | `boolean`                      | `true`  | Whether to show the keyboard layout button.                                                                               |
 | `icon_size`        | `integer`                      | `32`    | Size to render icon at (image icons only).                                                                                |
 | `icons.caps_on`    | `string` or [image](images)    | `󰪛`     | Icon to show for enabled capslock indicator.                                                                              |
 | `icons.caps_off`   | `string` or [image](images)    | `''`    | Icon to show for disabled capslock indicator.                                                                             |
