@@ -138,7 +138,7 @@ impl Module<gtk::Box> for LauncherModule {
 
     fn spawn_controller(
         &self,
-        _info: &ModuleInfo,
+        info: &ModuleInfo,
         context: &WidgetContext<Self::SendMessage, Self::ReceiveMessage>,
         mut rx: mpsc::Receiver<Self::ReceiveMessage>,
     ) -> crate::Result<()> {
@@ -149,10 +149,9 @@ impl Module<gtk::Box> for LauncherModule {
                 favorites
                     .iter()
                     .map(|app_id| {
-                        let icon_override = _info
+                        let icon_override = info
                             .icon_overrides
-                            .as_ref()
-                            .and_then(|overrides| overrides.get(app_id))
+                            .get(app_id)
                             .map_or_else(String::new, |v| v.to_string());
 
                         (
@@ -166,7 +165,7 @@ impl Module<gtk::Box> for LauncherModule {
         let items = arc_mut!(items);
         let items2 = Arc::clone(&items);
 
-        let icon_overrides = arc_mut!(_info.icon_overrides.clone());
+        let icon_overrides = arc_mut!(info.icon_overrides.clone());
         let icon_overrides2 = Arc::clone(&icon_overrides);
 
         let tx = context.tx.clone();
@@ -192,10 +191,8 @@ impl Module<gtk::Box> for LauncherModule {
                         let mut item = Item::from(info.clone());
                         let icon_overrides = lock!(icon_overrides);
 
-                        if let Some(overrides) = icon_overrides.as_ref() {
-                            if let Some(icon) = overrides.get(&info.app_id) {
-                                item.icon_override = icon.clone();
-                            }
+                        if let Some(icon) = icon_overrides.get(&info.app_id) {
+                            item.icon_override = icon.clone();
                         }
 
                         items.insert(info.app_id.clone(), item);
@@ -231,10 +228,8 @@ impl Module<gtk::Box> for LauncherModule {
                                     let mut item: Item = info.into();
                                     let icon_overrides = lock!(icon_overrides);
 
-                                    if let Some(overrides) = icon_overrides.as_ref() {
-                                        if let Some(icon) = overrides.get(&app_id) {
-                                            item.icon_override = icon.clone();
-                                        }
+                                    if let Some(icon) = icon_overrides.get(&app_id) {
+                                        item.icon_override = icon.clone();
                                     }
 
                                     items.insert(app_id.clone(), item.clone());

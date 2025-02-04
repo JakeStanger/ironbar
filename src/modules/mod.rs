@@ -72,7 +72,7 @@ pub struct ModuleInfo<'a> {
     pub monitor: &'a Monitor,
     pub output_name: &'a str,
     pub icon_theme: &'a IconTheme,
-    pub icon_overrides: &'a Option<HashMap<String, String>>,
+    pub icon_overrides: &'a HashMap<String, String>,
 }
 
 #[derive(Debug, Clone)]

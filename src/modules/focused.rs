@@ -159,10 +159,8 @@ impl Module<gtk::Box> for FocusedModule {
                 if let Some((name, mut id)) = data {
                     if self.show_icon {
 
-                        if let Some(ref overrides) = icon_overrides {
-                            if let Some(icon) = overrides.get(&id) {
-                                id = icon.clone();
-                            }
+                        if let Some(icon) = icon_overrides.get(&id) {
+                            id = icon.clone();
                         }
 
                         match ImageProvider::parse(&id, &icon_theme, true, self.icon_size)

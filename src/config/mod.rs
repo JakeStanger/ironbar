@@ -293,8 +293,9 @@ pub struct BarConfig {
     /// Map of app IDs (or classes) to icon names,
     /// overriding the app's default icon.
     ///
-    /// **Default**; `null`
-    pub icon_overrides: Option<HashMap<String, String>>,
+    /// **Default**; `{}`
+    #[serde(default)]
+    pub icon_overrides: HashMap<String, String>,
 
     /// An array of modules to append to the start of the bar.
     /// Depending on the orientation, this is either the top of the left edge.
@@ -344,7 +345,7 @@ impl Default for BarConfig {
             start_hidden: None,
             autohide: None,
             icon_theme: None,
-            icon_overrides: None,
+            icon_overrides: HashMap::default(),
             start: Some(vec![ModuleConfig::Label(
                 LabelModule::new("ℹ️ Using default config".to_string()).into(),
             )]),
