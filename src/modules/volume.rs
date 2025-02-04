@@ -1,6 +1,6 @@
 use crate::clients::volume::{self, Event};
 use crate::config::CommonConfig;
-use crate::gtk_helpers::IronbarGtkExt;
+use crate::gtk_helpers::{IronbarGtkExt, IronbarLabelExt};
 use crate::modules::{
     Module, ModuleInfo, ModuleParts, ModulePopup, ModuleUpdateEvent, PopupButton, WidgetContext,
 };
@@ -202,7 +202,13 @@ impl Module<Button> for VolumeModule {
     where
         <Self as Module<Button>>::SendMessage: Clone,
     {
+        let button_label = Label::builder()
+            .use_markup(true)
+            .angle(info.bar_position.get_angle())
+            .build();
+
         let button = Button::new();
+        button.add(&button_label);
 
         {
             let tx = context.tx.clone();
@@ -215,7 +221,6 @@ impl Module<Button> for VolumeModule {
         {
             let rx = context.subscribe();
             let icons = self.icons.clone();
-            let button = button.clone();
 
             let format = self.format.clone();
 
@@ -227,7 +232,7 @@ impl Module<Button> for VolumeModule {
                             .replace("{percentage}", &sink.volume.to_string())
                             .replace("{name}", &sink.description);
 
-                        button.set_label(&label);
+                        button_label.set_label_escaped(&label);
                     },
                     _ => {}
                 }
