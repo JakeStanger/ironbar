@@ -9,6 +9,7 @@ use color_eyre::Result;
 use gtk::prelude::*;
 use gtk::Label;
 use serde::Deserialize;
+use std::sync::Arc;
 use tokio::sync::mpsc;
 use tracing::debug;
 
@@ -132,9 +133,6 @@ impl Module<gtk::Box> for FocusedModule {
         context: WidgetContext<Self::SendMessage, Self::ReceiveMessage>,
         info: &ModuleInfo,
     ) -> Result<ModuleParts<gtk::Box>> {
-        let icon_theme = info.icon_theme;
-        let icon_overrides = info.icon_overrides;
-
         let container = gtk::Box::new(info.bar_position.orientation(), 5);
 
         let icon = gtk::Image::new();
@@ -153,8 +151,9 @@ impl Module<gtk::Box> for FocusedModule {
         container.add(&label);
 
         {
-            let icon_theme = icon_theme.clone();
-            let icon_overrides = icon_overrides.clone();
+            let icon_overrides = Arc::new(info.icon_overrides.clone());
+            let icon_theme = info.icon_theme.clone();
+
             glib_recv!(context.subscribe(), data => {
                 if let Some((name, mut id)) = data {
                     if self.show_icon {

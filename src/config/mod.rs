@@ -290,13 +290,6 @@ pub struct BarConfig {
     /// **Default**: `null`
     pub icon_theme: Option<String>,
 
-    /// Map of app IDs (or classes) to icon names,
-    /// overriding the app's default icon.
-    ///
-    /// **Default**; `{}`
-    #[serde(default)]
-    pub icon_overrides: HashMap<String, String>,
-
     /// An array of modules to append to the start of the bar.
     /// Depending on the orientation, this is either the top of the left edge.
     ///
@@ -345,7 +338,6 @@ impl Default for BarConfig {
             start_hidden: None,
             autohide: None,
             icon_theme: None,
-            icon_overrides: HashMap::default(),
             start: Some(vec![ModuleConfig::Label(
                 LabelModule::new("ℹ️ Using default config".to_string()).into(),
             )]),
@@ -396,6 +388,13 @@ pub struct Config {
     ///
     /// Providing this option overrides the single, global `bar` option.
     pub monitors: Option<HashMap<String, MonitorConfig>>,
+
+    /// Map of app IDs (or classes) to icon names,
+    /// overriding the app's default icon.
+    ///
+    /// **Default**: `{}`
+    #[serde(default)]
+    pub icon_overrides: HashMap<String, String>,
 }
 
 const fn default_layer() -> gtk_layer_shell::Layer {

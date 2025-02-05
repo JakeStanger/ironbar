@@ -165,8 +165,7 @@ impl Module<gtk::Box> for LauncherModule {
         let items = arc_mut!(items);
         let items2 = Arc::clone(&items);
 
-        let icon_overrides = arc_mut!(info.icon_overrides.clone());
-        let icon_overrides2 = Arc::clone(&icon_overrides);
+        let icon_overrides = Arc::new(info.icon_overrides.clone());
 
         let tx = context.tx.clone();
         let tx2 = context.tx.clone();
@@ -174,7 +173,6 @@ impl Module<gtk::Box> for LauncherModule {
         let wl = context.client::<wayland::Client>();
         spawn(async move {
             let items = items2;
-            let icon_overrides = icon_overrides2;
             let tx = tx2;
 
             let mut wlrx = wl.subscribe_toplevels();
@@ -189,7 +187,6 @@ impl Module<gtk::Box> for LauncherModule {
                     }
                     None => {
                         let mut item = Item::from(info.clone());
-                        let icon_overrides = lock!(icon_overrides);
 
                         if let Some(icon) = icon_overrides.get(&info.app_id) {
                             item.icon_override = icon.clone();
@@ -226,7 +223,6 @@ impl Module<gtk::Box> for LauncherModule {
                             match item {
                                 None => {
                                     let mut item: Item = info.into();
-                                    let icon_overrides = lock!(icon_overrides);
 
                                     if let Some(icon) = icon_overrides.get(&app_id) {
                                         item.icon_override = icon.clone();

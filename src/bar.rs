@@ -268,7 +268,7 @@ impl Bar {
                     output_name: &self.monitor_name,
                     location: $location,
                     icon_theme: &icon_theme,
-                    icon_overrides: &config.icon_overrides,
+                    icon_overrides: &self.ironbar.config.borrow().icon_overrides,
                 }
             };
         }
