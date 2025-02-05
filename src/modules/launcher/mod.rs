@@ -165,7 +165,7 @@ impl Module<gtk::Box> for LauncherModule {
         let items = arc_mut!(items);
         let items2 = Arc::clone(&items);
 
-        let icon_overrides = Arc::new(info.icon_overrides.clone());
+        let icon_overrides = info.icon_overrides.clone();
 
         let tx = context.tx.clone();
         let tx2 = context.tx.clone();

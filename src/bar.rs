@@ -9,6 +9,7 @@ use gtk::prelude::*;
 use gtk::{Application, ApplicationWindow, IconTheme, Orientation, Window, WindowType};
 use gtk_layer_shell::LayerShell;
 use std::rc::Rc;
+use std::sync::Arc;
 use std::time::Duration;
 use tracing::{debug, info};
 
@@ -268,7 +269,7 @@ impl Bar {
                     output_name: &self.monitor_name,
                     location: $location,
                     icon_theme: &icon_theme,
-                    icon_overrides: &self.ironbar.config.borrow().icon_overrides,
+                    icon_overrides: Arc::new(self.ironbar.config.borrow().icon_overrides.clone()),
                 }
             };
         }

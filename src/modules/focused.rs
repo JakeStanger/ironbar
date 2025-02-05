@@ -9,7 +9,6 @@ use color_eyre::Result;
 use gtk::prelude::*;
 use gtk::Label;
 use serde::Deserialize;
-use std::sync::Arc;
 use tokio::sync::mpsc;
 use tracing::debug;
 
@@ -151,7 +150,7 @@ impl Module<gtk::Box> for FocusedModule {
         container.add(&label);
 
         {
-            let icon_overrides = Arc::new(info.icon_overrides.clone());
+            let icon_overrides = info.icon_overrides.clone();
             let icon_theme = info.icon_theme.clone();
 
             glib_recv!(context.subscribe(), data => {
