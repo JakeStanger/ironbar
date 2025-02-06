@@ -4,35 +4,30 @@ pub mod offer;
 pub mod source;
 
 use self::device::{DataControlDeviceDataExt, DataControlDeviceHandler};
-use self::offer::{DataControlDeviceOffer, DataControlOfferHandler, SelectionOffer};
+use self::offer::{DataControlDeviceOffer, DataControlOfferHandler};
 use self::source::DataControlSourceHandler;
 use super::{Client, Environment, Event, Request, Response};
-use crate::{lock, try_send, Ironbar};
+use crate::{lock, spawn, try_send, Ironbar};
 use device::DataControlDevice;
 use glib::Bytes;
 use nix::fcntl::{fcntl, F_GETPIPE_SZ, F_SETPIPE_SZ};
 use nix::sys::epoll::{Epoll, EpollCreateFlags, EpollEvent, EpollFlags, EpollTimeout};
 use smithay_client_toolkit::data_device_manager::WritePipe;
-use smithay_client_toolkit::reexports::calloop::{PostAction, RegistrationToken};
 use std::cmp::min;
 use std::fmt::{Debug, Formatter};
 use std::fs::File;
-use std::io::{ErrorKind, Read, Write};
-use std::os::fd::{AsRawFd, OwnedFd, RawFd};
+use std::io::{ErrorKind, Write};
+use std::os::fd::RawFd;
+use std::os::fd::{AsRawFd, OwnedFd};
 use std::sync::Arc;
 use std::{fs, io};
+use tokio::io::AsyncReadExt;
 use tokio::sync::broadcast;
 use tracing::{debug, error, trace};
 use wayland_client::{Connection, QueueHandle};
 use wayland_protocols_wlr::data_control::v1::client::zwlr_data_control_source_v1::ZwlrDataControlSourceV1;
 
 const INTERNAL_MIME_TYPE: &str = "x-ironbar-internal";
-
-#[derive(Debug)]
-pub struct SelectionOfferItem {
-    offer: SelectionOffer,
-    token: Option<RegistrationToken>,
-}
 
 /// Represents a value which can be read/written
 /// to/from the system clipboard and surrounding metadata.
@@ -168,22 +163,20 @@ impl Environment {
     }
 
     /// Reads an offer file handle into a new `ClipboardItem`.
-    fn read_file(mime_type: &MimeType, file: &mut File) -> io::Result<ClipboardItem> {
+    async fn read_file(
+        mime_type: &MimeType,
+        file: &mut tokio::net::unix::pipe::Receiver,
+    ) -> io::Result<ClipboardItem> {
+        let mut buf = vec![];
+        file.read_to_end(&mut buf).await?;
+
         let value = match mime_type.category {
             MimeTypeCategory::Text => {
-                let mut txt = String::new();
-                file.read_to_string(&mut txt)?;
-
+                let txt = String::from_utf8_lossy(&buf).to_string();
                 ClipboardValue::Text(txt)
             }
             MimeTypeCategory::Image => {
-                let mut bytes = vec![];
-                file.read_to_end(&mut bytes)?;
-
-                debug!("Read bytes: {}", bytes.len());
-
-                let bytes = Bytes::from(&bytes);
-
+                let bytes = Bytes::from(&buf);
                 ClipboardValue::Image(bytes)
             }
         };
@@ -214,14 +207,6 @@ impl DataControlDeviceHandler for Environment {
         }
 
         if let Some(offer) = data_device.selection_offer() {
-            self.selection_offers
-                .push(SelectionOfferItem { offer, token: None });
-
-            let cur_offer = self
-                .selection_offers
-                .last_mut()
-                .expect("Failed to get current offer");
-
             // clear prev
             let Some(mime_type) = MimeType::parse_multiple(&mime_types) else {
                 lock!(self.clipboard).take();
@@ -238,44 +223,19 @@ impl DataControlDeviceHandler for Environment {
             };
 
             debug!("Receiving mime type: {}", mime_type.value);
-
-            if let Ok(read_pipe) = cur_offer.offer.receive(mime_type.value.clone()) {
-                let offer_clone = cur_offer.offer.clone();
-
+            if let Ok(mut read_pipe) = offer.receive(mime_type.value.clone()) {
                 let tx = self.event_tx.clone();
                 let clipboard = self.clipboard.clone();
 
-                let token =
-                    self.loop_handle
-                        .insert_source(read_pipe, move |(), file, state| unsafe {
-                            let item = state
-                                .selection_offers
-                                .iter()
-                                .position(|o| o.offer == offer_clone)
-                                .map(|p| state.selection_offers.remove(p))
-                                .expect("Failed to find selection offer item");
-
-                            match Self::read_file(&mime_type, file.get_mut()) {
-                                Ok(item) => {
-                                    lock!(clipboard).replace(item.clone());
-                                    try_send!(tx, Event::Clipboard(item));
-                                }
-                                Err(err) => error!("{err:?}"),
-                            }
-
-                            state
-                                .loop_handle
-                                .remove(item.token.expect("Missing item token"));
-
-                            PostAction::Remove
-                        });
-
-                match token {
-                    Ok(token) => {
-                        cur_offer.token.replace(token);
+                spawn(async move {
+                    match Self::read_file(&mime_type, &mut read_pipe).await {
+                        Ok(item) => {
+                            lock!(clipboard).replace(item.clone());
+                            try_send!(tx, Event::Clipboard(item));
+                        }
+                        Err(err) => error!("{err:?}"),
                     }
-                    Err(err) => error!("Failed to insert read pipe event: {err:?}"),
-                }
+                });
             }
         }
     }
