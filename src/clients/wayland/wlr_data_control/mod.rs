@@ -3,7 +3,6 @@ pub mod manager;
 pub mod offer;
 pub mod source;
 
-use std::os::fd::RawFd;
 use self::device::{DataControlDeviceDataExt, DataControlDeviceHandler};
 use self::offer::{DataControlDeviceOffer, DataControlOfferHandler};
 use self::source::DataControlSourceHandler;
@@ -13,11 +12,12 @@ use device::DataControlDevice;
 use glib::Bytes;
 use nix::fcntl::{fcntl, F_GETPIPE_SZ, F_SETPIPE_SZ};
 use nix::sys::epoll::{Epoll, EpollCreateFlags, EpollEvent, EpollFlags, EpollTimeout};
-use smithay_client_toolkit::data_device_manager::{WritePipe};
+use smithay_client_toolkit::data_device_manager::WritePipe;
 use std::cmp::min;
 use std::fmt::{Debug, Formatter};
 use std::fs::File;
 use std::io::{ErrorKind, Write};
+use std::os::fd::RawFd;
 use std::os::fd::{AsRawFd, OwnedFd};
 use std::sync::Arc;
 use std::{fs, io};
@@ -163,7 +163,10 @@ impl Environment {
     }
 
     /// Reads an offer file handle into a new `ClipboardItem`.
-    async fn read_file(mime_type: &MimeType, file: &mut tokio::net::unix::pipe::Receiver) -> io::Result<ClipboardItem> {
+    async fn read_file(
+        mime_type: &MimeType,
+        file: &mut tokio::net::unix::pipe::Receiver,
+    ) -> io::Result<ClipboardItem> {
         let mut buf = vec![];
         file.read_to_end(&mut buf).await?;
 
