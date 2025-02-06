@@ -12,7 +12,7 @@ use cfg_if::cfg_if;
 use color_eyre::Report;
 use smithay_client_toolkit::output::OutputState;
 use smithay_client_toolkit::reexports::calloop::channel as calloop_channel;
-use smithay_client_toolkit::reexports::calloop::{EventLoop, LoopHandle};
+use smithay_client_toolkit::reexports::calloop::EventLoop;
 use smithay_client_toolkit::reexports::calloop_wayland_source::WaylandSource;
 use smithay_client_toolkit::registry::{ProvidesRegistryState, RegistryState};
 use smithay_client_toolkit::seat::SeatState;
@@ -43,7 +43,6 @@ cfg_if! {
         use self::wlr_data_control::device::DataControlDevice;
         use self::wlr_data_control::manager::DataControlDeviceManagerState;
         use self::wlr_data_control::source::CopyPasteSource;
-        use self::wlr_data_control::SelectionOfferItem;
         use wayland_client::protocol::wl_seat::WlSeat;
 
         pub use wlr_data_control::{ClipboardItem, ClipboardValue};
@@ -195,7 +194,6 @@ pub struct Environment {
     seat_state: SeatState,
 
     queue_handle: QueueHandle<Self>,
-    loop_handle: LoopHandle<'static, Self>,
 
     event_tx: mpsc::Sender<Event>,
     response_tx: std::sync::mpsc::Sender<Response>,
@@ -212,8 +210,6 @@ pub struct Environment {
     data_control_devices: Vec<DataControlDeviceEntry>,
     #[cfg(feature = "clipboard")]
     copy_paste_sources: Vec<CopyPasteSource>,
-    #[cfg(feature = "clipboard")]
-    selection_offers: Vec<SelectionOfferItem>,
 
     // local state
     #[cfg(feature = "clipboard")]
@@ -281,7 +277,6 @@ impl Environment {
             #[cfg(feature = "clipboard")]
             data_control_device_manager_state,
             queue_handle: qh,
-            loop_handle: loop_handle.clone(),
             event_tx,
             response_tx,
             #[cfg(any(feature = "focused", feature = "launcher"))]
@@ -291,8 +286,6 @@ impl Environment {
             data_control_devices: vec![],
             #[cfg(feature = "clipboard")]
             copy_paste_sources: vec![],
-            #[cfg(feature = "clipboard")]
-            selection_offers: vec![],
             #[cfg(feature = "clipboard")]
             clipboard: arc_mut!(None),
         };
