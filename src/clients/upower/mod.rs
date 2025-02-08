@@ -1,8 +1,14 @@
+mod device;
+mod upower;
+
 use crate::clients::ClientResult;
 use crate::register_fallible_client;
 use std::sync::Arc;
-use upower_dbus::UPowerProxy;
+use upower::UPowerProxy;
 use zbus::fdo::PropertiesProxy;
+use zbus::proxy::CacheProperties;
+
+pub use device::BatteryState;
 
 pub async fn create_display_proxy() -> ClientResult<PropertiesProxy<'static>> {
     let dbus = Box::pin(zbus::Connection::system()).await?;
@@ -11,14 +17,14 @@ pub async fn create_display_proxy() -> ClientResult<PropertiesProxy<'static>> {
 
     let display_device = device_proxy.get_display_device().await?;
 
-    let path = display_device.path().to_owned();
+    let path = display_device.inner().path();
 
     let proxy = PropertiesProxy::builder(&dbus)
         .destination("org.freedesktop.UPower")
         .expect("failed to set proxy destination address")
         .path(path)
         .expect("failed to set proxy path")
-        .cache_properties(zbus::CacheProperties::No)
+        .cache_properties(CacheProperties::No)
         .build()
         .await?;
 
