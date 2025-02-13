@@ -1,5 +1,4 @@
-use crate::{glib_recv_mpsc, spawn, try_send};
-use color_eyre::{Help, Report};
+use crate::{get_display, glib_recv_mpsc, spawn, try_send};
 use gtk::ffi::GTK_STYLE_PROVIDER_PRIORITY_USER;
 use gtk::prelude::*;
 use gtk::{gdk, gio, Application, CssProvider, StyleContext};
@@ -26,19 +25,10 @@ pub fn load_css(style_path: PathBuf, application: Application) {
     };
 
     let provider = CssProvider::new();
+    provider.load_from_file(&gio::File::for_path(&style_path));
 
-    match provider.load_from_file(&gio::File::for_path(&style_path)) {
-        Ok(()) => debug!("Loaded css from '{}'", style_path.display()),
-        Err(err) => error!("{:?}", Report::new(err)
-                    .wrap_err("Failed to load CSS")
-                    .suggestion("Check the CSS file for errors")
-                    .suggestion("GTK CSS uses a subset of the full CSS spec and many properties are not available. Ensure you are not using any unsupported property.")
-                )
-    };
-
-    let screen = gdk::Screen::default().expect("Failed to get default GTK screen");
-    StyleContext::add_provider_for_screen(
-        &screen,
+    gtk::style_context_add_provider_for_display(
+        &get_display(),
         &provider,
         GTK_STYLE_PROVIDER_PRIORITY_USER as u32,
     );

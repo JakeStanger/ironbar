@@ -412,9 +412,8 @@ impl Module<gtk::Box> for LauncherModule {
                             if self.reversed {
                                 container.pack_end(&button.button.button, false, false, 0);
                             } else {
-                                container.add(&button.button.button);
+                                container.append(&button.button.button);
                             }
-
                             buttons.insert(item.app_id, button);
                         }
                     }
@@ -497,7 +496,7 @@ impl Module<gtk::Box> for LauncherModule {
         // we need some content to force the container to have a size
         let placeholder = Button::with_label("PLACEHOLDER");
         placeholder.set_width_request(MAX_WIDTH);
-        container.add(&placeholder);
+        container.append(&placeholder);
 
         let mut buttons = IndexMap::<String, IndexMap<usize, ImageTextButton>>::new();
 
@@ -583,10 +582,9 @@ impl Module<gtk::Box> for LauncherModule {
                         if let Some(buttons) = buttons.get(&app_id) {
                             for (_, button) in buttons {
                                 button.add_class("popup-item");
-                                container.add(&button.button);
+                                container.append(&button.button);
                             }
 
-                            container.show_all();
                             container.set_width_request(MAX_WIDTH);
                         }
                     }

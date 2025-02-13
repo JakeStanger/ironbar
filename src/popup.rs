@@ -213,7 +213,7 @@ impl Popup {
         if let Some(PopupCacheValue { content, .. }) = self.container_cache.borrow().get(&widget_id)
         {
             content.container.add_class("popup");
-            self.window.add(&content.container);
+            self.window.append(&content.container);
 
             self.window.show();
             Self::set_pos(

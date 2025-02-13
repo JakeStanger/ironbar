@@ -4,11 +4,12 @@ use crate::{glib_recv_mpsc, send_async, spawn};
 use cfg_if::cfg_if;
 use color_eyre::{Help, Report, Result};
 use gtk::cairo::Surface;
-use gtk::gdk::ffi::gdk_cairo_surface_create_from_pixbuf;
 use gtk::gdk_pixbuf::Pixbuf;
 use gtk::prelude::*;
 use gtk::{IconLookupFlags, IconTheme};
 use std::path::{Path, PathBuf};
+use gtk::gdk::ffi::gdk_texture_new_for_pixbuf;
+use gtk::gdk::Texture;
 #[cfg(feature = "http")]
 use tokio::sync::mpsc;
 use tracing::{debug, warn};

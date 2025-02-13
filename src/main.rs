@@ -343,7 +343,7 @@ fn load_config() -> (Config, PathBuf) {
 }
 
 /// Gets the GDK `Display` instance.
-fn get_display() -> Display {
+pub fn get_display() -> Display {
     Display::default().map_or_else(
         || {
             let report = Report::msg("Failed to get default GTK display");

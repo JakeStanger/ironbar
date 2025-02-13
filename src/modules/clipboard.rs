@@ -11,7 +11,7 @@ use glib::Propagation;
 use gtk::gdk_pixbuf::Pixbuf;
 use gtk::gio::{Cancellable, MemoryInputStream};
 use gtk::prelude::*;
-use gtk::{Button, EventBox, Image, Label, Orientation, RadioButton, Widget};
+use gtk::{Button, Image, Label, Orientation, CheckButton, Widget};
 use serde::Deserialize;
 use std::collections::HashMap;
 use tokio::sync::{broadcast, mpsc};
@@ -171,10 +171,10 @@ impl Module<Button> for ClipboardModule {
         let container = gtk::Box::new(Orientation::Vertical, 10);
 
         let entries = gtk::Box::new(Orientation::Vertical, 5);
-        container.add(&entries);
+        container.append(&entries);
 
-        let hidden_option = RadioButton::new();
-        entries.add(&hidden_option);
+        let hidden_option = CheckButton::new();
+        entries.append(&hidden_option);
 
         let mut items = HashMap::new();
 
@@ -190,10 +190,10 @@ impl Module<Button> for ClipboardModule {
 
                         let button = match item.value.as_ref() {
                             ClipboardValue::Text(value) => {
-                                let button = RadioButton::from_widget(&hidden_option);
+                                let button = CheckButton::from_widget(&hidden_option);
 
                                 let label = Label::new(Some(value));
-                                button.add(&label);
+                                button.append(&label);
 
                                 if let Some(truncate) = self.truncate {
                                     label.truncate(truncate);
@@ -216,7 +216,7 @@ impl Module<Button> for ClipboardModule {
                                     Ok(pixbuf) => {
                                         let image = Image::from_pixbuf(Some(&pixbuf));
 
-                                        let button = RadioButton::from_widget(&hidden_option);
+                                        let button = CheckButton::from_widget(&hidden_option);
                                         button.set_image(Some(&image));
                                         button.set_always_show_image(true);
                                         button.style_context().add_class("image");
@@ -235,15 +235,12 @@ impl Module<Button> for ClipboardModule {
                         button.style_context().add_class("btn");
                         button.set_active(true); // if just added, should be on clipboard
 
-                        let button_wrapper = EventBox::new();
-                        button_wrapper.add(&button);
-
-                        button_wrapper.set_widget_name(&format!("copy-{id}"));
-                        button_wrapper.set_above_child(true);
+                        button.set_widget_name(&format!("copy-{id}"));
+                        button.set_above_child(true);
 
                         {
                             let tx = tx.clone();
-                            button_wrapper.connect_button_press_event(
+                            button.connect_button_press_event(
                                 move |button_wrapper, event| {
                                     // left click
                                     if event.button() == 1 {
@@ -279,12 +276,11 @@ impl Module<Button> for ClipboardModule {
                             });
                         }
 
-                        row.add(&button_wrapper);
-                        row.pack_end(&remove_button, false, false, 0);
+                        row.append(&button);
+                        row.pack_end(&remove_button, false);
 
-                        entries.add(&row);
+                        entries.append(&row);
                         entries.reorder_child(&row, 0);
-                        row.show_all();
 
                         items.insert(id, (row, button));
                     }
@@ -316,7 +312,6 @@ impl Module<Button> for ClipboardModule {
             });
         }
 
-        container.show_all();
         hidden_option.hide();
 
         Some(container)
