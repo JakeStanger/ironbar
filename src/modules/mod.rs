@@ -16,16 +16,18 @@ use crate::gtk_helpers::{IronbarGtkExt, WidgetGeometry};
 use crate::popup::Popup;
 use crate::{glib_recv_mpsc, send, Ironbar};
 
-#[cfg(feature = "cairo")]
-pub mod cairo;
-#[cfg(feature = "clipboard")]
-pub mod clipboard;
 /// Displays the current date and time.
 ///
 /// A custom date/time format string can be set in the config.
 ///
 /// Clicking the widget opens a popup containing the current time
 /// with second-level precision and a calendar.
+#[cfg(feature = "bluetooth")]
+pub mod bluetooth;
+#[cfg(feature = "cairo")]
+pub mod cairo;
+#[cfg(feature = "clipboard")]
+pub mod clipboard;
 #[cfg(feature = "clock")]
 pub mod clock;
 pub mod custom;
