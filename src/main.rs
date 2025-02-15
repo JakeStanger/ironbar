@@ -102,7 +102,10 @@ fn run_with_args() {
 
                         cli::handle_response(res, args.format.unwrap_or_default());
                     }
-                    Err(err) => error!("{err:?}"),
+                    Err(err) => {
+                        error!("{err:#}");
+                        exit(ExitCode::IpcResponseError as i32)
+                    }
                 };
             });
         }
