@@ -1,14 +1,13 @@
-mod device;
-mod upower;
+mod dbus;
 
 use crate::clients::ClientResult;
 use crate::register_fallible_client;
+use dbus::UPowerProxy;
 use std::sync::Arc;
-use upower::UPowerProxy;
 use zbus::fdo::PropertiesProxy;
 use zbus::proxy::CacheProperties;
 
-pub use device::BatteryState;
+pub use dbus::BatteryState;
 
 pub async fn create_display_proxy() -> ClientResult<PropertiesProxy<'static>> {
     let dbus = Box::pin(zbus::Connection::system()).await?;

@@ -175,5 +175,5 @@ pub fn receive(offer: &ZwlrDataControlOfferV1, mime_type: String) -> std::io::Re
 
     offer.receive(mime_type, writefd.as_fd());
 
-    Ok(Receiver::from_owned_fd(readfd)?)
+    Receiver::from_owned_fd(readfd)
 }

@@ -336,7 +336,7 @@ impl Environment {
                 let handle = env
                     .handles
                     .iter()
-                    .find(|handle| handle.info().map_or(false, |info| info.id == id));
+                    .find(|handle| handle.info().is_some_and(|info| info.id == id));
 
                 if let Some(handle) = handle {
                     let seat = env.default_seat();
@@ -350,7 +350,7 @@ impl Environment {
                 let handle = env
                     .handles
                     .iter()
-                    .find(|handle| handle.info().map_or(false, |info| info.id == id));
+                    .find(|handle| handle.info().is_some_and(|info| info.id == id));
 
                 if let Some(handle) = handle {
                     handle.minimize();
