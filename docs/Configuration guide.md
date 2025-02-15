@@ -280,10 +280,11 @@ Check [here](config) for an example config file for a fully configured bar in ea
 
 The following table lists each of the top-level bar config options:
 
-| Name               | Type                                    | Default | Description                                                   |
-|--------------------|-----------------------------------------|---------|---------------------------------------------------------------|
-| `ironvar_defaults` | `Map<string, string>`                   | `{}`    | Map of [ironvar](ironvars) keys against their default values. |
-| `monitors`         | `Map<string, BarConfig or BarConfig[]>` | `null`  | Map of monitor names against bar configs.                     |
+| Name               | Type                                    | Default | Description                                                                   |
+|--------------------|-----------------------------------------|---------|-------------------------------------------------------------------------------|
+| `ironvar_defaults` | `Map<string, string>`                   | `{}`    | Map of [ironvar](ironvars) keys against their default values.                 |
+| `monitors`         | `Map<string, BarConfig or BarConfig[]>` | `null`  | Map of monitor names against bar configs.                                     |
+| `icon_overrides`   | `Map<string, string>`                   | `{}`    | Map of app IDs (or classes) to icon names, overriding the app's default icon. |
 
 > [!TIP]
 > `monitors` is only required if you are following **2b** or **2c** (ie not the same bar across all monitors).

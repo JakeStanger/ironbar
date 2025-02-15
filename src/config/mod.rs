@@ -388,6 +388,13 @@ pub struct Config {
     ///
     /// Providing this option overrides the single, global `bar` option.
     pub monitors: Option<HashMap<String, MonitorConfig>>,
+
+    /// Map of app IDs (or classes) to icon names,
+    /// overriding the app's default icon.
+    ///
+    /// **Default**: `{}`
+    #[serde(default)]
+    pub icon_overrides: HashMap<String, String>,
 }
 
 const fn default_layer() -> gtk_layer_shell::Layer {

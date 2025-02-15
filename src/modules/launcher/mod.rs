@@ -138,7 +138,7 @@ impl Module<gtk::Box> for LauncherModule {
 
     fn spawn_controller(
         &self,
-        _info: &ModuleInfo,
+        info: &ModuleInfo,
         context: &WidgetContext<Self::SendMessage, Self::ReceiveMessage>,
         mut rx: mpsc::Receiver<Self::ReceiveMessage>,
     ) -> crate::Result<()> {
@@ -149,17 +149,23 @@ impl Module<gtk::Box> for LauncherModule {
                 favorites
                     .iter()
                     .map(|app_id| {
+                        let icon_override = info
+                            .icon_overrides
+                            .get(app_id)
+                            .map_or_else(String::new, |v| v.to_string());
+
                         (
                             app_id.to_string(),
-                            Item::new(app_id.to_string(), OpenState::Closed, true),
+                            Item::new(app_id.to_string(), icon_override, OpenState::Closed, true),
                         )
                     })
                     .collect::<IndexMap<_, _>>()
             });
 
         let items = arc_mut!(items);
-
         let items2 = Arc::clone(&items);
+
+        let icon_overrides = info.icon_overrides.clone();
 
         let tx = context.tx.clone();
         let tx2 = context.tx.clone();
@@ -180,7 +186,13 @@ impl Module<gtk::Box> for LauncherModule {
                         item.merge_toplevel(info.clone());
                     }
                     None => {
-                        items.insert(info.app_id.clone(), Item::from(info.clone()));
+                        let mut item = Item::from(info.clone());
+
+                        if let Some(icon) = icon_overrides.get(&info.app_id) {
+                            item.icon_override = icon.clone();
+                        }
+
+                        items.insert(info.app_id.clone(), item);
                     }
                 }
             }
@@ -210,7 +222,11 @@ impl Module<gtk::Box> for LauncherModule {
                             let item = items.get_mut(&info.app_id);
                             match item {
                                 None => {
-                                    let item: Item = info.into();
+                                    let mut item: Item = info.into();
+
+                                    if let Some(icon) = icon_overrides.get(&app_id) {
+                                        item.icon_override = icon.clone();
+                                    }
 
                                     items.insert(app_id.clone(), item.clone());
 

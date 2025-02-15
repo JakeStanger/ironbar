@@ -8,7 +8,9 @@ use gtk::gdk::Monitor;
 use gtk::prelude::*;
 use gtk::{Application, ApplicationWindow, IconTheme, Orientation, Window, WindowType};
 use gtk_layer_shell::LayerShell;
+use std::collections::HashMap;
 use std::rc::Rc;
+use std::sync::Arc;
 use std::time::Duration;
 use tracing::{debug, info};
 
@@ -23,6 +25,7 @@ pub struct Bar {
     name: String,
     monitor_name: String,
     monitor_size: (i32, i32),
+    icon_overrides: Arc<HashMap<String, String>>,
     position: BarPosition,
 
     ironbar: Rc<Ironbar>,
@@ -43,6 +46,7 @@ impl Bar {
         app: &Application,
         monitor_name: String,
         monitor_size: (i32, i32),
+        icon_overrides: Arc<HashMap<String, String>>,
         config: BarConfig,
         ironbar: Rc<Ironbar>,
     ) -> Self {
@@ -92,6 +96,7 @@ impl Bar {
             name,
             monitor_name,
             monitor_size,
+            icon_overrides,
             position,
             ironbar,
             window,
@@ -268,6 +273,7 @@ impl Bar {
                     output_name: &self.monitor_name,
                     location: $location,
                     icon_theme: &icon_theme,
+                    icon_overrides: self.icon_overrides.clone(),
                 }
             };
         }
@@ -398,9 +404,17 @@ pub fn create_bar(
     monitor: &Monitor,
     monitor_name: String,
     monitor_size: (i32, i32),
+    icon_overrides: Arc<HashMap<String, String>>,
     config: BarConfig,
     ironbar: Rc<Ironbar>,
 ) -> Result<Bar> {
-    let bar = Bar::new(app, monitor_name, monitor_size, config, ironbar);
+    let bar = Bar::new(
+        app,
+        monitor_name,
+        monitor_size,
+        icon_overrides,
+        config,
+        ironbar,
+    );
     bar.init(monitor)
 }

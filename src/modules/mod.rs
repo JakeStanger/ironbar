@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::fmt::Debug;
 use std::rc::Rc;
 use std::sync::Arc;
@@ -71,6 +72,7 @@ pub struct ModuleInfo<'a> {
     pub monitor: &'a Monitor,
     pub output_name: &'a str,
     pub icon_theme: &'a IconTheme,
+    pub icon_overrides: Arc<HashMap<String, String>>,
 }
 
 #[derive(Debug, Clone)]
