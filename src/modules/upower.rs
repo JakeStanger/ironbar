@@ -4,10 +4,10 @@ use gtk::{prelude::*, Button};
 use gtk::{Label, Orientation};
 use serde::Deserialize;
 use tokio::sync::{broadcast, mpsc};
-use upower_dbus::BatteryState;
 use zbus;
 use zbus::fdo::PropertiesProxy;
 
+use crate::clients::upower::BatteryState;
 use crate::config::CommonConfig;
 use crate::gtk_helpers::{IronbarGtkExt, IronbarLabelExt};
 use crate::image::ImageProvider;
@@ -59,7 +59,7 @@ pub struct UpowerProperties {
     time_to_empty: i64,
 }
 
-impl Module<gtk::Button> for UpowerModule {
+impl Module<Button> for UpowerModule {
     type SendMessage = UpowerProperties;
     type ReceiveMessage = ();
 
@@ -84,23 +84,23 @@ impl Module<gtk::Button> for UpowerModule {
 
             let properties = display_proxy.get_all(device_interface_name.clone()).await?;
 
-            let percentage = *properties["Percentage"]
+            let percentage = properties["Percentage"]
                 .downcast_ref::<f64>()
                 .expect("expected percentage: f64 in HashMap of all properties");
             let icon_name = properties["IconName"]
-                .downcast_ref::<str>()
+                .downcast_ref::<&str>()
                 .expect("expected IconName: str in HashMap of all properties")
                 .to_string();
             let state = u32_to_battery_state(
-                *properties["State"]
+                properties["State"]
                     .downcast_ref::<u32>()
                     .expect("expected State: u32 in HashMap of all properties"),
             )
             .unwrap_or(BatteryState::Unknown);
-            let time_to_full = *properties["TimeToFull"]
+            let time_to_full = properties["TimeToFull"]
                 .downcast_ref::<i64>()
                 .expect("expected TimeToFull: i64 in HashMap of all properties");
-            let time_to_empty = *properties["TimeToEmpty"]
+            let time_to_empty = properties["TimeToEmpty"]
                 .downcast_ref::<i64>()
                 .expect("expected TimeToEmpty: i64 in HashMap of all properties");
             let mut properties = UpowerProperties {
@@ -128,7 +128,7 @@ impl Module<gtk::Button> for UpowerModule {
                         }
                         "IconName" => {
                             properties.icon_name = changed_value
-                                .downcast_ref::<str>()
+                                .downcast_ref::<&str>()
                                 .expect("expected IconName to be str")
                                 .to_string();
                         }

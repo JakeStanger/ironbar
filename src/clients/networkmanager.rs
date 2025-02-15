@@ -1,17 +1,17 @@
 use std::sync::Arc;
 
+use crate::{register_fallible_client, spawn};
 use color_eyre::Result;
 use futures_signals::signal::{Mutable, MutableSignalCloned};
 use tracing::error;
-use zbus::blocking::fdo::PropertiesProxy;
-use zbus::blocking::Connection;
+use zbus::export::ordered_stream::OrderedStreamExt;
+use zbus::fdo::PropertiesProxy;
 use zbus::{
-    dbus_proxy,
     names::InterfaceName,
+    proxy,
     zvariant::{ObjectPath, Str},
+    Connection,
 };
-
-use crate::{register_fallible_client, spawn_blocking};
 
 const DBUS_BUS: &str = "org.freedesktop.NetworkManager";
 const DBUS_PATH: &str = "/org/freedesktop/NetworkManager";
@@ -36,40 +36,41 @@ pub enum ClientState {
     Unknown,
 }
 
-#[dbus_proxy(
+#[proxy(
     default_service = "org.freedesktop.NetworkManager",
     interface = "org.freedesktop.NetworkManager",
     default_path = "/org/freedesktop/NetworkManager"
 )]
 trait NetworkManagerDbus {
-    #[dbus_proxy(property)]
+    #[zbus(property)]
     fn active_connections(&self) -> Result<Vec<ObjectPath>>;
 
-    #[dbus_proxy(property)]
+    #[zbus(property)]
     fn devices(&self) -> Result<Vec<ObjectPath>>;
 
-    #[dbus_proxy(property)]
+    #[zbus(property)]
     fn networking_enabled(&self) -> Result<bool>;
 
-    #[dbus_proxy(property)]
+    #[zbus(property)]
     fn primary_connection(&self) -> Result<ObjectPath>;
 
-    #[dbus_proxy(property)]
+    #[zbus(property)]
     fn primary_connection_type(&self) -> Result<Str>;
 
-    #[dbus_proxy(property)]
+    #[zbus(property)]
     fn wireless_enabled(&self) -> Result<bool>;
 }
 
 impl Client {
-    fn new() -> Result<Self> {
+    async fn new() -> Result<Self> {
         let client_state = Mutable::new(ClientState::Unknown);
-        let dbus_connection = Connection::system()?;
+        let dbus_connection = Connection::system().await?;
         let interface_name = InterfaceName::from_static_str(DBUS_INTERFACE)?;
         let props_proxy = PropertiesProxy::builder(&dbus_connection)
             .destination(DBUS_BUS)?
             .path(DBUS_PATH)?
-            .build()?;
+            .build()
+            .await?;
 
         Ok(Self {
             client_state,
@@ -79,12 +80,12 @@ impl Client {
         })
     }
 
-    fn run(&self) -> Result<()> {
-        let proxy = NetworkManagerDbusProxyBlocking::new(&self.dbus_connection)?;
+    async fn run(&self) -> Result<()> {
+        let proxy = NetworkManagerDbusProxy::new(&self.dbus_connection).await?;
 
-        let mut primary_connection = proxy.primary_connection()?;
-        let mut primary_connection_type = proxy.primary_connection_type()?;
-        let mut wireless_enabled = proxy.wireless_enabled()?;
+        let mut primary_connection = proxy.primary_connection().await?;
+        let mut primary_connection_type = proxy.primary_connection_type().await?;
+        let mut wireless_enabled = proxy.wireless_enabled().await?;
 
         self.client_state.set(determine_state(
             &primary_connection,
@@ -92,7 +93,8 @@ impl Client {
             wireless_enabled,
         ));
 
-        for change in self.props_proxy.receive_properties_changed()? {
+        let mut stream = self.props_proxy.receive_properties_changed().await?;
+        while let Some(change) = stream.next().await {
             let args = change.args()?;
             if args.interface_name != self.interface_name {
                 continue;
@@ -102,15 +104,15 @@ impl Client {
             let mut relevant_prop_changed = false;
 
             if changed_props.contains_key("PrimaryConnection") {
-                primary_connection = proxy.primary_connection()?;
+                primary_connection = proxy.primary_connection().await?;
                 relevant_prop_changed = true;
             }
             if changed_props.contains_key("PrimaryConnectionType") {
-                primary_connection_type = proxy.primary_connection_type()?;
+                primary_connection_type = proxy.primary_connection_type().await?;
                 relevant_prop_changed = true;
             }
             if changed_props.contains_key("WirelessEnabled") {
-                wireless_enabled = proxy.wireless_enabled()?;
+                wireless_enabled = proxy.wireless_enabled().await?;
                 relevant_prop_changed = true;
             }
 
@@ -131,12 +133,12 @@ impl Client {
     }
 }
 
-pub fn create_client() -> Result<Arc<Client>> {
-    let client = Arc::new(Client::new()?);
+pub async fn create_client() -> Result<Arc<Client>> {
+    let client = Arc::new(Client::new().await?);
     {
         let client = client.clone();
-        spawn_blocking(move || {
-            if let Err(error) = client.run() {
+        spawn(async move {
+            if let Err(error) = client.run().await {
                 error!("{}", error);
             };
         });

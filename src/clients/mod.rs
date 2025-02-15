@@ -165,7 +165,7 @@ impl Clients {
         if let Some(client) = &self.network_manager {
             Ok(client.clone())
         } else {
-            let client = networkmanager::create_client()?;
+            let client = await_sync(async move { networkmanager::create_client().await })?;
             self.network_manager = Some(client.clone());
             Ok(client)
         }

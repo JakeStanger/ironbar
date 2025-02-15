@@ -54,7 +54,11 @@ impl Client {
 
             spawn(async move {
                 while let Some(ev) = stream.next().await {
-                    let ev = ev.body::<Event>().expect("to deserialize");
+                    let ev = ev
+                        .message()
+                        .body()
+                        .deserialize::<Event>()
+                        .expect("to deserialize");
                     debug!("Received event: {ev:?}");
                     send!(tx, ev);
                 }
