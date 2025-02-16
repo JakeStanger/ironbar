@@ -166,7 +166,7 @@ impl KeyboardLayoutClient for Client {
     }
 
     fn subscribe(&self) -> Receiver<KeyboardLayoutUpdate> {
-        let (tx, rx) = channel(4);
+        let (tx, rx) = channel(16);
 
         let client = self.connection().clone();
 

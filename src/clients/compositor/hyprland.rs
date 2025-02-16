@@ -25,7 +25,7 @@ pub struct Client {
 impl Client {
     pub(crate) fn new() -> Self {
         let (workspace_tx, workspace_rx) = channel(16);
-        let (keyboard_layout_tx, keyboard_layout_rx) = channel(4);
+        let (keyboard_layout_tx, keyboard_layout_rx) = channel(16);
 
         let instance = Self {
             workspace_tx,
