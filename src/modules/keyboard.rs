@@ -210,9 +210,20 @@ impl Module<gtk::Box> for KeyboardModule {
 
                 trace!("Set up keyboard_layout subscription");
 
-                while let Ok(payload) = srx.recv().await {
-                    debug!("Received update: {payload:?}");
-                    module_update!(tx, KeyboardUpdate::Layout(payload));
+                loop {
+                    match srx.recv().await {
+                        Ok(payload) => {
+                            debug!("Received update: {payload:?}");
+                            module_update!(tx, KeyboardUpdate::Layout(payload));
+                        }
+                        Err(tokio::sync::broadcast::error::RecvError::Lagged(count)) => {
+                            tracing::warn!("Channel lagged behind by {count}, this may result in unexpected or broken behaviour");
+                        }
+                        Err(err) => {
+                            tracing::error!("{err:?}");
+                            break;
+                        }
+                    };
                 }
             });
         }
