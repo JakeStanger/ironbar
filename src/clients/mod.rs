@@ -133,7 +133,7 @@ impl Clients {
         let client = if let Some(client) = &self.hyprland {
             client.clone()
         } else {
-            let client = Arc::new(compositor::hyprland::Client::new());
+            let client = Arc::new(compositor::hyprland::Client::new()?);
             self.hyprland.replace(client.clone());
             client
         };

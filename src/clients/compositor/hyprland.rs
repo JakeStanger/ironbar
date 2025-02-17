@@ -23,7 +23,7 @@ pub struct Client {
 }
 
 impl Client {
-    pub(crate) fn new() -> Self {
+    pub(crate) fn new() -> Result<Self> {
         let (workspace_tx, workspace_rx) = channel(16);
         let (keyboard_layout_tx, keyboard_layout_rx) = channel(16);
 
@@ -34,15 +34,29 @@ impl Client {
             _keyboard_layout_rx: keyboard_layout_rx,
         };
 
-        instance.listen_workspace_events();
-        instance
+        instance.listen_workspace_events()?;
+        Ok(instance)
     }
 
-    fn listen_workspace_events(&self) {
+    pub(crate) fn listen_submap_events(&self, callback: impl Fn(String) + Send + 'static) {
+        spawn_blocking(move || {
+            let mut event_listener = EventListener::new();
+
+            event_listener.add_sub_map_change_handler(callback);
+
+            event_listener
+                .start_listener()
+                .expect("Failed to start listener");
+        });
+    }
+
+    fn listen_workspace_events(&self) -> Result<()> {
         info!("Starting Hyprland event listener");
 
         let tx = self.workspace_tx.clone();
         let keyboard_layout_tx = self.keyboard_layout_tx.clone();
+
+        let active = Self::get_active_workspace()?;
 
         spawn_blocking(move || {
             let mut event_listener = EventListener::new();
@@ -51,7 +65,6 @@ impl Client {
             let lock = arc_mut!(());
 
             // cache the active workspace since Hyprland doesn't give us the prev active
-            let active = Self::get_active_workspace().expect("Failed to get active workspace");
             let active = arc_mut!(Some(active));
 
             {
@@ -273,6 +286,8 @@ impl Client {
                 .start_listener()
                 .expect("Failed to start listener");
         });
+
+        Ok(())
     }
 
     /// Sends a `WorkspaceUpdate::Focus` event
