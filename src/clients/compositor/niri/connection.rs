@@ -3,7 +3,7 @@
 /// to reduce compile times.
 use crate::clients::compositor::Workspace as IronWorkspace;
 use crate::{await_sync, clients::compositor::Visibility};
-use color_eyre::eyre::{eyre, Result};
+use color_eyre::eyre::{Result, eyre};
 use core::str;
 use serde::{Deserialize, Serialize};
 use std::{env, path::Path};

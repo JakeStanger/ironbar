@@ -9,7 +9,7 @@ use tracing_appender::rolling::Rotation;
 use tracing_error::ErrorLayer;
 use tracing_subscriber::fmt::{Layer, MakeWriter};
 use tracing_subscriber::prelude::*;
-use tracing_subscriber::{fmt, EnvFilter};
+use tracing_subscriber::{EnvFilter, fmt};
 
 struct MakeFileWriter {
     file_writer: NonBlocking,
@@ -32,7 +32,11 @@ impl<'a> MakeWriter<'a> for MakeFileWriter {
 pub fn install_logging() -> Result<WorkerGuard> {
     // Disable backtraces by default
     if env::var("RUST_LIB_BACKTRACE").is_err() {
-        env::set_var("RUST_LIB_BACKTRACE", "0");
+        // as this is the very first thing we do (before runtimes are set up)
+        // we can be sure that it only runs in a single-thread context
+        unsafe {
+            env::set_var("RUST_LIB_BACKTRACE", "0");
+        }
     }
 
     // keep guard in scope

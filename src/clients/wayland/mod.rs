@@ -2,7 +2,7 @@ mod macros;
 mod wl_output;
 mod wl_seat;
 
-use crate::error::{ExitCode, ERR_CHANNEL_RECV};
+use crate::error::{ERR_CHANNEL_RECV, ExitCode};
 use crate::{arc_mut, lock, register_client, send, spawn, spawn_blocking};
 use std::process::exit;
 use std::sync::{Arc, Mutex};
@@ -11,8 +11,8 @@ use calloop_channel::Event::Msg;
 use cfg_if::cfg_if;
 use color_eyre::Report;
 use smithay_client_toolkit::output::OutputState;
-use smithay_client_toolkit::reexports::calloop::channel as calloop_channel;
 use smithay_client_toolkit::reexports::calloop::EventLoop;
+use smithay_client_toolkit::reexports::calloop::channel as calloop_channel;
 use smithay_client_toolkit::reexports::calloop_wayland_source::WaylandSource;
 use smithay_client_toolkit::registry::{ProvidesRegistryState, RegistryState};
 use smithay_client_toolkit::seat::SeatState;

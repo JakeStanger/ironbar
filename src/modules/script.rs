@@ -4,8 +4,8 @@ use crate::modules::{Module, ModuleInfo, ModuleParts, ModuleUpdateEvent, WidgetC
 use crate::script::{OutputStream, Script, ScriptMode};
 use crate::{glib_recv, module_impl, spawn, try_send};
 use color_eyre::{Help, Report, Result};
-use gtk::prelude::*;
 use gtk::Label;
+use gtk::prelude::*;
 use serde::Deserialize;
 use tokio::sync::mpsc;
 use tracing::error;

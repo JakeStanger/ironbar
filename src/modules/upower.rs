@@ -1,6 +1,6 @@
 use color_eyre::Result;
 use futures_lite::stream::StreamExt;
-use gtk::{prelude::*, Button};
+use gtk::{Button, prelude::*};
 use gtk::{Label, Orientation};
 use serde::Deserialize;
 use tokio::sync::{broadcast, mpsc};

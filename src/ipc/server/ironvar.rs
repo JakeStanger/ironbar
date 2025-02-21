@@ -1,6 +1,6 @@
-use crate::ipc::commands::IronvarCommand;
 use crate::ipc::Response;
-use crate::{read_lock, write_lock, Ironbar};
+use crate::ipc::commands::IronvarCommand;
+use crate::{Ironbar, read_lock, write_lock};
 
 pub fn handle_command(command: IronvarCommand) -> Response {
     match command {

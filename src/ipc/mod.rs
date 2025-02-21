@@ -23,7 +23,9 @@ impl Ipc {
             .join("ironbar-ipc.sock");
 
         if format!("{}", ipc_socket_file.display()).len() > 100 {
-            warn!("The IPC socket file's absolute path exceeds 100 bytes, the socket may fail to create.");
+            warn!(
+                "The IPC socket file's absolute path exceeds 100 bytes, the socket may fail to create."
+            );
         }
 
         Self {
