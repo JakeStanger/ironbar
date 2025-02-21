@@ -7,26 +7,26 @@ use std::path::PathBuf;
 use std::process::exit;
 use std::rc::Rc;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
-use std::sync::{mpsc, Arc, Mutex, OnceLock};
+use std::sync::{Arc, Mutex, OnceLock, mpsc};
 
 use cfg_if::cfg_if;
 #[cfg(feature = "cli")]
 use clap::Parser;
-use color_eyre::eyre::Result;
 use color_eyre::Report;
+use color_eyre::eyre::Result;
 use dirs::config_dir;
+use gtk::Application;
 use gtk::gdk::Display;
 use gtk::prelude::*;
-use gtk::Application;
 use smithay_client_toolkit::output::OutputInfo;
 use tokio::runtime::Runtime;
-use tokio::task::{block_in_place, JoinHandle};
+use tokio::task::{JoinHandle, block_in_place};
 use tracing::{debug, error, info, warn};
 use universal_config::ConfigLoader;
 
-use crate::bar::{create_bar, Bar};
-use crate::clients::wayland::OutputEventType;
+use crate::bar::{Bar, create_bar};
 use crate::clients::Clients;
+use crate::clients::wayland::OutputEventType;
 use crate::config::{Config, MonitorConfig};
 use crate::error::ExitCode;
 #[cfg(feature = "ipc")]

@@ -1,5 +1,5 @@
-use gtk::prelude::*;
 use gtk::Label;
+use gtk::prelude::*;
 use serde::Deserialize;
 
 use super::{CustomWidget, CustomWidgetContext};

@@ -10,7 +10,7 @@ use hyprland::dispatch::{Dispatch, DispatchType, WorkspaceIdentifierWithSpecial}
 use hyprland::event_listener::EventListener;
 use hyprland::prelude::*;
 use hyprland::shared::{HyprDataVec, WorkspaceType};
-use tokio::sync::broadcast::{channel, Receiver, Sender};
+use tokio::sync::broadcast::{Receiver, Sender, channel};
 use tracing::{debug, error, info};
 
 #[derive(Debug)]
@@ -250,7 +250,7 @@ impl Client {
                         // 
                         // Here we are trying to recover `layout_name` from `keyboard_name`
 
-                        let layout = layout_event.keyboard_name.as_str().split(",").nth(1);
+                        let layout = layout_event.keyboard_name.as_str().split(',').nth(1);
                         let Some(layout) = layout else {
                             error!(
                                 "Failed to get layout from string: {}. The failed logic is a workaround for a bug in `hyprland 0.4.0-alpha.3`", layout_event.keyboard_name);

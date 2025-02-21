@@ -3,8 +3,8 @@ use crate::gtk_helpers::IronbarGtkExt;
 use crate::image::new_icon_button;
 use crate::modules::workspaces::WorkspaceItemContext;
 use crate::try_send;
-use gtk::prelude::*;
 use gtk::Button as GtkButton;
+use gtk::prelude::*;
 
 #[derive(Debug, Clone)]
 pub struct Button {

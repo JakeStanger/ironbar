@@ -1,5 +1,5 @@
 use crate::config::TruncateMode;
-use glib::{markup_escape_text, IsA};
+use glib::{IsA, markup_escape_text};
 use gtk::pango::EllipsizeMode;
 use gtk::prelude::*;
 use gtk::{Label, Orientation, Widget};

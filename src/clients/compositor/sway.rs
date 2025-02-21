@@ -6,7 +6,7 @@ use crate::clients::sway::Client;
 use crate::{await_sync, error, send, spawn};
 use color_eyre::Report;
 use swayipc_async::{InputChange, InputEvent, Node, WorkspaceChange, WorkspaceEvent};
-use tokio::sync::broadcast::{channel, Receiver};
+use tokio::sync::broadcast::{Receiver, channel};
 
 impl WorkspaceClient for Client {
     fn focus(&self, id: i64) {

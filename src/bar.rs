@@ -1,7 +1,7 @@
+use crate::Ironbar;
 use crate::config::{BarConfig, BarPosition, MarginConfig, ModuleConfig};
 use crate::modules::{BarModuleFactory, ModuleInfo, ModuleLocation};
 use crate::popup::Popup;
-use crate::Ironbar;
 use color_eyre::Result;
 use glib::Propagation;
 use gtk::gdk::Monitor;

@@ -1,7 +1,7 @@
 use crate::{arc_rw, read_lock, send, spawn, spawn_blocking, write_lock};
 use color_eyre::{Report, Result};
-use evdev_rs::enums::{int_to_ev_key, EventCode, EV_KEY, EV_LED};
 use evdev_rs::DeviceWrapper;
+use evdev_rs::enums::{EV_KEY, EV_LED, EventCode, int_to_ev_key};
 use input::event::keyboard::{KeyState, KeyboardEventTrait};
 use input::event::{DeviceEvent, EventTrait, KeyboardEvent};
 use input::{DeviceCapability, Libinput, LibinputInterface};

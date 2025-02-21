@@ -1,7 +1,7 @@
 use crate::script::Script;
-use crate::{glib_recv_mpsc, spawn, try_send};
 #[cfg(feature = "ipc")]
-use crate::{send_async, Ironbar};
+use crate::{Ironbar, send_async};
+use crate::{glib_recv_mpsc, spawn, try_send};
 use cfg_if::cfg_if;
 use serde::Deserialize;
 use tokio::sync::mpsc;

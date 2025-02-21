@@ -1,4 +1,4 @@
-use crate::{await_sync, Ironbar};
+use crate::{Ironbar, await_sync};
 use color_eyre::Result;
 use std::collections::HashMap;
 use std::path::Path;
@@ -129,16 +129,14 @@ impl Clients {
     }
 
     #[cfg(feature = "hyprland")]
-    pub fn hyprland(&mut self) -> ClientResult<compositor::hyprland::Client> {
-        let client = if let Some(client) = &self.hyprland {
+    pub fn hyprland(&mut self) -> Arc<compositor::hyprland::Client> {
+        if let Some(client) = &self.hyprland {
             client.clone()
         } else {
             let client = Arc::new(compositor::hyprland::Client::new());
             self.hyprland.replace(client.clone());
             client
-        };
-
-        Ok(client)
+        }
     }
 
     #[cfg(feature = "cairo")]
