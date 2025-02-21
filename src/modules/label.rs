@@ -1,4 +1,4 @@
-use crate::config::CommonConfig;
+use crate::config::{CommonConfig, TruncateMode};
 use crate::dynamic_value::dynamic_string;
 use crate::gtk_helpers::IronbarLabelExt;
 use crate::modules::{Module, ModuleInfo, ModuleParts, ModuleUpdateEvent, WidgetContext};
@@ -17,6 +17,12 @@ pub struct LabelModule {
     /// **Required**
     label: String,
 
+    // -- Common --
+    /// See [truncate options](module-level-options#truncate-mode).
+    ///
+    /// **Default**: `null`
+    truncate: Option<TruncateMode>,
+
     /// See [common options](module-level-options#common-options).
     #[serde(flatten)]
     pub common: Option<CommonConfig>,
@@ -26,6 +32,7 @@ impl LabelModule {
     pub(crate) fn new(label: String) -> Self {
         Self {
             label,
+            truncate: None,
             common: Some(CommonConfig::default()),
         }
     }
@@ -57,6 +64,10 @@ impl Module<Label> for LabelModule {
         _info: &ModuleInfo,
     ) -> Result<ModuleParts<Label>> {
         let label = Label::builder().use_markup(true).build();
+
+        if let Some(truncate) = self.truncate {
+            label.truncate(truncate);
+        }
 
         {
             let label = label.clone();

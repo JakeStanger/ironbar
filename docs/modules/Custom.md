@@ -54,11 +54,16 @@ A text label. Pango markup is supported.
 
 > Type `label`
 
-| Name          | Type                                                       | Default        | Description                                                          |
-|---------------|------------------------------------------------------------|----------------|----------------------------------------------------------------------|
-| `label`       | [Dynamic String](dynamic-values#dynamic-string)            | `null`         | Widget text label. Pango markup and embedded scripts are supported.  |
-| `orientation` | `'horizontal'` or `'vertical'` (shorthand: `'h'` or `'v'`) | `'horizontal'` | Orientation of the label text.                                       |
-| `justify`     | `'left'`, `'right'`, `'center'`, or `'fill'`               | `'left'`       | Justification (alignment) of the label text.                         |
+| Name                  | Type                                                       | Default        | Description                                                                                                                                           |
+|-----------------------|------------------------------------------------------------|----------------|-------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `label`               | [Dynamic String](dynamic-values#dynamic-string)            | `null`         | Widget text label. Pango markup and embedded scripts are supported.                                                                                   |
+| `orientation`         | `'horizontal'` or `'vertical'` (shorthand: `'h'` or `'v'`) | `'horizontal'` | Orientation of the label text.                                                                                                                        |
+| `justify`             | `'left'`, `'right'`, `'center'`, or `'fill'`               | `'left'`       | Justification (alignment) of the label text.                                                                                                          |
+| `truncate`            | `'start'` or `'middle'` or `'end'` or `off` or `Map`       | `off`          | The location of the ellipses and where to truncate text from. Leave null to avoid truncating. Use the long-hand `Map` version if specifying a length. |
+| `truncate.mode`       | `'start'` or `'middle'` or `'end'` or `off`                | `off`          | The location of the ellipses and where to truncate text from. Leave null to avoid truncating.                                                         |
+| `truncate.length`     | `integer`                                                  | `null`         | The fixed width (in chars) of the widget. Leave blank to let GTK automatically handle.                                                                |
+| `truncate.max_length` | `integer`                                                  | `null`         | The maximum number of characters before truncating. Leave blank to let GTK automatically handle.                                                      |
+
 
 #### Button
 
