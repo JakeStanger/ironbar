@@ -1,4 +1,5 @@
-> ⚠ **This module is currently only supported on Sway and Hyprland**
+> [!IMPORTANT]
+> This module is currently only supported on Sway, Hyprland and Niri**
 
 Shows all current workspaces. Clicking a workspace changes focus to it.
 

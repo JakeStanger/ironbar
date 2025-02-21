@@ -2,20 +2,36 @@ use super::{
     KeyboardLayoutClient, KeyboardLayoutUpdate, Visibility, Workspace, WorkspaceClient,
     WorkspaceUpdate,
 };
+use crate::clients::sway::Client;
 use crate::{await_sync, error, send, spawn};
+use color_eyre::Report;
 use swayipc_async::{InputChange, InputEvent, Node, WorkspaceChange, WorkspaceEvent};
 use tokio::sync::broadcast::{channel, Receiver};
 
-use crate::clients::sway::Client;
-
 impl WorkspaceClient for Client {
-    fn focus(&self, id: String) {
+    fn focus(&self, id: i64) {
         let client = self.connection().clone();
         spawn(async move {
             let mut client = client.lock().await;
-            if let Err(e) = client.run_command(format!("workspace {id}")).await {
-                error!("Couldn't focus workspace '{id}': {e:#}");
+
+            let name = client
+                .get_workspaces()
+                .await?
+                .into_iter()
+                .find(|w| w.id == id)
+                .map(|w| w.name);
+
+            let Some(name) = name else {
+                return Err(Report::msg(format!("couldn't find workspace with id {id}")));
+            };
+
+            if let Err(e) = client.run_command(format!("workspace {name}")).await {
+                return Err(Report::msg(format!(
+                    "Couldn't focus workspace '{id}': {e:#}"
+                )));
             }
+
+            Ok(())
         });
     }
 
@@ -24,6 +40,7 @@ impl WorkspaceClient for Client {
 
         let client = self.connection().clone();
 
+        // TODO: this needs refactoring
         await_sync(async {
             let mut client = client.lock().await;
             let workspaces = client.get_workspaces().await.expect("to get workspaces");
@@ -35,7 +52,7 @@ impl WorkspaceClient for Client {
 
             drop(client);
 
-            self.add_listener::<swayipc_async::WorkspaceEvent>(move |event| {
+            self.add_listener::<WorkspaceEvent>(move |event| {
                 let update = WorkspaceUpdate::from(event.clone());
                 send!(tx, update);
             })

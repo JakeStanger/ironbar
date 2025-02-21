@@ -12,6 +12,7 @@ pub enum Identifier {
 /// Wrapper around a hashmap of workspace buttons,
 /// which can be found using the workspace ID,
 /// or their name for favourites.
+#[derive(Debug)]
 pub struct ButtonMap {
     map: HashMap<Identifier, Button>,
 }

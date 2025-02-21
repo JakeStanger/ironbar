@@ -22,9 +22,8 @@ impl Button {
 
         let tx = context.tx.clone();
 
-        let name = name.to_string();
         button.connect_clicked(move |_item| {
-            try_send!(tx, name.clone());
+            try_send!(tx, id);
         });
 
         let btn = Self {

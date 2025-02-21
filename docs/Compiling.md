@@ -118,6 +118,7 @@ cargo build --release --no-default-features \
 | workspaces+all      | Enables the `workspaces` module with support for all compositors.                 |
 | workspaces+sway     | Enables the `workspaces` module with support for Sway.                            |
 | workspaces+hyprland | Enables the `workspaces` module with support for Hyprland.                        |
+| workspaces+niri     | Enables the `workspaces` module with support for Niri.                            |
 | **Other**           |                                                                                   |
 | schema              | Enables JSON schema support and the CLI `--print-schema` flag.                    |
 
