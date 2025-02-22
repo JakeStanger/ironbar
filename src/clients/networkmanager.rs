@@ -7,10 +7,10 @@ use tracing::error;
 use zbus::export::ordered_stream::OrderedStreamExt;
 use zbus::fdo::PropertiesProxy;
 use zbus::{
+    Connection,
     names::InterfaceName,
     proxy,
     zvariant::{ObjectPath, Str},
-    Connection,
 };
 
 const DBUS_BUS: &str = "org.freedesktop.NetworkManager";

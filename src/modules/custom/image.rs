@@ -1,5 +1,5 @@
-use gtk::prelude::*;
 use gtk::Image;
+use gtk::prelude::*;
 use serde::Deserialize;
 
 use crate::build;

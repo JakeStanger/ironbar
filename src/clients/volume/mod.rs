@@ -1,7 +1,7 @@
 mod sink;
 mod sink_input;
 
-use crate::{arc_mut, lock, register_client, send, spawn_blocking, APP_ID};
+use crate::{APP_ID, arc_mut, lock, register_client, send, spawn_blocking};
 use libpulse_binding::callbacks::ListResult;
 use libpulse_binding::context::introspect::{Introspector, ServerInfo};
 use libpulse_binding::context::subscribe::{Facility, InterestMaskSet, Operation};

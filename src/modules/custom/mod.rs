@@ -5,16 +5,16 @@ mod label;
 mod progress;
 mod slider;
 
+use self::r#box::BoxWidget;
 use self::image::ImageWidget;
 use self::label::LabelWidget;
-use self::r#box::BoxWidget;
 use self::slider::SliderWidget;
 use crate::config::{CommonConfig, ModuleConfig};
 use crate::modules::custom::button::ButtonWidget;
 use crate::modules::custom::progress::ProgressWidget;
 use crate::modules::{
-    wrap_widget, AnyModuleFactory, BarModuleFactory, Module, ModuleInfo, ModuleParts, ModulePopup,
-    ModuleUpdateEvent, PopupButton, PopupModuleFactory, WidgetContext,
+    AnyModuleFactory, BarModuleFactory, Module, ModuleInfo, ModuleParts, ModulePopup,
+    ModuleUpdateEvent, PopupButton, PopupModuleFactory, WidgetContext, wrap_widget,
 };
 use crate::script::Script;
 use crate::{module_impl, send_async, spawn};

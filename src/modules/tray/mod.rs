@@ -65,7 +65,10 @@ impl Module<gtk::Box> for TrayModule {
         let client = context.try_client::<tray::Client>()?;
         let mut tray_rx = client.subscribe();
 
-        let initial_items = lock!(client.items()).clone();
+        let initial_items = {
+            let items = client.items();
+            lock!(items).clone()
+        };
 
         // listen to tray updates
         spawn(async move {

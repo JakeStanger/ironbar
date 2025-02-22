@@ -1,6 +1,6 @@
-use crate::script::{OutputStream, Script};
 #[cfg(feature = "ipc")]
 use crate::Ironbar;
+use crate::script::{OutputStream, Script};
 use crate::{arc_mut, glib_recv_mpsc, lock, spawn, try_send};
 use tokio::sync::mpsc;
 

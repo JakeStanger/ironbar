@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 
-use color_eyre::eyre::Report;
 use color_eyre::Result;
-use gtk::{prelude::*, Button};
+use color_eyre::eyre::Report;
+use gtk::{Button, prelude::*};
 use serde::Deserialize;
 use tokio::sync::mpsc;
 use tracing::{debug, trace};
@@ -217,7 +217,9 @@ impl Module<gtk::Box> for KeyboardModule {
                             module_update!(tx, KeyboardUpdate::Layout(payload));
                         }
                         Err(tokio::sync::broadcast::error::RecvError::Lagged(count)) => {
-                            tracing::warn!("Channel lagged behind by {count}, this may result in unexpected or broken behaviour");
+                            tracing::warn!(
+                                "Channel lagged behind by {count}, this may result in unexpected or broken behaviour"
+                            );
                         }
                         Err(err) => {
                             tracing::error!("{err:?}");

@@ -4,7 +4,7 @@ use smithay_client_toolkit::globals::{GlobalData, ProvidesBoundGlobal};
 use std::marker::PhantomData;
 use tracing::{debug, warn};
 use wayland_client::globals::{BindError, GlobalList};
-use wayland_client::{event_created_child, Connection, Dispatch, QueueHandle};
+use wayland_client::{Connection, Dispatch, QueueHandle, event_created_child};
 use wayland_protocols_wlr::foreign_toplevel::v1::client::{
     zwlr_foreign_toplevel_handle_v1::ZwlrForeignToplevelHandleV1,
     zwlr_foreign_toplevel_manager_v1::{Event, ZwlrForeignToplevelManagerV1},
@@ -67,7 +67,9 @@ where
                 state.toplevel(conn, qhandle);
             }
             Event::Finished => {
-                warn!("Foreign toplevel manager is no longer valid, but has not been dropped by client. This could cause window tracking issues.");
+                warn!(
+                    "Foreign toplevel manager is no longer valid, but has not been dropped by client. This could cause window tracking issues."
+                );
             }
             _ => {}
         }

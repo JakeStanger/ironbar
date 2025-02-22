@@ -221,7 +221,7 @@ impl Module<gtk::Box> for LauncherModule {
                         let icon_override = info
                             .icon_overrides
                             .get(app_id)
-                            .map_or_else(String::new, |v| v.to_string());
+                            .map_or_else(String::new, ToString::to_string);
 
                         (
                             app_id.to_string(),
@@ -250,19 +250,16 @@ impl Module<gtk::Box> for LauncherModule {
             for info in handles {
                 let mut items = lock!(items);
                 let item = items.get_mut(&info.app_id);
-                match item {
-                    Some(item) => {
-                        item.merge_toplevel(info.clone());
-                    }
-                    None => {
-                        let mut item = Item::from(info.clone());
+                if let Some(item) = item {
+                    item.merge_toplevel(info.clone());
+                } else {
+                    let mut item = Item::from(info.clone());
 
-                        if let Some(icon) = icon_overrides.get(&info.app_id) {
-                            item.icon_override = icon.clone();
-                        }
-
-                        items.insert(info.app_id.clone(), item);
+                    if let Some(icon) = icon_overrides.get(&info.app_id) {
+                        item.icon_override.clone_from(icon);
                     }
+
+                    items.insert(info.app_id.clone(), item);
                 }
             }
 
@@ -294,7 +291,7 @@ impl Module<gtk::Box> for LauncherModule {
                                     let mut item: Item = info.into();
 
                                     if let Some(icon) = icon_overrides.get(&app_id) {
-                                        item.icon_override = icon.clone();
+                                        item.icon_override.clone_from(icon);
                                     }
 
                                     items.insert(app_id.clone(), item.clone());

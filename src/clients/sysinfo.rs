@@ -376,7 +376,7 @@ impl Client {
     }
 
     /// Gets system uptime formatted as `HH:mm`.
-    pub fn uptime(&self) -> String {
+    pub fn uptime() -> String {
         let uptime = System::uptime();
         let hours = uptime / 3600;
         format!("{:0>2}:{:0>2}", hours, (uptime % 3600) / 60)

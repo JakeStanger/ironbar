@@ -1,4 +1,4 @@
-use super::{MusicClient, PlayerState, PlayerUpdate, Status, Track, TICK_INTERVAL_MS};
+use super::{MusicClient, PlayerState, PlayerUpdate, Status, TICK_INTERVAL_MS, Track};
 use crate::clients::music::ProgressTick;
 use crate::{arc_mut, lock, send, spawn_blocking};
 use color_eyre::Result;

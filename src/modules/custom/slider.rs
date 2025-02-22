@@ -2,8 +2,8 @@ use glib::Propagation;
 use std::cell::Cell;
 use std::ops::Neg;
 
-use gtk::prelude::*;
 use gtk::Scale;
+use gtk::prelude::*;
 use serde::Deserialize;
 use tokio::sync::mpsc;
 use tracing::error;

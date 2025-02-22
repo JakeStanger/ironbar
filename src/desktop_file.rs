@@ -31,7 +31,7 @@ fn find_application_dirs() -> Vec<PathBuf> {
 
     let xdg_dirs = env::var_os("XDG_DATA_DIRS");
     if let Some(xdg_dirs) = xdg_dirs {
-        for mut xdg_dir in env::split_paths(&xdg_dirs).map(PathBuf::from) {
+        for mut xdg_dir in env::split_paths(&xdg_dirs) {
             xdg_dir.push("applications");
             dirs.push(xdg_dir);
         }
