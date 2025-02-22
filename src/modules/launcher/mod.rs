@@ -1,5 +1,6 @@
 mod item;
 mod open_state;
+mod pagination;
 
 use self::item::{AppearanceOptions, Item, ItemButton, Window};
 use self::open_state::OpenState;
@@ -9,12 +10,14 @@ use crate::config::{CommonConfig, EllipsizeMode, TruncateMode};
 use crate::desktop_file::find_desktop_file;
 use crate::gtk_helpers::{IronbarGtkExt, IronbarLabelExt};
 use crate::modules::launcher::item::ImageTextButton;
+use crate::modules::launcher::pagination::{IconContext, Pagination};
 use crate::{arc_mut, glib_recv, lock, module_impl, send_async, spawn, try_send, write_lock};
 use color_eyre::{Help, Report};
 use gtk::prelude::*;
 use gtk::{Button, Orientation};
 use indexmap::IndexMap;
 use serde::Deserialize;
+use std::ops::Deref;
 use std::process::{Command, Stdio};
 use std::sync::Arc;
 use tokio::sync::{broadcast, mpsc};
@@ -62,6 +65,31 @@ pub struct LauncherModule {
     #[serde(default = "crate::config::default_true")]
     minimize_focused: bool,
 
+    /// The number of items to show on a page.
+    ///
+    /// When the number of items reaches the page size,
+    /// pagination controls appear at the start of the widget
+    /// which can be used to move forward/back through the list of items.
+    ///
+    /// If there are too many to fit, the overflow will be truncated
+    /// by the next widget.
+    ///
+    /// **Default**: `1000`.
+    #[serde(default = "default_page_size")]
+    page_size: usize,
+
+    /// Module UI icons (separate from app icons shown for items).
+    ///
+    /// See [icons](#icons).
+    #[serde(default)]
+    icons: Icons,
+
+    /// Size in pixels to render pagination icons at (image icons only).
+    ///
+    /// **Default**: `16`
+    #[serde(default = "default_icon_size_pagination")]
+    pagination_icon_size: i32,
+
     // -- common --
     /// Truncate application names on the bar if they get too long.
     /// See [truncate options](module-level-options#truncate-mode).
@@ -82,8 +110,49 @@ pub struct LauncherModule {
     pub common: Option<CommonConfig>,
 }
 
+#[derive(Debug, Deserialize, Clone)]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+struct Icons {
+    /// Icon to show for page back button.
+    ///
+    /// **Default**: `󰅁`
+    #[serde(default = "default_icon_page_back")]
+    page_back: String,
+
+    /// Icon to show for page back button.
+    ///
+    /// **Default**: `>`
+    #[serde(default = "default_icon_page_forward")]
+    page_forward: String,
+}
+
+impl Default for Icons {
+    fn default() -> Self {
+        Self {
+            page_back: default_icon_page_back(),
+            page_forward: default_icon_page_forward(),
+        }
+    }
+}
+
 const fn default_icon_size() -> i32 {
     32
+}
+
+const fn default_icon_size_pagination() -> i32 {
+    default_icon_size() / 2
+}
+
+const fn default_page_size() -> usize {
+    1000
+}
+
+fn default_icon_page_back() -> String {
+    String::from("󰅁")
+}
+
+fn default_icon_page_forward() -> String {
+    String::from("󰅂")
 }
 
 const fn default_truncate_popup() -> TruncateMode {
@@ -386,6 +455,19 @@ impl Module<gtk::Box> for LauncherModule {
         let icon_theme = info.icon_theme;
 
         let container = gtk::Box::new(info.bar_position.orientation(), 0);
+        let page_size = self.page_size;
+
+        let pagination = Pagination::new(
+            &container,
+            self.page_size,
+            info.bar_position.orientation(),
+            IconContext {
+                icon_back: &self.icons.page_back,
+                icon_fwd: &self.icons.page_forward,
+                icon_size: self.pagination_icon_size,
+                icon_theme: info.icon_theme,
+            },
+        );
 
         {
             let container = container.clone();
@@ -407,7 +489,15 @@ impl Module<gtk::Box> for LauncherModule {
 
             let tx = context.tx.clone();
             let rx = context.subscribe();
-            glib_recv!(rx, event => {
+
+            let mut handle_event = move |event: LauncherUpdate| {
+                // all widgets show by default
+                // so check if pagination should be shown
+                // to ensure correct state on init.
+                if buttons.len() <= page_size {
+                    pagination.hide();
+                }
+
                 match event {
                     LauncherUpdate::AddItem(item) => {
                         debug!("Adding item with id '{}' to the bar: {item:?}", item.app_id);
@@ -426,9 +516,18 @@ impl Module<gtk::Box> for LauncherModule {
                             );
 
                             if self.reversed {
-                                container.pack_end(&button.button.button, false, false, 0);
+                                container.pack_end(button.button.deref(), false, false, 0);
                             } else {
-                                container.add(&button.button.button);
+                                container.add(button.button.deref());
+                            }
+
+                            if buttons.len() + 1 >= pagination.offset() + page_size {
+                                button.button.set_visible(false);
+                                pagination.set_sensitive_fwd(true);
+                            }
+
+                            if buttons.len() + 1 > page_size {
+                                pagination.show_all();
                             }
 
                             buttons.insert(item.app_id, button);
@@ -455,6 +554,14 @@ impl Module<gtk::Box> for LauncherModule {
                                 container.remove(&button.button.button);
                                 buttons.shift_remove(&app_id);
                             }
+                        }
+
+                        if buttons.len() < pagination.offset() + page_size {
+                            pagination.set_sensitive_fwd(false);
+                        }
+
+                        if buttons.len() <= page_size {
+                            pagination.hide();
                         }
                     }
                     LauncherUpdate::RemoveWindow(app_id, win_id) => {
@@ -485,7 +592,9 @@ impl Module<gtk::Box> for LauncherModule {
                     }
                     LauncherUpdate::Hover(_) => {}
                 };
-            });
+            };
+
+            glib_recv!(rx, handle_event);
         }
 
         let rx = context.subscribe();

@@ -4,7 +4,7 @@ use serde::Deserialize;
 
 use super::{CustomWidget, CustomWidgetContext};
 use crate::build;
-use crate::config::{ModuleJustification, ModuleOrientation};
+use crate::config::{ModuleJustification, ModuleOrientation, TruncateMode};
 use crate::dynamic_value::dynamic_string;
 use crate::gtk_helpers::IronbarLabelExt;
 
@@ -44,6 +44,11 @@ pub struct LabelWidget {
     /// **Default**: `left`
     #[serde(default)]
     justify: ModuleJustification,
+
+    /// See [truncate options](module-level-options#truncate-mode).
+    ///
+    /// **Default**: `null`
+    truncate: Option<TruncateMode>,
 }
 
 impl CustomWidget for LabelWidget {
@@ -55,6 +60,10 @@ impl CustomWidget for LabelWidget {
         label.set_angle(self.orientation.to_angle());
         label.set_justify(self.justify.into());
         label.set_use_markup(true);
+
+        if let Some(truncate) = self.truncate {
+            label.truncate(truncate);
+        }
 
         {
             let label = label.clone();
