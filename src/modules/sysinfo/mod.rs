@@ -2,9 +2,10 @@ mod parser;
 mod renderer;
 mod token;
 
+use crate::clients::sysinfo::TokenType;
 use crate::config::{CommonConfig, ModuleOrientation};
 use crate::gtk_helpers::{IronbarGtkExt, IronbarLabelExt};
-use crate::modules::sysinfo::token::{Part, TokenType};
+use crate::modules::sysinfo::token::Part;
 use crate::modules::{Module, ModuleInfo, ModuleParts, ModuleUpdateEvent, WidgetContext};
 use crate::{clients, glib_recv, module_impl, send_async, spawn, try_send};
 use color_eyre::Result;
