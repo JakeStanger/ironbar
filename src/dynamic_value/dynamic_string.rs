@@ -71,7 +71,7 @@ where
 
                 spawn(async move {
                     let variable_manager = Ironbar::variable_manager();
-                    let mut rx = crate::write_lock!(variable_manager).subscribe(name);
+                    let mut rx = variable_manager.subscribe(name);
 
                     while let Ok(value) = rx.recv().await {
                         if let Some(value) = value {

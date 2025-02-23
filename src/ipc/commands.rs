@@ -52,7 +52,7 @@ pub enum IronvarCommand {
     },
 
     /// Gets the current value of all `ironvar`s.
-    List,
+    List { namespace: Option<Box<str>> },
 }
 
 #[derive(Args, Debug, Serialize, Deserialize)]

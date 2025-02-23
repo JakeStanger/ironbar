@@ -1,39 +1,4 @@
-use crate::clients::sysinfo::{Function, Prefix};
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum TokenType {
-    CpuFrequency,
-    CpuPercent,
-
-    MemoryFree,
-    MemoryAvailable,
-    MemoryTotal,
-    MemoryUsed,
-    MemoryPercent,
-
-    SwapFree,
-    SwapTotal,
-    SwapUsed,
-    SwapPercent,
-
-    TempC,
-    TempF,
-
-    DiskFree,
-    DiskTotal,
-    DiskUsed,
-    DiskPercent,
-    DiskRead,
-    DiskWrite,
-
-    NetDown,
-    NetUp,
-
-    LoadAverage1,
-    LoadAverage5,
-    LoadAverage15,
-    Uptime,
-}
+use crate::clients::sysinfo::{Function, Prefix, TokenType};
 
 #[derive(Debug, Clone)]
 pub struct Token {

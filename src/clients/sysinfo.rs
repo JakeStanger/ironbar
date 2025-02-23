@@ -1,9 +1,12 @@
+use crate::ironvar::Namespace;
 use crate::modules::sysinfo::Interval;
 use crate::{lock, register_client};
+use color_eyre::{Report, Result};
 use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::fmt::Debug;
-use std::sync::Mutex;
+use std::str::FromStr;
+use std::sync::{Arc, Mutex};
 use sysinfo::{Components, Disks, LoadAvg, Networks, RefreshKind, System};
 
 #[repr(u64)]
@@ -41,6 +44,21 @@ pub enum Function {
     Max,
     Mean,
     Name(String),
+}
+
+impl FromStr for Function {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s.to_lowercase().as_str() {
+            "sum" => Ok(Self::Sum),
+            "min" => Ok(Self::Min),
+            "max" => Ok(Self::Max),
+            "mean" => Ok(Self::Mean),
+            "" => Err(()),
+            _ => Ok(Self::Name(s.to_string())),
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -387,4 +405,213 @@ register_client!(Client, sys_info);
 
 const fn c_to_f(c: f64) -> f64 {
     c / 5.0 * 9.0 + 32.0
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TokenType {
+    CpuFrequency,
+    CpuPercent,
+
+    MemoryFree,
+    MemoryAvailable,
+    MemoryTotal,
+    MemoryUsed,
+    MemoryPercent,
+
+    SwapFree,
+    SwapTotal,
+    SwapUsed,
+    SwapPercent,
+
+    TempC,
+    TempF,
+
+    DiskFree,
+    DiskTotal,
+    DiskUsed,
+    DiskPercent,
+    DiskRead,
+    DiskWrite,
+
+    NetDown,
+    NetUp,
+
+    LoadAverage1,
+    LoadAverage5,
+    LoadAverage15,
+    Uptime,
+}
+
+impl FromStr for TokenType {
+    type Err = Report;
+
+    fn from_str(s: &str) -> Result<Self> {
+        match s {
+            "cpu_frequency" => Ok(Self::CpuFrequency),
+            "cpu_percent" => Ok(Self::CpuPercent),
+
+            "memory_free" => Ok(Self::MemoryFree),
+            "memory_available" => Ok(Self::MemoryAvailable),
+            "memory_total" => Ok(Self::MemoryTotal),
+            "memory_used" => Ok(Self::MemoryUsed),
+            "memory_percent" => Ok(Self::MemoryPercent),
+
+            "swap_free" => Ok(Self::SwapFree),
+            "swap_total" => Ok(Self::SwapTotal),
+            "swap_used" => Ok(Self::SwapUsed),
+            "swap_percent" => Ok(Self::SwapPercent),
+
+            "temp_c" => Ok(Self::TempC),
+            "temp_f" => Ok(Self::TempF),
+
+            "disk_free" => Ok(Self::DiskFree),
+            "disk_total" => Ok(Self::DiskTotal),
+            "disk_used" => Ok(Self::DiskUsed),
+            "disk_percent" => Ok(Self::DiskPercent),
+            "disk_read" => Ok(Self::DiskRead),
+            "disk_write" => Ok(Self::DiskWrite),
+
+            "net_down" => Ok(Self::NetDown),
+            "net_up" => Ok(Self::NetUp),
+
+            "load_average_1" => Ok(Self::LoadAverage1),
+            "load_average_5" => Ok(Self::LoadAverage5),
+            "load_average_15" => Ok(Self::LoadAverage15),
+            "uptime" => Ok(Self::Uptime),
+            _ => Err(Report::msg(format!("invalid token type: '{s}'"))),
+        }
+    }
+}
+
+impl Namespace for Client {
+    fn get(&self, key: &str) -> Option<String> {
+        let get = |value: Value| Some(value.get(Prefix::None).to_string());
+
+        let token = TokenType::from_str(key).ok()?;
+        match token {
+            TokenType::CpuFrequency => None,
+            TokenType::CpuPercent => None,
+            TokenType::MemoryFree => get(self.memory_free()),
+            TokenType::MemoryAvailable => get(self.memory_available()),
+            TokenType::MemoryTotal => get(self.memory_total()),
+            TokenType::MemoryUsed => get(self.memory_used()),
+            TokenType::MemoryPercent => get(self.memory_percent()),
+            TokenType::SwapFree => get(self.swap_free()),
+            TokenType::SwapTotal => get(self.swap_total()),
+            TokenType::SwapUsed => get(self.swap_used()),
+            TokenType::SwapPercent => get(self.swap_percent()),
+            TokenType::TempC => None,
+            TokenType::TempF => None,
+            TokenType::DiskFree => None,
+            TokenType::DiskTotal => None,
+            TokenType::DiskUsed => None,
+            TokenType::DiskPercent => None,
+            TokenType::DiskRead => None,
+            TokenType::DiskWrite => None,
+            TokenType::NetDown => None,
+            TokenType::NetUp => None,
+            TokenType::LoadAverage1 => get(self.load_average_1()),
+            TokenType::LoadAverage5 => get(self.load_average_5()),
+            TokenType::LoadAverage15 => get(self.load_average_15()),
+            TokenType::Uptime => Some(self.uptime()),
+        }
+    }
+
+    fn list(&self) -> Vec<String> {
+        vec![
+            "memory_free",
+            "memory_available",
+            "memory_total",
+            "memory_used",
+            "memory_percent",
+            "swap_free",
+            "swap_total",
+            "swap_used",
+            "swap_percent",
+            "load_average_1",
+            "load_average_5",
+            "load_average_15",
+            "uptime",
+        ]
+        .into_iter()
+        .map(ToString::to_string)
+        .collect()
+    }
+
+    fn namespaces(&self) -> Vec<String> {
+        vec![
+            "cpu_frequency",
+            "cpu_percent",
+            "temp_c",
+            "temp_f",
+            "disk_free",
+            "disk_total",
+            "disk_used",
+            "disk_percent",
+            "disk_read",
+            "disk_write",
+            "net_down",
+            "net_up",
+        ]
+        .into_iter()
+        .map(ToString::to_string)
+        .collect()
+    }
+
+    fn get_namespace(&self, key: &str) -> Option<Arc<dyn Namespace + Sync + Send>> {
+        let token = TokenType::from_str(key).ok()?;
+
+        match token {
+            TokenType::CpuFrequency => Some(Arc::new(self.cpu_frequency())),
+            TokenType::CpuPercent => Some(Arc::new(self.cpu_percent())),
+            TokenType::MemoryFree => None,
+            TokenType::MemoryAvailable => None,
+            TokenType::MemoryTotal => None,
+            TokenType::MemoryUsed => None,
+            TokenType::MemoryPercent => None,
+            TokenType::SwapFree => None,
+            TokenType::SwapTotal => None,
+            TokenType::SwapUsed => None,
+            TokenType::SwapPercent => None,
+            TokenType::TempC => Some(Arc::new(self.temp_c())),
+            TokenType::TempF => Some(Arc::new(self.temp_f())),
+            TokenType::DiskFree => Some(Arc::new(self.disk_free())),
+            TokenType::DiskTotal => Some(Arc::new(self.disk_total())),
+            TokenType::DiskUsed => Some(Arc::new(self.disk_used())),
+            TokenType::DiskPercent => Some(Arc::new(self.disk_percent())),
+            TokenType::DiskRead => Some(Arc::new(self.disk_read(Interval::All(1)))),
+            TokenType::DiskWrite => Some(Arc::new(self.disk_write(Interval::All(1)))),
+            TokenType::NetDown => Some(Arc::new(self.net_down(Interval::All(1)))),
+            TokenType::NetUp => Some(Arc::new(self.net_up(Interval::All(1)))),
+            TokenType::LoadAverage1 => None,
+            TokenType::LoadAverage5 => None,
+            TokenType::LoadAverage15 => None,
+            TokenType::Uptime => None,
+        }
+    }
+}
+
+impl Namespace for ValueSet {
+    fn get(&self, key: &str) -> Option<String> {
+        let function = Function::from_str(key).ok()?;
+        Some(self.apply(&function, Prefix::None).to_string())
+    }
+
+    fn list(&self) -> Vec<String> {
+        let mut vec = vec!["sum", "min", "max", "mean"]
+            .into_iter()
+            .map(ToString::to_string)
+            .collect::<Vec<_>>();
+
+        vec.extend(self.values.keys().map(ToString::to_string));
+        vec
+    }
+
+    fn namespaces(&self) -> Vec<String> {
+        vec![]
+    }
+
+    fn get_namespace(&self, _key: &str) -> Option<Arc<dyn Namespace + Sync + Send>> {
+        None
+    }
 }

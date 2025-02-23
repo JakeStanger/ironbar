@@ -1,4 +1,4 @@
-use crate::await_sync;
+use crate::{await_sync, Ironbar};
 use color_eyre::Result;
 use std::collections::HashMap;
 use std::path::Path;
@@ -192,7 +192,11 @@ impl Clients {
     #[cfg(feature = "sys_info")]
     pub fn sys_info(&mut self) -> Arc<sysinfo::Client> {
         self.sys_info
-            .get_or_insert_with(|| Arc::new(sysinfo::Client::new()))
+            .get_or_insert_with(|| {
+                let client = Arc::new(sysinfo::Client::new());
+                Ironbar::variable_manager().register_namespace("sysinfo", client.clone());
+                client
+            })
             .clone()
     }
 

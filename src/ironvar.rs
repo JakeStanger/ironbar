@@ -1,13 +1,36 @@
 #![doc = include_str!("../docs/Ironvars.md")]
 
-use crate::send;
+use crate::{arc_rw, read_lock, send, write_lock};
 use color_eyre::{Report, Result};
 use std::collections::HashMap;
+use std::sync::{Arc, RwLock};
 use tokio::sync::broadcast;
+
+type NamespaceTrait = Arc<dyn Namespace + Sync + Send>;
+
+pub trait Namespace {
+    fn get(&self, key: &str) -> Option<String>;
+    fn list(&self) -> Vec<String>;
+
+    fn get_all(&self) -> HashMap<Box<str>, String> {
+        self.list()
+            .into_iter()
+            .filter_map(|name| self.get(&name).map(|value| (name.into(), value)))
+            .collect()
+    }
+
+    fn namespaces(&self) -> Vec<String>;
+    fn get_namespace(&self, key: &str) -> Option<NamespaceTrait>;
+}
+
+pub trait WritableNamespace: Namespace {
+    fn set(&self, key: &str, value: String) -> Result<()>;
+}
 
 /// Global singleton manager for `IronVar` variables.
 pub struct VariableManager {
-    variables: HashMap<Box<str>, IronVar>,
+    variables: Arc<RwLock<HashMap<Box<str>, IronVar>>>,
+    namespaces: Arc<RwLock<HashMap<Box<str>, NamespaceTrait>>>,
 }
 
 impl Default for VariableManager {
@@ -19,41 +42,15 @@ impl Default for VariableManager {
 impl VariableManager {
     pub fn new() -> Self {
         Self {
-            variables: HashMap::new(),
+            variables: arc_rw!(HashMap::new()),
+            namespaces: arc_rw!(HashMap::new()),
         }
-    }
-
-    /// Sets the value for a variable,
-    /// creating it if it does not exist.
-    pub fn set(&mut self, key: Box<str>, value: String) -> Result<()> {
-        if Self::key_is_valid(&key) {
-            if let Some(var) = self.variables.get_mut(&key) {
-                var.set(Some(value));
-            } else {
-                let var = IronVar::new(Some(value));
-                self.variables.insert(key, var);
-            }
-
-            Ok(())
-        } else {
-            Err(Report::msg("Invalid key"))
-        }
-    }
-
-    /// Gets the current value of an `ironvar`.
-    /// Prefer to use `subscribe` where possible.
-    pub fn get(&self, key: &str) -> Option<String> {
-        self.variables.get(key).and_then(IronVar::get)
-    }
-
-    pub fn get_all(&self) -> &HashMap<Box<str>, IronVar> {
-        &self.variables
     }
 
     /// Subscribes to an `ironvar`, creating it if it does not exist.
     /// Any time the var is set, its value is sent on the channel.
-    pub fn subscribe(&mut self, key: Box<str>) -> broadcast::Receiver<Option<String>> {
-        self.variables
+    pub fn subscribe(&self, key: Box<str>) -> broadcast::Receiver<Option<String>> {
+        write_lock!(self.variables)
             .entry(key)
             .or_insert_with(|| IronVar::new(None))
             .subscribe()
@@ -64,6 +61,76 @@ impl VariableManager {
             && key
                 .chars()
                 .all(|char| char.is_alphanumeric() || char == '_' || char == '-')
+    }
+
+    pub fn register_namespace<N>(&self, name: &str, namespace: Arc<N>)
+    where
+        N: Namespace + Sync + Send + 'static,
+    {
+        write_lock!(self.namespaces).insert(name.into(), namespace);
+    }
+}
+
+impl Namespace for VariableManager {
+    fn get(&self, key: &str) -> Option<String> {
+        if key.contains('.') {
+            let Some((ns, key)) = key.split_once('.') else {
+                return None;
+            };
+
+            let namespaces = read_lock!(self.namespaces);
+            let Some(ns) = namespaces.get(ns) else {
+                return None;
+            };
+
+            ns.get(key).map(|v| v.to_owned())
+        } else {
+            read_lock!(self.variables).get(key).and_then(IronVar::get)
+        }
+    }
+
+    fn list(&self) -> Vec<String> {
+        read_lock!(self.variables)
+            .keys()
+            .map(ToString::to_string)
+            .collect()
+    }
+
+    fn get_all(&self) -> HashMap<Box<str>, String> {
+        read_lock!(self.variables)
+            .iter()
+            .filter_map(|(k, v)| v.get().map(|value| (k.clone(), value)))
+            .collect()
+    }
+
+    fn namespaces(&self) -> Vec<String> {
+        read_lock!(self.namespaces)
+            .keys()
+            .map(ToString::to_string)
+            .collect()
+    }
+
+    fn get_namespace(&self, key: &str) -> Option<NamespaceTrait> {
+        read_lock!(self.namespaces).get(key).cloned()
+    }
+}
+
+impl WritableNamespace for VariableManager {
+    /// Sets the value for a variable,
+    /// creating it if it does not exist.
+    fn set(&self, key: &str, value: String) -> Result<()> {
+        if Self::key_is_valid(key) {
+            if let Some(var) = write_lock!(self.variables).get_mut(&Box::from(key)) {
+                var.set(Some(value));
+            } else {
+                let var = IronVar::new(Some(value));
+                write_lock!(self.variables).insert(key.into(), var);
+            }
+
+            Ok(())
+        } else {
+            Err(Report::msg("Invalid key"))
+        }
     }
 }
 

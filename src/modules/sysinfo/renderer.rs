@@ -1,7 +1,7 @@
-use super::token::{Alignment, Part, Token, TokenType};
+use super::token::{Alignment, Part, Token};
 use super::Interval;
 use crate::clients;
-use crate::clients::sysinfo::{Value, ValueSet};
+use crate::clients::sysinfo::{TokenType, Value, ValueSet};
 
 pub enum TokenValue {
     Number(f64),
