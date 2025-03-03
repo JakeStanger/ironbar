@@ -6,8 +6,8 @@ use std::path::Path;
 use std::rc::Rc;
 
 use color_eyre::{Report, Result};
-use gtk::prelude::*;
 use gtk::Application;
+use gtk::prelude::*;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::{UnixListener, UnixStream};
 use tokio::sync::mpsc::{self, Receiver, Sender};
@@ -15,7 +15,7 @@ use tracing::{debug, error, info, warn};
 
 use crate::ipc::{Command, Response};
 use crate::style::load_css;
-use crate::{glib_recv_mpsc, send_async, spawn, try_send, Ironbar};
+use crate::{Ironbar, glib_recv_mpsc, send_async, spawn, try_send};
 
 use super::Ipc;
 
@@ -150,7 +150,7 @@ impl Ipc {
                 }
             }
             Command::Var(cmd) => ironvar::handle_command(cmd),
-            Command::Bar(cmd) => bar::handle_command(cmd, ironbar),
+            Command::Bar(cmd) => bar::handle_command(&cmd, ironbar),
         }
     }
 

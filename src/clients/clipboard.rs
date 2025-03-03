@@ -1,7 +1,7 @@
 use super::wayland::{self, ClipboardItem};
 use crate::{arc_mut, lock, register_client, spawn, try_send};
-use indexmap::map::Iter;
 use indexmap::IndexMap;
+use indexmap::map::Iter;
 use std::sync::{Arc, Mutex};
 use tokio::sync::mpsc;
 use tracing::{debug, trace};

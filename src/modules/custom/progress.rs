@@ -1,5 +1,5 @@
-use gtk::prelude::*;
 use gtk::ProgressBar;
+use gtk::prelude::*;
 use serde::Deserialize;
 use tokio::sync::mpsc;
 use tracing::error;

@@ -1,11 +1,11 @@
 use super::Response;
+use crate::Ironbar;
 use crate::bar::Bar;
 use crate::ipc::{BarCommand, BarCommandType};
 use crate::modules::PopupButton;
-use crate::Ironbar;
 use std::rc::Rc;
 
-pub fn handle_command(command: BarCommand, ironbar: &Rc<Ironbar>) -> Response {
+pub fn handle_command(command: &BarCommand, ironbar: &Rc<Ironbar>) -> Response {
     use BarCommandType::*;
 
     let bars = ironbar.bars_by_name(&command.name);

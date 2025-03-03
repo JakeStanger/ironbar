@@ -1,7 +1,6 @@
-use crate::ipc::commands::IronvarCommand;
-use crate::ipc::Response;
-use crate::ironvar::{Namespace, WritableNamespace};
 use crate::Ironbar;
+use crate::ipc::{IronvarCommand, Response};
+use crate::ironvar::{Namespace, WritableNamespace};
 use std::sync::Arc;
 
 pub fn handle_command(command: IronvarCommand) -> Response {

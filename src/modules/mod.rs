@@ -15,7 +15,7 @@ use crate::clients::{ClientResult, ProvidesClient, ProvidesFallibleClient};
 use crate::config::{BarPosition, CommonConfig, TransitionType};
 use crate::gtk_helpers::{IronbarGtkExt, WidgetGeometry};
 use crate::popup::Popup;
-use crate::{glib_recv_mpsc, send, Ironbar};
+use crate::{Ironbar, glib_recv_mpsc, send};
 
 #[cfg(feature = "cairo")]
 pub mod cairo;

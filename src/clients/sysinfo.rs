@@ -394,7 +394,7 @@ impl Client {
     }
 
     /// Gets system uptime formatted as `HH:mm`.
-    pub fn uptime(&self) -> String {
+    pub fn uptime() -> String {
         let uptime = System::uptime();
         let hours = uptime / 3600;
         format!("{:0>2}:{:0>2}", hours, (uptime % 3600) / 60)
@@ -513,7 +513,7 @@ impl Namespace for Client {
             TokenType::LoadAverage1 => get(self.load_average_1()),
             TokenType::LoadAverage5 => get(self.load_average_5()),
             TokenType::LoadAverage15 => get(self.load_average_15()),
-            TokenType::Uptime => Some(self.uptime()),
+            TokenType::Uptime => Some(Client::uptime()),
         }
     }
 

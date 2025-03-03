@@ -1,4 +1,4 @@
-use crate::dynamic_value::{dynamic_string, DynamicBool};
+use crate::dynamic_value::{DynamicBool, dynamic_string};
 use crate::script::{Script, ScriptInput};
 use glib::Propagation;
 use gtk::gdk::ScrollDirection;

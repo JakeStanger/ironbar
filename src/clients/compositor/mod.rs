@@ -1,3 +1,4 @@
+use crate::clients::ClientResult;
 use crate::register_fallible_client;
 use cfg_if::cfg_if;
 use color_eyre::{Help, Report, Result};
@@ -67,7 +68,7 @@ impl Compositor {
 
     pub fn create_keyboard_layout_client(
         clients: &mut super::Clients,
-    ) -> Result<Arc<dyn KeyboardLayoutClient + Send + Sync>> {
+    ) -> ClientResult<dyn KeyboardLayoutClient + Send + Sync> {
         let current = Self::get_current();
         debug!("Getting keyboard_layout client for: {current}");
         match current {
@@ -76,9 +77,7 @@ impl Compositor {
                 .sway()
                 .map(|client| client as Arc<dyn KeyboardLayoutClient + Send + Sync>),
             #[cfg(feature = "keyboard+hyprland")]
-            Self::Hyprland => clients
-                .hyprland()
-                .map(|client| client as Arc<dyn KeyboardLayoutClient + Send + Sync>),
+            Self::Hyprland => Ok(clients.hyprland()),
             Self::Niri | Self::Unsupported => Err(Report::msg("Unsupported compositor").note(
                 "Currently keyboard layout functionality are only supported by Sway and Hyprland",
             )),
@@ -98,9 +97,7 @@ impl Compositor {
                 .sway()
                 .map(|client| client as Arc<dyn WorkspaceClient + Send + Sync>),
             #[cfg(feature = "workspaces+hyprland")]
-            Self::Hyprland => clients
-                .hyprland()
-                .map(|client| client as Arc<dyn WorkspaceClient + Send + Sync>),
+            Self::Hyprland => Ok(clients.hyprland()),
             #[cfg(feature = "workspaces+niri")]
             Self::Niri => Ok(Arc::new(niri::Client::new())),
             Self::Unsupported => Err(Report::msg("Unsupported compositor")

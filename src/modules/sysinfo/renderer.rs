@@ -1,5 +1,5 @@
-use super::token::{Alignment, Part, Token};
 use super::Interval;
+use super::token::{Alignment, Part, Token};
 use crate::clients;
 use crate::clients::sysinfo::{TokenType, Value, ValueSet};
 
@@ -85,7 +85,7 @@ impl Token {
             TokenType::LoadAverage15 => get(client.load_average_15()),
 
             // String tokens
-            TokenType::Uptime => TokenValue::String(client.uptime()),
+            TokenType::Uptime => TokenValue::String(clients::sysinfo::Client::uptime()),
         }
     }
 }

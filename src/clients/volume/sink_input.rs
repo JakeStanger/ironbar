@@ -1,10 +1,10 @@
-use super::{percent_to_volume, volume_to_percent, ArcMutVec, Client, ConnectionState, Event};
+use super::{ArcMutVec, Client, ConnectionState, Event, percent_to_volume, volume_to_percent};
 use crate::{lock, send};
 use libpulse_binding::callbacks::ListResult;
+use libpulse_binding::context::Context;
 use libpulse_binding::context::introspect::SinkInputInfo;
 use libpulse_binding::context::subscribe::Operation;
-use libpulse_binding::context::Context;
-use std::sync::{mpsc, Arc, Mutex};
+use std::sync::{Arc, Mutex, mpsc};
 use tokio::sync::broadcast;
 use tracing::{debug, error};
 

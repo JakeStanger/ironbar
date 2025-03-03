@@ -22,8 +22,8 @@ mod ipc {
 
 use clap::Command;
 use clap::CommandFactory;
-use clap_complete::generate_to;
 use clap_complete::Shell::{Bash, Fish, Zsh};
+use clap_complete::generate_to;
 use cli::Args;
 use std::fs;
 use std::path::PathBuf;

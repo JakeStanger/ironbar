@@ -7,7 +7,7 @@ use crate::clients::wayland::{OutputEvent, OutputEventType};
 use crate::config::BarPosition;
 use crate::gtk_helpers::{IronbarGtkExt, WidgetGeometry};
 use crate::modules::{ModuleInfo, ModulePopupParts, PopupButton};
-use crate::{glib_recv, rc_mut, Ironbar};
+use crate::{Ironbar, glib_recv, rc_mut};
 use gtk::prelude::*;
 use gtk::{ApplicationWindow, Button, Orientation};
 use gtk_layer_shell::LayerShell;

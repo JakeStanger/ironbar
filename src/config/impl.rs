@@ -52,9 +52,9 @@ where
 }
 
 #[cfg(feature = "schema")]
-pub fn schema_layer(gen: &mut schemars::gen::SchemaGenerator) -> schemars::schema::Schema {
+pub fn schema_layer(generator: &mut schemars::r#gen::SchemaGenerator) -> schemars::schema::Schema {
     use schemars::JsonSchema;
-    let mut schema: schemars::schema::SchemaObject = <String>::json_schema(gen).into();
+    let mut schema: schemars::schema::SchemaObject = <String>::json_schema(generator).into();
     schema.enum_values = Some(vec![
         "background".into(),
         "bottom".into(),

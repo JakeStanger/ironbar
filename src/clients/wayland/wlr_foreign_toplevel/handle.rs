@@ -1,5 +1,5 @@
 use super::manager::ToplevelManagerState;
-use crate::{lock, Ironbar};
+use crate::{Ironbar, lock};
 use std::collections::HashSet;
 use std::sync::{Arc, Mutex};
 use tracing::trace;

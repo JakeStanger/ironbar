@@ -1,7 +1,7 @@
 use std::cell::RefMut;
 use std::path::PathBuf;
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
 
 use color_eyre::Result;
@@ -12,12 +12,12 @@ use regex::Regex;
 use tokio::sync::{broadcast, mpsc};
 use tracing::error;
 
+use crate::clients::Clients;
 use crate::clients::music::{
     self, MusicClient, PlayerState, PlayerUpdate, ProgressTick, Status, Track,
 };
-use crate::clients::Clients;
 use crate::gtk_helpers::{IronbarGtkExt, IronbarLabelExt};
-use crate::image::{new_icon_button, IconLabel, ImageProvider};
+use crate::image::{IconLabel, ImageProvider, new_icon_button};
 use crate::modules::PopupButton;
 use crate::modules::{
     Module, ModuleInfo, ModuleParts, ModulePopup, ModuleUpdateEvent, WidgetContext,
