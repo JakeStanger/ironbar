@@ -173,7 +173,7 @@ swayipc-async = { version = "2.0.4", optional = true } # workspaces, keyboard
 hyprland = { version = "0.4.0-alpha.3", features = ["silent"], optional = true } # workspaces, keyboard
 
 # schema
-schemars = { version = "0.8.21", optional = true }
+schemars = { version = "0.8.22", optional = true }
 
 [build-dependencies]
 clap = { version = "4.5.29", features = ["derive"] }
