@@ -7,8 +7,6 @@ use std::path::PathBuf;
 use std::process::exit;
 use std::rc::Rc;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
-#[cfg(feature = "ipc")]
-use std::sync::RwLock;
 use std::sync::{mpsc, Arc, Mutex, OnceLock};
 
 use cfg_if::cfg_if;
@@ -32,7 +30,7 @@ use crate::clients::Clients;
 use crate::config::{Config, MonitorConfig};
 use crate::error::ExitCode;
 #[cfg(feature = "ipc")]
-use crate::ironvar::VariableManager;
+use crate::ironvar::{VariableManager, WritableNamespace};
 use crate::style::load_css;
 
 mod bar;
@@ -263,10 +261,10 @@ impl Ironbar {
     /// Gets the `Ironvar` manager singleton.
     #[cfg(feature = "ipc")]
     #[must_use]
-    pub fn variable_manager() -> Arc<RwLock<VariableManager>> {
-        static VARIABLE_MANAGER: OnceLock<Arc<RwLock<VariableManager>>> = OnceLock::new();
+    pub fn variable_manager() -> Arc<VariableManager> {
+        static VARIABLE_MANAGER: OnceLock<Arc<VariableManager>> = OnceLock::new();
         VARIABLE_MANAGER
-            .get_or_init(|| arc_rw!(VariableManager::new()))
+            .get_or_init(|| Arc::new(VariableManager::new()))
             .clone()
     }
 
@@ -336,7 +334,7 @@ fn load_config() -> (Config, PathBuf) {
     if let Some(ironvars) = config.ironvar_defaults.take() {
         let variable_manager = Ironbar::variable_manager();
         for (k, v) in ironvars {
-            if write_lock!(variable_manager).set(k.clone(), v).is_err() {
+            if variable_manager.set(&k, v).is_err() {
                 warn!("Ignoring invalid ironvar: '{k}'");
             }
         }

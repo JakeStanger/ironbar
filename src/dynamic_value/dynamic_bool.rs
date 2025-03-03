@@ -58,7 +58,7 @@ impl DynamicBool {
                     let variable_manager = Ironbar::variable_manager();
 
                     let variable_name = variable[1..].into(); // remove hash
-                    let mut rx = crate::write_lock!(variable_manager).subscribe(variable_name);
+                    let mut rx = variable_manager.subscribe(variable_name);
 
                     while let Ok(value) = rx.recv().await {
                         let has_value = value.is_some_and(|s| is_truthy(&s));

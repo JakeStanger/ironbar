@@ -1,64 +1,8 @@
-use crate::clients::sysinfo::{Function, Prefix};
-use crate::modules::sysinfo::token::{Alignment, Formatting, Part, Token, TokenType};
+use crate::clients::sysinfo::{Function, Prefix, TokenType};
+use crate::modules::sysinfo::token::{Alignment, Formatting, Part, Token};
 use color_eyre::{Report, Result};
 use std::iter::Peekable;
 use std::str::{Chars, FromStr};
-
-impl FromStr for TokenType {
-    type Err = Report;
-
-    fn from_str(s: &str) -> Result<Self> {
-        match s {
-            "cpu_frequency" => Ok(Self::CpuFrequency),
-            "cpu_percent" => Ok(Self::CpuPercent),
-
-            "memory_free" => Ok(Self::MemoryFree),
-            "memory_available" => Ok(Self::MemoryAvailable),
-            "memory_total" => Ok(Self::MemoryTotal),
-            "memory_used" => Ok(Self::MemoryUsed),
-            "memory_percent" => Ok(Self::MemoryPercent),
-
-            "swap_free" => Ok(Self::SwapFree),
-            "swap_total" => Ok(Self::SwapTotal),
-            "swap_used" => Ok(Self::SwapUsed),
-            "swap_percent" => Ok(Self::SwapPercent),
-
-            "temp_c" => Ok(Self::TempC),
-            "temp_f" => Ok(Self::TempF),
-
-            "disk_free" => Ok(Self::DiskFree),
-            "disk_total" => Ok(Self::DiskTotal),
-            "disk_used" => Ok(Self::DiskUsed),
-            "disk_percent" => Ok(Self::DiskPercent),
-            "disk_read" => Ok(Self::DiskRead),
-            "disk_write" => Ok(Self::DiskWrite),
-
-            "net_down" => Ok(Self::NetDown),
-            "net_up" => Ok(Self::NetUp),
-
-            "load_average_1" => Ok(Self::LoadAverage1),
-            "load_average_5" => Ok(Self::LoadAverage5),
-            "load_average_15" => Ok(Self::LoadAverage15),
-            "uptime" => Ok(Self::Uptime),
-            _ => Err(Report::msg(format!("invalid token type: '{s}'"))),
-        }
-    }
-}
-
-impl FromStr for Function {
-    type Err = ();
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s.to_lowercase().as_str() {
-            "sum" => Ok(Self::Sum),
-            "min" => Ok(Self::Min),
-            "max" => Ok(Self::Max),
-            "mean" => Ok(Self::Mean),
-            "" => Err(()),
-            _ => Ok(Self::Name(s.to_string())),
-        }
-    }
-}
 
 impl Function {
     pub(crate) fn default_for(token_type: TokenType) -> Self {
