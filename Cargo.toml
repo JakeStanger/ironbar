@@ -139,7 +139,7 @@ mlua = { version = "0.9.9", optional = true, features = ["luajit"] }
 cairo-rs = { version = "0.18.5", optional = true, features = ["png"] }
 
 # clock
-chrono = { version = "0.4.39", optional = true, default-features = false, features = ["clock", "unstable-locales"] }
+chrono = { version = "0.4.40", optional = true, default-features = false, features = ["clock", "unstable-locales"] }
 
 # keyboard
 input = { version = "0.9.1", optional = true }
