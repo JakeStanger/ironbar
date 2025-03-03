@@ -1,17 +1,21 @@
-use crate::{arc_rw, read_lock, send, spawn, spawn_blocking, write_lock};
+use crate::clients::ClientResult;
+use crate::{arc_rw, read_lock, send, spawn, write_lock};
 use color_eyre::{Report, Result};
+use colpetto::event::{AsRawEvent, DeviceEvent, KeyState, KeyboardEvent};
+use colpetto::{DeviceCapability, Libinput};
 use evdev_rs::DeviceWrapper;
 use evdev_rs::enums::{EV_KEY, EV_LED, EventCode, int_to_ev_key};
-use input::event::keyboard::{KeyState, KeyboardEventTrait};
-use input::event::{DeviceEvent, EventTrait, KeyboardEvent};
-use input::{DeviceCapability, Libinput, LibinputInterface};
-use libc::{O_ACCMODE, O_RDONLY, O_RDWR};
-use std::fs::{File, OpenOptions};
-use std::os::unix::{fs::OpenOptionsExt, io::OwnedFd};
+use futures_lite::StreamExt;
+use rustix::fs::{Mode, OFlags, open};
+use rustix::io::Errno;
+use std::ffi::{CStr, CString, c_int};
+use std::os::fd::{FromRawFd, IntoRawFd, RawFd};
+use std::os::unix::io::OwnedFd;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, RwLock};
 use std::time::Duration;
 use tokio::sync::broadcast;
+use tokio::task::LocalSet;
 use tokio::time::sleep;
 use tracing::{debug, error};
 
@@ -88,28 +92,6 @@ impl<P: AsRef<Path>> TryFrom<KeyData<P>> for Event {
     }
 }
 
-pub struct Interface;
-
-impl LibinputInterface for Interface {
-    fn open_restricted(&mut self, path: &Path, flags: i32) -> Result<OwnedFd, i32> {
-        // No idea what these flags do honestly, just copied them from the example.
-        let op = OpenOptions::new()
-            .custom_flags(flags)
-            .read((flags & O_ACCMODE == O_RDONLY) | (flags & O_ACCMODE == O_RDWR))
-            .open(path)
-            .map(OwnedFd::from);
-
-        if let Err(err) = &op {
-            error!("error opening {}: {err:?}", path.display());
-        }
-
-        op.map_err(|err| err.raw_os_error().unwrap_or(-1))
-    }
-    fn close_restricted(&mut self, fd: OwnedFd) {
-        drop(File::from(fd));
-    }
-}
-
 #[derive(Debug)]
 pub struct Client {
     tx: broadcast::Sender<Event>,
@@ -120,107 +102,122 @@ pub struct Client {
 }
 
 impl Client {
-    pub fn init(seat: String) -> Arc<Self> {
-        let client = Arc::new(Self::new(seat));
+    pub fn init(seat: String) -> ClientResult<Self> {
+        let client = Arc::new(Self::new(seat)?);
+
         {
             let client = client.clone();
-            spawn_blocking(move || {
-                if let Err(err) = client.run() {
+            let local = LocalSet::new();
+
+            local.spawn_local(async move {
+                if let Err(err) = client.run().await {
                     error!("{err:?}");
                 }
             });
         }
-        client
+
+        Ok(client)
     }
 
-    fn new(seat: String) -> Self {
+    fn new(seat: String) -> Result<Self> {
         let (tx, rx) = broadcast::channel(4);
 
-        Self {
+        Ok(Self {
             tx,
             _rx: rx,
             seat,
             known_devices: arc_rw!(vec![]),
-        }
+        })
     }
 
-    fn run(&self) -> Result<()> {
-        let mut input = Libinput::new_with_udev(Interface);
-        input
-            .udev_assign_seat(&self.seat)
-            .map_err(|()| Report::msg("failed to assign seat"))?;
+    fn open_restricted(path: &CStr, flags: c_int) -> std::result::Result<RawFd, i32> {
+        open(path, OFlags::from_bits_retain(flags as u32), Mode::empty())
+            .map(IntoRawFd::into_raw_fd)
+            .map_err(Errno::raw_os_error)
+    }
 
-        loop {
-            input.dispatch()?;
+    fn close_restricted(fd: c_int) {
+        drop(unsafe { OwnedFd::from_raw_fd(fd) })
+    }
 
-            for event in &mut input {
-                match event {
-                    input::Event::Keyboard(KeyboardEvent::Key(event))
-                        if event.key_state() == KeyState::Released =>
-                    {
-                        let Some(device) = (unsafe { event.device().udev_device() }) else {
-                            continue;
-                        };
+    async fn run(&self) -> Result<()> {
+        let mut libinput = Libinput::with_logger(
+            Self::open_restricted,
+            Self::close_restricted,
+            Some(colpetto::tracing_logger),
+        )?;
 
-                        let Some(
-                            key @ (EV_KEY::KEY_CAPSLOCK
-                            | EV_KEY::KEY_NUMLOCK
-                            | EV_KEY::KEY_SCROLLLOCK),
-                        ) = int_to_ev_key(event.key())
-                        else {
-                            continue;
-                        };
+        libinput.udev_assign_seat(CString::new(&*self.seat)?.as_c_str())?;
 
-                        if let Some(device_path) = device.devnode().map(PathBuf::from) {
-                            let tx = self.tx.clone();
+        let mut stream = libinput.event_stream()?;
+        while let Some(event) = stream.try_next().await? {
+            match event {
+                colpetto::Event::Device(DeviceEvent::Added(event)) => {
+                    let device = event.device();
+                    if !device.has_capability(DeviceCapability::Keyboard) {
+                        continue;
+                    }
 
-                            // need to spawn a task to avoid blocking
-                            spawn(async move {
-                                // wait for kb to change
-                                sleep(Duration::from_millis(50)).await;
+                    let name = device.name();
+                    let Some(device) = event.device().udev_device() else {
+                        continue;
+                    };
 
-                                let data = KeyData { device_path, key };
+                    if let Some(device_path) = device.devnode() {
+                        // not all devices which report as keyboards actually are one -
+                        // fire test event so we can figure out if it is
+                        let caps_event: Result<Event> = KeyData {
+                            device_path,
+                            key: EV_KEY::KEY_CAPSLOCK,
+                        }
+                        .try_into();
 
-                                if let Ok(event) = data.try_into() {
-                                    send!(tx, event);
-                                }
-                            });
+                        if caps_event.is_ok() {
+                            debug!(
+                                "new keyboard device: {} | {}",
+                                name.to_string_lossy(),
+                                device_path.display()
+                            );
+                            write_lock!(self.known_devices).push(device_path.to_path_buf());
+                            send!(self.tx, Event::Device);
                         }
                     }
-                    input::Event::Device(DeviceEvent::Added(event)) => {
-                        let device = event.device();
-                        if !device.has_capability(DeviceCapability::Keyboard) {
-                            continue;
-                        }
-
-                        let name = device.name();
-                        let Some(device) = (unsafe { event.device().udev_device() }) else {
-                            continue;
-                        };
-
-                        if let Some(device_path) = device.devnode() {
-                            // not all devices which report as keyboards actually are one -
-                            // fire test event so we can figure out if it is
-                            let caps_event: Result<Event> = KeyData {
-                                device_path,
-                                key: EV_KEY::KEY_CAPSLOCK,
-                            }
-                            .try_into();
-
-                            if caps_event.is_ok() {
-                                debug!("new keyboard device: {name} | {}", device_path.display());
-                                write_lock!(self.known_devices).push(device_path.to_path_buf());
-                                send!(self.tx, Event::Device);
-                            }
-                        }
-                    }
-                    _ => {}
                 }
-            }
+                colpetto::Event::Keyboard(KeyboardEvent::Key(event))
+                    if event.key_state() == KeyState::Released =>
+                {
+                    let Some(device) = event.device().udev_device() else {
+                        continue;
+                    };
 
-            // we need to sleep for a short period to avoid hogging cpu
-            std::thread::sleep(Duration::from_millis(20));
+                    let Some(
+                        key @ (EV_KEY::KEY_CAPSLOCK | EV_KEY::KEY_NUMLOCK | EV_KEY::KEY_SCROLLLOCK),
+                    ) = int_to_ev_key(event.key())
+                    else {
+                        continue;
+                    };
+
+                    if let Some(device_path) = device.devnode().map(PathBuf::from) {
+                        let tx = self.tx.clone();
+
+                        // need to spawn a task to avoid blocking
+                        spawn(async move {
+                            // wait for kb to change
+                            sleep(Duration::from_millis(50)).await;
+
+                            let data = KeyData { device_path, key };
+
+                            if let Ok(event) = data.try_into() {
+                                send!(tx, event);
+                            }
+                        });
+                    }
+                }
+                _ => {}
+            }
         }
+
+        Err(Report::msg("unexpected end of stream"))
     }
 
     pub fn get_state(&self, key: Key) -> bool {

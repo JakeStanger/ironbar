@@ -178,7 +178,7 @@ impl Module<gtk::Box> for KeyboardModule {
         context: &WidgetContext<Self::SendMessage, Self::ReceiveMessage>,
         mut rx: mpsc::Receiver<Self::ReceiveMessage>,
     ) -> Result<()> {
-        let client = context.ironbar.clients.borrow_mut().libinput(&self.seat);
+        let client = context.ironbar.clients.borrow_mut().libinput(&self.seat)?;
 
         let tx = context.tx.clone();
         spawn(async move {

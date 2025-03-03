@@ -1,7 +1,6 @@
 use super::manager::DataControlDeviceManagerState;
 use crate::lock;
-use nix::fcntl::OFlag;
-use nix::unistd::pipe2;
+use rustix::pipe::{PipeFlags, pipe_with};
 use smithay_client_toolkit::data_device_manager::data_offer::DataOfferError;
 use std::ops::DerefMut;
 use std::os::fd::AsFd;
@@ -171,7 +170,7 @@ where
 /// could not be created.
 pub fn receive(offer: &ZwlrDataControlOfferV1, mime_type: String) -> std::io::Result<Receiver> {
     // create a pipe
-    let (readfd, writefd) = pipe2(OFlag::O_CLOEXEC | OFlag::O_NONBLOCK)?;
+    let (readfd, writefd) = pipe_with(PipeFlags::CLOEXEC)?;
 
     offer.receive(mime_type, writefd.as_fd());
 

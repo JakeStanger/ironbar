@@ -147,11 +147,14 @@ impl Clients {
     }
 
     #[cfg(feature = "keyboard")]
-    pub fn libinput(&mut self, seat: &str) -> Arc<libinput::Client> {
-        self.libinput
-            .entry(seat.into())
-            .or_insert_with(|| libinput::Client::init(seat.to_string()))
-            .clone()
+    pub fn libinput(&mut self, seat: &str) -> ClientResult<libinput::Client> {
+        if let Some(client) = self.libinput.get(seat) {
+            Ok(client.clone())
+        } else {
+            let client = libinput::Client::init(seat.to_string())?;
+            self.libinput.insert(seat.into(), client.clone());
+            Ok(client)
+        }
     }
 
     #[cfg(feature = "music")]
