@@ -8,7 +8,7 @@ Displays a fully interactive icon tray using the KDE `libappindicator` protocol.
 
 | Name                 | Type                                                       | Default                 | Description                                                                                                                                                         |
 |----------------------|------------------------------------------------------------|-------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `orientation`        | `'horizontal'` or `'vertical'` (shorthand: `'h'` or `'v'`) | Matches bar orientation | The direction in which to pack tray icons.                                                                                                                          |
+| `direction`        | `'horizontal'` or `'vertical'` (shorthand: `'h'` or `'v'`) | Matches bar orientation | The direction in which to pack tray icons.                                                                                                                          |
 | `icon_size`          | `integer`                                                  | `16`                    | Size in pixels to display tray icons as.                                                                                                                            |
 | `prefer_theme_icons` | `bool`                                                     | `true`                  | Requests that icons from the theme be used over the item-provided item. Most items only provide one or the other so this will have no effect in most circumstances. |
 
