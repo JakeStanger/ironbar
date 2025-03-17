@@ -144,7 +144,7 @@ chrono = { version = "0.4.40", optional = true, default-features = false, featur
 # keyboard
 input = { version = "0.9.1", optional = true }
 evdev-rs = { version = "0.6.1", optional = true }
-libc = { version = "0.2.170", optional = true }
+libc = { version = "0.2.171", optional = true }
 
 # music
 mpd-utils = { version = "0.2.1", optional = true }
