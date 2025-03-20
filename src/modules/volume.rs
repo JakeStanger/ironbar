@@ -1,5 +1,5 @@
 use crate::clients::volume::{self, Event};
-use crate::config::CommonConfig;
+use crate::config::{CommonConfig, ModuleOrientation};
 use crate::gtk_helpers::{IronbarGtkExt, IronbarLabelExt};
 use crate::modules::{
     Module, ModuleInfo, ModuleParts, ModulePopup, ModuleUpdateEvent, PopupButton, WidgetContext,
@@ -35,6 +35,9 @@ pub struct VolumeModule {
     /// See [icons](#icons).
     #[serde(default)]
     icons: Icons,
+
+    #[serde(default)]
+    orientation: ModuleOrientation,
 
     /// See [common options](module-level-options#common-options).
     #[serde(flatten)]
@@ -204,7 +207,7 @@ impl Module<Button> for VolumeModule {
     {
         let button_label = Label::builder()
             .use_markup(true)
-            .angle(info.bar_position.get_angle())
+            .angle(self.orientation.to_angle())
             .build();
 
         let button = Button::new();
