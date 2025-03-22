@@ -129,13 +129,13 @@ impl Clients {
     }
 
     #[cfg(feature = "hyprland")]
-    pub fn hyprland(&mut self) -> Arc<compositor::hyprland::Client> {
+    pub fn hyprland(&mut self) -> ClientResult<compositor::hyprland::Client> {
         if let Some(client) = &self.hyprland {
-            client.clone()
+            Ok(client.clone())
         } else {
-            let client = Arc::new(compositor::hyprland::Client::new());
+            let client = Arc::new(compositor::hyprland::Client::new()?);
             self.hyprland.replace(client.clone());
-            client
+            Ok(client)
         }
     }
 
