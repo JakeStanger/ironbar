@@ -17,6 +17,9 @@ Supports wired ethernet, wifi, cellular data and VPN connections among others.
 |-------------|-----------|---------|-------------------------|
 | `icon_size` | `integer` | `24`    | Size to render icon at. |
 
+> [!NOTE]
+> This module does not support module-level [layout options](module-level-options#layout).
+
 <details>
   <summary>JSON</summary>
 

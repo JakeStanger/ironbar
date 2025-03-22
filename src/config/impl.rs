@@ -77,7 +77,7 @@ impl BarPosition {
 
     /// Gets the angle that label text should be displayed at
     /// based on this position.
-    pub const fn get_angle(self) -> f64 {
+    pub const fn angle(self) -> f64 {
         match self {
             Self::Top | Self::Bottom => 0.0,
             Self::Left => 90.0,

@@ -1,5 +1,5 @@
 use crate::gtk_helpers::IronbarGtkExt;
-use crate::image::new_icon_button;
+use crate::image::IconButton;
 use gtk::prelude::*;
 use gtk::{Button, IconTheme, Orientation};
 use std::cell::RefCell;
@@ -29,13 +29,13 @@ impl Pagination {
     ) -> Self {
         let scroll_box = gtk::Box::new(orientation, 0);
 
-        let scroll_back = new_icon_button(
+        let scroll_back = IconButton::new(
             icon_context.icon_back,
             icon_context.icon_theme,
             icon_context.icon_size,
         );
 
-        let scroll_fwd = new_icon_button(
+        let scroll_fwd = IconButton::new(
             icon_context.icon_fwd,
             icon_context.icon_theme,
             icon_context.icon_size,
@@ -48,8 +48,8 @@ impl Pagination {
         scroll_back.add_class("btn-back");
         scroll_fwd.add_class("btn-forward");
 
-        scroll_box.add(&scroll_back);
-        scroll_box.add(&scroll_fwd);
+        scroll_box.add(&*scroll_back);
+        scroll_box.add(&*scroll_fwd);
         container.add(&scroll_box);
 
         let offset = Rc::new(RefCell::new(1));
@@ -103,7 +103,7 @@ impl Pagination {
             offset,
 
             controls_container: scroll_box,
-            btn_fwd: scroll_fwd,
+            btn_fwd: scroll_fwd.deref().clone(),
         }
     }
 

@@ -17,7 +17,7 @@ use crate::clients::music::{
     self, MusicClient, PlayerState, PlayerUpdate, ProgressTick, Status, Track,
 };
 use crate::gtk_helpers::{IronbarGtkExt, IronbarLabelExt};
-use crate::image::{IconLabel, ImageProvider, new_icon_button};
+use crate::image::{IconButton, IconLabel, ImageProvider};
 use crate::modules::PopupButton;
 use crate::modules::{
     Module, ModuleInfo, ModuleParts, ModulePopup, ModuleUpdateEvent, WidgetContext,
@@ -182,7 +182,7 @@ impl Module<Button> for MusicModule {
         info: &ModuleInfo,
     ) -> Result<ModuleParts<Button>> {
         let button = Button::new();
-        let button_contents = gtk::Box::new(Orientation::Horizontal, 5);
+        let button_contents = gtk::Box::new(self.layout.orientation(info), 5);
         button_contents.add_class("contents");
 
         button.add(&button_contents);
@@ -190,9 +190,16 @@ impl Module<Button> for MusicModule {
         let icon_play = IconLabel::new(&self.icons.play, info.icon_theme, self.icon_size);
         let icon_pause = IconLabel::new(&self.icons.pause, info.icon_theme, self.icon_size);
 
+        icon_play.label().set_angle(self.layout.angle(info));
+        icon_play.label().set_justify(self.layout.justify.into());
+
+        icon_pause.label().set_angle(self.layout.angle(info));
+        icon_pause.label().set_justify(self.layout.justify.into());
+
         let label = Label::builder()
             .use_markup(true)
-            .angle(info.bar_position.get_angle())
+            .angle(self.layout.angle(info))
+            .justify(self.layout.justify.into())
             .build();
 
         if let Some(truncate) = self.truncate {
@@ -297,22 +304,22 @@ impl Module<Button> for MusicModule {
         let controls_box = gtk::Box::new(Orientation::Horizontal, 0);
         controls_box.add_class("controls");
 
-        let btn_prev = new_icon_button(&icons.prev, icon_theme, self.icon_size);
+        let btn_prev = IconButton::new(&icons.prev, icon_theme, self.icon_size);
         btn_prev.add_class("btn-prev");
 
-        let btn_play = new_icon_button(&icons.play, icon_theme, self.icon_size);
+        let btn_play = IconButton::new(&icons.play, icon_theme, self.icon_size);
         btn_play.add_class("btn-play");
 
-        let btn_pause = new_icon_button(&icons.pause, icon_theme, self.icon_size);
+        let btn_pause = IconButton::new(&icons.pause, icon_theme, self.icon_size);
         btn_pause.add_class("btn-pause");
 
-        let btn_next = new_icon_button(&icons.next, icon_theme, self.icon_size);
+        let btn_next = IconButton::new(&icons.next, icon_theme, self.icon_size);
         btn_next.add_class("btn-next");
 
-        controls_box.add(&btn_prev);
-        controls_box.add(&btn_play);
-        controls_box.add(&btn_pause);
-        controls_box.add(&btn_next);
+        controls_box.add(&*btn_prev);
+        controls_box.add(&*btn_play);
+        controls_box.add(&*btn_pause);
+        controls_box.add(&*btn_next);
 
         info_box.add(&controls_box);
 

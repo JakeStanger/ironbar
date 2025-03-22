@@ -1,5 +1,5 @@
 use crate::clients::wayland::{self, ToplevelEvent};
-use crate::config::{CommonConfig, TruncateMode};
+use crate::config::{CommonConfig, LayoutConfig, TruncateMode};
 use crate::gtk_helpers::IronbarGtkExt;
 use crate::gtk_helpers::IronbarLabelExt;
 use crate::image::ImageProvider;
@@ -38,6 +38,10 @@ pub struct FocusedModule {
     /// **Default**: `null`
     truncate: Option<TruncateMode>,
 
+    /// See [layout options](module-level-options#layout)
+    #[serde(default, flatten)]
+    layout: LayoutConfig,
+
     /// See [common options](module-level-options#common-options).
     #[serde(flatten)]
     pub common: Option<CommonConfig>,
@@ -50,6 +54,7 @@ impl Default for FocusedModule {
             show_title: crate::config::default_true(),
             icon_size: default_icon_size(),
             truncate: None,
+            layout: LayoutConfig::default(),
             common: Some(CommonConfig::default()),
         }
     }
@@ -132,7 +137,7 @@ impl Module<gtk::Box> for FocusedModule {
         context: WidgetContext<Self::SendMessage, Self::ReceiveMessage>,
         info: &ModuleInfo,
     ) -> Result<ModuleParts<gtk::Box>> {
-        let container = gtk::Box::new(info.bar_position.orientation(), 5);
+        let container = gtk::Box::new(self.layout.orientation(info), 5);
 
         let icon = gtk::Image::new();
         if self.show_icon {
@@ -140,7 +145,11 @@ impl Module<gtk::Box> for FocusedModule {
             container.add(&icon);
         }
 
-        let label = Label::new(None);
+        let label = Label::builder()
+            .angle(self.layout.angle(info))
+            .justify(self.layout.justify.into())
+            .build();
+
         label.add_class("label");
 
         if let Some(truncate) = self.truncate {

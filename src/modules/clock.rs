@@ -8,7 +8,7 @@ use serde::Deserialize;
 use tokio::sync::{broadcast, mpsc};
 use tokio::time::sleep;
 
-use crate::config::{CommonConfig, ModuleJustification, ModuleOrientation};
+use crate::config::{CommonConfig, LayoutConfig};
 use crate::gtk_helpers::IronbarGtkExt;
 use crate::modules::{
     Module, ModuleInfo, ModuleParts, ModulePopup, ModuleUpdateEvent, PopupButton, WidgetContext,
@@ -49,22 +49,9 @@ pub struct ClockModule {
     #[serde(default = "default_locale")]
     locale: String,
 
-    /// The orientation to display the widget contents.
-    /// Setting to vertical will rotate text 90 degrees.
-    ///
-    /// **Valid options**: `horizontal`, `vertical`
-    /// <br>
-    /// **Default**: `horizontal`
-    #[serde(default)]
-    orientation: ModuleOrientation,
-
-    /// The justification (alignment) of the date/time shown on the bar.
-    ///
-    /// **Valid options**: `left`, `right`, `center`, `fill`
-    /// <br>
-    /// **Default**: `left`
-    #[serde(default)]
-    justify: ModuleJustification,
+    /// See [layout options](module-level-options#layout)
+    #[serde(default, flatten)]
+    layout: LayoutConfig,
 
     /// See [common options](module-level-options#common-options).
     #[serde(flatten)]
@@ -77,9 +64,8 @@ impl Default for ClockModule {
             format: default_format(),
             format_popup: default_popup_format(),
             locale: default_locale(),
-            orientation: ModuleOrientation::Horizontal,
+            layout: LayoutConfig::default(),
             common: Some(CommonConfig::default()),
-            justify: ModuleJustification::Left,
         }
     }
 }
@@ -136,10 +122,11 @@ impl Module<Button> for ClockModule {
     ) -> Result<ModuleParts<Button>> {
         let button = Button::new();
         let label = Label::builder()
-            .angle(self.orientation.to_angle())
+            .angle(self.layout.angle(info))
             .use_markup(true)
-            .justify(self.justify.into())
+            .justify(self.layout.justify.into())
             .build();
+
         button.add(&label);
 
         let tx = context.tx.clone();

@@ -1,4 +1,4 @@
-use crate::config::{CommonConfig, TruncateMode};
+use crate::config::{CommonConfig, LayoutConfig, TruncateMode};
 use crate::dynamic_value::dynamic_string;
 use crate::gtk_helpers::IronbarLabelExt;
 use crate::modules::{Module, ModuleInfo, ModuleParts, ModuleUpdateEvent, WidgetContext};
@@ -23,6 +23,10 @@ pub struct LabelModule {
     /// **Default**: `null`
     truncate: Option<TruncateMode>,
 
+    /// See [layout options](module-level-options#layout)
+    #[serde(default, flatten)]
+    layout: LayoutConfig,
+
     /// See [common options](module-level-options#common-options).
     #[serde(flatten)]
     pub common: Option<CommonConfig>,
@@ -33,6 +37,7 @@ impl LabelModule {
         Self {
             label,
             truncate: None,
+            layout: LayoutConfig::default(),
             common: Some(CommonConfig::default()),
         }
     }
@@ -61,9 +66,13 @@ impl Module<Label> for LabelModule {
     fn into_widget(
         self,
         context: WidgetContext<Self::SendMessage, Self::ReceiveMessage>,
-        _info: &ModuleInfo,
+        info: &ModuleInfo,
     ) -> Result<ModuleParts<Label>> {
-        let label = Label::builder().use_markup(true).build();
+        let label = Label::builder()
+            .use_markup(true)
+            .angle(self.layout.angle(info))
+            .justify(self.layout.justify.into())
+            .build();
 
         if let Some(truncate) = self.truncate {
             label.truncate(truncate);

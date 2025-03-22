@@ -6,7 +6,7 @@ use self::item::{AppearanceOptions, Item, ItemButton, Window};
 use self::open_state::OpenState;
 use super::{Module, ModuleInfo, ModuleParts, ModulePopup, ModuleUpdateEvent, WidgetContext};
 use crate::clients::wayland::{self, ToplevelEvent};
-use crate::config::{CommonConfig, EllipsizeMode, TruncateMode};
+use crate::config::{CommonConfig, EllipsizeMode, LayoutConfig, TruncateMode};
 use crate::desktop_file::find_desktop_file;
 use crate::gtk_helpers::{IronbarGtkExt, IronbarLabelExt};
 use crate::modules::launcher::item::ImageTextButton;
@@ -104,6 +104,10 @@ pub struct LauncherModule {
     /// **Default**: `{ mode = "middle" max_length = 25 }`
     #[serde(default = "default_truncate_popup")]
     truncate_popup: TruncateMode,
+
+    /// See [layout options](module-level-options#layout)
+    #[serde(default, flatten)]
+    layout: LayoutConfig,
 
     /// See [common options](module-level-options#common-options).
     #[serde(flatten)]
@@ -451,13 +455,13 @@ impl Module<gtk::Box> for LauncherModule {
     ) -> crate::Result<ModuleParts<gtk::Box>> {
         let icon_theme = info.icon_theme;
 
-        let container = gtk::Box::new(info.bar_position.orientation(), 0);
+        let container = gtk::Box::new(self.layout.orientation(info), 0);
         let page_size = self.page_size;
 
         let pagination = Pagination::new(
             &container,
             self.page_size,
-            info.bar_position.orientation(),
+            self.layout.orientation(info),
             IconContext {
                 icon_back: &self.icons.page_back,
                 icon_fwd: &self.icons.page_forward,
@@ -477,6 +481,9 @@ impl Module<gtk::Box> for LauncherModule {
                 show_icons: self.show_icons,
                 icon_size: self.icon_size,
                 truncate: self.truncate,
+                orientation: self.layout.orientation(info),
+                angle: self.layout.angle(info),
+                justify: self.layout.justify.into(),
             };
 
             let show_names = self.show_names;
@@ -636,7 +643,7 @@ impl Module<gtk::Box> for LauncherModule {
                             .into_iter()
                             .map(|(_, win)| {
                                 // TODO: Currently has a useless image
-                                let button = ImageTextButton::new();
+                                let button = ImageTextButton::new(Orientation::Horizontal);
                                 button.set_height_request(40);
                                 button.label.set_label(&win.name);
                                 button.label.truncate(self.truncate_popup);
@@ -662,7 +669,7 @@ impl Module<gtk::Box> for LauncherModule {
 
                         if let Some(buttons) = buttons.get_mut(&app_id) {
                             // TODO: Currently has a useless image
-                            let button = ImageTextButton::new();
+                            let button = ImageTextButton::new(Orientation::Horizontal);
                             button.set_height_request(40);
                             button.label.set_label(&win.name);
                             button.label.truncate(self.truncate_popup);
