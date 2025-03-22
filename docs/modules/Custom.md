@@ -71,12 +71,13 @@ A clickable button, which can run a command when clicked.
 
 > Type `button`
 
-| Name       | Type                                            | Default | Description                                                                                      |
-|------------|-------------------------------------------------|---------|--------------------------------------------------------------------------------------------------|
-| `label`    | [Dynamic String](dynamic-values#dynamic-string) | `null`  | Widget text label. Pango markup and embedded scripts are supported. Ignored if `widgets` is set. |
-| `widgets`  | `(Module or Widget)[]`                          | `[]`    | List of modules/widgets to add to this button.                                                   |
-| `on_click` | `string [command]`                              | `null`  | Command to execute. More on this [below](#commands).                                             |
-| `orientation` | `'horizontal'` or `'vertical'` (shorthand: `'h'` or `'v'`) | `'horizontal'` | Orientation of the button.                                                                                                      |
+| Name          | Type                                                       | Default        | Description                                                                                      |
+|---------------|------------------------------------------------------------|----------------|--------------------------------------------------------------------------------------------------|
+| `label`       | [Dynamic String](dynamic-values#dynamic-string)            | `null`         | Widget text label. Pango markup and embedded scripts are supported. Ignored if `widgets` is set. |
+| `widgets`     | `(Module or Widget)[]`                                     | `[]`           | List of modules/widgets to add to this button.                                                   |
+| `on_click`    | `string [command]`                                         | `null`         | Command to execute. More on this [below](#commands).                                             |
+| `orientation` | `'horizontal'` or `'vertical'` (shorthand: `'h'` or `'v'`) | `'horizontal'` | Orientation of the label text.                                                                   |
+| `justify`     | `'left'`, `'right'`, `'center'`, or `'fill'`               | `'left'`       | Justification (alignment) of the label text.                                                     |
 
 #### Image
 

@@ -1,6 +1,6 @@
 use super::open_state::OpenState;
 use crate::gtk_helpers::IronbarGtkExt;
-use crate::image::new_icon_button;
+use crate::image::IconButton;
 use crate::modules::workspaces::WorkspaceItemContext;
 use crate::try_send;
 use gtk::Button as GtkButton;
@@ -8,7 +8,7 @@ use gtk::prelude::*;
 
 #[derive(Debug, Clone)]
 pub struct Button {
-    button: GtkButton,
+    button: IconButton,
     workspace_id: i64,
 }
 
@@ -16,7 +16,7 @@ impl Button {
     pub fn new(id: i64, name: &str, open_state: OpenState, context: &WorkspaceItemContext) -> Self {
         let label = context.name_map.get(name).map_or(name, String::as_str);
 
-        let button = new_icon_button(label, &context.icon_theme, context.icon_size);
+        let button = IconButton::new(label, &context.icon_theme, context.icon_size);
         button.set_widget_name(name);
         button.add_class("item");
 

@@ -9,7 +9,7 @@ use crate::{read_lock, try_send};
 use glib::Propagation;
 use gtk::gdk::{BUTTON_MIDDLE, BUTTON_PRIMARY};
 use gtk::prelude::*;
-use gtk::{Button, IconTheme, Image, Label, Orientation};
+use gtk::{Align, Button, IconTheme, Image, Justification, Label, Orientation};
 use indexmap::IndexMap;
 use std::ops::Deref;
 use std::rc::Rc;
@@ -156,6 +156,9 @@ pub struct AppearanceOptions {
     pub show_icons: bool,
     pub icon_size: i32,
     pub truncate: TruncateMode,
+    pub orientation: Orientation,
+    pub angle: f64,
+    pub justify: Justification,
 }
 
 impl ItemButton {
@@ -167,11 +170,13 @@ impl ItemButton {
         tx: &Sender<ModuleUpdateEvent<LauncherUpdate>>,
         controller_tx: &Sender<ItemEvent>,
     ) -> Self {
-        let button = ImageTextButton::new();
+        let button = ImageTextButton::new(appearance.orientation);
 
         if appearance.show_names {
             button.label.set_label(&item.name);
             button.label.truncate(appearance.truncate);
+            button.label.set_angle(appearance.angle);
+            button.label.set_justify(appearance.justify);
         }
 
         if appearance.show_icons {
@@ -329,17 +334,19 @@ pub struct ImageTextButton {
 }
 
 impl ImageTextButton {
-    pub(crate) fn new() -> Self {
+    pub(crate) fn new(orientation: Orientation) -> Self {
         let button = Button::new();
-        let container = gtk::Box::new(Orientation::Horizontal, 0);
+        let container = gtk::Box::new(orientation, 0);
 
         let label = Label::new(None);
         let image = Image::new();
 
-        button.add(&container);
-
         container.add(&image);
         container.add(&label);
+
+        button.add(&container);
+        container.set_halign(Align::Center);
+        container.set_valign(Align::Center);
 
         ImageTextButton {
             button,

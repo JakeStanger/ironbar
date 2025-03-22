@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use color_eyre::Result;
 use color_eyre::eyre::Report;
-use gtk::{Button, prelude::*};
+use gtk::prelude::*;
 use serde::Deserialize;
 use tokio::sync::mpsc;
 use tracing::{debug, trace};
@@ -10,9 +10,9 @@ use tracing::{debug, trace};
 use super::{Module, ModuleInfo, ModuleParts, WidgetContext};
 use crate::clients::compositor::{self, KeyboardLayoutUpdate};
 use crate::clients::libinput::{Event, Key, KeyEvent};
-use crate::config::CommonConfig;
+use crate::config::{CommonConfig, LayoutConfig};
 use crate::gtk_helpers::IronbarGtkExt;
-use crate::image::IconLabel;
+use crate::image::{IconButton, IconLabel};
 use crate::{glib_recv, module_impl, module_update, send_async, spawn, try_send};
 
 #[derive(Debug, Deserialize, Clone)]
@@ -60,6 +60,11 @@ pub struct KeyboardModule {
     /// **Default**: `seat0`
     #[serde(default = "default_seat")]
     seat: String,
+
+    // -- common --
+    /// See [layout options](module-level-options#layout)
+    #[serde(default, flatten)]
+    layout: LayoutConfig,
 
     /// See [common options](module-level-options#common-options).
     #[serde(flatten)]
@@ -249,15 +254,22 @@ impl Module<gtk::Box> for KeyboardModule {
         context: WidgetContext<Self::SendMessage, Self::ReceiveMessage>,
         info: &ModuleInfo,
     ) -> Result<ModuleParts<gtk::Box>> {
-        let container = gtk::Box::new(info.bar_position.orientation(), 0);
+        let container = gtk::Box::new(self.layout.orientation(info), 0);
 
         let caps = IconLabel::new(&self.icons.caps_off, info.icon_theme, self.icon_size);
         let num = IconLabel::new(&self.icons.num_off, info.icon_theme, self.icon_size);
         let scroll = IconLabel::new(&self.icons.scroll_off, info.icon_theme, self.icon_size);
 
-        let layout_button = Button::new();
-        let layout = IconLabel::new("", info.icon_theme, self.icon_size);
-        layout_button.add(&*layout);
+        caps.label().set_angle(self.layout.angle(info));
+        caps.label().set_justify(self.layout.justify.into());
+
+        num.label().set_angle(self.layout.angle(info));
+        num.label().set_justify(self.layout.justify.into());
+
+        scroll.label().set_angle(self.layout.angle(info));
+        scroll.label().set_justify(self.layout.justify.into());
+
+        let layout_button = IconButton::new("", info.icon_theme, self.icon_size);
 
         if self.show_caps {
             caps.add_class("key");
@@ -278,8 +290,8 @@ impl Module<gtk::Box> for KeyboardModule {
         }
 
         if self.show_layout {
-            layout.add_class("layout");
-            container.add(&layout_button);
+            layout_button.add_class("layout");
+            container.add(&*layout_button);
         }
 
         {
@@ -318,7 +330,7 @@ impl Module<gtk::Box> for KeyboardModule {
             }
             KeyboardUpdate::Layout(KeyboardLayoutUpdate(language)) => {
                 let text = icons.layout_map.get(&language).unwrap_or(&language);
-                layout.set_label(Some(text));
+                layout_button.set_label(text);
             }
         };
 

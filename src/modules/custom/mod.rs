@@ -91,6 +91,7 @@ struct CustomWidgetContext<'a> {
     info: &'a ModuleInfo<'a>,
     tx: &'a mpsc::Sender<ExecEvent>,
     bar_orientation: Orientation,
+    is_popup: bool,
     icon_theme: &'a IconTheme,
     popup_buttons: Rc<RefCell<Vec<Button>>>,
     module_factory: AnyModuleFactory,
@@ -235,6 +236,7 @@ impl Module<gtk::Box> for CustomModule {
             info,
             tx: &context.controller_tx,
             bar_orientation: orientation,
+            is_popup: false,
             icon_theme: info.icon_theme,
             popup_buttons: popup_buttons.clone(),
             module_factory: BarModuleFactory::new(context.ironbar.clone(), context.popup.clone())
@@ -287,7 +289,8 @@ impl Module<gtk::Box> for CustomModule {
             let custom_context = CustomWidgetContext {
                 info,
                 tx: &tx,
-                bar_orientation: info.bar_position.orientation(),
+                bar_orientation: Orientation::Horizontal,
+                is_popup: true,
                 icon_theme: info.icon_theme,
                 popup_buttons: Rc::new(RefCell::new(vec![])),
                 module_factory: PopupModuleFactory::new(

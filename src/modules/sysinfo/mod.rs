@@ -3,7 +3,7 @@ mod renderer;
 mod token;
 
 use crate::clients::sysinfo::TokenType;
-use crate::config::{CommonConfig, ModuleOrientation};
+use crate::config::{CommonConfig, LayoutConfig, ModuleOrientation};
 use crate::gtk_helpers::{IronbarGtkExt, IronbarLabelExt};
 use crate::modules::sysinfo::token::Part;
 use crate::modules::{Module, ModuleInfo, ModuleParts, ModuleUpdateEvent, WidgetContext};
@@ -34,20 +34,17 @@ pub struct SysInfoModule {
     #[serde(default = "Interval::default")]
     interval: Interval,
 
-    /// The orientation of text for the labels.
-    ///
-    /// **Valid options**: `horizontal`, `vertical`, `h`, `v`
-    /// <br>
-    /// **Default** : `horizontal`
-    #[serde(default)]
-    orientation: ModuleOrientation,
-
     /// The orientation by which the labels are laid out.
     ///
     /// **Valid options**: `horizontal`, `vertical`, `h`, `v`
     /// <br>
     /// **Default** : `horizontal`
     direction: Option<ModuleOrientation>,
+
+    // -- common --
+    /// See [layout options](module-level-options#layout)
+    #[serde(default, flatten)]
+    layout: LayoutConfig,
 
     /// See [common options](module-level-options#common-options).
     #[serde(flatten)]
@@ -281,22 +278,25 @@ impl Module<gtk::Box> for SysInfoModule {
     fn into_widget(
         self,
         context: WidgetContext<Self::SendMessage, Self::ReceiveMessage>,
-        _info: &ModuleInfo,
+        info: &ModuleInfo,
     ) -> Result<ModuleParts<gtk::Box>> {
         let layout = match self.direction {
-            Some(orientation) => orientation,
-            None => self.orientation,
+            Some(orientation) => orientation.into(),
+            None => self.layout.orientation(info),
         };
 
-        let container = gtk::Box::new(layout.into(), 10);
+        let container = gtk::Box::new(layout, 10);
 
         let mut labels = Vec::new();
 
         for _ in &self.format {
-            let label = Label::builder().use_markup(true).build();
+            let label = Label::builder()
+                .use_markup(true)
+                .angle(self.layout.angle(info))
+                .justify(self.layout.justify.into())
+                .build();
 
             label.add_class("item");
-            label.set_angle(self.orientation.to_angle());
 
             container.add(&label);
             labels.push(label);

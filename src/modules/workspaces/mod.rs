@@ -4,7 +4,7 @@ mod open_state;
 
 use self::button::Button;
 use crate::clients::compositor::{Workspace, WorkspaceClient, WorkspaceUpdate};
-use crate::config::CommonConfig;
+use crate::config::{CommonConfig, LayoutConfig};
 use crate::modules::workspaces::button_map::{ButtonMap, Identifier};
 use crate::modules::workspaces::open_state::OpenState;
 use crate::modules::{Module, ModuleInfo, ModuleParts, ModuleUpdateEvent, WidgetContext};
@@ -127,6 +127,11 @@ pub struct WorkspacesModule {
     #[serde(default = "default_icon_size")]
     icon_size: i32,
 
+    // -- Common --
+    /// See [layout options](module-level-options#layout)
+    #[serde(default, flatten)]
+    layout: LayoutConfig,
+
     /// See [common options](module-level-options#common-options).
     #[serde(flatten)]
     pub common: Option<CommonConfig>,
@@ -228,7 +233,7 @@ impl Module<gtk::Box> for WorkspacesModule {
         context: WidgetContext<Self::SendMessage, Self::ReceiveMessage>,
         info: &ModuleInfo,
     ) -> Result<ModuleParts<gtk::Box>> {
-        let container = gtk::Box::new(info.bar_position.orientation(), 0);
+        let container = gtk::Box::new(self.layout.orientation(info), 0);
 
         let mut button_map = ButtonMap::new();
 

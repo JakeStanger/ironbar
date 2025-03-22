@@ -5,30 +5,54 @@ use gtk::{Button, IconTheme, Image, Label, Orientation};
 use std::ops::Deref;
 
 #[cfg(any(feature = "music", feature = "workspaces", feature = "clipboard"))]
-pub fn new_icon_button(input: &str, icon_theme: &IconTheme, size: i32) -> Button {
-    let button = Button::new();
+#[derive(Debug, Clone)]
+pub struct IconButton {
+    button: Button,
+    label: Label,
+}
 
-    if ImageProvider::is_definitely_image_input(input) {
+#[cfg(any(feature = "music", feature = "workspaces", feature = "clipboard"))]
+impl IconButton {
+    pub fn new(input: &str, icon_theme: &IconTheme, size: i32) -> Self {
+        let button = Button::new();
         let image = Image::new();
-        image.add_class("image");
-        image.add_class("icon");
+        let label = Label::new(Some(input));
 
-        match ImageProvider::parse(input, icon_theme, false, size)
-            .map(|provider| provider.load_into_image(&image))
-        {
-            Some(_) => {
-                button.set_image(Some(&image));
-                button.set_always_show_image(true);
+        if ImageProvider::is_definitely_image_input(input) {
+            image.add_class("image");
+            image.add_class("icon");
+
+            match ImageProvider::parse(input, icon_theme, false, size)
+                .map(|provider| provider.load_into_image(&image))
+            {
+                Some(_) => {
+                    button.set_image(Some(&image));
+                    button.set_always_show_image(true);
+                }
+                None => {
+                    button.set_child(Some(&label));
+                    label.show();
+                }
             }
-            None => {
-                button.set_label(input);
-            }
+        } else {
+            button.set_child(Some(&label));
+            label.show();
         }
-    } else {
-        button.set_label(input);
+
+        Self { button, label }
     }
 
-    button
+    pub fn label(&self) -> &Label {
+        &self.label
+    }
+}
+
+impl Deref for IconButton {
+    type Target = Button;
+
+    fn deref(&self) -> &Self::Target {
+        &self.button
+    }
 }
 
 #[cfg(any(feature = "music", feature = "keyboard"))]
@@ -97,6 +121,10 @@ impl IconLabel {
             label.hide();
             image.hide();
         }
+    }
+
+    pub fn label(&self) -> &Label {
+        &self.label
     }
 }
 

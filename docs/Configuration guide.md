@@ -351,7 +351,14 @@ For information on the `Script` type, and embedding scripts in strings, see [her
 | Name      | Type     | Default | Description                                                                       |
 |-----------|----------|---------|-----------------------------------------------------------------------------------|
 | `tooltip` | `string` | `null`  | Shows this text on hover. Supports embedding scripts between `{{double braces}}`. |
-| `name`    | `string` | `null`  | Sets the unique widget name, allowing you to style it using `#name`.              |
-| `class`   | `string` | `null`  | Sets one or more CSS classes, allowing you to style it using `.class`.            |
+| `name`    | `string` | `null`  | The unique widget name, allowing you to style it using `#name`.              |
+| `class`   | `string` | `null`  | One or more CSS classes, allowing you to style it using `.class`.            |
 
 For more information on styling, please see the [styling guide](styling-guide).
+
+#### Formatting
+
+| Name          | Type                                                   | Default                    | Description                                                                                                                                     |
+|---------------|--------------------------------------------------------|----------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------|
+| `orientation` | `horizontal` or `vertical` (shorthand: `'h'` or `'v'`) | `horizontal` or `vertical` | The direction in which the widget and its text are laid out. Some modules additionally provide a `direction` option to provide further control. |
+| `justify`     | `left`, `right`, `center`, `fill`                      | `left`                     | The justification (alignment) of the widget text shown on the bar.                                                                              |

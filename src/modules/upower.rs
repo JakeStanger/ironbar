@@ -8,7 +8,7 @@ use zbus;
 use zbus::fdo::PropertiesProxy;
 
 use crate::clients::upower::BatteryState;
-use crate::config::CommonConfig;
+use crate::config::{CommonConfig, LayoutConfig};
 use crate::gtk_helpers::{IronbarGtkExt, IronbarLabelExt};
 use crate::image::ImageProvider;
 use crate::modules::PopupButton;
@@ -36,6 +36,11 @@ pub struct UpowerModule {
     /// **Default**: `24`
     #[serde(default = "default_icon_size")]
     icon_size: i32,
+
+    // -- Common --
+    /// See [layout options](module-level-options#layout)
+    #[serde(default, flatten)]
+    layout: LayoutConfig,
 
     /// See [common options](module-level-options#common-options).
     #[serde(flatten)]
@@ -172,10 +177,13 @@ impl Module<Button> for UpowerModule {
         let label = Label::builder()
             .label(&self.format)
             .use_markup(true)
+            .angle(self.layout.angle(info))
+            .justify(self.layout.justify.into())
             .build();
+
         label.add_class("label");
 
-        let container = gtk::Box::new(info.bar_position.orientation(), 5);
+        let container = gtk::Box::new(self.layout.orientation(info), 5);
         container.add_class("contents");
 
         let button = Button::new();

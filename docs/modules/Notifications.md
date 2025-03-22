@@ -21,6 +21,8 @@ Clicking the widget opens the SwayNC panel.
 | `icons.open_some`   | `string`  | `󱥁`    | Icon to show when the panel is open, with notifications.                                               |
 | `icons.open_dnd`    | `string`  | `󱅮`    | Icon to show when the panel is open, with DnD enabled. Takes higher priority than count-based icons.   |
 
+> [!NOTE]
+> This module does not support module-level [layout options](module-level-options#layout).
 
 <details>
 <summary>JSON</summary>

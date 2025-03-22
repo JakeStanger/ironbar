@@ -4,7 +4,7 @@ use serde::Deserialize;
 
 use super::{CustomWidget, CustomWidgetContext};
 use crate::build;
-use crate::config::{ModuleJustification, ModuleOrientation, TruncateMode};
+use crate::config::{LayoutConfig, TruncateMode};
 use crate::dynamic_value::dynamic_string;
 use crate::gtk_helpers::IronbarLabelExt;
 
@@ -28,22 +28,9 @@ pub struct LabelWidget {
     /// **Required**
     label: String,
 
-    /// Orientation of the label.
-    /// Setting to vertical will rotate text 90 degrees.
-    ///
-    /// **Valid options**: `horizontal`, `vertical`, `h`, `v`
-    /// <br />
-    /// **Default**: `horizontal`
-    #[serde(default)]
-    orientation: ModuleOrientation,
-
-    /// The justification (alignment) of the label text.
-    ///
-    /// **Valid options**: `left`, `right`, `center`, `fill`
-    /// <br>
-    /// **Default**: `left`
-    #[serde(default)]
-    justify: ModuleJustification,
+    /// See [layout options](module-level-options#layout)
+    #[serde(default, flatten)]
+    layout: LayoutConfig,
 
     /// See [truncate options](module-level-options#truncate-mode).
     ///
@@ -54,11 +41,14 @@ pub struct LabelWidget {
 impl CustomWidget for LabelWidget {
     type Widget = Label;
 
-    fn into_widget(self, _context: CustomWidgetContext) -> Self::Widget {
+    fn into_widget(self, context: CustomWidgetContext) -> Self::Widget {
         let label = build!(self, Self::Widget);
 
-        label.set_angle(self.orientation.to_angle());
-        label.set_justify(self.justify.into());
+        if !context.is_popup {
+            label.set_angle(self.layout.angle(context.info));
+        }
+
+        label.set_justify(self.layout.justify.into());
         label.set_use_markup(true);
 
         if let Some(truncate) = self.truncate {

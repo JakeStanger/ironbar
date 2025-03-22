@@ -1,4 +1,4 @@
-use crate::config::{CommonConfig, TruncateMode};
+use crate::config::{CommonConfig, LayoutConfig, TruncateMode};
 use dirs::{audio_dir, home_dir};
 use serde::Deserialize;
 use std::path::PathBuf;
@@ -146,6 +146,10 @@ pub struct MusicModule {
     ///
     /// **Default**: `null`
     pub(crate) truncate: Option<TruncateMode>,
+
+    /// See [layout options](module-level-options#layout)
+    #[serde(default, flatten)]
+    pub(crate) layout: LayoutConfig,
 
     /// See [common options](module-level-options#common-options).
     #[serde(flatten)]

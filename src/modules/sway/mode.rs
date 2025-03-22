@@ -1,4 +1,4 @@
-use crate::config::{CommonConfig, TruncateMode};
+use crate::config::{CommonConfig, LayoutConfig, TruncateMode};
 use crate::gtk_helpers::IronbarLabelExt;
 use crate::modules::{Module, ModuleInfo, ModuleParts, ModuleUpdateEvent, WidgetContext};
 use crate::{await_sync, glib_recv, module_impl, try_send};
@@ -18,6 +18,10 @@ pub struct SwayModeModule {
     ///
     /// **Default**: `null`
     pub truncate: Option<TruncateMode>,
+
+    /// See [layout options](module-level-options#layout)
+    #[serde(default, flatten)]
+    layout: LayoutConfig,
 
     /// See [common options](module-level-options#common-options).
     #[serde(flatten)]
@@ -57,10 +61,13 @@ impl Module<Label> for SwayModeModule {
     fn into_widget(
         self,
         context: WidgetContext<Self::SendMessage, Self::ReceiveMessage>,
-        _info: &ModuleInfo,
+        info: &ModuleInfo,
     ) -> Result<ModuleParts<Label>> {
-        let label = Label::new(None);
-        label.set_use_markup(true);
+        let label = Label::builder()
+            .use_markup(true)
+            .angle(self.layout.angle(info))
+            .justify(self.layout.justify.into())
+            .build();
 
         {
             let label = label.clone();

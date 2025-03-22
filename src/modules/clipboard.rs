@@ -1,8 +1,9 @@
 use crate::clients::clipboard::{self, ClipboardEvent};
 use crate::clients::wayland::{ClipboardItem, ClipboardValue};
-use crate::config::{CommonConfig, TruncateMode};
+use crate::config::{CommonConfig, LayoutConfig, TruncateMode};
+use crate::gtk_helpers::IronbarGtkExt;
 use crate::gtk_helpers::IronbarLabelExt;
-use crate::image::new_icon_button;
+use crate::image::IconButton;
 use crate::modules::{
     Module, ModuleInfo, ModuleParts, ModulePopup, ModuleUpdateEvent, PopupButton, WidgetContext,
 };
@@ -14,6 +15,7 @@ use gtk::prelude::*;
 use gtk::{Button, EventBox, Image, Label, Orientation, RadioButton, Widget};
 use serde::Deserialize;
 use std::collections::HashMap;
+use std::ops::Deref;
 use tokio::sync::{broadcast, mpsc};
 use tracing::{debug, error};
 
@@ -46,6 +48,10 @@ pub struct ClipboardModule {
     ///
     /// **Default**: `null`
     truncate: Option<TruncateMode>,
+
+    /// See [layout options](module-level-options#layout)
+    #[serde(default, flatten)]
+    layout: LayoutConfig,
 
     /// See [common options](module-level-options#common-options).
     #[serde(flatten)]
@@ -142,8 +148,11 @@ impl Module<Button> for ClipboardModule {
         context: WidgetContext<Self::SendMessage, Self::ReceiveMessage>,
         info: &ModuleInfo,
     ) -> color_eyre::Result<ModuleParts<Button>> {
-        let button = new_icon_button(&self.icon, info.icon_theme, self.icon_size);
-        button.style_context().add_class("btn");
+        let button = IconButton::new(&self.icon, info.icon_theme, self.icon_size);
+        button.label().set_angle(self.layout.angle(info));
+        button.label().set_justify(self.layout.justify.into());
+
+        button.add_class("btn");
 
         let tx = context.tx.clone();
         button.connect_clicked(move |button| {
@@ -155,7 +164,7 @@ impl Module<Button> for ClipboardModule {
             .into_popup(context.controller_tx.clone(), rx, context, info)
             .into_popup_parts(vec![&button]);
 
-        Ok(ModuleParts::new(button, popup))
+        Ok(ModuleParts::new(button.deref().clone(), popup))
     }
 
     fn into_popup(
