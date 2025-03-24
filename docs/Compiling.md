@@ -85,7 +85,7 @@ cargo build --release --no-default-features \
 > ⚠ Make sure you enable at least one `config` feature otherwise you will not be able to start the bar!
 
 | Feature             | Description                                                                       |
-| ------------------- | --------------------------------------------------------------------------------- |
+|---------------------|-----------------------------------------------------------------------------------|
 | **Core**            |                                                                                   |
 | http                | Enables HTTP features. Currently this includes the ability to load remote images. |
 | ipc                 | Enables the IPC server.                                                           |
@@ -100,11 +100,13 @@ cargo build --release --no-default-features \
 | cairo               | Enables the `cairo` module                                                        |
 | clipboard           | Enables the `clipboard` module.                                                   |
 | clock               | Enables the `clock` module.                                                       |
+| custom              | Enables the `custom` module.                                                      |
 | focused             | Enables the `focused` module.                                                     |
 | keyboard            | Enables the `keyboard` module without keyboard layout support.                    |
 | keyboard+all        | Enables the `keyboard` module with keyboard layout support for all compositors.   |
 | keyboard+sway       | Enables the `keyboard` module with keyboard layout support for Sway.              |
 | keyboard+hyprland   | Enables the `keyboard` module with keyboard layout support for Hyprland.          |
+| label               | Enables the `label` module.                                                       |
 | launcher            | Enables the `launcher` module.                                                    |
 | music+all           | Enables the `music` module with support for all player types.                     |
 | music+mpris         | Enables the `music` module with MPRIS support.                                    |
@@ -112,6 +114,7 @@ cargo build --release --no-default-features \
 | network_manager     | Enables the `network_manager` module.                                             |
 | notifications       | Enables the `notiications` module.                                                |
 | sys_info            | Enables the `sys_info` module.                                                    |
+| script              | Enables the `script` module.                                                      |
 | tray                | Enables the `tray` module.                                                        |
 | upower              | Enables the `upower` module.                                                      |
 | volume              | Enables the `volume` module.                                                      |

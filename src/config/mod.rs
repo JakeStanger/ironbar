@@ -9,11 +9,13 @@ use crate::modules::cairo::CairoModule;
 use crate::modules::clipboard::ClipboardModule;
 #[cfg(feature = "clock")]
 use crate::modules::clock::ClockModule;
+#[cfg(feature = "custom")]
 use crate::modules::custom::CustomModule;
 #[cfg(feature = "focused")]
 use crate::modules::focused::FocusedModule;
 #[cfg(feature = "keyboard")]
 use crate::modules::keyboard::KeyboardModule;
+#[cfg(feature = "label")]
 use crate::modules::label::LabelModule;
 #[cfg(feature = "launcher")]
 use crate::modules::launcher::LauncherModule;
@@ -23,6 +25,7 @@ use crate::modules::music::MusicModule;
 use crate::modules::networkmanager::NetworkManagerModule;
 #[cfg(feature = "notifications")]
 use crate::modules::notifications::NotificationsModule;
+#[cfg(feature = "script")]
 use crate::modules::script::ScriptModule;
 #[cfg(feature = "sway")]
 use crate::modules::sway::mode::SwayModeModule;
@@ -60,11 +63,13 @@ pub enum ModuleConfig {
     Clipboard(Box<ClipboardModule>),
     #[cfg(feature = "clock")]
     Clock(Box<ClockModule>),
+    #[cfg(feature = "custom")]
     Custom(Box<CustomModule>),
     #[cfg(feature = "focused")]
     Focused(Box<FocusedModule>),
     #[cfg(feature = "keyboard")]
     Keyboard(Box<KeyboardModule>),
+    #[cfg(feature = "label")]
     Label(Box<LabelModule>),
     #[cfg(feature = "launcher")]
     Launcher(Box<LauncherModule>),
@@ -74,6 +79,7 @@ pub enum ModuleConfig {
     NetworkManager(Box<NetworkManagerModule>),
     #[cfg(feature = "notifications")]
     Notifications(Box<NotificationsModule>),
+    #[cfg(feature = "script")]
     Script(Box<ScriptModule>),
     #[cfg(feature = "sys_info")]
     SysInfo(Box<SysInfoModule>),
@@ -109,11 +115,13 @@ impl ModuleConfig {
             Self::Clipboard(module) => create!(module),
             #[cfg(feature = "clock")]
             Self::Clock(module) => create!(module),
+            #[cfg(feature = "custom")]
             Self::Custom(module) => create!(module),
             #[cfg(feature = "focused")]
             Self::Focused(module) => create!(module),
             #[cfg(feature = "keyboard")]
             Self::Keyboard(module) => create!(module),
+            #[cfg(feature = "label")]
             Self::Label(module) => create!(module),
             #[cfg(feature = "launcher")]
             Self::Launcher(module) => create!(module),
@@ -123,6 +131,7 @@ impl ModuleConfig {
             Self::NetworkManager(module) => create!(module),
             #[cfg(feature = "notifications")]
             Self::Notifications(module) => create!(module),
+            #[cfg(feature = "script")]
             Self::Script(module) => create!(module),
             #[cfg(feature = "sys_info")]
             Self::SysInfo(module) => create!(module),
@@ -340,9 +349,12 @@ impl Default for BarConfig {
             start_hidden: None,
             autohide: None,
             icon_theme: None,
+            #[cfg(feature = "label")]
             start: Some(vec![ModuleConfig::Label(
                 LabelModule::new("ℹ️ Using default config".to_string()).into(),
             )]),
+            #[cfg(not(feature = "label"))]
+            start: None,
             center,
             end,
             anchor_to_edges: default_true(),

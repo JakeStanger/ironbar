@@ -29,11 +29,15 @@ pub mod clipboard;
 /// with second-level precision and a calendar.
 #[cfg(feature = "clock")]
 pub mod clock;
+
+#[cfg(feature = "custom")]
 pub mod custom;
 #[cfg(feature = "focused")]
 pub mod focused;
 #[cfg(feature = "keyboard")]
 pub mod keyboard;
+
+#[cfg(feature = "label")]
 pub mod label;
 #[cfg(feature = "launcher")]
 pub mod launcher;
@@ -43,6 +47,8 @@ pub mod music;
 pub mod networkmanager;
 #[cfg(feature = "notifications")]
 pub mod notifications;
+
+#[cfg(feature = "script")]
 pub mod script;
 #[cfg(feature = "sway")]
 pub mod sway;
