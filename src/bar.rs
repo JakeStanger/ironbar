@@ -3,6 +3,7 @@ use crate::modules::{BarModuleFactory, ModuleInfo, ModuleLocation, ModuleRef};
 use crate::popup::Popup;
 use crate::{Ironbar, rc_mut};
 use glib::Propagation;
+use gtk::ffi::GtkCenterLayout;
 use gtk::gdk::{Monitor, NotifyType};
 use gtk::prelude::*;
 use gtk::{

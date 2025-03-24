@@ -257,7 +257,7 @@ impl Module<Button> for ClipboardModule {
                                     .expect("Failed to get id from button name");
 
                                 debug!("Copying item with id: {id}");
-                                tx.send_spawn(UIEvent::Copy(id));
+                                tx.send_spawn( UIEvent::Copy(id));
                             });
 
                             button.add_controller(event_handler);
