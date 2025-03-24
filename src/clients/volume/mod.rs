@@ -325,11 +325,8 @@ impl From<VolumeLevels> for ChannelVolumes {
 
 impl From<ChannelVolumes> for VolumeLevels {
     fn from(value: ChannelVolumes) -> Self {
-        let levels: &[u32] = unsafe {
-            use libpulse_binding::volume::Volume;
-
-            std::mem::transmute::<&[Volume], &[u32]>(value.get())
-        };
+        let levels: &[u32] =
+            unsafe { &*(std::ptr::from_ref::<[Volume]>(value.get()) as *const [u32]) };
         Self(Vec::from(&levels[..value.len() as usize]))
     }
 }

@@ -32,11 +32,10 @@
             cargo
             clippy
             rustfmt
-            gtk3
-            gtk-layer-shell
+            gtk4
+            gtk4-layer-shell
             gcc
             openssl
-            libdbusmenu-gtk3
             libpulseaudio
             libinput
             libevdev
