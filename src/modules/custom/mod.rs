@@ -203,10 +203,7 @@ impl Module<gtk::Box> for CustomModule {
                     debug!("executing command: '{}'", script.cmd);
 
                     let args = event.args.unwrap_or_default();
-
-                    if let Err(err) = script.get_output(Some(&args)).await {
-                        error!("{err:?}");
-                    }
+                    script.run_as_oneshot(Some(&args));
                 } else if event.cmd == "popup:toggle" {
                     send_async!(tx, ModuleUpdateEvent::TogglePopup(event.id));
                 } else if event.cmd == "popup:open" {
