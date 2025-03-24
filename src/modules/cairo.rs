@@ -2,10 +2,10 @@ use crate::channels::{AsyncSenderExt, BroadcastReceiverExt};
 use crate::config::CommonConfig;
 use crate::modules::{Module, ModuleInfo, ModuleParts, WidgetContext};
 use crate::{module_impl, spawn};
-use cairo::{Format, ImageSurface};
 use glib::Propagation;
 use glib::translate::ToGlibPtr;
 use gtk::DrawingArea;
+use gtk::cairo::{Format, ImageSurface};
 use gtk::prelude::*;
 use mlua::{Error, Function, LightUserData};
 use notify::event::ModifyKind;
@@ -152,10 +152,10 @@ impl Module<gtk::Box> for CairoModule {
                 .eval()
                 .expect("to be valid");
 
-            area.connect_draw(move |_, cr| {
+            area.set_draw_func(move |_, cr, _w, _h| {
                 if let Err(err) = cr.set_source_surface(&surface, 0.0, 0.0) {
                     error!("{err}");
-                    return Propagation::Stop;
+                    return;
                 }
 
                 let ptr = cr.to_glib_full();
@@ -170,20 +170,16 @@ impl Module<gtk::Box> for CairoModule {
                     } else {
                         error!("{err}");
                     }
-
-                    return Propagation::Stop;
                 }
 
                 unsafe {
-                    cairo::ffi::cairo_destroy(ptr);
+                    gtk::cairo::ffi::cairo_destroy(ptr);
                 }
-
-                Propagation::Proceed
             });
         }
 
         area.set_size_request(self.width as i32, self.height as i32);
-        container.add(&area);
+        container.append(&area);
 
         glib::spawn_future_local(async move {
             loop {

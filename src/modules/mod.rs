@@ -1,12 +1,11 @@
-use std::fmt::Debug;
+use std::fmt::{Debug, Formatter};
 use std::rc::Rc;
 use std::sync::Arc;
 
 use color_eyre::Result;
-use glib::IsA;
-use gtk::gdk::{EventMask, Monitor};
+use gtk::gdk::Monitor;
 use gtk::prelude::*;
-use gtk::{Application, Button, EventBox, Orientation, Revealer, Widget};
+use gtk::{Application, Button, Orientation, Revealer, Widget};
 use tokio::sync::{broadcast, mpsc};
 use tracing::debug;
 
@@ -15,7 +14,7 @@ use crate::channels::{MpscReceiverExt, SyncSenderExt};
 use crate::clients::{ClientResult, ProvidesClient, ProvidesFallibleClient};
 use crate::config::{BarPosition, CommonConfig, TransitionType};
 use crate::gtk_helpers::{IronbarGtkExt, WidgetGeometry};
-use crate::popup::Popup;
+use crate::popup::{ButtonFinder, Popup};
 
 #[cfg(feature = "battery")]
 pub mod battery;
@@ -90,8 +89,6 @@ pub enum ModuleUpdateEvent<T: Clone> {
     /// Force sets the popup open.
     /// Takes the button ID.
     OpenPopup(usize),
-    #[cfg(feature = "launcher")]
-    OpenPopupAt(WidgetGeometry),
     /// Force sets the popup closed.
     ClosePopup,
 }
@@ -172,31 +169,44 @@ impl<W: IsA<Widget>> ModuleParts<W> {
         if let Some(ref class) = common.class {
             // gtk counts classes with spaces as the same class
             for part in class.split(' ') {
-                self.widget.add_class(part);
+                self.widget.add_css_class(part);
             }
 
             if let Some(ref popup) = self.popup {
                 for part in class.split(' ') {
-                    popup.container.add_class(&format!("popup-{part}"));
+                    popup.container.add_css_class(&format!("popup-{part}"));
                 }
             }
         }
     }
 }
 
-#[derive(Debug, Clone)]
+// #[derive(Clone)]
 pub struct ModulePopupParts {
     /// The popup container, with all its contents
     pub container: gtk::Box,
     /// An array of buttons which can be used for opening the popup.
     /// For most modules, this will only be a single button.
-    /// For some advanced modules, such as `Launcher`, this is all item buttons.
     pub buttons: Vec<Button>,
+
+    pub button_finder: Option<Box<ButtonFinder>>,
+}
+
+impl Debug for ModulePopupParts {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("ModulePopupParts")
+            .field("container", &self.container)
+            .field("buttons", &self.buttons)
+            .field("button_finder", &self.button_finder.is_some())
+            .finish()
+    }
 }
 
 pub trait ModulePopup {
     fn into_popup_parts(self, buttons: Vec<&Button>) -> Option<ModulePopupParts>;
     fn into_popup_parts_owned(self, buttons: Vec<Button>) -> Option<ModulePopupParts>;
+
+    fn into_popup_parts_with_finder(self, finder: Box<ButtonFinder>) -> Option<ModulePopupParts>;
 }
 
 impl ModulePopup for Option<gtk::Box> {
@@ -205,7 +215,19 @@ impl ModulePopup for Option<gtk::Box> {
     }
 
     fn into_popup_parts_owned(self, buttons: Vec<Button>) -> Option<ModulePopupParts> {
-        self.map(|container| ModulePopupParts { container, buttons })
+        self.map(|container| ModulePopupParts {
+            container,
+            buttons,
+            button_finder: None,
+        })
+    }
+
+    fn into_popup_parts_with_finder(self, finder: Box<ButtonFinder>) -> Option<ModulePopupParts> {
+        self.map(|container| ModulePopupParts {
+            container,
+            buttons: vec![],
+            button_finder: Some(finder),
+        })
     }
 }
 
@@ -327,14 +349,16 @@ pub trait ModuleFactory {
             .unwrap_or_else(|| module_name.to_string());
 
         let module_parts = module.into_widget(context, info)?;
-        module_parts.widget.add_class("widget");
-        module_parts.widget.add_class(module_name);
+        module_parts.widget.add_css_class("widget");
+        module_parts.widget.add_css_class(module_name);
 
-        if let Some(popup_content) = module_parts.popup.clone() {
+        module_parts.setup_identifiers(&common);
+
+        let popup_container = module_parts.popup.as_ref().map(|p| p.container.clone());
+        if let Some(popup_content) = module_parts.popup {
             popup_content
                 .container
-                .style_context()
-                .add_class(&format!("popup-{module_name}"));
+                .add_css_class(&format!("popup-{module_name}"));
 
             self.popup()
                 .register_content(id, instance_name.clone(), popup_content);
@@ -342,19 +366,17 @@ pub trait ModuleFactory {
 
         self.setup_receiver(tx, ui_rx, module_name, id, common.disable_popup);
 
-        module_parts.setup_identifiers(&common);
-
-        let ev_container = wrap_widget(
+        let revealer = add_events(
             &module_parts.widget,
             common,
             info.bar_position.orientation(),
         );
-        container.add(&ev_container);
+        container.append(&revealer);
 
         Ok(ModuleRef {
             name: instance_name,
             widget: module_parts.widget.upcast(),
-            popup: module_parts.popup.map(|p| p.container),
+            popup: popup_container,
         })
     }
 
@@ -417,13 +439,6 @@ impl ModuleFactory for BarModuleFactory {
                 );
                 popup.hide();
                 popup.show(id, button_id);
-            }
-            #[cfg(feature = "launcher")]
-            ModuleUpdateEvent::OpenPopupAt(geometry) if !disable_popup => {
-                debug!("Opening popup for {} [#{}]", name, id);
-
-                popup.hide();
-                popup.show_at(id, geometry);
             }
             ModuleUpdateEvent::ClosePopup if !disable_popup => {
                 debug!("Closing popup for {} [#{}]", name, id);
@@ -495,13 +510,6 @@ impl ModuleFactory for PopupModuleFactory {
                 popup.hide();
                 popup.show(id, button_id);
             }
-            #[cfg(feature = "launcher")]
-            ModuleUpdateEvent::OpenPopupAt(geometry) if !disable_popup => {
-                debug!("Opening popup for {} [#{}]", name, id);
-
-                popup.hide();
-                popup.show_at(id, geometry);
-            }
             ModuleUpdateEvent::ClosePopup if !disable_popup => {
                 debug!("Closing popup for {} [#{}]", name, id);
                 popup.hide();
@@ -569,13 +577,13 @@ impl From<PopupModuleFactory> for AnyModuleFactory {
     }
 }
 
-/// Takes a widget and adds it into a new `gtk::EventBox`.
-/// The event box container is returned.
-pub fn wrap_widget<W: IsA<Widget>>(
+/// Takes a widget and adds event listeners and the revealer.
+/// Returns the revealer.
+pub fn add_events<W: IsA<Widget>>(
     widget: &W,
     common: CommonConfig,
     orientation: Orientation,
-) -> EventBox {
+) -> Revealer {
     let transition_type = common
         .transition_type
         .as_ref()
@@ -587,16 +595,9 @@ pub fn wrap_widget<W: IsA<Widget>>(
         .transition_duration(common.transition_duration.unwrap_or(250))
         .build();
 
-    revealer.add(widget);
+    revealer.set_child(Some(widget));
     revealer.set_reveal_child(true);
 
-    let container = EventBox::new();
-    container.add_class("widget-container");
-
-    container.add_events(EventMask::SCROLL_MASK | EventMask::SMOOTH_SCROLL_MASK);
-    container.add(&revealer);
-
-    common.install_events(widget, &container, &revealer);
-
-    container
+    common.install_events(widget, &revealer);
+    revealer
 }

@@ -30,7 +30,7 @@ pub fn handle_command(
             }
 
             for module in modules {
-                module.add_class(&name);
+                module.add_css_class(&name);
             }
 
             Response::Ok
@@ -44,7 +44,7 @@ pub fn handle_command(
             }
 
             for module in modules {
-                module.remove_class(&name);
+                module.remove_css_class(&name);
             }
 
             Response::Ok
@@ -58,10 +58,10 @@ pub fn handle_command(
             }
 
             for module in modules {
-                if module.widget.style_context().has_class(&name) {
-                    module.remove_class(&name);
+                if module.widget.has_css_class(&name) {
+                    module.remove_css_class(&name);
                 } else {
-                    module.add_class(&name);
+                    module.add_css_class(&name);
                 }
             }
 
@@ -78,19 +78,19 @@ fn get_modules_by_name<'a>(bars: &'a [Bar], name: &str) -> Vec<&'a ModuleRef> {
 }
 
 impl ModuleRef {
-    fn add_class(&self, name: &str) {
-        self.widget.add_class(name);
+    fn add_css_class(&self, name: &str) {
+        self.widget.add_css_class(name);
 
         if let Some(ref popup) = self.popup {
-            popup.add_class(name);
+            popup.add_css_class(name);
         }
     }
 
-    fn remove_class(&self, name: &str) {
-        self.widget.remove_class(name);
+    fn remove_css_class(&self, name: &str) {
+        self.widget.remove_css_class(name);
 
         if let Some(ref popup) = self.popup {
-            popup.remove_class(name);
+            popup.remove_css_class(name);
         }
     }
 }

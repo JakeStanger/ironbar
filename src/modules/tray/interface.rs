@@ -23,7 +23,7 @@ impl TrayMenu {
         let event_box = EventBox::new();
 
         let widget = MenuItem::new();
-        widget.style_context().add_class("item");
+        widget.style_context().add_css_class("item");
         event_box.add(&widget);
 
         event_box.show_all();
@@ -51,14 +51,14 @@ impl TrayMenu {
     /// Updates the label text, and shows it in favour of the image.
     pub fn set_label(&mut self, text: &str) {
         if let Some(image) = &self.image_widget {
-            image.hide();
+            image.set_visible(false);
         }
 
         self.label_widget
             .get_or_insert_with(|| {
                 let label = Label::new(None);
                 self.widget.add(&label);
-                label.show();
+                label.set_visible(true);
                 label
             })
             .set_label(text);
@@ -68,18 +68,18 @@ impl TrayMenu {
     /// The image is hidden if present.
     pub fn show_label(&self) {
         if let Some(image) = &self.image_widget {
-            image.hide();
+            image.set_visible(false);
         }
 
         if let Some(label) = &self.label_widget {
-            label.show();
+            label.set_visible(true);
         }
     }
 
     /// Updates the image, and shows it in favour of the label.
     pub fn set_image(&mut self, image: &Image) {
         if let Some(label) = &self.label_widget {
-            label.hide();
+            label.set_visible(false);
         }
 
         if let Some(old) = self.image_widget.replace(image.clone()) {
@@ -87,7 +87,7 @@ impl TrayMenu {
         }
 
         self.widget.add(image);
-        image.show();
+        image.set_visible(true);
     }
 
     pub fn label_widget(&self) -> Option<&Label> {
