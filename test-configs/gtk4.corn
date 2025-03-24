@@ -1,0 +1,10 @@
+let {
+    $clock = { type = "clock" }
+    $cairo = { type = "cairo" path = "/home/jake/.config/ironbar/clock.lua" }
+    $focused = { type = "focused" }
+    $label = { type = "label" label = "GTK4!" }
+} in {
+    start = []
+    center = [ $focused ]
+    end = [ $label $cairo $clock ]
+}

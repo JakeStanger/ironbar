@@ -14,7 +14,7 @@ use crate::modules::custom::button::ButtonWidget;
 use crate::modules::custom::progress::ProgressWidget;
 use crate::modules::{
     AnyModuleFactory, BarModuleFactory, Module, ModuleInfo, ModuleParts, ModulePopup,
-    ModuleUpdateEvent, PopupButton, PopupModuleFactory, WidgetContext, wrap_widget,
+    ModuleUpdateEvent, PopupButton, PopupModuleFactory, WidgetContext, add_events,
 };
 use crate::script::Script;
 use crate::{module_impl, send_async, spawn};
@@ -154,7 +154,7 @@ impl Widget {
     fn add_to(self, parent: &gtk::Box, context: &CustomWidgetContext, common: CommonConfig) {
         macro_rules! create {
             ($widget:expr) => {
-                wrap_widget(
+                add_events(
                     &$widget.into_widget(context.clone()),
                     common,
                     context.bar_orientation,
