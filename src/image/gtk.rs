@@ -4,14 +4,24 @@ use gtk::prelude::*;
 use gtk::{Button, IconTheme, Image, Label, Orientation};
 use std::ops::Deref;
 
-#[cfg(any(feature = "music", feature = "workspaces", feature = "clipboard"))]
 #[derive(Debug, Clone)]
+#[cfg(any(
+    feature = "clipboard",
+    feature = "keyboard",
+    feature = "music",
+    feature = "workspaces"
+))]
 pub struct IconButton {
     button: Button,
     label: Label,
 }
 
-#[cfg(any(feature = "music", feature = "workspaces", feature = "clipboard"))]
+#[cfg(any(
+    feature = "clipboard",
+    feature = "keyboard",
+    feature = "music",
+    feature = "workspaces"
+))]
 impl IconButton {
     pub fn new(input: &str, icon_theme: &IconTheme, size: i32) -> Self {
         let button = Button::new();
@@ -55,7 +65,7 @@ impl Deref for IconButton {
     }
 }
 
-#[cfg(any(feature = "music", feature = "keyboard"))]
+#[cfg(any(feature = "keyboard", feature = "music", feature = "workspaces"))]
 pub struct IconLabel {
     container: gtk::Box,
     label: Label,
@@ -65,7 +75,7 @@ pub struct IconLabel {
     size: i32,
 }
 
-#[cfg(any(feature = "music", feature = "keyboard"))]
+#[cfg(any(feature = "keyboard", feature = "music", feature = "workspaces"))]
 impl IconLabel {
     pub fn new(input: &str, icon_theme: &IconTheme, size: i32) -> Self {
         let container = gtk::Box::new(Orientation::Horizontal, 0);

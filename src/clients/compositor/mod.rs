@@ -66,6 +66,7 @@ impl Compositor {
         }
     }
 
+    #[cfg(feature = "keyboard")]
     pub fn create_keyboard_layout_client(
         clients: &mut super::Clients,
     ) -> ClientResult<dyn KeyboardLayoutClient + Send + Sync> {
@@ -78,7 +79,11 @@ impl Compositor {
                 .map(|client| client as Arc<dyn KeyboardLayoutClient + Send + Sync>),
             #[cfg(feature = "keyboard+hyprland")]
             Self::Hyprland => Ok(clients.hyprland()),
-            Self::Niri | Self::Unsupported => Err(Report::msg("Unsupported compositor").note(
+            #[cfg(feature = "workspaces")]
+            Self::Niri => Err(Report::msg("Unsupported compositor").note(
+                "Currently keyboard layout functionality are only supported by Sway and Hyprland",
+            )),
+            Self::Unsupported => Err(Report::msg("Unsupported compositor").note(
                 "Currently keyboard layout functionality are only supported by Sway and Hyprland",
             )),
         }
@@ -86,6 +91,7 @@ impl Compositor {
 
     /// Creates a new instance of
     /// the workspace client for the current compositor.
+    #[cfg(feature = "workspaces")]
     pub fn create_workspace_client(
         clients: &mut super::Clients,
     ) -> Result<Arc<dyn WorkspaceClient + Send + Sync>> {
@@ -183,6 +189,7 @@ pub enum WorkspaceUpdate {
     Unknown,
 }
 
+#[cfg(feature = "workspaces")]
 pub trait WorkspaceClient: Debug + Send + Sync {
     /// Requests the workspace with this id is focused.
     fn focus(&self, id: i64);
@@ -191,8 +198,10 @@ pub trait WorkspaceClient: Debug + Send + Sync {
     fn subscribe(&self) -> broadcast::Receiver<WorkspaceUpdate>;
 }
 
+#[cfg(feature = "workspaces")]
 register_fallible_client!(dyn WorkspaceClient, workspaces);
 
+#[cfg(feature = "keyboard")]
 pub trait KeyboardLayoutClient: Debug + Send + Sync {
     /// Switches to the next layout.
     fn set_next_active(&self);
@@ -201,4 +210,5 @@ pub trait KeyboardLayoutClient: Debug + Send + Sync {
     fn subscribe(&self) -> broadcast::Receiver<KeyboardLayoutUpdate>;
 }
 
+#[cfg(feature = "keyboard")]
 register_fallible_client!(dyn KeyboardLayoutClient, keyboard_layout);
