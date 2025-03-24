@@ -4,14 +4,18 @@ mod pagination;
 
 use self::item::{AppearanceOptions, Item, ItemButton, Window};
 use self::open_state::OpenState;
-use super::{Module, ModuleInfo, ModuleParts, ModulePopup, ModuleUpdateEvent, WidgetContext};
+use super::{
+    Module, ModuleInfo, ModuleParts, ModulePopup, ModuleUpdateEvent, PopupButton, WidgetContext,
+};
 use crate::clients::wayland::{self, ToplevelEvent};
 use crate::config::{CommonConfig, EllipsizeMode, LayoutConfig, TruncateMode};
 use crate::desktop_file::find_desktop_file;
 use crate::gtk_helpers::{IronbarGtkExt, IronbarLabelExt};
 use crate::modules::launcher::item::ImageTextButton;
 use crate::modules::launcher::pagination::{IconContext, Pagination};
-use crate::{arc_mut, glib_recv, lock, module_impl, send_async, spawn, try_send, write_lock};
+use crate::{
+    arc_mut, glib_recv, lock, module_impl, rc_mut, send_async, spawn, try_send, write_lock,
+};
 use color_eyre::{Help, Report};
 use gtk::prelude::*;
 use gtk::{Button, Orientation};
@@ -458,6 +462,8 @@ impl Module<gtk::Box> for LauncherModule {
         let container = gtk::Box::new(self.layout.orientation(info), 0);
         let page_size = self.page_size;
 
+        let mut buttons = rc_mut!(IndexMap::<String, ItemButton>::new());
+
         let pagination = Pagination::new(
             &container,
             self.page_size,
@@ -489,7 +495,7 @@ impl Module<gtk::Box> for LauncherModule {
             let show_names = self.show_names;
             let bar_position = info.bar_position;
 
-            let mut buttons = IndexMap::<String, ItemButton>::new();
+            let buttons = buttons.clone();
 
             let tx = context.tx.clone();
             let rx = context.subscribe();
@@ -498,7 +504,7 @@ impl Module<gtk::Box> for LauncherModule {
                 // all widgets show by default
                 // so check if pagination should be shown
                 // to ensure correct state on init.
-                if buttons.len() <= page_size {
+                if buttons.borrow().len() <= page_size {
                     pagination.hide();
                 }
 
@@ -506,7 +512,7 @@ impl Module<gtk::Box> for LauncherModule {
                     LauncherUpdate::AddItem(item) => {
                         debug!("Adding item with id '{}' to the bar: {item:?}", item.app_id);
 
-                        if let Some(button) = buttons.get(&item.app_id) {
+                        if let Some(button) = buttons.borrow().get(&item.app_id) {
                             button.set_open(true);
                             button.set_focused(item.open_state.is_focused());
                         } else {
@@ -520,25 +526,25 @@ impl Module<gtk::Box> for LauncherModule {
                             );
 
                             if self.reversed {
-                                container.pack_end(button.button.deref(), false, false, 0);
+                                container.prepend(button.button.deref());
                             } else {
-                                container.add(button.button.deref());
+                                container.append(button.button.deref());
                             }
 
-                            if buttons.len() + 1 >= pagination.offset() + page_size {
+                            if buttons.borrow().len() + 1 >= pagination.offset() + page_size {
                                 button.button.set_visible(false);
                                 pagination.set_sensitive_fwd(true);
                             }
 
-                            if buttons.len() + 1 > page_size {
-                                pagination.show_all();
+                            if buttons.borrow().len() + 1 > page_size {
+                                pagination.show();
                             }
 
-                            buttons.insert(item.app_id, button);
+                            buttons.borrow_mut().insert(item.app_id, button);
                         }
                     }
                     LauncherUpdate::AddWindow(app_id, win) => {
-                        if let Some(button) = buttons.get(&app_id) {
+                        if let Some(button) = buttons.borrow().get(&app_id) {
                             button.set_open(true);
                             button.set_focused(win.open_state.is_focused());
 
@@ -548,7 +554,7 @@ impl Module<gtk::Box> for LauncherModule {
                     LauncherUpdate::RemoveItem(app_id) => {
                         debug!("Removing item with id {}", app_id);
 
-                        if let Some(button) = buttons.get(&app_id) {
+                        if let Some(button) = buttons.borrow().get(&app_id) {
                             if button.persistent {
                                 button.set_open(false);
                                 if button.show_names {
@@ -556,22 +562,22 @@ impl Module<gtk::Box> for LauncherModule {
                                 }
                             } else {
                                 container.remove(&button.button.button);
-                                buttons.shift_remove(&app_id);
+                                buttons.borrow_mut().shift_remove(&app_id);
                             }
                         }
 
-                        if buttons.len() < pagination.offset() + page_size {
+                        if buttons.borrow().len() < pagination.offset() + page_size {
                             pagination.set_sensitive_fwd(false);
                         }
 
-                        if buttons.len() <= page_size {
+                        if buttons.borrow().len() <= page_size {
                             pagination.hide();
                         }
                     }
                     LauncherUpdate::RemoveWindow(app_id, win_id) => {
                         debug!("Removing window {win_id} with id {app_id}");
 
-                        if let Some(button) = buttons.get(&app_id) {
+                        if let Some(button) = buttons.borrow().get(&app_id) {
                             button.set_focused(false);
 
                             let mut menu_state = write_lock!(button.menu_state);
@@ -581,7 +587,7 @@ impl Module<gtk::Box> for LauncherModule {
                     LauncherUpdate::Focus(app_id, focus) => {
                         debug!("Changing focus to {} on item with id {}", focus, app_id);
 
-                        if let Some(button) = buttons.get(&app_id) {
+                        if let Some(button) = buttons.borrow().get(&app_id) {
                             button.set_focused(focus);
                         }
                     }
@@ -589,7 +595,7 @@ impl Module<gtk::Box> for LauncherModule {
                         debug!("Updating title for item with id {}: {:?}", app_id, name);
 
                         if show_names {
-                            if let Some(button) = buttons.get(&app_id) {
+                            if let Some(button) = buttons.borrow().get(&app_id) {
                                 button.button.label.set_label(&name);
                             }
                         }
@@ -604,7 +610,13 @@ impl Module<gtk::Box> for LauncherModule {
         let rx = context.subscribe();
         let popup = self
             .into_popup(context.controller_tx.clone(), rx, context, info)
-            .into_popup_parts(vec![]); // since item buttons are dynamic, they pass their geometry directly
+            .into_popup_parts_with_finder(Box::new(move |id| {
+                buttons
+                    .borrow()
+                    .values()
+                    .find(|b| b.button.button.popup_id() == id)
+                    .map(|b| b.button.button.clone())
+            }));
 
         Ok(ModuleParts {
             widget: container,
@@ -626,7 +638,7 @@ impl Module<gtk::Box> for LauncherModule {
         // we need some content to force the container to have a size
         let placeholder = Button::with_label("PLACEHOLDER");
         placeholder.set_width_request(MAX_WIDTH);
-        container.add(&placeholder);
+        container.append(&placeholder);
 
         let mut buttons = IndexMap::<String, IndexMap<usize, ImageTextButton>>::new();
 
@@ -712,10 +724,10 @@ impl Module<gtk::Box> for LauncherModule {
                         if let Some(buttons) = buttons.get(&app_id) {
                             for (_, button) in buttons {
                                 button.add_class("popup-item");
-                                container.add(&button.button);
+                                container.append(&button.button);
                             }
 
-                            container.show_all();
+                            container.show();
                             container.set_width_request(MAX_WIDTH);
                         }
                     }

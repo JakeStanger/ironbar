@@ -61,16 +61,16 @@ impl CustomWidget for ButtonWidget {
                 widget.widget.add_to(&container, &context, widget.common);
             }
 
-            button.add(&container);
+            button.set_child(Some(&container));
         } else if let Some(text) = self.label {
             let label = Label::new(None);
             label.set_use_markup(true);
 
             if !context.is_popup {
-                label.set_angle(self.layout.angle(context.info));
+                // label.set_angle(self.layout.angle(context.info));
             }
 
-            button.add(&label);
+            button.set_child(Some(&label));
 
             dynamic_string(&text, move |string| {
                 label.set_label_escaped(&string);
