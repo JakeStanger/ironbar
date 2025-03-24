@@ -75,11 +75,13 @@ end:
 
 ## Styling
 
-| Selector                       | Description                                                                        |
-|--------------------------------|------------------------------------------------------------------------------------|
-| `.clock`                       | Clock widget button                                                                |
-| `.popup-clock`                 | Clock popup box                                                                    |
-| `.popup-clock .calendar-clock` | Clock inside the popup                                                             |
-| `.popup-clock .calendar`       | Calendar widget inside the popup. GTK provides some OOTB styling options for this. |
+| Selector                        | Description                                                                        |
+|---------------------------------|------------------------------------------------------------------------------------|
+| `.clock`                        | Clock widget button                                                                |
+| `.popup-clock`                  | Clock popup box                                                                    |
+| `.popup-clock .calendar-clock`  | Clock inside the popup                                                             |
+| `.popup-clock .calendar`        | Calendar widget inside the popup. GTK provides some OOTB styling options for this. |
+
+Information on styling the calendar can be found [here](https://docs.gtk.org/gtk4/class.Calendar.html#css-nodes).
 
 For more information on styling, please see the [styling guide](styling-guide).

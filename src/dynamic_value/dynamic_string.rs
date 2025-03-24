@@ -22,7 +22,7 @@ enum DynamicStringSegment {
 /// # Example
 ///
 /// ```rs
-/// dynamic_string(&text, move |string| {
+/// dynamic_string(&text, &label, move |label, string| {
 ///     label.set_label_escaped(&string);
 /// });
 /// ```

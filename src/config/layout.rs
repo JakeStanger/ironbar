@@ -27,9 +27,4 @@ impl LayoutConfig {
         self.orientation
             .map_or(info.bar_position.orientation(), ModuleOrientation::into)
     }
-
-    pub fn angle(&self, info: &ModuleInfo) -> f64 {
-        self.orientation
-            .map_or(info.bar_position.angle(), ModuleOrientation::to_angle)
-    }
 }

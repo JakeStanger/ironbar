@@ -1,13 +1,15 @@
 #!/usr/bin/env bash
 
 apt-get update && apt-get install --assume-yes \
+  libdbus-1-dev \
+  pkg-config \
 	libssl-dev \
-	libgtk-3-dev \
-	libgtk-layer-shell-dev \
+	libgraphene-1.0-dev \
+	libgtk-4-dev \
 	libinput-dev \
-	libdbusmenu-gtk3-dev \
 	libpulse-dev \
-	libluajit-5.1-dev
+	libluajit-5.1-dev \
+	libgtk4-layer-shell-dev
 
 # GH CLI, required by some CI jobs
 (type -p wget >/dev/null || (apt update && apt install wget -y)) \

@@ -1,6 +1,6 @@
 use std::env;
 
-use chrono::{DateTime, Datelike, Local, Locale};
+use chrono::{DateTime, Local, Locale};
 use color_eyre::Result;
 use gtk::prelude::*;
 use gtk::{Align, Button, Calendar, Label, Orientation};
@@ -10,7 +10,6 @@ use tokio::time::sleep;
 
 use crate::channels::{AsyncSenderExt, BroadcastReceiverExt};
 use crate::config::{CommonConfig, LayoutConfig};
-use crate::gtk_helpers::IronbarGtkExt;
 use crate::modules::{
     Module, ModuleInfo, ModuleParts, ModulePopup, ModuleUpdateEvent, PopupButton, WidgetContext,
 };
@@ -123,12 +122,11 @@ impl Module<Button> for ClockModule {
     ) -> Result<ModuleParts<Button>> {
         let button = Button::new();
         let label = Label::builder()
-            .angle(self.layout.angle(info))
             .use_markup(true)
             .justify(self.layout.justify.into())
             .build();
 
-        button.add(&label);
+        button.set_child(Some(&label));
 
         let tx = context.tx.clone();
         button.connect_clicked(move |button| {
@@ -162,13 +160,13 @@ impl Module<Button> for ClockModule {
             .halign(Align::Center)
             .use_markup(true)
             .build();
-        clock.add_class("calendar-clock");
+        clock.add_css_class("calendar-clock");
 
-        container.add(&clock);
+        container.append(&clock);
 
         let calendar = Calendar::new();
-        calendar.add_class("calendar");
-        container.add(&calendar);
+        calendar.add_css_class("calendar");
+        container.append(&calendar);
 
         let format = self.format_popup;
         let locale = Locale::try_from(self.locale.as_str()).unwrap_or(Locale::POSIX);
@@ -179,13 +177,10 @@ impl Module<Button> for ClockModule {
         });
 
         // Reset selected date on each popup open
-        context.popup.window.connect_show(move |_| {
-            let date = Local::now();
-            calendar.select_day(date.day());
-            calendar.select_month(date.month() - 1, date.year() as u32);
+        context.popup.popover.connect_show(move |_| {
+            let date = glib::DateTime::now_local().expect("should get current time");
+            calendar.select_day(&date);
         });
-
-        container.show_all();
 
         Some(container)
     }

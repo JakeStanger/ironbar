@@ -4,7 +4,7 @@ Just clone the repo and build:
 ```sh
 git clone https://github.com/jakestanger/ironbar.git
 cd ironbar
-cargo build --release
+cargo build --locked --release
 # change path to wherever you want to install
 install target/release/ironbar ~/.local/bin/ironbar
 ```
@@ -13,7 +13,7 @@ It is also recommended to install a [Nerd Font](https://www.nerdfonts.com/#home)
 
 ## Build requirements
 
-To build from source, you must have GTK (>= 3.22) and GTK Layer Shell installed.
+To build from source, you must have GTK (>= 4.10) and GTK Layer Shell installed.
 You also need rust; only the latest stable version is supported.
 
 ### Docker
@@ -31,11 +31,9 @@ $ cargo build
 ### Arch
 
 ```shell
-pacman -S gtk3 gtk-layer-shell
+pacman -S gtk4 gtk4-layer-shell dbus pkg-config
 # for http support
 pacman -S openssl
-# for tray support
-pacman -S libdbusmenu-gtk3
 # for volume support
 pacman -S libpulse
 # for keyboard support
@@ -47,11 +45,9 @@ pacman -S luajit lua51-lgi
 ### Ubuntu/Debian
 
 ```shell
-apt install build-essential libgtk-3-dev libgtk-layer-shell-dev
+apt install build-essential libgtk-4-dev libgtk4-layer-shell-dev libdbus-1-dev
 # for http support
 apt install libssl-dev
-# for tray support
-apt install libdbusmenu-gtk3-dev
 # for volume support
 apt install libpulse-dev
 # for keyboard support
@@ -63,11 +59,9 @@ apt install luajit-dev lua-lgi
 ### Fedora
 
 ```shell
-dnf install gtk3-devel gtk-layer-shell-devel
+dnf install gtk4-devel gtk4-layer-shell-devel dbus-devel pkgconf-pkg-config
 # for http support
 dnf install openssl-devel
-# for tray support
-dnf install libdbusmenu-gtk3-devel
 # for volume support
 dnf install pulseaudio-libs-devel
 # for keyboard support

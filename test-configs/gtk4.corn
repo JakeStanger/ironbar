@@ -1,0 +1,60 @@
+let {
+    $clock = { type = "clock" }
+    $cairo = { type = "cairo" path = "/home/jake/.config/ironbar/clock.lua" }
+    $clipboard = { type = "clipboard" }
+    $focused = { type = "focused" }
+    $keyboard = { type = "keyboard" }
+    $label = { type = "label" label = "GTK4!" }
+    $launcher = { type = "launcher" }
+    $music = { type = "music" player_type = "mpd" }
+    $script = { type = "script" cmd = "echo \$RANDOM" interval = 200 }
+
+    $sys_info = {
+        type = "sys_info"
+        format = ["{cpu_percent}% " "{memory_percent}% "]
+        interval.cpu = 1
+    }
+
+    $workspaces = { type = "workspaces" }
+
+    // custom
+    $power_menu = {
+        type = "custom"
+        class = "power-menu"
+
+        bar = [ { type = "button" name="power-btn" label = "" on_click = "popup:toggle" } ]
+
+        popup = [ {
+        type = "box"
+        orientation = "vertical"
+        widgets = [
+            { type = "label" name = "header" label = "Power menu" }
+            {
+                type = "box"
+                name = "buttons"
+                widgets = [
+                    { type = "button" class="power-btn" label = "<span font-size='20pt'></span>" on_click = "!shutdown now" }
+                    { type = "button" class="power-btn" label = "<span font-size='20pt'></span>" on_click = "!reboot" }
+                    $cairo
+                ]}
+            ]
+        } ]
+    }
+
+    $start = [ $workspaces $label $script ]
+    $end = [ $music $sys_info $clipboard $power_menu $clock ]
+
+    $center_secondary = [ $focused $keyboard ]
+    $center_primary = [ $launcher ]
+
+} in {
+     start = $start
+     center = $center_secondary
+     end = $end
+
+     monitors.DP-1.start = $start
+     monitors.DP-1.center = $center_primary
+     monitors.DP-1.end = $end
+
+//    monitors.DP-1.end = [ $clock ]
+}

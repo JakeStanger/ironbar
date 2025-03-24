@@ -1,15 +1,18 @@
 use super::open_state::OpenState;
 use crate::channels::AsyncSenderExt;
-use crate::gtk_helpers::IronbarGtkExt;
 use crate::image::IconButton;
 use crate::modules::workspaces::WorkspaceItemContext;
+use glib::signal::SignalHandlerId;
 use gtk::Button as GtkButton;
 use gtk::prelude::*;
+use tokio::sync::mpsc;
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct Button {
     button: IconButton,
     workspace_id: i64,
+    conn_id: Option<SignalHandlerId>,
+    tx: mpsc::Sender<i64>,
 }
 
 impl Button {
@@ -18,17 +21,19 @@ impl Button {
 
         let button = IconButton::new(label, context.icon_size, context.image_provider.clone());
         button.set_widget_name(name);
-        button.add_class("item");
+        button.add_css_class("item");
 
         let tx = context.tx.clone();
 
-        button.connect_clicked(move |_item| {
+        let conn_id = button.connect_clicked(move |_item| {
             tx.send_spawn(id);
         });
 
         let btn = Self {
             button,
             workspace_id: id,
+            conn_id: Some(conn_id),
+            tx: context.tx.clone(),
         };
 
         btn.set_open_state(open_state);
@@ -41,29 +46,29 @@ impl Button {
 
     pub fn set_open_state(&self, open_state: OpenState) {
         if open_state.is_visible() {
-            self.button.add_class("visible");
+            self.button.add_css_class("visible");
         } else {
-            self.button.remove_class("visible");
+            self.button.remove_css_class("visible");
         }
 
         if open_state == OpenState::Focused {
-            self.button.add_class("focused");
+            self.button.add_css_class("focused");
         } else {
-            self.button.remove_class("focused");
+            self.button.remove_css_class("focused");
         }
 
         if open_state == OpenState::Closed {
-            self.button.add_class("inactive");
+            self.button.add_css_class("inactive");
         } else {
-            self.button.remove_class("inactive");
+            self.button.remove_css_class("inactive");
         }
     }
 
     pub fn set_urgent(&self, urgent: bool) {
         if urgent {
-            self.button.add_class("urgent");
+            self.button.add_css_class("urgent");
         } else {
-            self.button.remove_class("urgent");
+            self.button.remove_css_class("urgent");
         }
     }
 
@@ -73,5 +78,13 @@ impl Button {
 
     pub fn set_workspace_id(&mut self, id: i64) {
         self.workspace_id = id;
+        if let Some(conn_id) = self.conn_id.take() {
+            self.button.disconnect(conn_id);
+        }
+        let tx = self.tx.clone();
+        let conn_id = self.button.connect_clicked(move |_item| {
+            tx.send_spawn(id);
+        });
+        self.conn_id = Some(conn_id);
     }
 }

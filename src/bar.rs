@@ -2,10 +2,9 @@ use crate::config::{BarConfig, BarPosition, MarginConfig, ModuleConfig};
 use crate::modules::{BarModuleFactory, ModuleInfo, ModuleLocation, ModuleRef};
 use crate::popup::Popup;
 use crate::{Ironbar, rc_mut};
-use glib::Propagation;
-use gtk::gdk::{Monitor, NotifyType};
+use gtk::gdk::Monitor;
 use gtk::prelude::*;
-use gtk::{Application, ApplicationWindow, Orientation, Window, WindowType};
+use gtk::{Application, ApplicationWindow, CenterBox, EventControllerMotion, Orientation, Window};
 use gtk_layer_shell::LayerShell;
 use std::rc::Rc;
 use std::time::Duration;
@@ -26,14 +25,13 @@ enum Inner {
 pub struct Bar {
     name: String,
     monitor_name: String,
-    monitor_size: (i32, i32),
     position: BarPosition,
 
     ironbar: Rc<Ironbar>,
 
     window: ApplicationWindow,
 
-    content: gtk::Box,
+    content: CenterBox,
 
     start: gtk::Box,
     center: gtk::Box,
@@ -46,14 +44,10 @@ impl Bar {
     pub fn new(
         app: &Application,
         monitor_name: String,
-        monitor_size: (i32, i32),
         config: BarConfig,
         ironbar: Rc<Ironbar>,
     ) -> Self {
-        let window = ApplicationWindow::builder()
-            .application(app)
-            .type_(WindowType::Toplevel)
-            .build();
+        let window = ApplicationWindow::builder().application(app).build();
 
         let name = config
             .name
@@ -65,11 +59,7 @@ impl Bar {
         let position = config.position;
         let orientation = position.orientation();
 
-        let content = gtk::Box::builder()
-            .orientation(orientation)
-            .spacing(0)
-            .hexpand(false)
-            .name("bar");
+        let content = CenterBox::builder().orientation(orientation).name("bar");
 
         let content = if orientation == Orientation::Horizontal {
             content.height_request(config.height)
@@ -78,24 +68,17 @@ impl Bar {
         }
         .build();
 
-        content.style_context().add_class("container");
+        content.add_css_class("container");
 
         let start = create_container("start", orientation);
         let center = create_container("center", orientation);
         let end = create_container("end", orientation);
 
-        window.add(&content);
-
-        window.connect_destroy_event(|_, _| {
-            info!("Shutting down");
-            gtk::main_quit();
-            Propagation::Proceed
-        });
+        window.set_child(Some(&content));
 
         Self {
             name,
             monitor_name,
-            monitor_size,
             position,
             ironbar,
             window,
@@ -137,7 +120,7 @@ impl Bar {
         );
 
         if let Some(autohide) = config.autohide {
-            let hotspot_window = Window::new(WindowType::Toplevel);
+            let hotspot_window = Window::new();
             Self::setup_autohide(&self.window, &hotspot_window, autohide);
             self.setup_layer_shell(
                 &hotspot_window,
@@ -149,11 +132,11 @@ impl Bar {
             );
 
             if start_hidden {
-                hotspot_window.show();
+                hotspot_window.set_visible(true);
             }
         }
 
-        let load_result = self.load_modules(config, monitor, self.monitor_size);
+        let load_result = self.load_modules(config, monitor);
 
         self.show(!start_hidden);
 
@@ -180,18 +163,18 @@ impl Bar {
         let position = self.position;
 
         win.init_layer_shell();
-        win.set_monitor(monitor);
+        win.set_monitor(Some(monitor));
         win.set_layer(layer);
-        win.set_namespace(env!("CARGO_PKG_NAME"));
+        win.set_namespace(Some(env!("CARGO_PKG_NAME")));
 
         if exclusive_zone {
             win.auto_exclusive_zone_enable();
         }
 
-        win.set_layer_shell_margin(Edge::Top, margin.top);
-        win.set_layer_shell_margin(Edge::Bottom, margin.bottom);
-        win.set_layer_shell_margin(Edge::Left, margin.left);
-        win.set_layer_shell_margin(Edge::Right, margin.right);
+        win.set_margin(Edge::Top, margin.top);
+        win.set_margin(Edge::Bottom, margin.bottom);
+        win.set_margin(Edge::Left, margin.left);
+        win.set_margin(Edge::Right, margin.right);
 
         let bar_orientation = position.orientation();
 
@@ -218,7 +201,7 @@ impl Bar {
     }
 
     fn setup_autohide(window: &ApplicationWindow, hotspot_window: &Window, timeout: u64) {
-        hotspot_window.hide();
+        hotspot_window.set_visible(false);
 
         hotspot_window.set_opacity(0.0);
         hotspot_window.set_decorated(false);
@@ -230,54 +213,55 @@ impl Bar {
             let hotspot_window = hotspot_window.clone();
             let timeout_id = timeout_id.clone();
 
-            window.connect_leave_notify_event(move |win, ev| {
-                if matches!(ev.detail(), NotifyType::Ancestor | NotifyType::Nonlinear) {
+            let event_controller = EventControllerMotion::new();
+
+            {
+                let win = window.clone();
+                let hotspot_window = hotspot_window.clone();
+                let timeout_id = timeout_id.clone();
+
+                event_controller.connect_leave(move |_| {
                     let win = win.clone();
                     let hotspot_window = hotspot_window.clone();
-                    let value = timeout_id.clone();
+                    let tid = timeout_id.clone();
 
                     *timeout_id.borrow_mut() = Some(glib::timeout_add_local_once(
                         Duration::from_millis(timeout),
                         move || {
-                            win.hide();
-                            hotspot_window.show();
-
-                            *value.borrow_mut() = None;
+                            win.set_visible(false);
+                            hotspot_window.set_visible(true);
+                            *tid.borrow_mut() = None;
                         },
                     ));
-                }
-
-                Propagation::Proceed
-            });
-        }
-
-        window.connect_enter_notify_event(move |_win, _ev| {
-            if let Some(id) = timeout_id.borrow_mut().take() {
-                id.remove();
+                });
             }
 
-            Propagation::Proceed
-        });
+            event_controller.connect_enter(move |_, _, _| {
+                if let Some(id) = timeout_id.borrow_mut().take() {
+                    id.remove();
+                }
+            });
+
+            window.add_controller(event_controller);
+        }
 
         {
             let win = window.clone();
 
-            hotspot_window.connect_enter_notify_event(move |hotspot_win, _| {
-                hotspot_win.hide();
-                win.show();
+            let event_controller = EventControllerMotion::new();
 
-                Propagation::Proceed
+            let hotspot_win = hotspot_window.clone();
+            event_controller.connect_enter(move |_, _, _| {
+                hotspot_win.set_visible(false);
+                win.set_visible(true);
             });
+
+            hotspot_window.add_controller(event_controller);
         }
     }
 
     /// Loads the configured modules onto a bar.
-    fn load_modules(
-        &self,
-        config: BarConfig,
-        monitor: &Monitor,
-        output_size: (i32, i32),
-    ) -> BarLoadResult {
+    fn load_modules(&self, config: BarConfig, monitor: &Monitor) -> BarLoadResult {
         let app = &self.window.application().expect("to exist");
 
         macro_rules! info {
@@ -294,17 +278,16 @@ impl Bar {
 
         // popup ignores module location so can bodge this for now
         let popup = Popup::new(
-            &self.ironbar,
             &info!(ModuleLocation::Left),
-            output_size,
             config.popup_gap,
+            config.popup_autohide,
         );
         let popup = Rc::new(popup);
 
         let mut refs = vec![];
 
         if let Some(modules) = config.start {
-            self.content.add(&self.start);
+            self.content.set_start_widget(Some(&self.start));
 
             let info = info!(ModuleLocation::Left);
             refs.extend(add_modules(
@@ -330,7 +313,7 @@ impl Bar {
         }
 
         if let Some(modules) = config.end {
-            self.content.pack_end(&self.end, false, true, 0);
+            self.content.set_end_widget(Some(&self.end));
 
             let info = info!(ModuleLocation::Right);
             refs.extend(add_modules(
@@ -353,13 +336,13 @@ impl Bar {
 
         // show each box but do not use `show_all`.
         // this ensures `show_if` option works as intended.
-        self.start.show();
-        self.center.show();
-        self.end.show();
-        self.content.show();
+        self.start.set_visible(true);
+        self.center.set_visible(true);
+        self.end.set_visible(true);
+        self.content.set_visible(true);
 
         if include_window {
-            self.window.show();
+            self.window.set_visible(true);
         }
     }
 
@@ -416,7 +399,7 @@ fn create_container(name: &str, orientation: Orientation) -> gtk::Box {
         .name(name)
         .build();
 
-    container.style_context().add_class("container");
+    container.add_css_class("container");
     container
 }
 
@@ -453,10 +436,9 @@ pub fn create_bar(
     app: &Application,
     monitor: &Monitor,
     monitor_name: String,
-    monitor_size: (i32, i32),
     config: BarConfig,
     ironbar: Rc<Ironbar>,
 ) -> Bar {
-    let bar = Bar::new(app, monitor_name, monitor_size, config, ironbar);
+    let bar = Bar::new(app, monitor_name, config, ironbar);
     bar.init(monitor)
 }

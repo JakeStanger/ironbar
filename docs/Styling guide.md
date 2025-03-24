@@ -4,7 +4,7 @@ To style the bar, create a file at `~/.config/ironbar/style.css`. This default p
 
 Style changes are hot-loaded so there is no need to reload the bar.
 
-Since the bar is GTK-based, it uses [GTK's implementation of CSS](https://docs.gtk.org/gtk3/css-overview.html),
+Since the bar is GTK-based, it uses [GTK's implementation of CSS](https://docs.gtk.org/gtk4/css-overview.html),
 which only includes a subset of the full web spec (plus a few non-standard properties).
 
 The below table describes the selectors provided by the bar itself.
