@@ -18,7 +18,7 @@ impl Button {
 
         let button = IconButton::new(label, context.icon_size, context.image_provider.clone());
         button.set_widget_name(name);
-        button.add_class("item");
+        button.add_css_class("item");
 
         let tx = context.tx.clone();
 
@@ -41,29 +41,29 @@ impl Button {
 
     pub fn set_open_state(&self, open_state: OpenState) {
         if open_state.is_visible() {
-            self.button.add_class("visible");
+            self.button.add_css_class("visible");
         } else {
-            self.button.remove_class("visible");
+            self.button.remove_css_class("visible");
         }
 
         if open_state == OpenState::Focused {
-            self.button.add_class("focused");
+            self.button.add_css_class("focused");
         } else {
-            self.button.remove_class("focused");
+            self.button.remove_css_class("focused");
         }
 
         if open_state == OpenState::Closed {
-            self.button.add_class("inactive");
+            self.button.add_css_class("inactive");
         } else {
-            self.button.remove_class("inactive");
+            self.button.remove_css_class("inactive");
         }
     }
 
     pub fn set_urgent(&self, urgent: bool) {
         if urgent {
-            self.button.add_class("urgent");
+            self.button.add_css_class("urgent");
         } else {
-            self.button.remove_class("urgent");
+            self.button.remove_css_class("urgent");
         }
     }
 

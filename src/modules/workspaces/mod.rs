@@ -6,6 +6,7 @@ use self::button::Button;
 use crate::channels::{AsyncSenderExt, BroadcastReceiverExt};
 use crate::clients::compositor::{Workspace, WorkspaceClient, WorkspaceUpdate};
 use crate::config::{CommonConfig, LayoutConfig};
+use crate::gtk_helpers::IronbarGtkExt;
 use crate::modules::workspaces::button_map::{ButtonMap, Identifier};
 use crate::modules::workspaces::open_state::OpenState;
 use crate::modules::{Module, ModuleInfo, ModuleParts, WidgetContext};
@@ -156,7 +157,6 @@ pub struct WorkspaceItemContext {
 fn reorder_workspaces(container: &gtk::Box, sort_order: SortOrder) {
     let mut buttons = container
         .children()
-        .into_iter()
         .map(|child| {
             let label = if sort_order == SortOrder::Label {
                 child
@@ -168,11 +168,11 @@ fn reorder_workspaces(container: &gtk::Box, sort_order: SortOrder) {
             }
             .to_string();
 
-            (label, child)
+            (label, Some(child))
         })
         .collect::<Vec<_>>();
 
-    buttons.sort_by(|(label_a, _), (label_b, _a)| {
+    buttons.sort_by(|(label_a, _), (label_b, _)| {
         match (label_a.parse::<i32>(), label_b.parse::<i32>()) {
             (Ok(a), Ok(b)) => a.cmp(&b),
             (Ok(_), Err(_)) => Ordering::Less,
@@ -181,8 +181,15 @@ fn reorder_workspaces(container: &gtk::Box, sort_order: SortOrder) {
         }
     });
 
-    for (i, (_, button)) in buttons.into_iter().enumerate() {
-        container.reorder_child(&button, i as i32);
+    // Ensure we have an even number of elements for window size
+    if buttons.len() % 2 == 1 {
+        buttons.push((String::new(), None))
+    }
+
+    for window in buttons.windows(2) {
+        if let [(_, a), (_, Some(b))] = window {
+            container.reorder_child_after(b, a.as_ref());
+        }
     }
 }
 
@@ -253,7 +260,7 @@ impl Module<gtk::Box> for WorkspacesModule {
 
         for favorite in &favorites {
             let btn = Button::new(-1, favorite, OpenState::Closed, &item_context);
-            container.add(btn.button());
+            container.append(btn.button());
             button_map.insert(Identifier::Name(favorite.clone()), btn);
         }
 
@@ -283,8 +290,8 @@ impl Module<gtk::Box> for WorkspacesModule {
                             workspace.visibility.into(),
                             &item_context,
                         );
-                        container.add(btn.button());
-                        btn.button().show();
+                        container.append(btn.button());
+                        btn.button().set_visible(true);
 
                         button_map.insert(Identifier::Id(workspace.id), btn);
                     }
