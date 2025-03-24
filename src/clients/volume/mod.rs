@@ -12,7 +12,7 @@ use libpulse_binding::volume::{ChannelVolumes, Volume};
 use std::fmt::{Debug, Formatter};
 use std::sync::{Arc, Mutex};
 use tokio::sync::broadcast;
-use tracing::{debug, error, info, warn};
+use tracing::{debug, error, info, trace, warn};
 
 pub use sink::Sink;
 pub use sink_input::SinkInput;
@@ -229,6 +229,8 @@ fn on_event(
     let (Some(facility), Some(op)) = (facility, op) else {
         return;
     };
+
+    trace!("server event: {facility:?}, op: {op:?}, i: {i}");
 
     match facility {
         Facility::Server => on_server_event(context, &data.sinks, &data.default_sink_name, tx),

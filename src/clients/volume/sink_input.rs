@@ -6,7 +6,7 @@ use libpulse_binding::context::introspect::SinkInputInfo;
 use libpulse_binding::context::subscribe::Operation;
 use std::sync::{Arc, Mutex, mpsc};
 use tokio::sync::broadcast;
-use tracing::{debug, error};
+use tracing::{debug, error, instrument, trace};
 
 #[derive(Debug, Clone)]
 pub struct SinkInput {
@@ -35,10 +35,12 @@ impl From<&SinkInputInfo<'_>> for SinkInput {
 }
 
 impl Client {
+    #[instrument(level = "trace")]
     pub fn sink_inputs(&self) -> Arc<Mutex<Vec<SinkInput>>> {
         self.data.sink_inputs.clone()
     }
 
+    #[instrument(level = "trace")]
     pub fn set_input_volume(&self, index: u32, volume_percent: f64) {
         if let ConnectionState::Connected { introspector, .. } = &mut *lock!(self.connection) {
             let (tx, rx) = mpsc::channel();
@@ -61,6 +63,7 @@ impl Client {
         }
     }
 
+    #[instrument(level = "trace")]
     pub fn set_input_muted(&self, index: u32, muted: bool) {
         if let ConnectionState::Connected { introspector, .. } = &mut *lock!(self.connection) {
             introspector.set_sink_input_mute(index, muted, None);
@@ -112,6 +115,8 @@ pub fn add(
         return;
     };
 
+    trace!("adding {info:?}");
+
     lock!(inputs).push(info.into());
     send!(tx, Event::AddInput(info.into()));
 }
@@ -124,6 +129,8 @@ fn update(
     let ListResult::Item(info) = info else {
         return;
     };
+
+    trace!("updating {info:?}");
 
     {
         let mut inputs = lock!(inputs);
@@ -140,6 +147,8 @@ fn update(
 
 fn remove(index: u32, inputs: &ArcMutVec<SinkInput>, tx: &broadcast::Sender<Event>) {
     let mut inputs = lock!(inputs);
+
+    trace!("removing {index}");
 
     if let Some(pos) = inputs.iter().position(|s| s.index == index) {
         let info = inputs.remove(pos);

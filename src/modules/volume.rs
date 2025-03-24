@@ -12,6 +12,7 @@ use gtk::{Button, CellRendererText, ComboBoxText, Label, Orientation, Scale, Tog
 use serde::Deserialize;
 use std::collections::HashMap;
 use tokio::sync::mpsc;
+use tracing::trace;
 
 #[derive(Debug, Clone, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
@@ -159,11 +160,15 @@ impl Module<Button> for VolumeModule {
                     sinks.iter().cloned().collect::<Vec<_>>()
                 };
 
+                trace!("initial syncs: {sinks:?}");
+
                 let inputs = {
                     let inputs = client.sink_inputs();
                     let inputs = lock!(inputs);
                     inputs.iter().cloned().collect::<Vec<_>>()
                 };
+
+                trace!("initial inputs: {inputs:?}");
 
                 for sink in sinks {
                     send_async!(tx, ModuleUpdateEvent::Update(Event::AddSink(sink)));
@@ -178,6 +183,7 @@ impl Module<Button> for VolumeModule {
 
                 // recv loop
                 while let Ok(event) = rx.recv().await {
+                    trace!("received event: {event:?}");
                     send_async!(tx, ModuleUpdateEvent::Update(event));
                 }
             });
