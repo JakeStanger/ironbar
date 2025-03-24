@@ -176,7 +176,7 @@ impl Module<Button> for MenuModule {
         let main_menu = gtk::Box::new(Orientation::Vertical, 0);
         main_menu.set_valign(alignment);
         main_menu.set_vexpand(false);
-        main_menu.add_class("main");
+        main_menu.add_css_class("main");
 
         if let Some(width) = self.width {
             main_menu.set_width_request(width / 2);
@@ -205,9 +205,9 @@ impl Module<Button> for MenuModule {
         let center_section = gtk::Box::new(Orientation::Vertical, 0);
         let end_section = gtk::Box::new(Orientation::Vertical, 0);
 
-        start_section.add_class("main-start");
-        center_section.add_class("main-center");
-        end_section.add_class("main-end");
+        start_section.add_css_class("main-start");
+        center_section.add_css_class("main-center");
+        end_section.add_css_class("main-end");
 
         let truncate_mode = self.truncate;
 
@@ -274,7 +274,7 @@ impl Module<Button> for MenuModule {
 
                             if let Some(sub_menu) = sub_menu.clone() {
                                 sub_menu.set_valign(alignment);
-                                sub_menu.add_class("sub-menu");
+                                sub_menu.add_css_class("sub-menu");
                                 if let Some(width) = self.width {
                                     sub_menu.set_width_request(width / 2);
                                 }
@@ -306,19 +306,19 @@ impl Module<Button> for MenuModule {
             let container = container.clone();
             context.popup.window.connect_hide(move |_| {
                 start_section.foreach(|child| {
-                    child.remove_class("open");
+                    child.remove_css_class("open");
                 });
 
                 center_section.foreach(|child| {
-                    child.remove_class("open");
+                    child.remove_css_class("open");
                 });
 
                 end_section.foreach(|child| {
-                    child.remove_class("open");
+                    child.remove_css_class("open");
                 });
 
                 container.children().iter().skip(1).for_each(|sub_menu| {
-                    sub_menu.hide();
+                    sub_menu.set_visible(false);
                 });
             });
         }

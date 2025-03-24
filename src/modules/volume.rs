@@ -274,16 +274,16 @@ impl Module<Button> for VolumeModule {
         let container = gtk::Box::new(Orientation::Horizontal, 10);
 
         let sink_container = gtk::Box::new(Orientation::Vertical, 5);
-        sink_container.add_class("device-box");
+        sink_container.add_css_class("device-box");
 
         let input_container = gtk::Box::new(Orientation::Vertical, 5);
-        input_container.add_class("apps-box");
+        input_container.add_css_class("apps-box");
 
         container.add(&sink_container);
         container.add(&input_container);
 
         let sink_selector = ComboBoxText::new();
-        sink_selector.add_class("device-selector");
+        sink_selector.add_css_class("device-selector");
 
         let renderer = sink_selector
             .cells()
@@ -313,7 +313,7 @@ impl Module<Button> for VolumeModule {
             .inverted(true)
             .build();
 
-        slider.add_class("slider");
+        slider.add_css_class("slider");
 
         slider.set_range(0.0, self.max_volume);
         slider.set_value(50.0);
@@ -333,7 +333,7 @@ impl Module<Button> for VolumeModule {
         }
 
         let btn_mute = ToggleButton::new();
-        btn_mute.add_class("btn-mute");
+        btn_mute.add_css_class("btn-mute");
         sink_container.add(&btn_mute);
 
         {
@@ -403,10 +403,10 @@ impl Module<Button> for VolumeModule {
                         let index = info.index;
 
                         let item_container = gtk::Box::new(Orientation::Vertical, 0);
-                        item_container.add_class("app-box");
+                        item_container.add_css_class("app-box");
 
                         let label = Label::new(Some(&info.name));
-                        label.add_class("title");
+                        label.add_css_class("title");
 
                         if let Some(truncate) = self.truncate {
                             label.truncate(truncate);
@@ -415,7 +415,7 @@ impl Module<Button> for VolumeModule {
                         let slider = Scale::builder().sensitive(info.can_set_volume).build();
                         slider.set_range(0.0, self.max_volume);
                         slider.set_value(info.volume.percent());
-                        slider.add_class("slider");
+                        slider.add_css_class("slider");
 
                         {
                             let tx = context.controller_tx.clone();
@@ -427,7 +427,7 @@ impl Module<Button> for VolumeModule {
                         }
 
                         let btn_mute = ToggleButton::new();
-                        btn_mute.add_class("btn-mute");
+                        btn_mute.add_css_class("btn-mute");
 
                         btn_mute.set_active(info.muted);
                         btn_mute.set_label(if info.muted {

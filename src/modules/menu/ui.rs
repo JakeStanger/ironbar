@@ -23,7 +23,7 @@ where
     R: Send + Clone + 'static,
 {
     let button = Button::new();
-    button.add_class("category");
+    button.add_css_class("category");
 
     let button_container = gtk::Box::new(Orientation::Horizontal, 4);
     button.add(&button_container);
@@ -57,7 +57,7 @@ where
 
             entry.applications.values().for_each(|sub_entry| {
                 let button = Button::new();
-                button.add_class("application");
+                button.add_css_class("application");
 
                 let button_container = gtk::Box::new(Orientation::Horizontal, 4);
                 button.add(&button_container);
@@ -100,7 +100,7 @@ where
 
                         spawn(async move { open_program(&file_name, &command).await });
 
-                        sub_menu.hide();
+                        sub_menu.set_visible(false);
                         tx.send_spawn(ModuleUpdateEvent::ClosePopup);
                     });
                 }
@@ -136,7 +136,7 @@ pub fn add_entries(
                 .hscrollbar_policy(gtk::PolicyType::Never)
                 .build();
 
-            sub_menu.show();
+            sub_menu.set_visible(true);
             scrolled.add(sub_menu);
             container.add(&scrolled);
 
@@ -146,7 +146,7 @@ pub fn add_entries(
             button.connect_clicked(move |button| {
                 container1.children().iter().skip(1).for_each(|sub_menu| {
                     if sub_menu.get_visible() {
-                        sub_menu.hide();
+                        sub_menu.set_visible(false);
                     }
                 });
 
@@ -157,10 +157,10 @@ pub fn add_entries(
                     .expect("button container should be gtk::Box")
                     .children()
                     .iter()
-                    .for_each(|child| child.remove_class("open"));
+                    .for_each(|child| child.remove_css_class("open"));
 
                 sub_menu1.show_all();
-                button.add_class("open");
+                button.add_css_class("open");
 
                 // Reset scroll to top.
                 if let Some(w) = sub_menu_popup_container.children().first() {
@@ -174,10 +174,10 @@ pub fn add_entries(
             button.connect_clicked(move |_button| {
                 container1.children().iter().skip(1).for_each(|sub_menu| {
                     if sub_menu.get_visible() {
-                        sub_menu.hide();
+                        sub_menu.set_visible(false);
                     }
                 });
-                sub_menu1.show();
+                sub_menu1.set_visible(true);
             });
         }
     }
@@ -188,7 +188,7 @@ pub fn add_entries(
 
         button.connect_clicked(move |_button| {
             container.children().iter().skip(1).for_each(|sub_menu| {
-                sub_menu.hide();
+                sub_menu.set_visible(false);
             });
 
             let script = Script::from(label.as_str());

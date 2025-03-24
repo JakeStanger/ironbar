@@ -46,26 +46,26 @@ impl BluetoothDeviceBox {
         image_provider: &image::Provider,
     ) -> Self {
         let container = gtk::Box::new(Orientation::Horizontal, 0);
-        container.add_class("device");
+        container.add_css_class("device");
         let icon_box = IconLabel::new("", icon_size, image_provider);
-        icon_box.add_class("icon-box");
+        icon_box.add_css_class("icon-box");
 
         let status = gtk::Box::new(Orientation::Vertical, 0);
-        status.add_class("status");
+        status.add_css_class("status");
         status.set_valign(Align::Center);
 
         let header = Label::new(None);
-        header.add_class("header-label");
+        header.add_css_class("header-label");
 
         let footer = Label::new(None);
-        footer.add_class("footer-label");
+        footer.add_css_class("footer-label");
 
         let switch = gtk::Switch::new();
         switch.set_valign(Align::Center);
-        switch.add_class("switch");
+        switch.add_css_class("switch");
 
         let spinner = Spinner::new();
-        spinner.add_class("spinner");
+        spinner.add_css_class("spinner");
         spinner.start();
 
         icon_box.set_halign(Align::Start);
@@ -261,11 +261,11 @@ impl Module<Button> for BluetoothModule {
 
                 label.set_text(&text);
 
-                button.remove_class("not-found");
-                button.remove_class("disabled");
-                button.remove_class("enabled");
-                button.remove_class("connected");
-                button.add_class(class);
+                button.remove_css_class("not-found");
+                button.remove_css_class("disabled");
+                button.remove_css_class("enabled");
+                button.remove_css_class("connected");
+                button.add_css_class(class);
             });
         }
 
@@ -286,13 +286,13 @@ impl Module<Button> for BluetoothModule {
         let container = gtk::Box::new(Orientation::Vertical, 0);
 
         let header = gtk::Box::new(Orientation::Horizontal, 0);
-        header.add_class("header");
+        header.add_css_class("header");
 
         let header_switch = gtk::Switch::new();
-        header_switch.add_class("switch");
+        header_switch.add_css_class("switch");
 
         let header_label = Label::new(None);
-        header_label.add_class("label");
+        header_label.add_css_class("label");
 
         header.add(&header_switch);
         header.add(&header_label);
@@ -309,26 +309,26 @@ impl Module<Button> for BluetoothModule {
             },
         );
         devices.set_vexpand(true);
-        devices.add_class("devices");
+        devices.add_css_class("devices");
 
         let devices_box = gtk::Box::new(Orientation::Vertical, 0);
-        devices_box.add_class("box");
+        devices_box.add_css_class("box");
 
         devices.add(&devices_box);
         container.add(&devices);
 
         let disabled = gtk::Box::new(Orientation::Vertical, 0);
-        disabled.add_class("disabled");
+        disabled.add_css_class("disabled");
         disabled.set_valign(Align::Center);
         disabled.set_vexpand(true);
 
         let disabled_spinner = Spinner::new();
-        disabled_spinner.add_class("spinner");
+        disabled_spinner.add_css_class("spinner");
         disabled_spinner.start();
         disabled.add(&disabled_spinner);
 
         let disabled_label = Label::new(None);
-        disabled_label.add_class("label");
+        disabled_label.add_css_class("label");
         disabled.add(&disabled_label);
 
         container.add(&disabled);

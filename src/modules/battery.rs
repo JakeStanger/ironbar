@@ -164,7 +164,7 @@ impl Module<Button> for BatteryModule {
         info: &ModuleInfo,
     ) -> Result<ModuleParts<Button>> {
         let icon = IconLabel::new("", self.icon_size, &context.ironbar.image_provider());
-        icon.add_class("icon");
+        icon.add_css_class("icon");
 
         let label = Label::builder()
             .label(&self.format)
@@ -173,13 +173,13 @@ impl Module<Button> for BatteryModule {
             .justify(self.layout.justify.into())
             .build();
 
-        label.add_class("label");
+        label.add_css_class("label");
 
         let container = gtk::Box::new(self.layout.orientation(info), 5);
-        container.add_class("contents");
+        container.add_css_class("contents");
 
         let button = Button::new();
-        button.add_class("button");
+        button.add_css_class("button");
 
         container.add(&*icon);
         container.add(&label);
@@ -216,11 +216,11 @@ impl Module<Button> for BatteryModule {
                 icon.set_label(Some(&format!("icon:{}", properties.icon_name)));
 
                 if let Some(threshold) = get_threshold(percentage, thresholds) {
-                    button.add_class(threshold);
+                    button.add_css_class(threshold);
 
                     for class in thresholds.keys() {
                         if **class != *threshold {
-                            button.remove_class(class);
+                            button.remove_css_class(class);
                         }
                     }
                 }
@@ -247,7 +247,7 @@ impl Module<Button> for BatteryModule {
             .build();
 
         let label = Label::builder().use_markup(true).build();
-        label.add_class("details");
+        label.add_css_class("details");
         container.add(&label);
 
         context.subscribe().recv_glib((), move |(), properties| {
