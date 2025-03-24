@@ -40,7 +40,9 @@ impl Client {
                         let mut updates: Vec<WorkspaceUpdate> = vec![];
 
                         if first_event {
-                            updates.push(WorkspaceUpdate::Init(new_workspaces.clone()));
+                            let mut new_workspaces = new_workspaces.clone();
+                            new_workspaces.sort_by_key(|w| w.id);
+                            updates.push(WorkspaceUpdate::Init(new_workspaces));
                             first_event = false;
                         } else {
                             // first pass - add/update
