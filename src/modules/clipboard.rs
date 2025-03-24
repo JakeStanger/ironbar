@@ -7,12 +7,13 @@ use crate::image::IconButton;
 use crate::modules::{
     Module, ModuleInfo, ModuleParts, ModulePopup, ModuleUpdateEvent, PopupButton, WidgetContext,
 };
-use crate::{glib_recv, module_impl, spawn, try_send};
+use crate::{Ironbar, glib_recv, module_impl, spawn, try_send};
 use glib::Propagation;
+use gtk::gdk::BUTTON_PRIMARY;
 use gtk::gdk_pixbuf::Pixbuf;
 use gtk::gio::{Cancellable, MemoryInputStream};
 use gtk::prelude::*;
-use gtk::{Button, EventBox, Image, Label, Orientation, RadioButton, Widget};
+use gtk::{Button, CheckButton, GestureClick, Image, Label, Orientation, Widget};
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::ops::Deref;
@@ -149,7 +150,7 @@ impl Module<Button> for ClipboardModule {
         info: &ModuleInfo,
     ) -> color_eyre::Result<ModuleParts<Button>> {
         let button = IconButton::new(&self.icon, info.icon_theme, self.icon_size);
-        button.label().set_angle(self.layout.angle(info));
+        // button.label().set_angle(self.layout.angle(info));
         button.label().set_justify(self.layout.justify.into());
 
         button.add_class("btn");
@@ -180,15 +181,16 @@ impl Module<Button> for ClipboardModule {
         let container = gtk::Box::new(Orientation::Vertical, 10);
 
         let entries = gtk::Box::new(Orientation::Vertical, 5);
-        container.add(&entries);
+        container.append(&entries);
 
-        let hidden_option = RadioButton::new();
-        entries.add(&hidden_option);
+        let hidden_option = CheckButton::new();
+        entries.append(&hidden_option);
 
         let mut items = HashMap::new();
 
         {
             let hidden_option = hidden_option.clone();
+
             glib_recv!(rx, event => {
                 match event {
                     ControllerEvent::Add(id, item) => {
@@ -199,10 +201,10 @@ impl Module<Button> for ClipboardModule {
 
                         let button = match item.value.as_ref() {
                             ClipboardValue::Text(value) => {
-                                let button = RadioButton::from_widget(&hidden_option);
+                                let button = CheckButton::builder().group(&hidden_option).build();
 
                                 let label = Label::new(Some(value));
-                                button.add(&label);
+                                button.set_child(Some(&label));
 
                                 if let Some(truncate) = self.truncate {
                                     label.truncate(truncate);
@@ -225,9 +227,8 @@ impl Module<Button> for ClipboardModule {
                                     Ok(pixbuf) => {
                                         let image = Image::from_pixbuf(Some(&pixbuf));
 
-                                        let button = RadioButton::from_widget(&hidden_option);
-                                        button.set_image(Some(&image));
-                                        button.set_always_show_image(true);
+                                        let button = CheckButton::builder().group(&hidden_option).build();
+                                        button.set_child(Some(&image));
                                         button.style_context().add_class("image");
 
                                         button
@@ -244,28 +245,24 @@ impl Module<Button> for ClipboardModule {
                         button.style_context().add_class("btn");
                         button.set_active(true); // if just added, should be on clipboard
 
-                        let button_wrapper = EventBox::new();
-                        button_wrapper.add(&button);
-
-                        button_wrapper.set_widget_name(&format!("copy-{id}"));
-                        button_wrapper.set_above_child(true);
+                        button.set_widget_name(&format!("copy-{id}"));
+                        // button.set_above_child(true);
 
                         {
                             let tx = tx.clone();
-                            button_wrapper.connect_button_press_event(
-                                move |button_wrapper, event| {
-                                    // left click
-                                    if event.button() == 1 {
-                                        let id = get_button_id(button_wrapper)
-                                            .expect("Failed to get id from button name");
+                            let button2 = button.clone();
 
-                                        debug!("Copying item with id: {id}");
-                                        try_send!(tx, UIEvent::Copy(id));
-                                    }
+                            let event_handler = GestureClick::builder().button(BUTTON_PRIMARY).build();
 
-                                    Propagation::Stop
-                                },
-                            );
+                            event_handler.connect_pressed(move |_, _, _, _| {
+                                let id = get_button_id(&button2)
+                                    .expect("Failed to get id from button name");
+
+                                debug!("Copying item with id: {id}");
+                                try_send!(tx, UIEvent::Copy(id));
+                            });
+
+                            button.add_controller(event_handler);
                         }
 
                         let remove_button = Button::with_label("x");
@@ -288,12 +285,10 @@ impl Module<Button> for ClipboardModule {
                             });
                         }
 
-                        row.add(&button_wrapper);
-                        row.pack_end(&remove_button, false, false, 0);
+                        row.prepend(&button);
+                        row.append(&remove_button);
 
-                        entries.add(&row);
-                        entries.reorder_child(&row, 0);
-                        row.show_all();
+                        entries.prepend(&row);
 
                         items.insert(id, (row, button));
                     }
@@ -325,7 +320,6 @@ impl Module<Button> for ClipboardModule {
             });
         }
 
-        container.show_all();
         hidden_option.hide();
 
         Some(container)

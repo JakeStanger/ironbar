@@ -105,7 +105,7 @@ impl Module<Label> for ScriptModule {
     ) -> Result<ModuleParts<Label>> {
         let label = Label::builder()
             .use_markup(true)
-            .angle(self.layout.angle(info))
+            // .angle(self.layout.angle(info))
             .justify(self.layout.justify.into())
             .build();
 

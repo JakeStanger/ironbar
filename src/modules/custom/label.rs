@@ -45,7 +45,7 @@ impl CustomWidget for LabelWidget {
         let label = build!(self, Self::Widget);
 
         if !context.is_popup {
-            label.set_angle(self.layout.angle(context.info));
+            // label.set_angle(self.layout.angle(context.info));
         }
 
         label.set_justify(self.layout.justify.into());

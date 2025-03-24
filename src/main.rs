@@ -1,4 +1,5 @@
 #![doc = include_str!("../README.md")]
+#![allow(unused)]
 
 use std::cell::RefCell;
 use std::env;
@@ -16,7 +17,7 @@ use color_eyre::Report;
 use color_eyre::eyre::Result;
 use dirs::config_dir;
 use gtk::Application;
-use gtk::gdk::Display;
+use gtk::gdk::{Display, Monitor};
 use gtk::prelude::*;
 use smithay_client_toolkit::output::OutputInfo;
 use tokio::runtime::Runtime;
@@ -344,7 +345,7 @@ fn load_config() -> (Config, PathBuf) {
 }
 
 /// Gets the GDK `Display` instance.
-fn get_display() -> Display {
+pub fn get_display() -> Display {
     Display::default().map_or_else(
         || {
             let report = Report::msg("Failed to get default GTK display");
@@ -392,7 +393,12 @@ fn load_output_bars(
     //     .monitor_at_point(pos.0, pos.1)
     //     .expect("monitor to exist");
 
-    let monitor = display.monitor(index as i32).expect("monitor to exist");
+    let monitors = display.monitors();
+    let monitor = monitors
+        .item(index as u32)
+        .expect("monitor should exist")
+        .downcast::<Monitor>()
+        .expect("should be a monitor");
 
     let show_default_bar =
         config.bar.start.is_some() || config.bar.center.is_some() || config.bar.end.is_some();

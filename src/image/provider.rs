@@ -4,10 +4,9 @@ use crate::{glib_recv_mpsc, send_async, spawn};
 use cfg_if::cfg_if;
 use color_eyre::{Help, Report, Result};
 use gtk::cairo::Surface;
-use gtk::gdk::ffi::gdk_cairo_surface_create_from_pixbuf;
 use gtk::gdk_pixbuf::Pixbuf;
 use gtk::prelude::*;
-use gtk::{IconLookupFlags, IconTheme};
+use gtk::{IconLookupFlags, IconTheme, Image};
 use std::path::{Path, PathBuf};
 #[cfg(feature = "http")]
 use tokio::sync::mpsc;
@@ -44,7 +43,7 @@ impl<'a> ImageProvider<'a> {
     /// Note this checks that icons exist in theme, or files exist on disk
     /// but no other check is performed.
     pub fn parse(input: &str, theme: &'a IconTheme, use_fallback: bool, size: i32) -> Option<Self> {
-        let location = Self::get_location(input, theme, size, use_fallback, 0)?;
+        let location = Self::get_location(input, theme, use_fallback, 0)?;
         debug!("Resolved {input} --> {location:?} (size: {size})");
 
         Some(Self { location, size })
@@ -64,7 +63,6 @@ impl<'a> ImageProvider<'a> {
     fn get_location(
         input: &str,
         theme: &'a IconTheme,
-        size: i32,
         use_fallback: bool,
         recurse_depth: usize,
     ) -> Option<ImageLocation<'a>> {
@@ -101,15 +99,10 @@ impl<'a> ImageProvider<'a> {
             None if input.starts_with("steam_app_") => Some(ImageLocation::Steam(
                 input_name.chars().skip("steam_app_".len()).collect(),
             )),
-            None if theme
-                .lookup_icon(input, size, IconLookupFlags::empty())
-                .is_some() =>
-            {
-                Some(ImageLocation::Icon {
-                    name: input_name.to_string(),
-                    theme,
-                })
-            }
+            None if theme.has_icon(input) => Some(ImageLocation::Icon {
+                name: input_name.to_string(),
+                theme,
+            }),
             Some(input_type) => {
                 warn!(
                     "{:?}",
@@ -123,9 +116,9 @@ impl<'a> ImageProvider<'a> {
             }
             None if recurse_depth == MAX_RECURSE_DEPTH => fallback!(),
             None if should_parse_desktop_file => {
-                if let Some(location) = get_desktop_icon_name(input_name).map(|input| {
-                    Self::get_location(&input, theme, size, use_fallback, recurse_depth + 1)
-                }) {
+                if let Some(location) = get_desktop_icon_name(input_name)
+                    .map(|input| Self::get_location(&input, theme, use_fallback, recurse_depth + 1))
+                {
                     location
                 } else {
                     warn!("Failed to find image: {input}");
@@ -141,7 +134,7 @@ impl<'a> ImageProvider<'a> {
 
     /// Attempts to fetch the image from the location
     /// and load it into the provided `GTK::Image` widget.
-    pub fn load_into_image(&self, image: &gtk::Image) -> Result<()> {
+    pub fn load_into_image(&self, image: &Image) -> Result<()> {
         // handle remote locations async to avoid blocking UI thread while downloading
         #[cfg(feature = "http")]
         if let ImageLocation::Remote(url) = &self.location {
@@ -173,7 +166,7 @@ impl<'a> ImageProvider<'a> {
                     );
 
                     // Different error types makes this a bit awkward
-                    match pixbuf.map(|pixbuf| Self::create_and_load_surface(&pixbuf, &image))
+                    match pixbuf.map(|pixbuf| image.set_from_pixbuf(Some(&pixbuf)))
                     {
                         Ok(Err(err)) => error!("{err:?}"),
                         Err(err) => error!("{err:?}"),
@@ -182,63 +175,29 @@ impl<'a> ImageProvider<'a> {
                 });
             }
         } else {
-            self.load_into_image_sync(image)?;
+            self.load_into_image_sync(image);
         };
 
         #[cfg(not(feature = "http"))]
-        self.load_into_image_sync(image)?;
+        self.load_into_image_sync(image);
 
         Ok(())
     }
 
     /// Attempts to synchronously fetch an image from location
     /// and load into into the image.
-    fn load_into_image_sync(&self, image: &gtk::Image) -> Result<()> {
+    fn load_into_image_sync(&self, image: &Image) {
         let scale = image.scale_factor();
 
-        let pixbuf = match &self.location {
-            ImageLocation::Icon { name, theme } => self.get_from_icon(name, theme, scale),
-            ImageLocation::Local(path) => self.get_from_file(path, scale),
-            ImageLocation::Steam(steam_id) => self.get_from_steam_id(steam_id, scale),
+        match &self.location {
+            ImageLocation::Icon { name, theme } => image.set_icon_name(Some(name)),
+            ImageLocation::Local(path) => image.set_from_file(Some(path)),
+            ImageLocation::Steam(steam_id) => {
+                image.set_from_file(Self::steam_id_to_path(steam_id).ok())
+            }
             #[cfg(feature = "http")]
             _ => unreachable!(), // handled above
-        }?;
-
-        Self::create_and_load_surface(&pixbuf, image)
-    }
-
-    /// Attempts to create a Cairo surface from the provided `Pixbuf`,
-    /// using the provided scaling factor.
-    /// The surface is then loaded into the provided image.
-    ///
-    /// This is necessary for HiDPI since `Pixbuf`s are always treated as scale factor 1.
-    pub fn create_and_load_surface(pixbuf: &Pixbuf, image: &gtk::Image) -> Result<()> {
-        let surface = unsafe {
-            let ptr = gdk_cairo_surface_create_from_pixbuf(
-                pixbuf.as_ptr(),
-                image.scale_factor(),
-                std::ptr::null_mut(),
-            );
-            Surface::from_raw_full(ptr)
-        }?;
-
-        image.set_from_surface(Some(&surface));
-
-        Ok(())
-    }
-
-    /// Attempts to get a `Pixbuf` from the GTK icon theme.
-    fn get_from_icon(&self, name: &str, theme: &IconTheme, scale: i32) -> Result<Pixbuf> {
-        let pixbuf =
-            match theme.lookup_icon_for_scale(name, self.size, scale, IconLookupFlags::empty()) {
-                Some(_) => theme.load_icon(name, self.size * scale, IconLookupFlags::FORCE_SIZE),
-                None => Ok(None),
-            }?;
-
-        pixbuf.map_or_else(
-            || Err(Report::msg("Icon theme does not contain icon '{name}'")),
-            Ok,
-        )
+        };
     }
 
     /// Attempts to get a `Pixbuf` from a local file.
@@ -248,20 +207,15 @@ impl<'a> ImageProvider<'a> {
         Ok(pixbuf)
     }
 
-    /// Attempts to get a `Pixbuf` from a local file,
-    /// using the Steam game ID to look it up.
-    fn get_from_steam_id(&self, steam_id: &str, scale: i32) -> Result<Pixbuf> {
-        // TODO: Can we load this from icon theme with app id `steam_icon_{}`?
-        let path = dirs::data_dir().map_or_else(
+    fn steam_id_to_path(steam_id: &str) -> Result<PathBuf> {
+        dirs::data_dir().map_or_else(
             || Err(Report::msg("Missing XDG data dir")),
             |dir| {
                 Ok(dir.join(format!(
                     "icons/hicolor/32x32/apps/steam_icon_{steam_id}.png"
                 )))
             },
-        )?;
-
-        self.get_from_file(&path, scale)
+        )
     }
 
     /// Attempts to get `Bytes` from an HTTP resource asynchronously.

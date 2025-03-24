@@ -5,9 +5,10 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
 
 use color_eyre::Result;
-use glib::{Propagation, PropertySet};
+use glib::Propagation;
+use gtk::ffi::GtkGestureClick;
 use gtk::prelude::*;
-use gtk::{Button, IconTheme, Label, Orientation, Scale};
+use gtk::{Button, GestureClick, IconTheme, Label, Orientation, Scale};
 use regex::Regex;
 use tokio::sync::{broadcast, mpsc};
 use tracing::error;
@@ -187,20 +188,20 @@ impl Module<Button> for MusicModule {
         let button_contents = gtk::Box::new(self.layout.orientation(info), 5);
         button_contents.add_class("contents");
 
-        button.add(&button_contents);
+        button.set_child(Some(&button_contents));
 
         let icon_play = IconLabel::new(&self.icons.play, info.icon_theme, self.icon_size);
         let icon_pause = IconLabel::new(&self.icons.pause, info.icon_theme, self.icon_size);
 
-        icon_play.label().set_angle(self.layout.angle(info));
+        // icon_play.label().set_angle(self.layout.angle(info));
         icon_play.label().set_justify(self.layout.justify.into());
 
-        icon_pause.label().set_angle(self.layout.angle(info));
+        // icon_pause.label().set_angle(self.layout.angle(info));
         icon_pause.label().set_justify(self.layout.justify.into());
 
         let label = Label::builder()
             .use_markup(true)
-            .angle(self.layout.angle(info))
+            // .angle(self.layout.angle(info))
             .justify(self.layout.justify.into())
             .build();
 
@@ -208,9 +209,9 @@ impl Module<Button> for MusicModule {
             label.truncate(truncate);
         }
 
-        button_contents.add(&*icon_pause);
-        button_contents.add(&*icon_play);
-        button_contents.add(&label);
+        button_contents.append(&*icon_pause);
+        button_contents.append(&*icon_play);
+        button_contents.append(&label);
 
         {
             let tx = context.tx.clone();
@@ -299,9 +300,9 @@ impl Module<Button> for MusicModule {
         album_label.container.add_class("album");
         artist_label.container.add_class("artist");
 
-        info_box.add(&title_label.container);
-        info_box.add(&album_label.container);
-        info_box.add(&artist_label.container);
+        info_box.append(&title_label.container);
+        info_box.append(&album_label.container);
+        info_box.append(&artist_label.container);
 
         let controls_box = gtk::Box::new(Orientation::Horizontal, 0);
         controls_box.add_class("controls");
@@ -318,12 +319,12 @@ impl Module<Button> for MusicModule {
         let btn_next = IconButton::new(&icons.next, icon_theme, self.icon_size);
         btn_next.add_class("btn-next");
 
-        controls_box.add(&*btn_prev);
-        controls_box.add(&*btn_play);
-        controls_box.add(&*btn_pause);
-        controls_box.add(&*btn_next);
+        controls_box.append(&*btn_prev);
+        controls_box.append(&*btn_play);
+        controls_box.append(&*btn_pause);
+        controls_box.append(&*btn_next);
 
-        info_box.add(&controls_box);
+        info_box.append(&controls_box);
 
         let volume_box = gtk::Box::new(Orientation::Vertical, 5);
         volume_box.add_class("volume");
@@ -335,13 +336,17 @@ impl Module<Button> for MusicModule {
         let volume_icon = IconLabel::new(&icons.volume, icon_theme, self.icon_size);
         volume_icon.add_class("icon");
 
-        volume_box.pack_start(&volume_slider, true, true, 0);
-        volume_box.pack_end(&*volume_icon, false, false, 0);
+        volume_box.prepend(&volume_slider);
+        volume_box.append(&*volume_icon);
 
-        main_container.add(&album_image);
-        main_container.add(&info_box);
-        main_container.add(&volume_box);
-        container.add(&main_container);
+        volume_slider.set_vexpand(true);
+
+        main_container.append(&album_image);
+        main_container.append(&info_box);
+        main_container.append(&volume_box);
+        container.append(&main_container);
+
+        info_box.set_hexpand(true);
 
         let tx_prev = tx.clone();
         btn_prev.connect_clicked(move |_| {
@@ -382,31 +387,32 @@ impl Module<Button> for MusicModule {
             .build();
         progress.add_class("slider");
 
-        progress_box.add(&progress);
-        progress_box.add(&progress_label);
-        container.add(&progress_box);
+        progress_box.append(&progress);
+        progress_box.append(&progress_label);
+        container.append(&progress_box);
 
+        let event_handler = GestureClick::new();
         let drag_lock = Arc::new(AtomicBool::new(false));
+
         {
             let drag_lock = drag_lock.clone();
-            progress.connect_button_press_event(move |_, _| {
-                drag_lock.set(true);
-                Propagation::Proceed
+            event_handler.connect_pressed(move |_, _, _, _| {
+                drag_lock.store(true, Ordering::Relaxed);
             });
         }
 
         {
             let drag_lock = drag_lock.clone();
-            progress.connect_button_release_event(move |scale, _| {
+            let scale = progress.clone();
+            event_handler.connect_released(move |_, _, _, _| {
                 let value = scale.value();
                 try_send!(tx, PlayerCommand::Seek(Duration::from_secs_f64(value)));
 
-                drag_lock.set(false);
-                Propagation::Proceed
+                drag_lock.store(false, Ordering::Relaxed);
             });
         }
 
-        container.show_all();
+        progress.add_controller(event_handler);
 
         {
             let icon_theme = icon_theme.clone();
@@ -491,7 +497,7 @@ impl Module<Button> for MusicModule {
 
                             progress.set_value(elapsed.as_secs_f64());
                             progress.set_range(0.0, duration.as_secs_f64());
-                            progress_box.show_all();
+                            progress_box.show();
                         } else {
                             progress_box.hide();
                         }
@@ -509,7 +515,7 @@ fn update_popup_metadata_label(text: Option<String>, label: &IconPrefixedLabel) 
     match text {
         Some(value) => {
             label.label.set_label_escaped(&value);
-            label.container.show_all();
+            label.container.show();
         }
         None => {
             label.container.hide();
@@ -567,8 +573,8 @@ impl IconPrefixedLabel {
         icon.add_class("icon-box");
         label.add_class("label");
 
-        container.add(&*icon);
-        container.add(&label);
+        container.append(&*icon);
+        container.append(&label);
 
         Self { label, container }
     }

@@ -184,7 +184,7 @@ impl Module<Overlay> for NotificationsModule {
     {
         let overlay = Overlay::new();
         let button = Button::with_label(&self.icons.closed_none);
-        overlay.add(&button);
+        overlay.add_overlay(&button);
 
         let label = Label::builder()
             .label("0")
@@ -194,8 +194,8 @@ impl Module<Overlay> for NotificationsModule {
 
         if self.show_count {
             label.add_class("count");
+            label.set_can_target(false);
             overlay.add_overlay(&label);
-            overlay.set_overlay_pass_through(&label, true);
         }
 
         let ctx = context.controller_tx.clone();

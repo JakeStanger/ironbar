@@ -75,23 +75,26 @@ fn show_popup(bar: &Bar, widget_name: &str) -> Response {
     // only one popup per bar, so hide if open for another widget
     popup.hide();
 
-    let data = popup
-        .container_cache
-        .borrow()
-        .iter()
-        .find(|(_, value)| value.name == widget_name)
-        .map(|(id, value)| (*id, value.content.buttons.first().cloned()));
+    // FIXME: need to grab a button
+    // let data = popup
+    //     .container_cache
+    //     .borrow()
+    //     .iter()
+    //     .find(|(_, value)| value.name == widget_name)
+    //     .map(|(id, value)| (*id, value.content.buttons.first().cloned()));
 
-    match data {
-        Some((id, Some(button))) => {
-            let button_id = button.popup_id();
-            popup.show(id, button_id);
+    // match data {
+    //     Some((id, Some(button))) => {
+    //         let button_id = button.popup_id();
+    //         popup.show(id, button_id);
+    //
+    //         Response::Ok
+    //     }
+    //     Some((_, None)) => Response::error("Module has no popup functionality"),
+    //     None => Response::error("Invalid module name"),
+    // }
 
-            Response::Ok
-        }
-        Some((_, None)) => Response::error("Module has no popup functionality"),
-        None => Response::error("Invalid module name"),
-    }
+    Response::error("Not implemented")
 }
 
 fn hide_popup(bar: &Bar) -> Response {

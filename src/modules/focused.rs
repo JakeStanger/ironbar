@@ -142,11 +142,11 @@ impl Module<gtk::Box> for FocusedModule {
         let icon = gtk::Image::new();
         if self.show_icon {
             icon.add_class("icon");
-            container.add(&icon);
+            container.append(&icon);
         }
 
         let label = Label::builder()
-            .angle(self.layout.angle(info))
+            // .angle(self.layout.angle(info))
             .justify(self.layout.justify.into())
             .build();
 
@@ -156,7 +156,7 @@ impl Module<gtk::Box> for FocusedModule {
             label.truncate(truncate);
         }
 
-        container.add(&label);
+        container.append(&label);
 
         {
             let icon_overrides = info.icon_overrides.clone();

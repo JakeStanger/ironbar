@@ -4,9 +4,13 @@ use crate::modules::{BarModuleFactory, ModuleInfo, ModuleLocation};
 use crate::popup::Popup;
 use color_eyre::Result;
 use glib::Propagation;
+use gtk::ffi::GtkCenterLayout;
 use gtk::gdk::Monitor;
 use gtk::prelude::*;
-use gtk::{Application, ApplicationWindow, IconTheme, Orientation, Window, WindowType};
+use gtk::{
+    Application, ApplicationWindow, CenterBox, CenterLayout, EventControllerMotion, IconTheme,
+    Orientation, Window,
+};
 use gtk_layer_shell::LayerShell;
 use std::collections::HashMap;
 use std::rc::Rc;
@@ -32,7 +36,7 @@ pub struct Bar {
 
     window: ApplicationWindow,
 
-    content: gtk::Box,
+    content: CenterBox,
 
     start: gtk::Box,
     center: gtk::Box,
@@ -50,10 +54,7 @@ impl Bar {
         config: BarConfig,
         ironbar: Rc<Ironbar>,
     ) -> Self {
-        let window = ApplicationWindow::builder()
-            .application(app)
-            .type_(WindowType::Toplevel)
-            .build();
+        let window = ApplicationWindow::builder().application(app).build();
 
         let name = config
             .name
@@ -65,10 +66,10 @@ impl Bar {
         let position = config.position;
         let orientation = position.orientation();
 
-        let content = gtk::Box::builder()
+        let content = gtk::CenterBox::builder()
             .orientation(orientation)
-            .spacing(0)
-            .hexpand(false)
+            // .spacing(0)
+            // .hexpand(false)
             .name("bar");
 
         let content = if orientation == Orientation::Horizontal {
@@ -84,13 +85,15 @@ impl Bar {
         let center = create_container("center", orientation);
         let end = create_container("end", orientation);
 
-        window.add(&content);
+        window.set_child(Some(&content));
 
-        window.connect_destroy_event(|_, _| {
-            info!("Shutting down");
-            gtk::main_quit();
-            Propagation::Proceed
-        });
+        {
+            let app = app.clone();
+            window.connect_destroy(move |_| {
+                info!("Shutting down");
+                app.quit();
+            });
+        }
 
         Self {
             name,
@@ -138,7 +141,7 @@ impl Bar {
         );
 
         if let Some(autohide) = config.autohide {
-            let hotspot_window = Window::new(WindowType::Toplevel);
+            let hotspot_window = Window::new();
             Self::setup_autohide(&self.window, &hotspot_window, autohide);
             self.setup_layer_shell(
                 &hotspot_window,
@@ -179,18 +182,18 @@ impl Bar {
         let position = self.position;
 
         win.init_layer_shell();
-        win.set_monitor(monitor);
+        win.set_monitor(Some(monitor));
         win.set_layer(layer);
-        win.set_namespace(env!("CARGO_PKG_NAME"));
+        win.set_namespace(Some(env!("CARGO_PKG_NAME")));
 
         if exclusive_zone {
             win.auto_exclusive_zone_enable();
         }
 
-        win.set_layer_shell_margin(Edge::Top, margin.top);
-        win.set_layer_shell_margin(Edge::Bottom, margin.bottom);
-        win.set_layer_shell_margin(Edge::Left, margin.left);
-        win.set_layer_shell_margin(Edge::Right, margin.right);
+        win.set_margin(Edge::Top, margin.top);
+        win.set_margin(Edge::Bottom, margin.bottom);
+        win.set_margin(Edge::Left, margin.left);
+        win.set_margin(Edge::Right, margin.right);
 
         let bar_orientation = position.orientation();
 
@@ -226,27 +229,38 @@ impl Bar {
         {
             let hotspot_window = hotspot_window.clone();
 
-            window.connect_leave_notify_event(move |win, _| {
-                let win = win.clone();
+            let event_controller = EventControllerMotion::new();
+
+            {
+                let win = window.clone();
                 let hotspot_window = hotspot_window.clone();
 
-                glib::timeout_add_local_once(Duration::from_millis(timeout), move || {
-                    win.hide();
-                    hotspot_window.show();
+                event_controller.connect_leave(move |_| {
+                    let win = win.clone();
+                    let hotspot_window = hotspot_window.clone();
+
+                    glib::timeout_add_local_once(Duration::from_millis(timeout), move || {
+                        win.hide();
+                        hotspot_window.show();
+                    });
                 });
-                Propagation::Proceed
-            });
+            }
+
+            window.add_controller(event_controller);
         }
 
         {
             let win = window.clone();
 
-            hotspot_window.connect_enter_notify_event(move |hotspot_win, _| {
+            let event_controller = EventControllerMotion::new();
+
+            let hotspot_win = hotspot_window.clone();
+            event_controller.connect_enter(move |_, _, _| {
                 hotspot_win.hide();
                 win.show();
-
-                Propagation::Proceed
             });
+
+            hotspot_window.add_controller(event_controller);
         }
     }
 
@@ -258,9 +272,9 @@ impl Bar {
         output_size: (i32, i32),
     ) -> Result<BarLoadResult> {
         let icon_theme = IconTheme::new();
-        if let Some(ref theme) = config.icon_theme {
-            icon_theme.set_custom_theme(Some(theme));
-        }
+        // if let Some(ref theme) = config.icon_theme {
+        //     icon_theme.set_custom_theme(Some(theme));
+        // }
 
         let app = &self.window.application().expect("to exist");
 
@@ -287,8 +301,10 @@ impl Bar {
         );
         let popup = Rc::new(popup);
 
+        // let layout = CenterBox::new();
+
         if let Some(modules) = config.start {
-            self.content.add(&self.start);
+            self.content.set_start_widget(Some(&self.start));
 
             let info = info!(ModuleLocation::Left);
             add_modules(&self.start, modules, &info, &self.ironbar, &popup)?;
@@ -302,11 +318,13 @@ impl Bar {
         }
 
         if let Some(modules) = config.end {
-            self.content.pack_end(&self.end, false, true, 0);
+            self.content.set_end_widget(Some(&self.end));
 
             let info = info!(ModuleLocation::Right);
             add_modules(&self.end, modules, &info, &self.ironbar, &popup)?;
         }
+
+        // self.content.set_layout_manager(Some(layout));
 
         let result = BarLoadResult { popup };
 

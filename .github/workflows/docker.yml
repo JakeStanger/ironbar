@@ -9,7 +9,7 @@ on:
   schedule:
     - cron: '32 23 * * *'
   push:
-    branches: [ "master" ]
+    branches: [ "master", "refactor/gtk-4" ]
     paths:
       - '.github/scripts/ubuntu_setup.sh'
       - 'Dockerfile'
