@@ -15,14 +15,17 @@ default = [
     "clipboard",
     "clock",
     "config+all",
+    "custom",
     "focused",
     "http",
     "ipc",
     "keyboard+all",
     "launcher",
+    "label",
     "music+all",
     "network_manager",
     "notifications",
+    "script",
     "sys_info",
     "tray",
     "upower",
@@ -54,12 +57,16 @@ clipboard = ["dep:nix"]
 
 clock = ["chrono"]
 
+custom = []
+
 focused = []
 
 keyboard = ["dep:input", "dep:evdev-rs", "dep:libc", "dep:nix"]
 "keyboard+all" = ["keyboard", "keyboard+sway", "keyboard+hyprland"]
 "keyboard+sway" = ["keyboard", "sway"]
 "keyboard+hyprland" = ["keyboard", "hyprland"]
+
+label = []
 
 launcher = []
 
@@ -71,6 +78,8 @@ music = ["dep:regex"]
 network_manager = ["futures-lite", "futures-signals", "zbus"]
 
 notifications = ["zbus"]
+
+script = []
 
 sys_info = ["dep:sysinfo"]
 
