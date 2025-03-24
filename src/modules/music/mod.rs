@@ -6,10 +6,13 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
 
 use color_eyre::Result;
-use glib::{Propagation, PropertySet};
+use glib::Propagation;
+use gtk::ffi::GtkGestureClick;
 use gtk::prelude::*;
-use gtk::{Button, Label, Orientation, Scale};
-use tokio::sync::mpsc;
+use gtk::{
+    Button, ContentFit, EventSequenceState, GestureClick, IconTheme, Label, Orientation, Scale,
+};
+use tokio::sync::{broadcast, mpsc};
 use tracing::{error, warn};
 
 pub use self::config::MusicModule;
@@ -169,24 +172,24 @@ impl Module<Button> for MusicModule {
     ) -> Result<ModuleParts<Button>> {
         let button = Button::new();
         let button_contents = gtk::Box::new(self.layout.orientation(info), 5);
-        button_contents.add_class("contents");
+        button_contents.add_css_class("contents");
 
-        button.add(&button_contents);
+        button.set_child(Some(&button_contents));
 
         let image_provider = context.ironbar.image_provider();
 
         let icon_play = IconLabel::new(&self.icons.play, self.icon_size, &image_provider);
         let icon_pause = IconLabel::new(&self.icons.pause, self.icon_size, &image_provider);
 
-        icon_play.label().set_angle(self.layout.angle(info));
+        // icon_play.label().set_angle(self.layout.angle(info));
         icon_play.label().set_justify(self.layout.justify.into());
 
-        icon_pause.label().set_angle(self.layout.angle(info));
+        // icon_pause.label().set_angle(self.layout.angle(info));
         icon_pause.label().set_justify(self.layout.justify.into());
 
         let label = Label::builder()
             .use_markup(true)
-            .angle(self.layout.angle(info))
+            // .angle(self.layout.angle(info))
             .justify(self.layout.justify.into())
             .build();
 
@@ -194,9 +197,9 @@ impl Module<Button> for MusicModule {
             label.truncate(truncate);
         }
 
-        button_contents.add(&*icon_pause);
-        button_contents.add(&*icon_play);
-        button_contents.add(&label);
+        button_contents.append(&*icon_pause);
+        button_contents.append(&*icon_play);
+        button_contents.append(&label);
 
         {
             let tx = context.tx.clone();
@@ -216,29 +219,29 @@ impl Module<Button> for MusicModule {
             if let Some(event) = event.take() {
                 label.set_label_escaped(&event.display_string);
 
-                button.show();
+                button.set_visible(true);
 
                 match event.status.state {
                     PlayerState::Playing if self.show_status_icon => {
-                        icon_play.show();
-                        icon_pause.hide();
+                        icon_play.set_visible(true);
+                        icon_pause.set_visible(false);
                     }
                     PlayerState::Paused if self.show_status_icon => {
-                        icon_pause.show();
-                        icon_play.hide();
+                        icon_pause.set_visible(true);
+                        icon_play.set_visible(false);
                     }
                     PlayerState::Stopped => {
-                        button.hide();
+                        button.set_visible(false);
                     }
                     _ => {}
                 }
 
                 if !self.show_status_icon {
-                    icon_pause.hide();
-                    icon_play.hide();
+                    icon_pause.set_visible(false);
+                    icon_play.set_visible(false);
                 }
             } else {
-                button.hide();
+                button.set_visible(false);
                 tx.send_spawn(ModuleUpdateEvent::ClosePopup);
             }
         });
@@ -260,11 +263,13 @@ impl Module<Button> for MusicModule {
         let container = gtk::Box::new(Orientation::Vertical, 10);
         let main_container = gtk::Box::new(Orientation::Horizontal, 10);
 
-        let album_image = gtk::Image::builder()
+        let album_image = gtk::Picture::builder()
+            .content_fit(ContentFit::ScaleDown)
             .width_request(128)
             .height_request(128)
             .build();
-        album_image.add_class("album-art");
+
+        album_image.add_css_class("album-art");
 
         let icons = self.icons;
 
@@ -285,53 +290,57 @@ impl Module<Button> for MusicModule {
             artist_label.label().truncate(truncate);
         }
 
-        title_label.add_class("title");
-        album_label.add_class("album");
-        artist_label.add_class("artist");
+        title_label.add_css_class("title");
+        album_label.add_css_class("album");
+        artist_label.add_css_class("artist");
 
-        info_box.add(&*title_label);
-        info_box.add(&*album_label);
-        info_box.add(&*artist_label);
+        info_box.append(&*title_label);
+        info_box.append(&*album_label);
+        info_box.append(&*artist_label);
 
         let controls_box = gtk::Box::new(Orientation::Horizontal, 0);
-        controls_box.add_class("controls");
+        controls_box.add_css_class("controls");
 
         let btn_prev = IconButton::new(&icons.prev, self.icon_size, image_provider.clone());
-        btn_prev.add_class("btn-prev");
+        btn_prev.add_css_class("btn-prev");
 
         let btn_play = IconButton::new(&icons.play, self.icon_size, image_provider.clone());
-        btn_play.add_class("btn-play");
+        btn_play.add_css_class("btn-play");
 
         let btn_pause = IconButton::new(&icons.pause, self.icon_size, image_provider.clone());
-        btn_pause.add_class("btn-pause");
+        btn_pause.add_css_class("btn-pause");
 
         let btn_next = IconButton::new(&icons.next, self.icon_size, image_provider.clone());
-        btn_next.add_class("btn-next");
+        btn_next.add_css_class("btn-next");
 
-        controls_box.add(&*btn_prev);
-        controls_box.add(&*btn_play);
-        controls_box.add(&*btn_pause);
-        controls_box.add(&*btn_next);
+        controls_box.append(&*btn_prev);
+        controls_box.append(&*btn_play);
+        controls_box.append(&*btn_pause);
+        controls_box.append(&*btn_next);
 
-        info_box.add(&controls_box);
+        info_box.append(&controls_box);
 
         let volume_box = gtk::Box::new(Orientation::Vertical, 5);
-        volume_box.add_class("volume");
+        volume_box.add_css_class("volume");
 
         let volume_slider = Scale::with_range(Orientation::Vertical, 0.0, 100.0, 5.0);
         volume_slider.set_inverted(true);
-        volume_slider.add_class("slider");
+        volume_slider.add_css_class("slider");
 
         let volume_icon = IconLabel::new(&icons.volume, self.icon_size, &image_provider);
-        volume_icon.add_class("icon");
+        volume_icon.add_css_class("icon");
 
-        volume_box.pack_start(&volume_slider, true, true, 0);
-        volume_box.pack_end(&*volume_icon, false, false, 0);
+        volume_box.prepend(&volume_slider);
+        volume_box.append(&*volume_icon);
 
-        main_container.add(&album_image);
-        main_container.add(&info_box);
-        main_container.add(&volume_box);
-        container.add(&main_container);
+        volume_slider.set_vexpand(true);
+
+        main_container.append(&album_image);
+        main_container.append(&info_box);
+        main_container.append(&volume_box);
+        container.append(&main_container);
+
+        info_box.set_hexpand(true);
 
         let tx_prev = context.controller_tx.clone();
         btn_prev.connect_clicked(move |_| {
@@ -360,44 +369,48 @@ impl Module<Button> for MusicModule {
         });
 
         let progress_box = gtk::Box::new(Orientation::Horizontal, 5);
-        progress_box.add_class("progress");
+        progress_box.add_css_class("progress");
 
         let progress_label = Label::new(None);
-        progress_label.add_class("label");
+        progress_label.add_css_class("label");
 
         let progress = Scale::builder()
             .orientation(Orientation::Horizontal)
             .draw_value(false)
             .hexpand(true)
             .build();
-        progress.add_class("slider");
+        progress.add_css_class("slider");
 
-        progress_box.add(&progress);
-        progress_box.add(&progress_label);
-        container.add(&progress_box);
+        progress_box.append(&progress);
+        progress_box.append(&progress_label);
+        container.append(&progress_box);
 
+        let event_handler = GestureClick::new();
         let drag_lock = Arc::new(AtomicBool::new(false));
+
         {
             let drag_lock = drag_lock.clone();
-            progress.connect_button_press_event(move |_, _| {
-                drag_lock.set(true);
-                Propagation::Proceed
+            event_handler.connect_pressed(move |gesture, _, _, _| {
+                gesture.set_state(EventSequenceState::Claimed);
+                drag_lock.store(true, Ordering::Relaxed);
             });
         }
 
         {
             let drag_lock = drag_lock.clone();
+            let scale = progress.clone();
             let tx = context.controller_tx.clone();
-            progress.connect_button_release_event(move |scale, _| {
+            event_handler.connect_released(move |gesture, _, _, _| {
+                gesture.set_state(EventSequenceState::Claimed);
+
                 let value = scale.value();
                 tx.send_spawn(PlayerCommand::Seek(Duration::from_secs_f64(value)));
 
-                drag_lock.set(false);
-                Propagation::Proceed
+                drag_lock.store(false, Ordering::Relaxed);
             });
         }
 
-        container.show_all();
+        progress.add_controller(event_handler);
 
         let image_size = self.cover_image_size;
 
@@ -416,11 +429,11 @@ impl Module<Button> for MusicModule {
 
                             glib::spawn_future_local(async move {
                                 let success = match image_provider
-                                    .load_into_image(&cover_path, image_size, false, &album_image)
+                                    .load_into_picture(&cover_path, image_size, false, &album_image)
                                     .await
                                 {
                                     Ok(true) => {
-                                        album_image.show();
+                                        album_image.set_visible(true);
                                         true
                                     }
                                     Ok(false) => {
@@ -434,13 +447,13 @@ impl Module<Button> for MusicModule {
                                 };
 
                                 if !success {
-                                    album_image.set_from_pixbuf(None);
-                                    album_image.hide();
+                                    album_image.set_pixbuf(None);
+                                    album_image.set_visible(false);
                                 }
                             });
                         } else {
-                            album_image.set_from_pixbuf(None);
-                            album_image.hide();
+                            album_image.set_pixbuf(None);
+                            album_image.set_visible(false);
                         }
                     }
 
@@ -450,23 +463,23 @@ impl Module<Button> for MusicModule {
 
                     match update.status.state {
                         PlayerState::Stopped => {
-                            btn_pause.hide();
-                            btn_play.show();
+                            btn_pause.set_visible(false);
+                            btn_play.set_visible(true);
                             btn_play.set_sensitive(false);
                         }
                         PlayerState::Playing => {
                             btn_play.set_sensitive(false);
-                            btn_play.hide();
+                            btn_play.set_visible(false);
 
                             btn_pause.set_sensitive(true);
-                            btn_pause.show();
+                            btn_pause.set_visible(true);
                         }
                         PlayerState::Paused => {
                             btn_pause.set_sensitive(false);
-                            btn_pause.hide();
+                            btn_pause.set_visible(false);
 
                             btn_play.set_sensitive(true);
-                            btn_play.show();
+                            btn_play.set_visible(true);
                         }
                     }
 
@@ -480,9 +493,9 @@ impl Module<Button> for MusicModule {
 
                     if let Some(volume) = update.status.volume_percent {
                         volume_slider.set_value(f64::from(volume));
-                        volume_box.show();
+                        volume_box.set_visible(true);
                     } else {
-                        volume_box.hide();
+                        volume_box.set_visible(false);
                     }
                 }
                 ControllerEvent::UpdateProgress(progress_tick)
@@ -499,9 +512,9 @@ impl Module<Button> for MusicModule {
 
                         progress.set_value(elapsed.as_secs_f64());
                         progress.set_range(0.0, duration.as_secs_f64());
-                        progress_box.show_all();
+                        progress_box.set_visible(true);
                     } else {
-                        progress_box.hide();
+                        progress_box.set_visible(false);
                     }
                 }
                 _ => {}
@@ -516,10 +529,10 @@ fn update_popup_metadata_label(text: Option<String>, label: &IconPrefixedLabel) 
     match text {
         Some(value) => {
             label.label().set_label_escaped(&value);
-            label.show_all();
+            label.set_visible(true);
         }
         None => {
-            label.hide();
+            label.set_visible(false);
         }
     }
 }

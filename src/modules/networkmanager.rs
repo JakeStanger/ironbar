@@ -7,8 +7,8 @@ use crate::{module_impl, spawn};
 use color_eyre::Result;
 use futures_lite::StreamExt;
 use futures_signals::signal::SignalExt;
-use gtk::prelude::ContainerExt;
-use gtk::{Box as GtkBox, Image};
+use gtk::prelude::*;
+use gtk::{Box as GtkBox, ContentFit, Image, Picture};
 use serde::Deserialize;
 use tokio::sync::mpsc::Receiver;
 
@@ -59,9 +59,11 @@ impl Module<GtkBox> for NetworkManagerModule {
         const INITIAL_ICON_NAME: &str = "content-loading-symbolic";
 
         let container = GtkBox::new(info.bar_position.orientation(), 0);
-        let icon = Image::new();
-        icon.add_class("icon");
-        container.add(&icon);
+        let icon = Picture::builder()
+            .content_fit(ContentFit::ScaleDown)
+            .build();
+        icon.add_css_class("icon");
+        container.append(&icon);
 
         let image_provider = context.ironbar.image_provider();
 
@@ -71,7 +73,7 @@ impl Module<GtkBox> for NetworkManagerModule {
 
             async move {
                 image_provider
-                    .load_into_image_silent(INITIAL_ICON_NAME, self.icon_size, false, &icon)
+                    .load_into_picture_silent(INITIAL_ICON_NAME, self.icon_size, false, &icon)
                     .await;
             }
         });
@@ -92,7 +94,7 @@ impl Module<GtkBox> for NetworkManagerModule {
 
             async move {
                 image_provider
-                    .load_into_image_silent(icon_name, self.icon_size, false, &icon)
+                    .load_into_picture_silent(icon_name, self.icon_size, false, &icon)
                     .await;
             }
         });

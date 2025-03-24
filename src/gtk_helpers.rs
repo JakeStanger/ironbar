@@ -1,5 +1,5 @@
 use crate::config::TruncateMode;
-use glib::{IsA, markup_escape_text};
+use glib::markup_escape_text;
 use gtk::pango::EllipsizeMode;
 use gtk::prelude::*;
 use gtk::{Label, Orientation, Widget};
@@ -10,7 +10,7 @@ use gtk::{Label, Orientation, Widget};
 pub struct WidgetGeometry {
     /// Position of the start edge of the widget
     /// from the start edge of the bar.
-    pub position: i32,
+    pub position: f64,
     /// The length of the widget.
     pub size: i32,
     /// The length of the bar.
@@ -18,10 +18,6 @@ pub struct WidgetGeometry {
 }
 
 pub trait IronbarGtkExt {
-    /// Adds a new CSS class to the widget.
-    fn add_class(&self, class: &str);
-    /// Removes a CSS class from the widget
-    fn remove_class(&self, class: &str);
     /// Gets the geometry for the widget
     fn geometry(&self, orientation: Orientation) -> WidgetGeometry;
 
@@ -29,17 +25,14 @@ pub trait IronbarGtkExt {
     fn get_tag<V: 'static>(&self, key: &str) -> Option<&V>;
     /// Sets a data tag on a widget.
     fn set_tag<V: 'static>(&self, key: &str, value: V);
+
+    fn toplevel(&self) -> Widget;
+
+    /// Returns an iterator for the widget's first-level children.
+    fn children(&self) -> ChildIterator;
 }
 
 impl<W: IsA<Widget>> IronbarGtkExt for W {
-    fn add_class(&self, class: &str) {
-        self.style_context().add_class(class);
-    }
-
-    fn remove_class(&self, class: &str) {
-        self.style_context().remove_class(class);
-    }
-
     fn geometry(&self, orientation: Orientation) -> WidgetGeometry {
         let allocation = self.allocation();
 
@@ -49,7 +42,7 @@ impl<W: IsA<Widget>> IronbarGtkExt for W {
             allocation.height()
         };
 
-        let top_level = self.toplevel().expect("Failed to get top-level widget");
+        let top_level = self.toplevel();
         let top_level_allocation = top_level.allocation();
 
         let bar_size = if orientation == Orientation::Horizontal {
@@ -59,8 +52,8 @@ impl<W: IsA<Widget>> IronbarGtkExt for W {
         };
 
         let (widget_x, widget_y) = self
-            .translate_coordinates(&top_level, 0, 0)
-            .unwrap_or((0, 0));
+            .translate_coordinates(&top_level, 0.0, 0.0)
+            .unwrap_or((0.0, 0.0));
 
         let widget_pos = if orientation == Orientation::Horizontal {
             widget_x
@@ -81,6 +74,45 @@ impl<W: IsA<Widget>> IronbarGtkExt for W {
 
     fn set_tag<V: 'static>(&self, key: &str, value: V) {
         unsafe { self.set_data(key, value) }
+    }
+
+    fn toplevel(&self) -> Widget {
+        let mut curr = self.clone().upcast::<Widget>();
+        let mut parent = curr.parent();
+
+        while let Some(ref w) = parent {
+            curr = w.clone();
+            parent = w.parent();
+        }
+
+        curr
+    }
+
+    fn children(&self) -> ChildIterator {
+        ChildIterator::new(self)
+    }
+}
+
+pub struct ChildIterator {
+    curr: Option<Widget>,
+}
+
+impl ChildIterator {
+    fn new<W: IsA<Widget>>(parent: &W) -> Self {
+        Self {
+            curr: parent.first_child(),
+        }
+    }
+}
+
+impl Iterator for ChildIterator {
+    type Item = Widget;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let curr = self.curr.clone();
+        let next = curr.as_ref().and_then(|w| w.next_sibling());
+        self.curr = next.clone();
+        curr // return current rather than next to include first child
     }
 }
 

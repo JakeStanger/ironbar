@@ -1,17 +1,18 @@
 use crate::desktop_file::DesktopFiles;
 use crate::{arc_mut, lock};
 use color_eyre::{Help, Report, Result};
+use glib::Bytes;
 use gtk::cairo::Surface;
-use gtk::gdk::ffi::gdk_cairo_surface_create_from_pixbuf;
+use gtk::gdk::{Paintable, Texture};
 use gtk::gdk_pixbuf::Pixbuf;
 use gtk::gio::{Cancellable, MemoryInputStream};
 use gtk::prelude::*;
-use gtk::{IconLookupFlags, IconTheme, Image};
+use gtk::{IconLookupFlags, IconPaintable, IconTheme, Image, Picture, Snapshot, TextDirection};
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
-use tracing::{debug, trace, warn};
+use tracing::{debug, error, trace, warn};
 
 #[derive(Debug, Clone, Eq, Hash, PartialEq)]
 struct ImageRef {
@@ -42,14 +43,14 @@ enum ImageLocation {
 #[derive(Debug)]
 struct Cache {
     location_cache: HashMap<(Box<str>, i32), ImageRef>,
-    pixbuf_cache: HashMap<ImageRef, Option<Pixbuf>>,
+    paintable_cache: HashMap<ImageRef, Option<Paintable>>,
 }
 
 impl Cache {
     fn new() -> Self {
         Self {
             location_cache: HashMap::new(),
-            pixbuf_cache: HashMap::new(),
+            paintable_cache: HashMap::new(),
         }
     }
 }
@@ -76,7 +77,7 @@ impl Provider {
     }
 
     /// Attempts to resolve the provided input into a `Pixbuf`,
-    /// and load that `Pixbuf` into the provided `Image` widget.
+    /// and load that `Pixbuf` into the provided `Picture` widget.
     ///
     /// If `use_fallback` is `true`, a fallback icon will be used
     /// where an image cannot be found.
@@ -84,46 +85,49 @@ impl Provider {
     /// Returns `true` if the image was successfully loaded,
     /// or `false` if the image could not be found.
     /// May also return an error if the resolution or loading process failed.
-    pub async fn load_into_image(
+    pub async fn load_into_picture(
         &self,
         input: &str,
         size: i32,
         use_fallback: bool,
-        image: &Image,
+        picture: &Picture,
     ) -> Result<bool> {
         let image_ref = self.get_ref(input, size).await?;
         debug!("image ref for {input}: {:?}", image_ref);
 
-        let pixbuf = if let Some(pixbuf) = lock!(self.cache).pixbuf_cache.get(&image_ref) {
+        let paintable = if let Some(pixbuf) = lock!(self.cache).paintable_cache.get(&image_ref) {
             pixbuf.clone()
         } else {
-            let pixbuf = Self::get_pixbuf(&image_ref, image.scale_factor(), use_fallback).await?;
+            let pixbuf =
+                Self::get_paintable(&image_ref, picture.scale_factor(), use_fallback).await?;
 
             lock!(self.cache)
-                .pixbuf_cache
+                .paintable_cache
                 .insert(image_ref, pixbuf.clone());
 
             pixbuf
         };
 
-        if let Some(ref pixbuf) = pixbuf {
-            create_and_load_surface(pixbuf, image)?;
-        }
+        let has_match = paintable.is_some();
+        picture.set_paintable(paintable.as_ref());
 
-        Ok(pixbuf.is_some())
+        Ok(has_match)
     }
 
-    /// Like [`Provider::load_into_image`], but does not return an error if the image could not be found.
+    /// Like [`Provider::load_into_picture`], but does not return an error if the image could not be found.
     ///
     /// If an image is not resolved, a warning is logged. Errors are also logged.
-    pub async fn load_into_image_silent(
+    pub async fn load_into_picture_silent(
         &self,
         input: &str,
         size: i32,
         use_fallback: bool,
-        image: &Image,
+        picture: &Picture,
     ) {
-        match self.load_into_image(input, size, use_fallback, image).await {
+        match self
+            .load_into_picture(input, size, use_fallback, picture)
+            .await
+        {
             Ok(true) => {}
             Ok(false) => warn!("failed to resolve image: {input}"),
             Err(e) => warn!("failed to load image: {input}: {e:?}"),
@@ -184,11 +188,7 @@ impl Provider {
             None if input_name.starts_with("steam_app_") => Some(ImageLocation::Steam(
                 input_name.chars().skip("steam_app_".len()).collect(),
             )),
-            None if self
-                .icon_theme()
-                .lookup_icon(input_name, size, IconLookupFlags::empty())
-                .is_some() =>
-            {
+            None if self.icon_theme().has_icon(input_name) => {
                 Some(ImageLocation::Icon(input_name.to_string()))
             }
             Some(input_type) => {
@@ -230,32 +230,67 @@ impl Provider {
     ///
     /// If `use_fallback` is `true`, a fallback icon will be used
     /// where an image cannot be found.
-    async fn get_pixbuf(
+    async fn get_paintable(
         image_ref: &ImageRef,
         scale: i32,
         use_fallback: bool,
-    ) -> Result<Option<Pixbuf>> {
+    ) -> Result<Option<Paintable>> {
         const FALLBACK_ICON_NAME: &str = "dialog-question-symbolic";
 
         let buf = match &image_ref.location {
-            Some(ImageLocation::Icon(name)) => image_ref.theme.load_icon_for_scale(
-                name,
-                image_ref.size,
-                scale,
-                IconLookupFlags::FORCE_SIZE,
-            ),
-            Some(ImageLocation::Local(path)) => {
+            Some(ImageLocation::Icon(name)) => {
+                let sizes = image_ref.theme.icon_sizes(name);
+                let size = sizes
+                    .into_iter()
+                    .find(|&s| s >= image_ref.size)
+                    .unwrap_or(image_ref.size);
+
+                Ok(Some(
+                    image_ref
+                        .theme
+                        .lookup_icon(
+                            name,
+                            &[], // setting fallback here causes issue loading some icons
+                            image_ref.size,
+                            scale,
+                            TextDirection::None,
+                            IconLookupFlags::empty(),
+                        )
+                        .upcast::<Paintable>(),
+                ))
+            }
+            Some(ImageLocation::Local(path)) if path.extension().unwrap_or_default() == "svg" => {
                 let scaled_size = image_ref.size * scale;
-                Pixbuf::from_file_at_scale(path, scaled_size, scaled_size, true).map(Some)
+
+                let pixbuf = Pixbuf::from_file_at_scale(path, scaled_size, scaled_size, true)?;
+                let bytes = pixbuf.pixel_bytes();
+
+                let buffer = pixbuf.save_to_bufferv("png", &[])?;
+                let bytes = Bytes::from_owned(buffer);
+
+                let texture = Texture::from_bytes(&bytes)?;
+                Ok(Some(texture.upcast::<Paintable>()))
+            }
+            Some(ImageLocation::Local(path)) => {
+                Texture::from_filename(path).map(|t| Self::scale_texture(t, image_ref.size))
             }
             Some(ImageLocation::Steam(app_id)) => {
+                const SIZES: [i32; 8] = [16, 24, 32, 48, 64, 96, 128, 256];
+                let size = SIZES
+                    .into_iter()
+                    .find(|&s| s < image_ref.size)
+                    .unwrap_or(image_ref.size);
+
                 let path = dirs::data_dir().map_or_else(
                     || Err(Report::msg("Missing XDG data dir")),
-                    |dir| Ok(dir.join(format!("icons/hicolor/32x32/apps/steam_icon_{app_id}.png"))),
+                    |dir| {
+                        Ok(dir.join(format!(
+                            "icons/hicolor/{size}x{size}/apps/steam_icon_{app_id}.png"
+                        )))
+                    },
                 )?;
 
-                let scaled_size = image_ref.size * scale;
-                Pixbuf::from_file_at_scale(path, scaled_size, scaled_size, true).map(Some)
+                Texture::from_filename(path).map(|t| Self::scale_texture(t, image_ref.size))
             }
             #[cfg(feature = "http")]
             Some(ImageLocation::Remote(uri)) => {
@@ -264,31 +299,28 @@ impl Provider {
                 let status = res.status();
                 let bytes = if status.is_success() {
                     let bytes = res.bytes().await?;
-                    Ok(glib::Bytes::from_owned(bytes))
+                    Ok(Bytes::from_owned(bytes))
                 } else {
                     Err(Report::msg(format!(
                         "Received non-success HTTP code ({status})"
                     )))
                 }?;
 
-                let stream = MemoryInputStream::from_bytes(&bytes);
-                let scaled_size = image_ref.size * scale;
-
-                Pixbuf::from_stream_at_scale(
-                    &stream,
-                    scaled_size,
-                    scaled_size,
-                    true,
-                    Some(&Cancellable::new()),
-                )
-                .map(Some)
+                Texture::from_bytes(&bytes).map(|t| Self::scale_texture(t, image_ref.size))
             }
-            None if use_fallback => image_ref.theme.load_icon_for_scale(
-                FALLBACK_ICON_NAME,
-                image_ref.size,
-                scale,
-                IconLookupFlags::empty(),
-            ),
+            None if use_fallback => Ok(Some(
+                image_ref
+                    .theme
+                    .lookup_icon(
+                        FALLBACK_ICON_NAME,
+                        &[],
+                        image_ref.size,
+                        scale,
+                        TextDirection::None,
+                        IconLookupFlags::empty(),
+                    )
+                    .upcast::<Paintable>(),
+            )),
             None => Ok(None),
         }?;
 
@@ -310,7 +342,7 @@ impl Provider {
         self.icon_theme
             .borrow()
             .clone()
-            .expect("theme should be set at startup")
+            .expect("theme should be set on bar init")
     }
 
     /// Sets the custom icon theme name.
@@ -320,31 +352,16 @@ impl Provider {
 
         *self.icon_theme.borrow_mut() = if theme.is_some() {
             let icon_theme = IconTheme::new();
-            icon_theme.set_custom_theme(theme);
+            icon_theme.set_theme_name(theme);
             Some(icon_theme)
         } else {
-            IconTheme::default()
+            Some(IconTheme::default())
         };
     }
-}
 
-/// Attempts to create a Cairo `Surface` from the provided `Pixbuf`,
-/// using the provided scaling factor.
-/// The surface is then loaded into the provided image.
-///
-/// This is necessary for HiDPI since `Pixbuf`s are always treated as scale factor 1.
-pub fn create_and_load_surface(pixbuf: &Pixbuf, image: &Image) -> Result<()> {
-    let surface = unsafe {
-        let ptr = gdk_cairo_surface_create_from_pixbuf(
-            pixbuf.as_ptr(),
-            image.scale_factor(),
-            std::ptr::null_mut(),
-        );
-
-        Surface::from_raw_full(ptr)
-    }?;
-
-    image.set_from_surface(Some(&surface));
-
-    Ok(())
+    fn scale_texture(texture: Texture, size: i32) -> Option<Paintable> {
+        let snapshot = Snapshot::new();
+        texture.snapshot(&snapshot, size as f64, size as f64);
+        snapshot.to_paintable(None)
+    }
 }

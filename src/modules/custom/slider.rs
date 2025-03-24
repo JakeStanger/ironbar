@@ -2,8 +2,8 @@ use glib::Propagation;
 use std::cell::Cell;
 use std::ops::Neg;
 
-use gtk::Scale;
 use gtk::prelude::*;
+use gtk::{EventControllerScroll, EventControllerScrollFlags, Scale};
 use serde::Deserialize;
 use tokio::sync::mpsc;
 use tracing::error;
@@ -115,19 +115,25 @@ impl CustomWidget for SliderWidget {
             // GTK will spam the same value over and over
             let prev_value = Cell::new(scale.value());
 
-            scale.connect_scroll_event(move |scale, event| {
-                let value = scale.value();
-                let delta = event.delta().1.neg();
+            let event_controller = EventControllerScroll::new(EventControllerScrollFlags::VERTICAL);
+            {
+                let scale = scale.clone();
+                event_controller.connect_scroll(move |_, _dx, dy| {
+                    let value = scale.value();
+                    let delta = dy.neg();
 
-                let delta = match (step, delta.is_sign_positive()) {
-                    (Some(step), true) => step,
-                    (Some(step), false) => -step,
-                    (None, _) => delta,
-                };
+                    let delta = match (step, delta.is_sign_positive()) {
+                        (Some(step), true) => step,
+                        (Some(step), false) => -step,
+                        (None, _) => delta,
+                    };
 
-                scale.set_value(value + delta);
-                Propagation::Proceed
-            });
+                    scale.set_value(value + delta);
+                    Propagation::Proceed
+                });
+            }
+
+            scale.add_controller(event_controller);
 
             scale.connect_change_value(move |_, _, val| {
                 // GTK will send values outside min/max range

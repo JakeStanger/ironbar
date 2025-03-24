@@ -6,8 +6,8 @@ use crate::gtk_helpers::IronbarLabelExt;
 use crate::modules::{Module, ModuleInfo, ModuleParts, WidgetContext};
 use crate::{module_impl, spawn};
 use color_eyre::Result;
-use gtk::Label;
 use gtk::prelude::*;
+use gtk::{ContentFit, Label};
 use serde::Deserialize;
 use tokio::sync::mpsc;
 use tracing::debug;
@@ -132,24 +132,26 @@ impl Module<gtk::Box> for FocusedModule {
     ) -> Result<ModuleParts<gtk::Box>> {
         let container = gtk::Box::new(self.layout.orientation(info), 5);
 
-        let icon = gtk::Image::new();
+        let icon = gtk::Picture::builder()
+            .content_fit(ContentFit::ScaleDown)
+            .build();
         if self.show_icon {
-            icon.add_class("icon");
-            container.add(&icon);
+            icon.add_css_class("icon");
+            container.append(&icon);
         }
 
         let label = Label::builder()
-            .angle(self.layout.angle(info))
+            // .angle(self.layout.angle(info))
             .justify(self.layout.justify.into())
             .build();
 
-        label.add_class("label");
+        label.add_css_class("label");
 
         if let Some(truncate) = self.truncate {
             label.truncate(truncate);
         }
 
-        container.add(&label);
+        container.append(&label);
 
         {
             let image_provider = context.ironbar.image_provider();
@@ -163,21 +165,21 @@ impl Module<gtk::Box> for FocusedModule {
                     if let Some((name, id)) = data {
                         if self.show_icon {
                             match image_provider
-                                .load_into_image(&id, self.icon_size, true, &icon)
+                                .load_into_picture(&id, self.icon_size, true, &icon)
                                 .await
                             {
-                                Ok(true) => icon.show(),
-                                _ => icon.hide(),
+                                Ok(true) => icon.set_visible(true),
+                                _ => icon.set_visible(false),
                             }
                         }
 
                         if self.show_title {
-                            label.show();
+                            label.set_visible(true);
                             label.set_label(&name);
                         }
                     } else {
-                        icon.hide();
-                        label.hide();
+                        icon.set_visible(false);
+                        label.set_visible(false);
                     }
                 }
             });

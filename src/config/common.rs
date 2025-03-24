@@ -1,9 +1,12 @@
 use crate::dynamic_value::{DynamicBool, dynamic_string};
 use crate::script::{Script, ScriptInput};
 use glib::Propagation;
-use gtk::gdk::ScrollDirection;
+use gtk::gdk::{BUTTON_MIDDLE, BUTTON_PRIMARY, BUTTON_SECONDARY, ScrollDirection};
 use gtk::prelude::*;
-use gtk::{EventBox, Justification, Orientation, Revealer, RevealerTransitionType, Widget};
+use gtk::{
+    EventControllerMotion, EventControllerScroll, EventControllerScrollFlags, EventSequenceState,
+    GestureClick, Justification, Orientation, Revealer, RevealerTransitionType, Widget,
+};
 use serde::Deserialize;
 use std::cell::Cell;
 use tracing::trace;
@@ -245,7 +248,7 @@ impl TransitionType {
 
 impl CommonConfig {
     /// Configures the module's container according to the common config options.
-    pub fn install_events<W>(mut self, widget: &W, container: &EventBox, revealer: &Revealer)
+    pub fn install_events<W>(mut self, container: &W, revealer: &Revealer)
     where
         W: IsA<Widget>,
     {
@@ -253,113 +256,113 @@ impl CommonConfig {
 
         self.install_show_if(container, revealer);
 
-        let left_click_script = self.on_click_left.map(Script::new_polling);
-        let middle_click_script = self.on_click_middle.map(Script::new_polling);
-        let right_click_script = self.on_click_right.map(Script::new_polling);
+        if let Some(script) = self.on_click_left.map(Script::new_polling) {
+            let event_controller = GestureClick::new();
+            event_controller.set_button(BUTTON_PRIMARY);
 
-        let on_button_press = move |button: u32| {
-            let script = match button {
-                1 => left_click_script.as_ref(),
-                2 => middle_click_script.as_ref(),
-                3 => right_click_script.as_ref(),
-                _ => None,
-            };
+            event_controller.connect_pressed(move |gesture, _, _, _| {
+                gesture.set_state(EventSequenceState::Claimed);
 
-            if let Some(script) = script {
-                trace!("Running on-click script: {}", button);
+                trace!("Running on-click script: left");
                 script.run_as_oneshot(None);
-            }
-
-            Propagation::Proceed
+            });
         };
 
-        // as events do not bubble in gtk3, and buttons therefore eat the click event
-        // we need to handle attaching to either the container or widget
-        // switching to `EventController`s in the GTK4 port should fix this.
-        if widget.dynamic_cast_ref::<gtk::Button>().is_some() {
-            widget.connect_button_press_event(move |_, ev| on_button_press(ev.button()));
-        } else {
-            container.connect_button_press_event(move |_, ev| on_button_press(ev.button()));
-        }
+        if let Some(script) = self.on_click_middle.map(Script::new_polling) {
+            let event_controller = GestureClick::new();
+            event_controller.set_button(BUTTON_MIDDLE);
+
+            event_controller.connect_pressed(move |gesture, _, _, _| {
+                gesture.set_state(EventSequenceState::Claimed);
+
+                trace!("Running on-click script: middle");
+                script.run_as_oneshot(None);
+            });
+        };
+
+        if let Some(script) = self.on_click_right.map(Script::new_polling) {
+            let event_controller = GestureClick::new();
+            event_controller.set_button(BUTTON_SECONDARY);
+
+            event_controller.connect_pressed(move |gesture, _, _, _| {
+                gesture.set_state(EventSequenceState::Claimed);
+
+                trace!("Running on-click script: right");
+                script.run_as_oneshot(None);
+            });
+        };
+
+        let event_controller = EventControllerScroll::new(EventControllerScrollFlags::all());
 
         let scroll_up_script = self.on_scroll_up.map(Script::new_polling);
         let scroll_down_script = self.on_scroll_down.map(Script::new_polling);
 
-        let scroll_speed = self.smooth_scroll_speed.unwrap_or(1.0);
-        let curr_scroll = Cell::new(0.0);
-
-        container.connect_scroll_event(move |_, event| {
-            let script = match event.direction() {
-                ScrollDirection::Up => scroll_up_script.as_ref(),
-                ScrollDirection::Down => scroll_down_script.as_ref(),
-                ScrollDirection::Smooth => {
-                    let delta = event.scroll_deltas().unwrap_or_default().1 * scroll_speed;
-                    curr_scroll.set(curr_scroll.get() + delta);
-
-                    if curr_scroll.get() >= SMOOTH_SCROLL_REQUIRED_DELTA {
-                        curr_scroll.set(curr_scroll.get() - SMOOTH_SCROLL_REQUIRED_DELTA);
-                        scroll_down_script.as_ref()
-                    } else if curr_scroll.get() <= -SMOOTH_SCROLL_REQUIRED_DELTA {
-                        curr_scroll.set(curr_scroll.get() + SMOOTH_SCROLL_REQUIRED_DELTA);
-                        scroll_up_script.as_ref()
-                    } else {
-                        None
-                    }
-                }
-                _ => None,
+        // FIXME: Port smooth scroll logic
+        event_controller.connect_scroll(move |_, _dx, dy| {
+            let script = if dy > 0.0 {
+                scroll_down_script.as_ref()
+            } else {
+                scroll_up_script.as_ref()
             };
 
             if let Some(script) = script {
-                trace!("Running on-scroll script: {}", event.direction());
+                trace!(
+                    "Running on-scroll script: {}",
+                    if dy > 0.0 { "down" } else { "up" }
+                );
                 script.run_as_oneshot(None);
             }
 
             Propagation::Proceed
         });
 
-        macro_rules! install_oneshot {
-            ($option:expr, $method:ident) => {
-                $option.map(Script::new_polling).map(|script| {
-                    container.$method(move |_, _| {
-                        script.run_as_oneshot(None);
-                        Propagation::Proceed
-                    });
-                })
-            };
+        container.add_controller(event_controller);
+
+        let event_controller = EventControllerMotion::new();
+
+        if let Some(script) = self.on_mouse_enter.map(Script::new_polling) {
+            event_controller.connect_enter(move |_, _, _| {
+                script.run_as_oneshot(None);
+            });
         }
 
-        install_oneshot!(self.on_mouse_enter, connect_enter_notify_event);
-        install_oneshot!(self.on_mouse_exit, connect_leave_notify_event);
+        if let Some(script) = self.on_mouse_exit.map(Script::new_polling) {
+            event_controller.connect_leave(move |_| {
+                script.run_as_oneshot(None);
+            });
+        }
 
         if let Some(tooltip) = self.tooltip {
             dynamic_string(&tooltip, container, move |container, string| {
                 container.set_tooltip_text(Some(&string));
             });
         }
+
+        container.add_controller(event_controller);
     }
 
-    fn install_show_if(&mut self, container: &EventBox, revealer: &Revealer) {
-        self.show_if.take().map_or_else(
-            || {
-                container.show_all();
-            },
-            |show_if| {
-                // need to keep clone here for the notify callback
-                let container = container.clone();
+    fn install_show_if<W>(&mut self, container: &W, revealer: &Revealer)
+    where
+        W: IsA<Widget>,
+    {
+        if let Some(show_if) = self.show_if.take() {
+            // need to keep clone here for the notify callback
+            let container = container.clone();
 
-                show_if.subscribe((revealer, &container), |(revealer, container), success| {
-                    if success {
-                        container.show_all();
-                    }
-                    revealer.set_reveal_child(success);
-                });
+            show_if.subscribe((revealer, &container), |(revealer, container), success| {
+                if success {
+                    container.set_visible(true);
+                }
+                revealer.set_reveal_child(success);
+            });
 
-                revealer.connect_child_revealed_notify(move |revealer| {
-                    if !revealer.reveals_child() {
-                        container.hide();
-                    }
-                });
-            },
-        );
+            revealer.connect_child_revealed_notify(move |revealer| {
+                if !revealer.reveals_child() {
+                    container.set_visible(false);
+                }
+            });
+        } else {
+            revealer.set_visible(true);
+        }
     }
 }

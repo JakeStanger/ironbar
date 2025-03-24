@@ -1,7 +1,7 @@
 use crate::gtk_helpers::{IronbarGtkExt, IronbarLabelExt};
 use crate::image;
 use gtk::prelude::*;
-use gtk::{Button, Image, Label, Orientation};
+use gtk::{Button, ContentFit, Image, Label, Orientation, Picture};
 use std::ops::Deref;
 
 #[derive(Debug, Clone)]
@@ -33,13 +33,15 @@ pub struct IconButton {
 impl IconButton {
     pub fn new(input: &str, size: i32, image_provider: image::Provider) -> Self {
         let button = Button::new();
-        let image = Image::new();
+        let image = Picture::builder()
+            .content_fit(ContentFit::ScaleDown)
+            .build();
         let label = Label::builder().use_markup(true).build();
         label.set_label_escaped(input);
 
         if image::Provider::is_explicit_input(input) {
-            image.add_class("image");
-            image.add_class("icon");
+            image.add_css_class("image");
+            image.add_css_class("icon");
 
             let image = image.clone();
             let label = label.clone();
@@ -49,19 +51,16 @@ impl IconButton {
 
             glib::spawn_future_local(async move {
                 if let Ok(true) = image_provider
-                    .load_into_image(&input, size, false, &image)
+                    .load_into_picture(&input, size, false, &image)
                     .await
                 {
-                    button.set_image(Some(&image));
-                    button.set_always_show_image(true);
+                    button.set_child(Some(&image));
                 } else {
                     button.set_child(Some(&label));
-                    label.show();
                 }
             });
         } else {
             button.set_child(Some(&label));
-            label.show();
         }
 
         Self { button, label }
@@ -102,7 +101,7 @@ pub struct IconLabel {
     provider: image::Provider,
     container: gtk::Box,
     label: Label,
-    image: Image,
+    image: Picture,
 
     size: i32,
 }
@@ -120,15 +119,17 @@ impl IconLabel {
         let container = gtk::Box::new(Orientation::Horizontal, 0);
 
         let label = Label::builder().use_markup(true).build();
-        label.add_class("icon");
-        label.add_class("text-icon");
+        label.add_css_class("icon");
+        label.add_css_class("text-icon");
 
-        let image = Image::new();
-        image.add_class("icon");
-        image.add_class("image");
+        let image = Picture::builder()
+            .content_fit(ContentFit::ScaleDown)
+            .build();
+        image.add_css_class("icon");
+        image.add_css_class("image");
 
-        container.add(&image);
-        container.add(&label);
+        container.append(&image);
+        container.append(&label);
 
         if image::Provider::is_explicit_input(input) {
             let image = image.clone();
@@ -139,18 +140,18 @@ impl IconLabel {
 
             glib::spawn_future_local(async move {
                 let res = image_provider
-                    .load_into_image(&input, size, false, &image)
+                    .load_into_picture(&input, size, false, &image)
                     .await;
                 if matches!(res, Ok(true)) {
-                    image.show();
+                    image.set_visible(true);
                 } else {
                     label.set_label_escaped(&input);
-                    label.show();
+                    label.set_visible(true);
                 }
             });
         } else {
             label.set_label_escaped(input);
-            label.show();
+            label.set_visible(true);
         }
 
         Self {
@@ -176,26 +177,28 @@ impl IconLabel {
                 let input = input.to_string();
 
                 glib::spawn_future_local(async move {
-                    let res = provider.load_into_image(&input, size, false, &image).await;
+                    let res = provider
+                        .load_into_picture(&input, size, false, &image)
+                        .await;
                     if matches!(res, Ok(true)) {
-                        label.hide();
-                        image.show();
+                        label.set_visible(false);
+                        image.set_visible(true);
                     } else {
                         label.set_label_escaped(&input);
 
-                        image.hide();
-                        label.show();
+                        image.set_visible(false);
+                        label.set_visible(true);
                     }
                 });
             } else {
                 label.set_label_escaped(input);
 
-                image.hide();
-                label.show();
+                image.set_visible(false);
+                label.set_visible(true);
             }
         } else {
-            label.hide();
-            image.hide();
+            label.set_visible(false);
+            image.set_visible(false);
         }
     }
 
@@ -242,11 +245,11 @@ impl IconPrefixedLabel {
 
         let label = builder.build();
 
-        icon.add_class("icon-box");
-        label.add_class("label");
+        icon.add_css_class("icon-box");
+        label.add_css_class("label");
 
-        container.add(&*icon);
-        container.add(&label);
+        container.append(&*icon);
+        container.append(&label);
 
         Self { label, container }
     }
