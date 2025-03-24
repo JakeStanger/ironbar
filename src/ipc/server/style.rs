@@ -1,21 +1,15 @@
 use crate::Ironbar;
 use crate::bar::Bar;
-use crate::gtk_helpers::IronbarGtkExt;
 use crate::ipc::{Response, StyleCommand};
 use crate::modules::ModuleRef;
 use crate::style::load_css;
-use gtk::Application;
 use gtk::prelude::*;
 
-pub fn handle_command(
-    command: StyleCommand,
-    ironbar: &Ironbar,
-    application: &Application,
-) -> Response {
+pub fn handle_command(command: StyleCommand, ironbar: &Ironbar) -> Response {
     match command {
         StyleCommand::LoadCss { path } => {
             if path.exists() {
-                load_css(path, application.clone());
+                load_css(path);
                 Response::Ok
             } else {
                 Response::error("File not found")
@@ -23,45 +17,45 @@ pub fn handle_command(
         }
         StyleCommand::AddClass { module_name, name } => {
             let bars = ironbar.bars.borrow();
-            let modules = get_modules_by_name(&bars, &module_name);
+            let modules = modules_by_name(&bars, &module_name);
 
             if modules.is_empty() {
                 return Response::error("Module not found");
             }
 
             for module in modules {
-                module.add_class(&name);
+                module.add_css_class(&name);
             }
 
             Response::Ok
         }
         StyleCommand::RemoveClass { module_name, name } => {
             let bars = ironbar.bars.borrow();
-            let modules = get_modules_by_name(&bars, &module_name);
+            let modules = modules_by_name(&bars, &module_name);
 
             if modules.is_empty() {
                 return Response::error("Module not found");
             }
 
             for module in modules {
-                module.remove_class(&name);
+                module.remove_css_class(&name);
             }
 
             Response::Ok
         }
         StyleCommand::ToggleClass { module_name, name } => {
             let bars = ironbar.bars.borrow();
-            let modules = get_modules_by_name(&bars, &module_name);
+            let modules = modules_by_name(&bars, &module_name);
 
             if modules.is_empty() {
                 return Response::error("Module not found");
             }
 
             for module in modules {
-                if module.widget.style_context().has_class(&name) {
-                    module.remove_class(&name);
+                if module.widget.has_css_class(&name) {
+                    module.remove_css_class(&name);
                 } else {
-                    module.add_class(&name);
+                    module.add_css_class(&name);
                 }
             }
 
@@ -70,7 +64,7 @@ pub fn handle_command(
     }
 }
 
-fn get_modules_by_name<'a>(bars: &'a [Bar], name: &str) -> Vec<&'a ModuleRef> {
+fn modules_by_name<'a>(bars: &'a [Bar], name: &str) -> Vec<&'a ModuleRef> {
     bars.iter()
         .flat_map(Bar::modules)
         .filter(|w| w.name == name)
@@ -78,19 +72,19 @@ fn get_modules_by_name<'a>(bars: &'a [Bar], name: &str) -> Vec<&'a ModuleRef> {
 }
 
 impl ModuleRef {
-    fn add_class(&self, name: &str) {
-        self.widget.add_class(name);
+    fn add_css_class(&self, name: &str) {
+        self.widget.add_css_class(name);
 
         if let Some(ref popup) = self.popup {
-            popup.add_class(name);
+            popup.add_css_class(name);
         }
     }
 
-    fn remove_class(&self, name: &str) {
-        self.widget.remove_class(name);
+    fn remove_css_class(&self, name: &str) {
+        self.widget.remove_css_class(name);
 
         if let Some(ref popup) = self.popup {
-            popup.remove_class(name);
+            popup.remove_css_class(name);
         }
     }
 }

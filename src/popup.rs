@@ -1,181 +1,130 @@
-use glib::Propagation;
+use crate::config::BarPosition;
+use crate::modules::{ModuleInfo, ModulePopupParts, PopupButton};
+use crate::rc_mut;
+use gtk::prelude::*;
+use gtk::{Button, Popover, PositionType};
 use std::cell::RefCell;
 use std::collections::HashMap;
+use std::fmt::{Debug, Formatter};
 use std::rc::Rc;
+use tracing::{debug, error};
 
-use crate::channels::BroadcastReceiverExt;
-use crate::clients::wayland::{OutputEvent, OutputEventType};
-use crate::config::BarPosition;
-use crate::gtk_helpers::{IronbarGtkExt, WidgetGeometry};
-use crate::modules::{ModuleInfo, ModulePopupParts, PopupButton};
-use crate::{Ironbar, rc_mut};
-use gtk::prelude::*;
-use gtk::{ApplicationWindow, Button, Orientation};
-use gtk_layer_shell::LayerShell;
-use tracing::{debug, trace};
-
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct PopupCacheValue {
-    pub name: String,
-    pub content: ModulePopupParts,
+    // pub name: String,
+    pub content: gtk::Box,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
+struct CurrentWidgetInfo {
+    widget_id: usize,
+}
+
+pub type ButtonFinder = dyn Fn(usize) -> Option<Button> + 'static;
+
+#[derive(Clone)]
 pub struct Popup {
-    pub window: ApplicationWindow,
+    pub popover: Popover,
     pub container_cache: Rc<RefCell<HashMap<usize, PopupCacheValue>>>,
+    pub button_finder_cache: Rc<RefCell<HashMap<usize, Box<ButtonFinder>>>>,
     pub button_cache: Rc<RefCell<Vec<Button>>>,
     pos: BarPosition,
-    current_widget: Rc<RefCell<Option<(usize, usize)>>>,
-    output_size: Rc<RefCell<(i32, i32)>>,
+    current_widget: Rc<RefCell<Option<CurrentWidgetInfo>>>,
+}
+
+impl Debug for Popup {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Popup")
+            .field("popover", &self.popover)
+            .field("container_cache", &self.container_cache)
+            .field("button_finder_cache", &"<callbacks>")
+            .field("button_cache", &self.button_cache)
+            .field("pos", &self.pos)
+            .field("current_widget", &self.current_widget)
+            .finish()
+    }
 }
 
 impl Popup {
     /// Creates a new popup window.
     /// This includes setting up gtk-layer-shell
     /// and an empty `gtk::Box` container.
-    pub fn new(
-        ironbar: &Ironbar,
-        module_info: &ModuleInfo,
-        output_size: (i32, i32),
-        gap: i32,
-    ) -> Self {
+    pub fn new(module_info: &ModuleInfo, gap: i32, autohide: bool) -> Self {
         let pos = module_info.bar_position;
-        let orientation = pos.orientation();
 
-        let win = ApplicationWindow::builder()
-            .application(module_info.app)
+        let position = match pos {
+            BarPosition::Top => PositionType::Bottom,
+            BarPosition::Bottom => PositionType::Top,
+            BarPosition::Left => PositionType::Right,
+            BarPosition::Right => PositionType::Left,
+        };
+
+        let (offset_x, offset_y) = match pos {
+            BarPosition::Top => (0, gap),
+            BarPosition::Bottom => (0, -gap),
+            BarPosition::Left | BarPosition::Right => (gap, 0),
+        };
+
+        let popover = Popover::builder()
+            .has_arrow(false)
+            .autohide(autohide) // enabling autohide forces kb/m grab which we don't want
+            .position(position)
             .build();
 
-        win.init_layer_shell();
-        win.set_monitor(module_info.monitor);
-        win.set_layer(gtk_layer_shell::Layer::Overlay);
-        win.set_namespace(env!("CARGO_PKG_NAME"));
+        popover.set_offset(offset_x, offset_y);
 
-        win.set_layer_shell_margin(
-            gtk_layer_shell::Edge::Top,
-            if pos == BarPosition::Top { gap } else { 0 },
-        );
-        win.set_layer_shell_margin(
-            gtk_layer_shell::Edge::Bottom,
-            if pos == BarPosition::Bottom { gap } else { 0 },
-        );
-        win.set_layer_shell_margin(
-            gtk_layer_shell::Edge::Left,
-            if pos == BarPosition::Left { gap } else { 0 },
-        );
-        win.set_layer_shell_margin(
-            gtk_layer_shell::Edge::Right,
-            if pos == BarPosition::Right { gap } else { 0 },
-        );
-
-        win.set_anchor(
-            gtk_layer_shell::Edge::Top,
-            pos == BarPosition::Top || orientation == Orientation::Vertical,
-        );
-        win.set_anchor(gtk_layer_shell::Edge::Bottom, pos == BarPosition::Bottom);
-        win.set_anchor(
-            gtk_layer_shell::Edge::Left,
-            pos == BarPosition::Left || orientation == Orientation::Horizontal,
-        );
-        win.set_anchor(gtk_layer_shell::Edge::Right, pos == BarPosition::Right);
-
-        win.connect_leave_notify_event(move |win, ev| {
-            const THRESHOLD: f64 = 3.0;
-
-            let (w, h) = win.size();
-            let (x, y) = ev.position();
-
-            // some child widgets trigger this event
-            // so check we're actually outside the window
-            let hide = match pos {
-                BarPosition::Top => {
-                    x < THRESHOLD || y > f64::from(h) - THRESHOLD || x > f64::from(w) - THRESHOLD
-                }
-                BarPosition::Bottom => {
-                    x < THRESHOLD || y < THRESHOLD || x > f64::from(w) - THRESHOLD
-                }
-                BarPosition::Left => {
-                    y < THRESHOLD || x > f64::from(w) - THRESHOLD || y > f64::from(h) - THRESHOLD
-                }
-                BarPosition::Right => {
-                    y < THRESHOLD || x < THRESHOLD || y > f64::from(h) - THRESHOLD
-                }
-            };
-
-            if hide {
-                win.hide();
-            }
-
-            Propagation::Proceed
-        });
-
-        let output_size = rc_mut!(output_size);
-
-        // respond to resolution changes
-        let rx = ironbar.clients.borrow_mut().wayland().subscribe_outputs();
-        let output_name = module_info.output_name.to_string();
-        rx.recv_glib(&output_size, move |output_size, event: OutputEvent| {
-            if event.event_type == OutputEventType::Update
-                && event.output.name.unwrap_or_default() == output_name
-            {
-                *output_size.borrow_mut() = event.output.logical_size.unwrap_or_default();
-            }
+        popover.connect_closed(|popover| {
+            popover.unparent();
         });
 
         Self {
-            window: win,
+            popover,
             container_cache: rc_mut!(HashMap::new()),
             button_cache: rc_mut!(vec![]),
+            button_finder_cache: rc_mut!(HashMap::new()),
             pos,
             current_widget: rc_mut!(None),
-            output_size,
         }
     }
 
-    pub fn register_content(&self, key: usize, name: String, content: ModulePopupParts) {
+    pub fn register_content(&self, key: usize, content: ModulePopupParts) {
         debug!("Registered popup content for #{}", key);
 
         for button in &content.buttons {
             button.ensure_popup_id();
         }
 
-        let orientation = self.pos.orientation();
-        let window = self.window.clone();
-
-        let current_widget = self.current_widget.clone();
-        let cache = self.container_cache.clone();
-        let button_cache = self.button_cache.clone();
-
-        let output_size = self.output_size.clone();
-
-        content
-            .container
-            .connect_size_allocate(move |container, rect| {
-                if container.is_visible() {
-                    trace!("Resized:  {}x{}", rect.width(), rect.height());
-
-                    if let Some((widget_id, button_id)) = *current_widget.borrow()
-                        && let Some(PopupCacheValue { .. }) = cache.borrow().get(&widget_id)
-                    {
-                        Self::set_position(
-                            &button_cache.borrow(),
-                            button_id,
-                            orientation,
-                            &window,
-                            &output_size,
-                        );
-                    }
-                }
-            });
-
         self.button_cache
             .borrow_mut()
             .append(&mut content.buttons.clone());
 
-        self.container_cache
+        self.container_cache.borrow_mut().insert(
+            key,
+            PopupCacheValue {
+                content: content.container.clone(),
+            },
+        );
+
+        if let Some(button_finder) = content.button_finder {
+            self.button_finder_cache
+                .borrow_mut()
+                .insert(key, Box::new(button_finder));
+        }
+    }
+
+    pub fn register_button(&self, button: Button) {
+        button.ensure_popup_id();
+        self.button_cache.borrow_mut().push(button);
+    }
+
+    pub fn register_button_finder(&self, key: usize, finder: Box<ButtonFinder>) {
+        self.button_finder_cache
             .borrow_mut()
-            .insert(key, PopupCacheValue { name, content });
+            .insert(key, Box::new(finder));
+    }
+
+    pub fn unregister_button(&self, button: &Button) {
+        self.button_cache.borrow_mut().retain(|b| b != button);
     }
 
     pub fn show(&self, widget_id: usize, button_id: usize) {
@@ -183,118 +132,67 @@ impl Popup {
 
         if let Some(PopupCacheValue { content, .. }) = self.container_cache.borrow().get(&widget_id)
         {
-            *self.current_widget.borrow_mut() = Some((widget_id, button_id));
+            *self.current_widget.borrow_mut() = Some(CurrentWidgetInfo { widget_id });
 
-            content.container.add_class("popup");
-            self.window.add(&content.container);
+            let button = if let Some(finder) = self.button_finder_cache.borrow().get(&widget_id) {
+                finder(button_id)
+            } else {
+                let button_cache = self.button_cache.borrow();
+                button_cache
+                    .iter()
+                    .find(|b| b.popup_id() == button_id)
+                    .cloned()
+            };
 
-            self.window.show();
+            let Some(button) = button else {
+                error!("Could not find button for popup");
+                return;
+            };
 
-            Self::set_position(
-                &self.button_cache.borrow(),
-                button_id,
-                self.pos.orientation(),
-                &self.window,
-                &self.output_size,
-            );
+            content.add_css_class("popup");
+            self.popover.set_child(Some(content));
+            self.popover.unparent();
+            self.popover.set_parent(&button);
+            self.popover.popup();
         }
     }
 
-    pub fn show_at(&self, widget_id: usize, geometry: WidgetGeometry) {
+    pub fn show_for(&self, widget_id: usize, button: &Button) -> bool {
         self.clear_window();
 
         if let Some(PopupCacheValue { content, .. }) = self.container_cache.borrow().get(&widget_id)
         {
-            content.container.add_class("popup");
-            self.window.add(&content.container);
+            *self.current_widget.borrow_mut() = Some(CurrentWidgetInfo { widget_id });
 
-            self.window.show();
-            Self::set_pos(
-                geometry,
-                self.pos.orientation(),
-                &self.window,
-                *self.output_size.borrow(),
-            );
+            content.add_css_class("popup");
+            self.popover.set_child(Some(content));
+            self.popover.unparent();
+            self.popover.set_parent(button);
+            self.popover.popup();
+
+            true
+        } else {
+            false
         }
-    }
-
-    fn set_position(
-        buttons: &[Button],
-        button_id: usize,
-        orientation: Orientation,
-        window: &ApplicationWindow,
-        output_size: &Rc<RefCell<(i32, i32)>>,
-    ) {
-        let button = buttons
-            .iter()
-            .find(|b| b.popup_id() == button_id)
-            .expect("to find valid button");
-
-        let geometry = button.geometry(orientation);
-        Self::set_pos(geometry, orientation, window, *output_size.borrow());
     }
 
     fn clear_window(&self) {
-        let children = self.window.children();
-        for child in children {
-            self.window.remove(&child);
-        }
+        self.popover.set_child(None::<&gtk::Box>);
     }
 
     /// Hides the popup
     pub fn hide(&self) {
         *self.current_widget.borrow_mut() = None;
-        self.window.hide();
+        self.popover.popdown();
+        self.popover.unparent();
     }
 
     /// Checks if the popup is currently visible
     pub fn visible(&self) -> bool {
-        self.window.is_visible()
+        self.popover.is_visible()
     }
 
     pub fn current_widget(&self) -> Option<usize> {
-        self.current_widget.borrow().map(|w| w.0)
-    }
-
-    /// Sets the popup's X/Y position relative to the left or border of the screen
-    /// (depending on orientation).
-    fn set_pos(
-        geometry: WidgetGeometry,
-        orientation: Orientation,
-        window: &ApplicationWindow,
-        output_size: (i32, i32),
-    ) {
-        let screen_size = if orientation == Orientation::Horizontal {
-            output_size.0
-        } else {
-            output_size.1
-        };
-
-        let (popup_width, popup_height) = window.size();
-        let popup_size = if orientation == Orientation::Horizontal {
-            popup_width
-        } else {
-            popup_height
-        };
-
-        let widget_center = f64::from(geometry.position) + f64::from(geometry.size) / 2.0;
-
-        let bar_offset = (f64::from(screen_size) - f64::from(geometry.bar_size)) / 2.0;
-
-        let mut offset = bar_offset + (widget_center - (f64::from(popup_size) / 2.0)).round();
-
-        if offset < 5.0 {
-            offset = 5.0;
-        } else if offset > f64::from(screen_size - popup_size) - 5.0 {
-            offset = f64::from(screen_size - popup_size) - 5.0;
-        }
-
-        let edge = if orientation == Orientation::Horizontal {
-            gtk_layer_shell::Edge::Left
-        } else {
-            gtk_layer_shell::Edge::Top
-        };
-
-        window.set_layer_shell_margin(edge, offset as i32);
+        self.current_widget.borrow().map(|w| w.widget_id)
     }
 }
