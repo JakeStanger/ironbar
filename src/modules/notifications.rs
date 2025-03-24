@@ -1,7 +1,6 @@
 use crate::channels::{AsyncSenderExt, BroadcastReceiverExt};
 use crate::clients::swaync;
 use crate::config::CommonConfig;
-use crate::gtk_helpers::IronbarGtkExt;
 use crate::image::IconButton;
 use crate::modules::{Module, ModuleInfo, ModuleParts, WidgetContext};
 use crate::{module_impl, spawn};
@@ -190,8 +189,8 @@ impl Module<Overlay> for NotificationsModule {
             16,
             context.ironbar.image_provider(),
         );
-        button.add_class("button");
-        overlay.add(&*button);
+        button.add_css_class("button");
+        overlay.set_child(Some(&*button));
 
         let label = Label::builder()
             .label("0")
@@ -200,9 +199,9 @@ impl Module<Overlay> for NotificationsModule {
             .build();
 
         if self.show_count {
-            label.add_class("count");
+            label.add_css_class("count");
+            label.set_can_target(false);
             overlay.add_overlay(&label);
-            overlay.set_overlay_pass_through(&label, true);
         }
 
         let ctx = context.controller_tx.clone();

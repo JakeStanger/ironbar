@@ -33,7 +33,7 @@ jobs:
 
   clippy-base:
     runs-on: ubuntu-latest
-    container: ghcr.io/jakestanger/ironbar-build:master
+    container: ghcr.io/jakestanger/ironbar-build:refactor-gtk-4 # TODO: remove container tag after merge
     name: 'Clippy (Base features)'
     steps:
       - uses: actions/checkout@v4
@@ -50,7 +50,7 @@ jobs:
 
   clippy-all:
     runs-on: ubuntu-latest
-    container: ghcr.io/jakestanger/ironbar-build:master
+    container: ghcr.io/jakestanger/ironbar-build:refactor-gtk-4 # TODO: remove container tag after merge
     name: 'Clippy (All features)'
     steps:
       - uses: actions/checkout@v4
@@ -67,7 +67,7 @@ jobs:
   build:
     name: 'Build & Test'
     runs-on: ubuntu-latest
-    container: ghcr.io/jakestanger/ironbar-build:master
+    container: ghcr.io/jakestanger/ironbar-build:refactor-gtk-4 # TODO: remove container tag after merge
 
     steps:
       - uses: actions/checkout@v4
@@ -86,9 +86,10 @@ jobs:
   feature-checks:
     name: 'Check feature flag'
     runs-on: ubuntu-latest
-    container: ghcr.io/jakestanger/ironbar-build:master
+    container: ghcr.io/jakestanger/ironbar-build:refactor-gtk-4 # TODO: remove container tag after merge
 
     strategy:
+      fail-fast: false
       matrix:
         feature:
           - http

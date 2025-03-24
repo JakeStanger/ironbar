@@ -5,7 +5,7 @@ mod token;
 use crate::channels::{AsyncSenderExt, BroadcastReceiverExt};
 use crate::clients::sysinfo::TokenType;
 use crate::config::{CommonConfig, LayoutConfig, ModuleOrientation};
-use crate::gtk_helpers::{IronbarGtkExt, IronbarLabelExt};
+use crate::gtk_helpers::IronbarLabelExt;
 use crate::modules::sysinfo::token::Part;
 use crate::modules::{Module, ModuleInfo, ModuleParts, WidgetContext};
 use crate::{clients, module_impl, spawn};
@@ -293,13 +293,12 @@ impl Module<gtk::Box> for SysInfoModule {
         for _ in &self.format {
             let label = Label::builder()
                 .use_markup(true)
-                .angle(self.layout.angle(info))
                 .justify(self.layout.justify.into())
                 .build();
 
-            label.add_class("item");
+            label.add_css_class("item");
 
-            container.add(&label);
+            container.append(&label);
             labels.push(label);
         }
 

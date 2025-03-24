@@ -2,7 +2,8 @@ use super::Response;
 use crate::Ironbar;
 use crate::bar::Bar;
 use crate::ipc::{BarCommand, BarCommandType};
-use crate::modules::PopupButton;
+use glib::prelude::Cast;
+use gtk::Button;
 use std::rc::Rc;
 
 pub fn handle_command(command: &BarCommand, ironbar: &Rc<Ironbar>) -> Response {
@@ -75,22 +76,20 @@ fn show_popup(bar: &Bar, widget_name: &str) -> Response {
     // only one popup per bar, so hide if open for another widget
     popup.hide();
 
-    let data = popup
-        .container_cache
-        .borrow()
-        .iter()
-        .find(|(_, value)| value.name == widget_name)
-        .map(|(id, value)| (*id, value.content.buttons.first().cloned()));
+    let module_ref = bar.modules().iter().find(|m| m.name == widget_name);
 
-    match data {
-        Some((id, Some(button))) => {
-            let button_id = button.popup_id();
-            popup.show(id, button_id);
+    let module_button = module_ref.and_then(|m| m.widget.downcast_ref::<Button>());
 
-            Response::Ok
+    match (module_ref, module_button) {
+        (Some(module_ref), Some(button)) => {
+            if popup.show_for(module_ref.id, button) {
+                Response::Ok
+            } else {
+                Response::error("Module has no popup functionality")
+            }
         }
-        Some((_, None)) => Response::error("Module has no popup functionality"),
-        None => Response::error("Invalid module name"),
+        (Some(_), None) => Response::error("Module has no popup functionality"),
+        (None, _) => Response::error("Invalid module name"),
     }
 }
 

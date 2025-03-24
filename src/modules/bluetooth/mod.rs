@@ -46,26 +46,26 @@ impl BluetoothDeviceBox {
         image_provider: &image::Provider,
     ) -> Self {
         let container = gtk::Box::new(Orientation::Horizontal, 0);
-        container.add_class("device");
+        container.add_css_class("device");
         let icon_box = IconLabel::new("", icon_size, image_provider);
-        icon_box.add_class("icon-box");
+        icon_box.add_css_class("icon-box");
 
         let status = gtk::Box::new(Orientation::Vertical, 0);
-        status.add_class("status");
+        status.add_css_class("status");
         status.set_valign(Align::Center);
 
         let header = Label::new(None);
-        header.add_class("header-label");
+        header.add_css_class("header-label");
 
         let footer = Label::new(None);
-        footer.add_class("footer-label");
+        footer.add_css_class("footer-label");
 
         let switch = gtk::Switch::new();
         switch.set_valign(Align::Center);
-        switch.add_class("switch");
+        switch.add_css_class("switch");
 
         let spinner = Spinner::new();
-        spinner.add_class("spinner");
+        spinner.add_css_class("spinner");
         spinner.start();
 
         icon_box.set_halign(Align::Start);
@@ -78,13 +78,12 @@ impl BluetoothDeviceBox {
 
         header.set_hexpand(true);
 
-        container.add(&*icon_box);
-        status.add(&header);
-        status.add(&footer);
-        container.add(&status);
-        container.add(&spinner);
-        container.add(&switch);
-        container.show_all();
+        container.append(&*icon_box);
+        status.append(&header);
+        status.append(&footer);
+        container.append(&status);
+        container.append(&spinner);
+        container.append(&switch);
 
         Self {
             container,
@@ -108,7 +107,7 @@ impl BluetoothDeviceBox {
             self.switch.disconnect(handler);
         }
 
-        self.spinner.set_active(
+        self.spinner.set_spinning(
             data.status == BluetoothDeviceStatus::Connecting
                 || data.status == BluetoothDeviceStatus::Disconnecting,
         );
@@ -207,7 +206,7 @@ impl Module<Button> for BluetoothModule {
     ) -> Result<ModuleParts<Button>> {
         let button = Button::new();
         let label = Label::new(None);
-        button.add(&label);
+        button.set_child(Some(&label));
 
         let tx = context.tx.clone();
         button.connect_clicked(move |button| {
@@ -261,11 +260,11 @@ impl Module<Button> for BluetoothModule {
 
                 label.set_text(&text);
 
-                button.remove_class("not-found");
-                button.remove_class("disabled");
-                button.remove_class("enabled");
-                button.remove_class("connected");
-                button.add_class(class);
+                button.remove_css_class("not-found");
+                button.remove_css_class("disabled");
+                button.remove_css_class("enabled");
+                button.remove_css_class("connected");
+                button.add_css_class(class);
             });
         }
 
@@ -286,20 +285,20 @@ impl Module<Button> for BluetoothModule {
         let container = gtk::Box::new(Orientation::Vertical, 0);
 
         let header = gtk::Box::new(Orientation::Horizontal, 0);
-        header.add_class("header");
+        header.add_css_class("header");
 
         let header_switch = gtk::Switch::new();
-        header_switch.add_class("switch");
+        header_switch.add_css_class("switch");
 
         let header_label = Label::new(None);
-        header_label.add_class("label");
+        header_label.add_css_class("label");
 
-        header.add(&header_switch);
-        header.add(&header_label);
+        header.append(&header_switch);
+        header.append(&header_label);
 
-        container.add(&header);
+        container.append(&header);
 
-        let devices = ScrolledWindow::new(gtk::Adjustment::NONE, gtk::Adjustment::NONE);
+        let devices = ScrolledWindow::new();
         devices.set_policy(
             gtk::PolicyType::Never,
             if self.popup.scrollable {
@@ -309,31 +308,29 @@ impl Module<Button> for BluetoothModule {
             },
         );
         devices.set_vexpand(true);
-        devices.add_class("devices");
+        devices.add_css_class("devices");
 
         let devices_box = gtk::Box::new(Orientation::Vertical, 0);
-        devices_box.add_class("box");
+        devices_box.add_css_class("box");
 
-        devices.add(&devices_box);
-        container.add(&devices);
+        devices.set_child(Some(&devices_box));
+        container.append(&devices);
 
         let disabled = gtk::Box::new(Orientation::Vertical, 0);
-        disabled.add_class("disabled");
+        disabled.add_css_class("disabled");
         disabled.set_valign(Align::Center);
         disabled.set_vexpand(true);
 
         let disabled_spinner = Spinner::new();
-        disabled_spinner.add_class("spinner");
+        disabled_spinner.add_css_class("spinner");
         disabled_spinner.start();
-        disabled.add(&disabled_spinner);
+        disabled.append(&disabled_spinner);
 
         let disabled_label = Label::new(None);
-        disabled_label.add_class("label");
-        disabled.add(&disabled_label);
+        disabled_label.add_css_class("label");
+        disabled.append(&disabled_label);
 
-        container.add(&disabled);
-
-        container.show_all();
+        container.append(&disabled);
 
         {
             let icon_size = self.icon_size;
@@ -406,7 +403,8 @@ impl Module<Button> for BluetoothModule {
                             device_map.entry(device.address).or_insert_with(|| {
                                 let device_box =
                                     BluetoothDeviceBox::new(tx.clone(), icon_size, &image_provider);
-                                devices_box.add(&*device_box);
+
+                                devices_box.append(&*device_box);
 
                                 (device_box, seq)
                             });
@@ -415,25 +413,35 @@ impl Module<Button> for BluetoothModule {
                         *local_seq = seq;
 
                         // Pin non-disconnected devices to the top and unpin other types
-                        let pos = devices_box.child_position(&device_box.container);
+                        let pos = devices_box
+                            .children()
+                            .position(|w| w == device_box.container)
+                            .unwrap_or_default();
+
                         if device.status == BluetoothDeviceStatus::Disconnected {
                             // Unpin
                             if pos < num_pinned {
                                 num_pinned -= 1;
 
                                 if pos != num_pinned {
-                                    devices_box.reorder_child(&device_box.container, num_pinned);
+                                    let before = devices_box.children().nth(num_pinned);
+                                    devices_box.reorder_child_after(
+                                        &device_box.container,
+                                        before.clone().as_ref(),
+                                    );
                                 }
                             }
-                        } else {
+                        } else if pos >= num_pinned {
                             // Pin
-                            if pos >= num_pinned {
-                                if pos != num_pinned {
-                                    devices_box.reorder_child(&device_box.container, num_pinned);
-                                }
-
-                                num_pinned += 1;
+                            if pos != num_pinned {
+                                let before = devices_box.children().nth(num_pinned);
+                                devices_box.reorder_child_after(
+                                    &device_box.container,
+                                    before.clone().as_ref(),
+                                );
                             }
+
+                            num_pinned += 1;
                         }
 
                         let strings =
@@ -446,7 +454,11 @@ impl Module<Button> for BluetoothModule {
                         if *local_seq == seq {
                             true
                         } else {
-                            let pos = devices_box.child_position(&device_box.container);
+                            let pos = devices_box
+                                .children()
+                                .position(|w| w == device_box.container)
+                                .unwrap_or_default();
+
                             if pos < num_pinned {
                                 num_pinned -= 1;
                             }

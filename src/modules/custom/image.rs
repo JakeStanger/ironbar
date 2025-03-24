@@ -1,7 +1,7 @@
 use crate::build;
 use crate::dynamic_value::dynamic_string;
-use gtk::Image;
 use gtk::prelude::*;
+use gtk::{ContentFit, Picture};
 use serde::Deserialize;
 
 use super::{CustomWidget, CustomWidgetContext};
@@ -39,17 +39,18 @@ const fn default_size() -> i32 {
 }
 
 impl CustomWidget for ImageWidget {
-    type Widget = Image;
+    type Widget = Picture;
 
     fn into_widget(self, context: CustomWidgetContext) -> Self::Widget {
         let gtk_image = build!(self, Self::Widget);
+        gtk_image.set_content_fit(ContentFit::ScaleDown);
 
         dynamic_string(&self.src, &gtk_image, move |gtk_image, src| {
             let gtk_image = gtk_image.clone();
             let image_provider = context.image_provider.clone();
             glib::spawn_future_local(async move {
                 image_provider
-                    .load_into_image_silent(&src, self.size, false, &gtk_image)
+                    .load_into_picture_silent(&src, self.size, false, &gtk_image)
                     .await;
             });
         });
