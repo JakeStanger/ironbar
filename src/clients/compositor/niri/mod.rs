@@ -40,7 +40,11 @@ impl Client {
                         let mut updates: Vec<WorkspaceUpdate> = vec![];
 
                         if first_event {
-                            updates.push(WorkspaceUpdate::Init(new_workspaces.clone()));
+                            // Niri's WorkspacesChanged event does not initially sort workspaces by ID when first output,
+                            // which makes sort = added meaningless. Therefore, new_workspaces are sorted by ID here to ensure a consistent addition order.
+                            let mut new_workspaces = new_workspaces.clone();
+                            new_workspaces.sort_by_key(|w| w.id);
+                            updates.push(WorkspaceUpdate::Init(new_workspaces));
                             first_event = false;
                         } else {
                             // first pass - add/update
