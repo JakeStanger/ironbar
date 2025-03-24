@@ -7,7 +7,7 @@ use std::sync::Arc;
 
 #[cfg(feature = "clipboard")]
 pub mod clipboard;
-#[cfg(feature = "workspaces")]
+#[cfg(any(feature = "keyboard", feature = "workspaces"))]
 pub mod compositor;
 #[cfg(feature = "keyboard")]
 pub mod libinput;
@@ -46,7 +46,7 @@ pub struct Clients {
     clipboard: Option<Arc<clipboard::Client>>,
     #[cfg(feature = "keyboard")]
     libinput: HashMap<Box<str>, Arc<libinput::Client>>,
-    #[cfg(any(feature = "keyboard+sway", feature = "keyboard+hyprland"))]
+    #[cfg(feature = "keyboard")]
     keyboard_layout: Option<Arc<dyn compositor::KeyboardLayoutClient>>,
     #[cfg(feature = "cairo")]
     lua: Option<Rc<lua::LuaEngine>>,
@@ -101,7 +101,7 @@ impl Clients {
         Ok(client)
     }
 
-    #[cfg(any(feature = "keyboard+sway", feature = "keyboard+hyprland"))]
+    #[cfg(feature = "keyboard")]
     pub fn keyboard_layout(&mut self) -> ClientResult<dyn compositor::KeyboardLayoutClient> {
         let client = if let Some(keyboard_layout) = &self.keyboard_layout {
             keyboard_layout.clone()
