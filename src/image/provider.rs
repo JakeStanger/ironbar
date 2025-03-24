@@ -2,7 +2,6 @@ use crate::desktop_file::DesktopFiles;
 use crate::{arc_mut, lock};
 use color_eyre::{Help, Report, Result};
 use gtk::cairo::Surface;
-use gtk::gdk::ffi::gdk_cairo_surface_create_from_pixbuf;
 use gtk::gdk_pixbuf::Pixbuf;
 use gtk::gio::{Cancellable, MemoryInputStream};
 use gtk::prelude::*;
@@ -10,8 +9,12 @@ use gtk::{IconLookupFlags, IconTheme, Image};
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
+#[cfg(feature = "http")]
+use tokio::sync::mpsc;
 use tracing::{debug, trace, warn};
+use tracing::{debug, warn};
 
 #[derive(Debug, Clone, Eq, Hash, PartialEq)]
 struct ImageRef {

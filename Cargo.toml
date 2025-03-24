@@ -67,7 +67,7 @@ bindmode = []
 
 bluetooth = ["dep:bluer"]
 
-cairo = ["lua-src", "mlua", "cairo-rs"]
+cairo = ["lua-src", "mlua"]
 
 clipboard = ["dep:rustix"]
 
@@ -119,9 +119,9 @@ schema = ["dep:schemars"]
 
 [dependencies]
 # core
-gtk = "0.18.2"
-gtk-layer-shell = "0.8.2"
-glib = "0.18.5"
+gtk = { package = "gtk4",  version = "0.9.6", features = ["v4_8"] }
+gtk-layer-shell = {  package = "gtk4-layer-shell", version = "0.5.0" }
+glib = "0.20.9"
 tokio = { version = "1.47.1", features = [
     "macros",
     "rt-multi-thread",
@@ -164,7 +164,7 @@ reqwest = { version = "0.12.23", default-features = false, features = ["default-
 # cairo
 lua-src = { version = "548.1.1", optional = true }
 mlua = { version = "0.11.2", optional = true, features = ["luajit", "send"] }
-cairo-rs = { version = "0.18.5", optional = true, features = ["png"] }
+# cairo-rs = { version = "0.18.5", optional = true, features = ["png"] }
 
 # clock
 chrono = { version = "0.4.41", optional = true, default-features = false, features = ["clock", "unstable-locales"] }
@@ -184,7 +184,7 @@ regex = { version = "1.11.2", default-features = false, features = [
 futures-signals = { version = "0.3.34", optional = true }
 
 # sys_info
-sysinfo = { version = "0.37.0", optional = true }
+sysinfo = { version = "0.36.0", optional = true }
 
 # tray
 system-tray = { version = "0.8.1", features = ["dbusmenu-gtk3"], optional = true }

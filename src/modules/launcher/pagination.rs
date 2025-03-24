@@ -43,9 +43,9 @@ impl Pagination {
         scroll_back.add_class("btn-back");
         scroll_fwd.add_class("btn-forward");
 
-        scroll_box.add(&*scroll_back);
-        scroll_box.add(&*scroll_fwd);
-        container.add(&scroll_box);
+        scroll_box.append(&*scroll_back);
+        scroll_box.append(&*scroll_fwd);
+        container.append(&scroll_box);
 
         let offset = Rc::new(RefCell::new(1));
 
@@ -56,7 +56,7 @@ impl Pagination {
 
             scroll_fwd.connect_clicked(move |btn| {
                 let mut offset = offset.borrow_mut();
-                let child_count = container.children().len();
+                let child_count = container.children().count();
 
                 *offset = std::cmp::min(child_count - 1, *offset + page_size);
 
@@ -103,7 +103,7 @@ impl Pagination {
     }
 
     fn update_page(container: &gtk::Box, offset: usize, page_size: usize) {
-        for (i, btn) in container.children().iter().enumerate() {
+        for (i, btn) in container.children().enumerate() {
             // skip offset buttons
             if i == 0 {
                 continue;
