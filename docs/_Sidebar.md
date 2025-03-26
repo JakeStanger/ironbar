@@ -4,6 +4,7 @@
 - [Configuration guide](configuration-guide)
   - [Images](images)
 - [Styling guide](styling-guide)
+- [GTK 4 Port](gtk4)
 
 # Dynamic content
 
