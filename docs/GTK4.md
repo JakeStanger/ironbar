@@ -38,7 +38,7 @@ A full list of feature flags can be found [here](Compiling#features).
 | Launcher        | ❌      |                                                                                                                                          |
 | Music           | ❌      |                                                                                                                                          |
 | Network Manager | ❌      |                                                                                                                                          |
-| Notifications   | ❌      |                                                                                                                                          |
+| Notifications   | ✅      |                                                                                                                                          |
 | Script          | ❌      |                                                                                                                                          |
 | Sway Mode       | ❌      |                                                                                                                                          |
 | SysInfo         | ❌      |                                                                                                                                          |
