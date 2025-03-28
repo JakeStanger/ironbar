@@ -32,7 +32,7 @@ impl Display for Compositor {
             match self {
                 #[cfg(any(feature = "keyboard+sway", feature = "workspaces+sway"))]
                 Self::Sway => "Sway",
-                #[cfg(any(feature = "keyboard+sway", feature = "workspaces+hyprland"))]
+                #[cfg(any(feature = "keyboard+hyprland", feature = "workspaces+hyprland"))]
                 Self::Hyprland => "Hyprland",
                 #[cfg(feature = "workspaces+niri")]
                 Self::Niri => "Niri",
@@ -48,12 +48,12 @@ impl Compositor {
     fn get_current() -> Self {
         if std::env::var("SWAYSOCK").is_ok() {
             cfg_if! {
-                if #[cfg(feature = "workspaces+sway")] { Self::Sway }
+                if #[cfg(any(feature = "keyboard+sway", feature = "workspaces+sway"))] { Self::Sway }
                 else { tracing::error!("Not compiled with Sway support"); Self::Unsupported }
             }
         } else if std::env::var("HYPRLAND_INSTANCE_SIGNATURE").is_ok() {
             cfg_if! {
-                if #[cfg(feature = "workspaces+hyprland")] { Self::Hyprland }
+                if #[cfg(any(feature = "keyboard+hyprland", feature = "workspaces+hyprland"))] { Self::Hyprland }
                 else { tracing::error!("Not compiled with Hyprland support"); Self::Unsupported }
             }
         } else if std::env::var("NIRI_SOCKET").is_ok() {
