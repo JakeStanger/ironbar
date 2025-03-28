@@ -1,14 +1,12 @@
-use super::{
-    KeyboardLayoutClient, KeyboardLayoutUpdate, Visibility, Workspace, WorkspaceClient,
-    WorkspaceUpdate,
-};
+use super::{KeyboardLayoutClient, KeyboardLayoutUpdate, Visibility, Workspace, WorkspaceUpdate};
 use crate::clients::sway::Client;
 use crate::{await_sync, error, send, spawn};
 use color_eyre::Report;
 use swayipc_async::{InputChange, InputEvent, Node, WorkspaceChange, WorkspaceEvent};
 use tokio::sync::broadcast::{Receiver, channel};
 
-impl WorkspaceClient for Client {
+#[cfg(feature = "workspaces")]
+impl super::WorkspaceClient for Client {
     fn focus(&self, id: i64) {
         let client = self.connection().clone();
         spawn(async move {
@@ -215,7 +213,7 @@ impl KeyboardLayoutClient for Client {
 impl TryFrom<InputEvent> for KeyboardLayoutUpdate {
     type Error = ();
 
-    fn try_from(value: InputEvent) -> std::result::Result<Self, Self::Error> {
+    fn try_from(value: InputEvent) -> Result<Self, Self::Error> {
         match value.change {
             InputChange::XkbLayout => {
                 if let Some(layout) = value.input.xkb_active_layout_name {

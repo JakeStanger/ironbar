@@ -95,7 +95,7 @@ workspaces = ["futures-lite"]
 "workspaces+hyprland" = ["workspaces", "hyprland"]
 "workspaces+niri" = ["workspaces"]
 
-sway = ["swayipc-async"]
+sway = ["swayipc-async", "futures-lite"]
 
 schema = ["dep:schemars"]
 

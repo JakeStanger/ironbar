@@ -7,17 +7,17 @@ use std::sync::Arc;
 use tokio::sync::broadcast;
 use tracing::debug;
 
-#[cfg(feature = "workspaces+hyprland")]
+#[cfg(any(feature = "keyboard+hyprland", feature = "workspaces+hyprland"))]
 pub mod hyprland;
 #[cfg(feature = "workspaces+niri")]
 pub mod niri;
-#[cfg(feature = "workspaces+sway")]
+#[cfg(any(feature = "keyboard+sway", feature = "workspaces+sway"))]
 pub mod sway;
 
 pub enum Compositor {
-    #[cfg(feature = "workspaces+sway")]
+    #[cfg(any(feature = "keyboard+sway", feature = "workspaces+sway"))]
     Sway,
-    #[cfg(feature = "workspaces+hyprland")]
+    #[cfg(any(feature = "keyboard+hyprland", feature = "workspaces+hyprland"))]
     Hyprland,
     #[cfg(feature = "workspaces+niri")]
     Niri,
@@ -30,9 +30,9 @@ impl Display for Compositor {
             f,
             "{}",
             match self {
-                #[cfg(feature = "workspaces+sway")]
+                #[cfg(any(feature = "keyboard+sway", feature = "workspaces+sway"))]
                 Self::Sway => "Sway",
-                #[cfg(feature = "workspaces+hyprland")]
+                #[cfg(any(feature = "keyboard+sway", feature = "workspaces+hyprland"))]
                 Self::Hyprland => "Hyprland",
                 #[cfg(feature = "workspaces+niri")]
                 Self::Niri => "Niri",

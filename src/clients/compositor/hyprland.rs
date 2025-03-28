@@ -1,7 +1,4 @@
-use super::{
-    KeyboardLayoutClient, KeyboardLayoutUpdate, Visibility, Workspace, WorkspaceClient,
-    WorkspaceUpdate,
-};
+use super::{KeyboardLayoutClient, KeyboardLayoutUpdate, Visibility, Workspace, WorkspaceUpdate};
 use crate::{arc_mut, lock, send, spawn_blocking};
 use color_eyre::Result;
 use hyprland::ctl::switch_xkb_layout;
@@ -326,7 +323,8 @@ impl Client {
     }
 }
 
-impl WorkspaceClient for Client {
+#[cfg(feature = "workspaces")]
+impl super::WorkspaceClient for Client {
     fn focus(&self, id: i64) {
         let identifier = WorkspaceIdentifierWithSpecial::Id(id as i32);
 
