@@ -4,10 +4,9 @@ use std::rc::Rc;
 use std::sync::Arc;
 
 use color_eyre::Result;
-use glib::IsA;
-use gtk::gdk::{EventMask, Monitor};
+use gtk::gdk::Monitor;
 use gtk::prelude::*;
-use gtk::{Application, Button, EventBox, IconTheme, Orientation, Revealer, Widget};
+use gtk::{Application, Button, IconTheme, Orientation, Revealer, Widget};
 use tokio::sync::{broadcast, mpsc};
 use tracing::debug;
 
@@ -343,12 +342,12 @@ pub trait ModuleFactory {
 
         module_parts.setup_identifiers(&common);
 
-        let ev_container = wrap_widget(
+        let revealer = add_events(
             &module_parts.widget,
             common,
             info.bar_position.orientation(),
         );
-        container.add(&ev_container);
+        container.append(&revealer);
 
         Ok(())
     }
@@ -557,13 +556,13 @@ impl From<PopupModuleFactory> for AnyModuleFactory {
     }
 }
 
-/// Takes a widget and adds it into a new `gtk::EventBox`.
-/// The event box container is returned.
-pub fn wrap_widget<W: IsA<Widget>>(
+/// Takes a widget and adds event listeners and the revealer.
+/// Returns the revealer.
+pub fn add_events<W: IsA<Widget>>(
     widget: &W,
     common: CommonConfig,
     orientation: Orientation,
-) -> EventBox {
+) -> Revealer {
     let transition_type = common
         .transition_type
         .as_ref()
@@ -575,16 +574,9 @@ pub fn wrap_widget<W: IsA<Widget>>(
         .transition_duration(common.transition_duration.unwrap_or(250))
         .build();
 
-    revealer.add(widget);
+    revealer.set_child(Some(widget));
     revealer.set_reveal_child(true);
 
-    let container = EventBox::new();
-    container.add_class("widget-container");
-
-    container.add_events(EventMask::SCROLL_MASK | EventMask::SMOOTH_SCROLL_MASK);
-    container.add(&revealer);
-
-    common.install_events(&container, &revealer);
-
-    container
+    common.install_events(widget, &revealer);
+    revealer
 }

@@ -1,0 +1,43 @@
+let {
+    $clock = { type = "clock" }
+    $cairo = { type = "cairo" path = "/home/jake/.config/ironbar/clock.lua" }
+    $clipboard = { type = "clipboard" }
+    $focused = { type = "focused" }
+    $keyboard = { type = "keyboard" }
+    $label = { type = "label" label = "GTK4!" }
+    $script = { type = "script" cmd = "echo \$RANDOM" interval = 200 }
+
+    $sys_info = {
+        type = "sys_info"
+        format = ["{cpu_percent}% " "{memory_percent}% "]
+        interval.cpu = 1
+    }
+
+    // custom
+    $power_menu = {
+        type = "custom"
+        class = "power-menu"
+
+        bar = [ { type = "button" name="power-btn" label = "" on_click = "popup:toggle" } ]
+
+        popup = [ {
+        type = "box"
+        orientation = "vertical"
+        widgets = [
+            { type = "label" name = "header" label = "Power menu" }
+            {
+                type = "box"
+                name = "buttons"
+                widgets = [
+                    { type = "button" class="power-btn" label = "<span font-size='20pt'></span>" on_click = "!shutdown now" }
+                    { type = "button" class="power-btn" label = "<span font-size='20pt'></span>" on_click = "!reboot" }
+                    $cairo
+                ]}
+            ]
+        } ]
+    }
+} in {
+    start = [ $label $script ]
+    center = [ $focused $keyboard ]
+    end = [ $sys_info $clipboard $power_menu $clock ]
+}

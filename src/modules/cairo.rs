@@ -1,10 +1,10 @@
 use crate::config::CommonConfig;
 use crate::modules::{Module, ModuleInfo, ModuleParts, ModuleUpdateEvent, WidgetContext};
 use crate::{glib_recv, module_impl, spawn, try_send};
-use cairo::{Format, ImageSurface};
 use glib::Propagation;
 use glib::translate::IntoGlibPtr;
 use gtk::DrawingArea;
+use gtk::cairo::{Format, ImageSurface};
 use gtk::prelude::*;
 use mlua::{Error, Function, LightUserData};
 use notify::event::ModifyKind;
@@ -145,8 +145,7 @@ impl Module<gtk::Box> for CairoModule {
             let id = id.clone();
 
             let path = self.path.clone();
-
-            area.connect_draw(move |_, cr| {
+            area.set_draw_func(move |_, cr, _width, _height| {
                 let function: Function = lua
                     .load(include_str!("../../lua/draw.lua"))
                     .eval()
@@ -154,7 +153,7 @@ impl Module<gtk::Box> for CairoModule {
 
                 if let Err(err) = cr.set_source_surface(&surface, 0.0, 0.0) {
                     error!("{err}");
-                    return Propagation::Stop;
+                    return;
                 }
 
                 let ptr = unsafe { cr.clone().into_glib_ptr().cast() };
@@ -169,16 +168,12 @@ impl Module<gtk::Box> for CairoModule {
                     } else {
                         error!("{err}");
                     }
-
-                    return Propagation::Stop;
                 }
-
-                Propagation::Proceed
             });
         }
 
         area.set_size_request(self.width as i32, self.height as i32);
-        container.add(&area);
+        container.append(&area);
 
         glib::spawn_future_local(async move {
             loop {

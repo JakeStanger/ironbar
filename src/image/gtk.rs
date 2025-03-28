@@ -36,17 +36,14 @@ impl IconButton {
                 .map(|provider| provider.load_into_image(&image))
             {
                 Some(_) => {
-                    button.set_image(Some(&image));
-                    button.set_always_show_image(true);
+                    button.set_child(Some(&image));
                 }
                 None => {
                     button.set_child(Some(&label));
-                    label.show();
                 }
             }
         } else {
             button.set_child(Some(&label));
-            label.show();
         }
 
         Self { button, label }
@@ -88,8 +85,8 @@ impl IconLabel {
         image.add_class("icon");
         image.add_class("image");
 
-        container.add(&image);
-        container.add(&label);
+        container.append(&image);
+        container.append(&label);
 
         if ImageProvider::is_definitely_image_input(input) {
             ImageProvider::parse(input, icon_theme, false, size)

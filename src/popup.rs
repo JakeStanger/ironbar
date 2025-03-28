@@ -1,16 +1,15 @@
-use glib::Propagation;
-use std::cell::RefCell;
-use std::collections::HashMap;
-use std::rc::Rc;
-
 use crate::clients::wayland::{OutputEvent, OutputEventType};
 use crate::config::BarPosition;
 use crate::gtk_helpers::{IronbarGtkExt, WidgetGeometry};
 use crate::modules::{ModuleInfo, ModulePopupParts, PopupButton};
 use crate::{Ironbar, glib_recv, rc_mut};
+use glib::{Propagation, clone};
 use gtk::prelude::*;
-use gtk::{ApplicationWindow, Button, Orientation};
-use gtk_layer_shell::LayerShell;
+use gtk::{ApplicationWindow, Button, EventControllerMotion, Orientation, Widget, Window};
+use gtk_layer_shell::{Edge, LayerShell};
+use std::cell::RefCell;
+use std::collections::HashMap;
+use std::rc::Rc;
 use tracing::{debug, trace};
 
 #[derive(Debug, Clone)]
@@ -47,67 +46,70 @@ impl Popup {
             .build();
 
         win.init_layer_shell();
-        win.set_monitor(module_info.monitor);
+        win.set_monitor(Some(module_info.monitor));
         win.set_layer(gtk_layer_shell::Layer::Overlay);
-        win.set_namespace(env!("CARGO_PKG_NAME"));
+        win.set_namespace(Some(env!("CARGO_PKG_NAME")));
 
-        win.set_layer_shell_margin(
-            gtk_layer_shell::Edge::Top,
-            if pos == BarPosition::Top { gap } else { 0 },
-        );
-        win.set_layer_shell_margin(
-            gtk_layer_shell::Edge::Bottom,
+        win.set_margin(Edge::Top, if pos == BarPosition::Top { gap } else { 0 });
+        win.set_margin(
+            Edge::Bottom,
             if pos == BarPosition::Bottom { gap } else { 0 },
         );
-        win.set_layer_shell_margin(
-            gtk_layer_shell::Edge::Left,
-            if pos == BarPosition::Left { gap } else { 0 },
-        );
-        win.set_layer_shell_margin(
-            gtk_layer_shell::Edge::Right,
-            if pos == BarPosition::Right { gap } else { 0 },
-        );
+        win.set_margin(Edge::Left, if pos == BarPosition::Left { gap } else { 0 });
+        win.set_margin(Edge::Right, if pos == BarPosition::Right { gap } else { 0 });
 
         win.set_anchor(
-            gtk_layer_shell::Edge::Top,
+            Edge::Top,
             pos == BarPosition::Top || orientation == Orientation::Vertical,
         );
-        win.set_anchor(gtk_layer_shell::Edge::Bottom, pos == BarPosition::Bottom);
+        win.set_anchor(Edge::Bottom, pos == BarPosition::Bottom);
         win.set_anchor(
-            gtk_layer_shell::Edge::Left,
+            Edge::Left,
             pos == BarPosition::Left || orientation == Orientation::Horizontal,
         );
-        win.set_anchor(gtk_layer_shell::Edge::Right, pos == BarPosition::Right);
+        win.set_anchor(Edge::Right, pos == BarPosition::Right);
 
-        win.connect_leave_notify_event(move |win, ev| {
-            const THRESHOLD: f64 = 3.0;
+        let event_controller = EventControllerMotion::new();
+        {
+            let win = win.clone();
+            event_controller.connect_leave(move |motion| {
+                const THRESHOLD: f64 = 3.0;
 
-            let (w, h) = win.size();
-            let (x, y) = ev.position();
+                let ev = motion.current_event().unwrap();
 
-            // some child widgets trigger this event
-            // so check we're actually outside the window
-            let hide = match pos {
-                BarPosition::Top => {
-                    x < THRESHOLD || y > f64::from(h) - THRESHOLD || x > f64::from(w) - THRESHOLD
+                let w = win.size(Orientation::Horizontal);
+                let h = win.size(Orientation::Vertical);
+
+                let Some((x, y)) = ev.position() else { return };
+
+                // some child widgets trigger this event
+                // so check we're actually outside the window
+                let hide = match pos {
+                    BarPosition::Top => {
+                        x < THRESHOLD
+                            || y > f64::from(h) - THRESHOLD
+                            || x > f64::from(w) - THRESHOLD
+                    }
+                    BarPosition::Bottom => {
+                        x < THRESHOLD || y < THRESHOLD || x > f64::from(w) - THRESHOLD
+                    }
+                    BarPosition::Left => {
+                        y < THRESHOLD
+                            || x > f64::from(w) - THRESHOLD
+                            || y > f64::from(h) - THRESHOLD
+                    }
+                    BarPosition::Right => {
+                        y < THRESHOLD || x < THRESHOLD || y > f64::from(h) - THRESHOLD
+                    }
+                };
+
+                if hide {
+                    win.hide();
                 }
-                BarPosition::Bottom => {
-                    x < THRESHOLD || y < THRESHOLD || x > f64::from(w) - THRESHOLD
-                }
-                BarPosition::Left => {
-                    y < THRESHOLD || x > f64::from(w) - THRESHOLD || y > f64::from(h) - THRESHOLD
-                }
-                BarPosition::Right => {
-                    y < THRESHOLD || x < THRESHOLD || y > f64::from(h) - THRESHOLD
-                }
-            };
+            });
+        }
 
-            if hide {
-                win.hide();
-            }
-
-            Propagation::Proceed
-        });
+        win.add_controller(event_controller);
 
         let output_size = rc_mut!(output_size);
 
@@ -156,25 +158,35 @@ impl Popup {
 
         let output_size = self.output_size.clone();
 
-        content
-            .container
-            .connect_size_allocate(move |container, rect| {
-                if container.is_visible() {
-                    trace!("Resized:  {}x{}", rect.width(), rect.height());
+        window.connect_default_width_notify(|win| {
+            println!("POPUP WIDTH CHANGE");
+        });
 
-                    if let Some((widget_id, button_id)) = *current_widget.borrow() {
-                        if let Some(PopupCacheValue { .. }) = cache.borrow().get(&widget_id) {
-                            Self::set_position(
-                                &button_cache.borrow(),
-                                button_id,
-                                orientation,
-                                &window,
-                                &output_size,
-                            );
-                        }
-                    }
-                }
-            });
+        window.connect_width_request_notify(move |win| {
+            println!("POPUP WIDTH REQUEST CHANGE");
+        });
+
+        // FIXME: connect_size_allocate has been removed - need to find replacement
+        //  https://docs.gtk.org/gtk4/migrating-3to4.html#adapt-to-gtkwidgets-size-allocation-changes
+        // content
+        //     .container
+        //     .connect_size_allocate(move |container, rect| {
+        //         if container.is_visible() {
+        //             trace!("Resized:  {}x{}", rect.width(), rect.height());
+        //
+        //             if let Some((widget_id, button_id)) = *current_widget.borrow() {
+        //                 if let Some(PopupCacheValue { .. }) = cache.borrow().get(&widget_id) {
+        //                     Self::set_position(
+        //                         &button_cache.borrow(),
+        //                         button_id,
+        //                         orientation,
+        //                         &window,
+        //                         &output_size,
+        //                     );
+        //                 }
+        //             }
+        //         }
+        //     });
 
         self.button_cache
             .borrow_mut()
@@ -193,8 +205,7 @@ impl Popup {
             *self.current_widget.borrow_mut() = Some((widget_id, button_id));
 
             content.container.add_class("popup");
-            self.window.add(&content.container);
-
+            self.window.set_child(Some(&content.container));
             self.window.show();
 
             Self::set_position(
@@ -213,7 +224,7 @@ impl Popup {
         if let Some(PopupCacheValue { content, .. }) = self.container_cache.borrow().get(&widget_id)
         {
             content.container.add_class("popup");
-            self.window.add(&content.container);
+            self.window.set_child(Some(&content.container));
 
             self.window.show();
             Self::set_pos(
@@ -238,14 +249,12 @@ impl Popup {
             .expect("to find valid button");
 
         let geometry = button.geometry(orientation);
+        println!("geometry: {geometry:?}");
         Self::set_pos(geometry, orientation, window, *output_size.borrow());
     }
 
     fn clear_window(&self) {
-        let children = self.window.children();
-        for child in children {
-            self.window.remove(&child);
-        }
+        self.window.set_child(None::<&gtk::Box>);
     }
 
     /// Hides the popup
@@ -271,20 +280,36 @@ impl Popup {
         window: &ApplicationWindow,
         output_size: (i32, i32),
     ) {
+        let edge = if orientation == Orientation::Horizontal {
+            Edge::Left
+        } else {
+            Edge::Top
+        };
+
         let screen_size = if orientation == Orientation::Horizontal {
             output_size.0
         } else {
             output_size.1
         };
 
-        let (popup_width, popup_height) = window.size();
+        println!("screen: {screen_size:?}");
+
+        let allocation = window.allocation();
+        let popup_width = allocation.width();
+        let popup_height = allocation.height();
+
         let popup_size = if orientation == Orientation::Horizontal {
             popup_width
         } else {
             popup_height
         };
 
-        let widget_center = f64::from(geometry.position) + f64::from(geometry.size) / 2.0;
+        if popup_size == 0 {
+            window.set_margin(edge, 0);
+            return;
+        }
+
+        let widget_center = geometry.position + f64::from(geometry.size) / 2.0;
 
         let bar_offset = (f64::from(screen_size) - f64::from(geometry.bar_size)) / 2.0;
 
@@ -296,12 +321,6 @@ impl Popup {
             offset = f64::from(screen_size - popup_size) - 5.0;
         }
 
-        let edge = if orientation == Orientation::Horizontal {
-            gtk_layer_shell::Edge::Left
-        } else {
-            gtk_layer_shell::Edge::Top
-        };
-
-        window.set_layer_shell_margin(edge, offset as i32);
+        window.set_margin(edge, offset as i32);
     }
 }
