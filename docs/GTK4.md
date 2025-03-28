@@ -17,12 +17,13 @@ A full list of feature flags can be found [here](Compiling#features).
 
 ## Core functionality
 
-| Area            | Status | Notes                                                                                           |
-|-----------------|--------|-------------------------------------------------------------------------------------------------|
-| Bar             | ✅      |                                                                                                 |
-| Popups          | ⚠️     | GTK4 removed window resize event - always display in position zero.                             |
-| Theming - CSS   | ✅      |                                                                                                 |
-| Theming - Icons | ⚠️     | GTK4 does not support icon theming - always uses default theme. Image scaling may be incorrect. |
+| Area            | Status | Notes                                                                                                 |
+|-----------------|--------|-------------------------------------------------------------------------------------------------------|
+| Bar             | ✅      |                                                                                                       |
+| Popups          | ⚠️     | GTK4 removed window resize event - always display in position zero.                                   |
+| Theming - CSS   | ✅      |                                                                                                       |
+| Theming - Icons | ⚠️     | GTK4 does not support icon theming - always uses default theme. Image scaling may be incorrect.       |
+| Config - Format | ❌ ️    | Angle/justify properties have been removed from widgets and should now be controlled via CSS instead. |
 
 ## Modules
 
