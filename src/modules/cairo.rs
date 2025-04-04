@@ -160,9 +160,7 @@ impl Module<gtk::Box> for CairoModule {
                 let ptr = unsafe { cr.clone().into_glib_ptr().cast() };
 
                 // mlua needs a valid return type, even if we don't return anything
-                if let Err(err) =
-                    function.call::<_, Option<bool>>((id.as_str(), LightUserData(ptr)))
-                {
+                if let Err(err) = function.call::<Option<bool>>((id.as_str(), LightUserData(ptr))) {
                     if let Error::RuntimeError(message) = err {
                         let message = message.split_once("]:").expect("to exist").1;
                         error!("[lua runtime error] {}:{message}", path.display());
