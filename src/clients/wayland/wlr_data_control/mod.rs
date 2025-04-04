@@ -8,18 +8,22 @@ use self::offer::{DataControlDeviceOffer, DataControlOfferHandler};
 use self::source::DataControlSourceHandler;
 use super::{Client, Environment, Event, Request, Response};
 use crate::{Ironbar, lock, spawn, try_send};
+use color_eyre::Result;
 use device::DataControlDevice;
 use glib::Bytes;
-use nix::fcntl::{F_GETPIPE_SZ, F_SETPIPE_SZ, fcntl};
-use nix::sys::epoll::{Epoll, EpollCreateFlags, EpollEvent, EpollFlags, EpollTimeout};
+use rustix::buffer::spare_capacity;
+use rustix::event::epoll;
+use rustix::event::epoll::CreateFlags;
+use rustix::fs::Timespec;
+use rustix::pipe::{fcntl_getpipe_size, fcntl_setpipe_size};
 use smithay_client_toolkit::data_device_manager::WritePipe;
 use std::cmp::min;
 use std::fmt::{Debug, Formatter};
 use std::fs::File;
 use std::io::{ErrorKind, Write};
-use std::os::fd::RawFd;
-use std::os::fd::{AsRawFd, OwnedFd};
+use std::os::fd::{AsFd, BorrowedFd, OwnedFd};
 use std::sync::Arc;
+use std::time::Duration;
 use std::{fs, io};
 use tokio::io::AsyncReadExt;
 use tokio::sync::broadcast;
@@ -154,7 +158,7 @@ impl Environment {
 
         let source = self
             .data_control_device_manager_state
-            .create_copy_paste_source(&self.queue_handle, [INTERNAL_MIME_TYPE, &item.mime_type]);
+            .create_copy_paste_source(&self.queue_handle, [&item.mime_type, INTERNAL_MIME_TYPE]);
 
         source.set_selection(&device.device);
         self.copy_paste_sources.push(source);
@@ -273,7 +277,7 @@ impl DataControlSourceHandler for Environment {
         source: &ZwlrDataControlSourceV1,
         mime: String,
         write_pipe: WritePipe,
-    ) {
+    ) -> Result<()> {
         debug!("Handler received source send request event ({mime})");
 
         if let Some(item) = lock!(self.clipboard).clone() {
@@ -294,28 +298,30 @@ impl DataControlSourceHandler for Environment {
                     ),
                 };
 
-                let pipe_size = set_pipe_size(fd.as_raw_fd(), bytes.len())
-                    .expect("Failed to increase pipe size");
+                let pipe_size =
+                    set_pipe_size(fd.as_fd(), bytes.len()).expect("Failed to increase pipe size");
                 let mut file = File::from(fd.try_clone().expect("to be able to clone"));
 
                 debug!("Writing {} bytes", bytes.len());
 
-                let mut events = (0..16).map(|_| EpollEvent::empty()).collect::<Vec<_>>();
-                let epoll_event = EpollEvent::new(EpollFlags::EPOLLOUT, 0);
+                let epoll = epoll::create(CreateFlags::CLOEXEC)?;
+                epoll::add(
+                    &epoll,
+                    fd,
+                    epoll::EventData::new_u64(0),
+                    epoll::EventFlags::OUT,
+                )?;
 
-                let epoll_fd =
-                    Epoll::new(EpollCreateFlags::empty()).expect("to get valid file descriptor");
-                epoll_fd
-                    .add(fd, epoll_event)
-                    .expect("to send valid epoll operation");
+                let mut events = Vec::with_capacity(16);
 
-                let timeout = EpollTimeout::from(100u16);
                 while !bytes.is_empty() {
-                    let chunk = &bytes[..min(pipe_size as usize, bytes.len())];
+                    let chunk = &bytes[..min(pipe_size, bytes.len())];
 
-                    epoll_fd
-                        .wait(&mut events, timeout)
-                        .expect("Failed to wait to epoll");
+                    epoll::wait(
+                        &epoll,
+                        spare_capacity(&mut events),
+                        Some(&Timespec::try_from(Duration::from_millis(100))?),
+                    )?;
 
                     match file.write(chunk) {
                         Ok(written) => {
@@ -331,9 +337,11 @@ impl DataControlSourceHandler for Environment {
 
                 debug!("Done writing");
             } else {
-                error!("Failed to find source");
+                error!("Failed to find source (mime: '{mime}')");
             }
         }
+
+        Ok(())
     }
 
     fn cancelled(
@@ -358,7 +366,7 @@ impl DataControlSourceHandler for Environment {
 /// it will be clamped at this.
 ///
 /// Returns the new size if succeeded.
-fn set_pipe_size(fd: RawFd, size: usize) -> io::Result<i32> {
+fn set_pipe_size(fd: BorrowedFd, size: usize) -> io::Result<usize> {
     // clamp size at kernel max
     let max_pipe_size = fs::read_to_string("/proc/sys/fs/pipe-max-size")
         .expect("Failed to find pipe-max-size virtual kernel file")
@@ -368,23 +376,24 @@ fn set_pipe_size(fd: RawFd, size: usize) -> io::Result<i32> {
 
     let size = min(size, max_pipe_size);
 
-    let curr_size = fcntl(fd, F_GETPIPE_SZ)? as usize;
+    let curr_size = fcntl_getpipe_size(fd)?;
 
     trace!("Current pipe size: {curr_size}");
 
     let new_size = if size > curr_size {
         trace!("Requesting pipe size increase to (at least): {size}");
 
-        let res = fcntl(fd, F_SETPIPE_SZ(size as i32))?;
+        fcntl_setpipe_size(fd, size)?;
+        let res = fcntl_getpipe_size(fd)?;
         trace!("New pipe size: {res}");
 
-        if res < size as i32 {
+        if res < size {
             return Err(io::Error::last_os_error());
         }
 
         res
     } else {
-        size as i32
+        size
     };
 
     Ok(new_size)
