@@ -7,19 +7,19 @@ use std::sync::Arc;
 use tokio::sync::broadcast;
 use tracing::debug;
 
-#[cfg(any(feature = "keyboard+hyprland", feature = "workspaces+hyprland"))]
+#[cfg(feature = "hyprland")]
 pub mod hyprland;
-#[cfg(feature = "workspaces+niri")]
+#[cfg(feature = "niri")]
 pub mod niri;
-#[cfg(any(feature = "keyboard+sway", feature = "workspaces+sway"))]
+#[cfg(feature = "sway")]
 pub mod sway;
 
 pub enum Compositor {
-    #[cfg(any(feature = "keyboard+sway", feature = "workspaces+sway"))]
+    #[cfg(feature = "sway")]
     Sway,
-    #[cfg(any(feature = "keyboard+hyprland", feature = "workspaces+hyprland"))]
+    #[cfg(feature = "hyprland")]
     Hyprland,
-    #[cfg(feature = "workspaces+niri")]
+    #[cfg(feature = "niri")]
     Niri,
     Unsupported,
 }
@@ -30,9 +30,9 @@ impl Display for Compositor {
             f,
             "{}",
             match self {
-                #[cfg(any(feature = "keyboard+sway", feature = "workspaces+sway"))]
+                #[cfg(any(feature = "sway"))]
                 Self::Sway => "Sway",
-                #[cfg(any(feature = "keyboard+hyprland", feature = "workspaces+hyprland"))]
+                #[cfg(any(feature = "hyprland"))]
                 Self::Hyprland => "Hyprland",
                 #[cfg(feature = "workspaces+niri")]
                 Self::Niri => "Niri",
@@ -48,17 +48,17 @@ impl Compositor {
     fn get_current() -> Self {
         if std::env::var("SWAYSOCK").is_ok() {
             cfg_if! {
-                if #[cfg(any(feature = "keyboard+sway", feature = "workspaces+sway"))] { Self::Sway }
+                if #[cfg(feature = "sway")] { Self::Sway }
                 else { tracing::error!("Not compiled with Sway support"); Self::Unsupported }
             }
         } else if std::env::var("HYPRLAND_INSTANCE_SIGNATURE").is_ok() {
             cfg_if! {
-                if #[cfg(any(feature = "keyboard+hyprland", feature = "workspaces+hyprland"))] { Self::Hyprland }
+                if #[cfg(feature = "hyprland")] { Self::Hyprland }
                 else { tracing::error!("Not compiled with Hyprland support"); Self::Unsupported }
             }
         } else if std::env::var("NIRI_SOCKET").is_ok() {
             cfg_if! {
-                if #[cfg(feature = "workspaces+niri")] { Self::Niri }
+                if #[cfg(feature = "niri")] { Self::Niri }
                 else {tracing::error!("Not compiled with Niri support"); Self::Unsupported }
             }
         } else {
@@ -79,13 +79,16 @@ impl Compositor {
                 .map(|client| client as Arc<dyn KeyboardLayoutClient + Send + Sync>),
             #[cfg(feature = "keyboard+hyprland")]
             Self::Hyprland => Ok(clients.hyprland()),
-            #[cfg(feature = "workspaces")]
+            #[cfg(feature = "niri")]
             Self::Niri => Err(Report::msg("Unsupported compositor").note(
                 "Currently keyboard layout functionality are only supported by Sway and Hyprland",
             )),
             Self::Unsupported => Err(Report::msg("Unsupported compositor").note(
                 "Currently keyboard layout functionality are only supported by Sway and Hyprland",
             )),
+            #[allow(unreachable_patterns)]
+            _ => Err(Report::msg("Unsupported compositor")
+                .note("Keyboard layout feature is disabled for this compositor")),
         }
     }
 
@@ -108,6 +111,9 @@ impl Compositor {
             Self::Niri => Ok(Arc::new(niri::Client::new())),
             Self::Unsupported => Err(Report::msg("Unsupported compositor")
                 .note("Currently workspaces are only supported by Sway, Niri and Hyprland")),
+            #[allow(unreachable_patterns)]
+            _ => Err(Report::msg("Unsupported compositor")
+                .note("Workspaces feature is disabled for this compositor")),
         }
     }
 }

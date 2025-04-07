@@ -7,7 +7,7 @@ use std::sync::Arc;
 
 #[cfg(feature = "clipboard")]
 pub mod clipboard;
-#[cfg(any(feature = "keyboard", feature = "workspaces"))]
+#[cfg(any(feature = "keyboard", feature = "workspaces", feature = "hyprland"))]
 pub mod compositor;
 #[cfg(feature = "keyboard")]
 pub mod libinput;
