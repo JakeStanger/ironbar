@@ -76,7 +76,9 @@ fn get_client(
     music_dir: PathBuf,
 ) -> Arc<dyn MusicClient> {
     let client_type = match player_type {
+        #[cfg(feature = "music+mpd")]
         PlayerType::Mpd => music::ClientType::Mpd { host, music_dir },
+        #[cfg(feature = "music+mpris")]
         PlayerType::Mpris => music::ClientType::Mpris,
     };
 

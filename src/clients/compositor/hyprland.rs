@@ -1,4 +1,4 @@
-use super::{KeyboardLayoutClient, KeyboardLayoutUpdate, Visibility, Workspace, WorkspaceUpdate};
+use super::{Visibility, Workspace, WorkspaceUpdate};
 use crate::{arc_mut, lock, send, spawn_blocking};
 use color_eyre::Result;
 use hyprland::ctl::switch_xkb_layout;
@@ -11,24 +11,39 @@ use tokio::sync::broadcast::{Receiver, Sender, channel};
 use tracing::{debug, error, info};
 
 #[derive(Debug)]
-pub struct Client {
-    workspace_tx: Sender<WorkspaceUpdate>,
-    _workspace_rx: Receiver<WorkspaceUpdate>,
+struct TxRx<T> {
+    tx: Sender<T>,
+    _rx: Receiver<T>,
+}
 
-    keyboard_layout_tx: Sender<KeyboardLayoutUpdate>,
-    _keyboard_layout_rx: Receiver<KeyboardLayoutUpdate>,
+#[derive(Debug)]
+pub struct Client {
+    #[cfg(feature = "workspaces+hyprland")]
+    workspace: TxRx<WorkspaceUpdate>,
+
+    #[cfg(feature = "keyboard+hyprland")]
+    keyboard_layout: TxRx<KeyboardLayoutUpdate>,
 }
 
 impl Client {
     pub(crate) fn new() -> Self {
+        #[cfg(feature = "workspaces+hyprland")]
         let (workspace_tx, workspace_rx) = channel(16);
+
+        #[cfg(feature = "keyboard+hyprland")]
         let (keyboard_layout_tx, keyboard_layout_rx) = channel(16);
 
         let instance = Self {
-            workspace_tx,
-            _workspace_rx: workspace_rx,
-            keyboard_layout_tx,
-            _keyboard_layout_rx: keyboard_layout_rx,
+            #[cfg(feature = "workspaces+hyprland")]
+            workspace: TxRx {
+                tx: workspace_tx,
+                _rx: workspace_rx,
+            },
+            #[cfg(feature = "keyboard+hyprland")]
+            keyboard_layout: TxRx {
+                tx: keyboard_layout_tx,
+                _rx: keyboard_layout_rx,
+            },
         };
 
         instance.listen_workspace_events();
@@ -38,8 +53,11 @@ impl Client {
     fn listen_workspace_events(&self) {
         info!("Starting Hyprland event listener");
 
-        let tx = self.workspace_tx.clone();
-        let keyboard_layout_tx = self.keyboard_layout_tx.clone();
+        #[cfg(feature = "workspaces+hyprland")]
+        let tx = self.workspace.tx.clone();
+
+        #[cfg(feature = "keyboard+hyprland")]
+        let keyboard_layout_tx = self.keyboard_layout.tx.clone();
 
         spawn_blocking(move || {
             let mut event_listener = EventListener::new();
@@ -48,9 +66,13 @@ impl Client {
             let lock = arc_mut!(());
 
             // cache the active workspace since Hyprland doesn't give us the prev active
+            #[cfg(feature = "workspaces+hyprland")]
             let active = Self::get_active_workspace().expect("Failed to get active workspace");
+
+            #[cfg(feature = "workspaces+hyprland")]
             let active = arc_mut!(Some(active));
 
+            #[cfg(feature = "workspaces+hyprland")]
             {
                 let tx = tx.clone();
                 let lock = lock.clone();
@@ -71,6 +93,7 @@ impl Client {
                 });
             }
 
+            #[cfg(feature = "workspaces+hyprland")]
             {
                 let tx = tx.clone();
                 let lock = lock.clone();
@@ -103,6 +126,7 @@ impl Client {
                 });
             }
 
+            #[cfg(feature = "workspaces+hyprland")]
             {
                 let tx = tx.clone();
                 let lock = lock.clone();
@@ -132,6 +156,7 @@ impl Client {
                 });
             }
 
+            #[cfg(feature = "workspaces+hyprland")]
             {
                 let tx = tx.clone();
                 let lock = lock.clone();
@@ -156,6 +181,7 @@ impl Client {
                 });
             }
 
+            #[cfg(feature = "workspaces+hyprland")]
             {
                 let tx = tx.clone();
                 let lock = lock.clone();
@@ -174,6 +200,7 @@ impl Client {
                 });
             }
 
+            #[cfg(feature = "workspaces+hyprland")]
             {
                 let tx = tx.clone();
                 let lock = lock.clone();
@@ -185,6 +212,7 @@ impl Client {
                 });
             }
 
+            #[cfg(feature = "workspaces+hyprland")]
             {
                 let tx = tx.clone();
                 let lock = lock.clone();
@@ -217,11 +245,13 @@ impl Client {
                 });
             }
 
+            #[cfg(feature = "keyboard+hyprland")]
             {
                 let tx = keyboard_layout_tx.clone();
                 let lock = lock.clone();
 
                 event_listener.add_keyboard_layout_change_handler(move |layout_event| {
+
                     let _lock = lock!(lock);
 
                     let layout = if layout_event.layout_name.is_empty() {
@@ -274,6 +304,7 @@ impl Client {
 
     /// Sends a `WorkspaceUpdate::Focus` event
     /// and updates the active workspace cache.
+    #[cfg(feature = "workspaces+hyprland")]
     fn send_focus_change(
         prev_workspace: &mut Option<Workspace>,
         workspace: Workspace,
@@ -299,6 +330,7 @@ impl Client {
     }
 
     /// Gets a workspace by name from the server, given the active workspace if known.
+    #[cfg(feature = "workspaces+hyprland")]
     fn get_workspace(name: &str, active: Option<&Workspace>) -> Option<Workspace> {
         Workspaces::get()
             .expect("Failed to get workspaces")
@@ -323,7 +355,7 @@ impl Client {
     }
 }
 
-#[cfg(feature = "workspaces")]
+#[cfg(feature = "workspaces+hyprland")]
 impl super::WorkspaceClient for Client {
     fn focus(&self, id: i64) {
         let identifier = WorkspaceIdentifierWithSpecial::Id(id as i32);
@@ -334,7 +366,7 @@ impl super::WorkspaceClient for Client {
     }
 
     fn subscribe(&self) -> Receiver<WorkspaceUpdate> {
-        let rx = self.workspace_tx.subscribe();
+        let rx = self.workspace.tx.subscribe();
 
         let active_id = HWorkspace::get_active().ok().map(|active| active.name);
         let is_visible = create_is_visible();
@@ -349,12 +381,16 @@ impl super::WorkspaceClient for Client {
             })
             .collect();
 
-        send!(self.workspace_tx, WorkspaceUpdate::Init(workspaces));
+        send!(self.workspace.tx, WorkspaceUpdate::Init(workspaces));
 
         rx
     }
 }
 
+#[cfg(feature = "keyboard+hyprland")]
+use super::{KeyboardLayoutClient, KeyboardLayoutUpdate};
+
+#[cfg(feature = "keyboard+hyprland")]
 impl KeyboardLayoutClient for Client {
     fn set_next_active(&self) {
         let device = Devices::get()
@@ -376,7 +412,7 @@ impl KeyboardLayoutClient for Client {
     }
 
     fn subscribe(&self) -> Receiver<KeyboardLayoutUpdate> {
-        let rx = self.keyboard_layout_tx.subscribe();
+        let rx = self.keyboard_layout.tx.subscribe();
 
         let layout = Devices::get()
             .expect("Failed to get devices")
@@ -386,7 +422,7 @@ impl KeyboardLayoutClient for Client {
             .map(|k| k.active_keymap.clone());
 
         if let Some(layout) = layout {
-            send!(self.keyboard_layout_tx, KeyboardLayoutUpdate(layout));
+            send!(self.keyboard_layout.tx, KeyboardLayoutUpdate(layout));
         } else {
             error!("Failed to get current keyboard layout hyprland");
         }

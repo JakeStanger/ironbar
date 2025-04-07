@@ -30,11 +30,11 @@ default = [
     "tray",
     "upower",
     "volume",
-    "workspaces+all"
+    "workspaces+all",
 ]
 
 cli = ["dep:clap", "ipc"]
-ipc = ["dep:serde_json"]
+ipc = ["dep:serde_json", "dep:clap"]
 
 http = ["dep:reqwest"]
 
@@ -61,7 +61,7 @@ custom = []
 
 focused = []
 
-keyboard = ["dep:colpetto", "dep:evdev-rs", "dep:rustix"]
+keyboard = ["dep:colpetto", "dep:evdev-rs", "dep:rustix", "futures-lite"]
 "keyboard+all" = ["keyboard", "keyboard+sway", "keyboard+hyprland"]
 "keyboard+sway" = ["keyboard", "sway"]
 "keyboard+hyprland" = ["keyboard", "hyprland"]
@@ -81,7 +81,7 @@ notifications = ["zbus"]
 
 script = []
 
-sys_info = ["dep:sysinfo"]
+sys_info = ["dep:sysinfo", "ipc"]
 
 tray = ["system-tray"]
 
@@ -93,9 +93,11 @@ workspaces = ["futures-lite"]
 "workspaces+all" = ["workspaces", "workspaces+sway", "workspaces+hyprland", "workspaces+niri"]
 "workspaces+sway" = ["workspaces", "sway"]
 "workspaces+hyprland" = ["workspaces", "hyprland"]
-"workspaces+niri" = ["workspaces"]
+"workspaces+niri" = ["workspaces", "niri"]
 
 sway = ["swayipc-async", "futures-lite"]
+
+niri = ["dep:serde_json"]
 
 schema = ["dep:schemars"]
 
