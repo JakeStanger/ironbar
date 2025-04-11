@@ -9,7 +9,10 @@ use std::ops::Deref;
     feature = "clipboard",
     feature = "keyboard",
     feature = "music",
-    feature = "workspaces"
+    feature = "workspaces",
+    feature = "cairo",
+    feature = "clipboard",
+    feature = "launcher",
 ))]
 pub struct IconButton {
     button: Button,
@@ -20,7 +23,10 @@ pub struct IconButton {
     feature = "clipboard",
     feature = "keyboard",
     feature = "music",
-    feature = "workspaces"
+    feature = "workspaces",
+    feature = "cairo",
+    feature = "clipboard",
+    feature = "launcher",
 ))]
 impl IconButton {
     pub fn new(input: &str, icon_theme: &IconTheme, size: i32) -> Self {
@@ -57,6 +63,15 @@ impl IconButton {
     }
 }
 
+#[cfg(any(
+    feature = "clipboard",
+    feature = "keyboard",
+    feature = "music",
+    feature = "workspaces",
+    feature = "cairo",
+    feature = "clipboard",
+    feature = "launcher",
+))]
 impl Deref for IconButton {
     type Target = Button;
 
@@ -138,6 +153,7 @@ impl IconLabel {
     }
 }
 
+#[cfg(any(feature = "keyboard", feature = "music", feature = "workspaces"))]
 impl Deref for IconLabel {
     type Target = gtk::Box;
 

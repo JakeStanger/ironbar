@@ -74,13 +74,23 @@ impl Default for Icons {
 #[serde(rename_all = "snake_case")]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 pub enum PlayerType {
+    #[cfg(feature = "music+mpd")]
     Mpd,
+    #[cfg(feature = "music+mpris")]
     Mpris,
 }
 
 impl Default for PlayerType {
     fn default() -> Self {
-        Self::Mpris
+        cfg_if::cfg_if! {
+            if #[cfg(feature = "music+mpd")] {
+                Self::Mpd
+            } else if #[cfg(feature = "music+mpris")] {
+                Self::Mpris
+            } else {
+                compile_error!("No player type feature enabled")
+            }
+        }
     }
 }
 
