@@ -83,10 +83,10 @@ pub enum PlayerType {
 impl Default for PlayerType {
     fn default() -> Self {
         cfg_if::cfg_if! {
-            if #[cfg(feature = "music+mpd")] {
-                Self::Mpd
-            } else if #[cfg(feature = "music+mpris")] {
+            if #[cfg(feature = "music+mpris")] {
                 Self::Mpris
+            } else if #[cfg(feature = "music+mpd")] {
+                Self::Mpd
             } else {
                 compile_error!("No player type feature enabled")
             }
