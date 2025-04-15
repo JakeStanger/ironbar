@@ -33,7 +33,7 @@ default = [
     "workspaces+all",
 ]
 
-cli = ["dep:clap", "ipc"]
+cli = ["ipc"]
 ipc = ["dep:serde_json", "dep:clap"]
 
 http = ["dep:reqwest"]
