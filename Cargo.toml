@@ -176,7 +176,7 @@ system-tray = { version = "0.7.0", features = ["dbusmenu-gtk3"], optional = true
 libpulse-binding = { version = "2.29.0", optional = true }
 
 # shared
-futures-lite = { version = "2.6.0", optional = true } # network_manager, upower, workspaces
+futures-lite = { version = "2.6.0", optional = true } # network_manager, upower, workspaces, keyboard
 zbus = { version = "5.5.0", default-features = false, features = ["tokio"], optional = true } # network_manager, notifications, upower
 swayipc-async = { version = "2.0.4", optional = true } # workspaces, keyboard
 hyprland = { version = "0.4.0-alpha.3", features = ["silent"], optional = true } # workspaces, keyboard
