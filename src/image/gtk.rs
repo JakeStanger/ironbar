@@ -6,13 +6,13 @@ use std::ops::Deref;
 
 #[derive(Debug, Clone)]
 #[cfg(any(
-    feature = "clipboard",
-    feature = "keyboard",
-    feature = "music",
-    feature = "workspaces",
     feature = "cairo",
     feature = "clipboard",
+    feature = "clipboard",
+    feature = "keyboard",
     feature = "launcher",
+    feature = "music",
+    feature = "workspaces",
 ))]
 pub struct IconButton {
     button: Button,
@@ -20,13 +20,13 @@ pub struct IconButton {
 }
 
 #[cfg(any(
-    feature = "clipboard",
-    feature = "keyboard",
-    feature = "music",
-    feature = "workspaces",
     feature = "cairo",
     feature = "clipboard",
+    feature = "clipboard",
+    feature = "keyboard",
     feature = "launcher",
+    feature = "music",
+    feature = "workspaces",
 ))]
 impl IconButton {
     pub fn new(input: &str, icon_theme: &IconTheme, size: i32) -> Self {

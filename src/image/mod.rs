@@ -1,9 +1,9 @@
 #[cfg(any(
     feature = "clipboard",
     feature = "keyboard",
+    feature = "launcher",
     feature = "music",
     feature = "workspaces",
-    feature = "launcher",
 ))]
 mod gtk;
 mod provider;
@@ -11,9 +11,9 @@ mod provider;
 #[cfg(any(
     feature = "clipboard",
     feature = "keyboard",
+    feature = "launcher",
     feature = "music",
     feature = "workspaces",
-    feature = "launcher",
 ))]
 pub use self::gtk::*;
 pub use provider::ImageProvider;
