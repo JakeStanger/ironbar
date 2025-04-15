@@ -195,7 +195,10 @@ impl Clients {
         self.sys_info
             .get_or_insert_with(|| {
                 let client = Arc::new(sysinfo::Client::new());
+
+                #[cfg(feature = "ipc")]
                 Ironbar::variable_manager().register_namespace("sysinfo", client.clone());
+
                 client
             })
             .clone()

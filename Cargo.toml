@@ -81,7 +81,7 @@ notifications = ["zbus"]
 
 script = []
 
-sys_info = ["dep:sysinfo", "ipc"]
+sys_info = ["dep:sysinfo"]
 
 tray = ["system-tray"]
 
