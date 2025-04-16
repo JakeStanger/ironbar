@@ -263,49 +263,48 @@ impl Client {
         let lock = lock.clone();
 
         event_listener.add_keyboard_layout_change_handler(move |layout_event| {
+            let _lock = lock!(lock);
 
-        let _lock = lock!(lock);
+            let layout = if layout_event.layout_name.is_empty() {
+                // FIXME: This field is empty due to bug in `hyprland-rs_0.4.0-alpha.3`. Which is already fixed in last betas
 
-        let layout = if layout_event.layout_name.is_empty() {
-            // FIXME: This field is empty due to bug in `hyprland-rs_0.4.0-alpha.3`. Which is already fixed in last betas
+                // The layout may be empty due to a bug in `hyprland-rs`, because of which the `layout_event` is incorrect.
+                //
+                // Instead of:
+                // ```
+                // LayoutEvent {
+                //     keyboard_name: "keychron-keychron-c2",
+                //     layout_name: "English (US)",
+                // }
+                // ```
+                //
+                // We get:
+                // ```
+                // LayoutEvent {
+                //     keyboard_name: "keychron-keychron-c2,English (US)",
+                //     layout_name: "",
+                // }
+                // ```
+                // 
+                // Here we are trying to recover `layout_name` from `keyboard_name`
 
-            // The layout may be empty due to a bug in `hyprland-rs`, because of which the `layout_event` is incorrect.
-            //
-            // Instead of:
-            // ```
-            // LayoutEvent {
-            //     keyboard_name: "keychron-keychron-c2",
-            //     layout_name: "English (US)",
-            // }
-            // ```
-            //
-            // We get:
-            // ```
-            // LayoutEvent {
-            //     keyboard_name: "keychron-keychron-c2,English (US)",
-            //     layout_name: "",
-            // }
-            // ```
-            // 
-            // Here we are trying to recover `layout_name` from `keyboard_name`
+                let layout = layout_event.keyboard_name.as_str().split(',').nth(1);
+                let Some(layout) = layout else {
+                    error!(
+                        "Failed to get layout from string: {}. The failed logic is a workaround for a bug in `hyprland 0.4.0-alpha.3`", layout_event.keyboard_name);
+                    return;
+                };
 
-            let layout = layout_event.keyboard_name.as_str().split(',').nth(1);
-            let Some(layout) = layout else {
-                error!(
-                    "Failed to get layout from string: {}. The failed logic is a workaround for a bug in `hyprland 0.4.0-alpha.3`", layout_event.keyboard_name);
-                return;
+                layout.into()
+            }
+            else {
+                layout_event.layout_name
             };
 
-            layout.into()
-        }
-        else {
-            layout_event.layout_name
-        };
+            debug!("Received layout: {layout:?}");
 
-        debug!("Received layout: {layout:?}");
-
-        send!(tx, KeyboardLayoutUpdate(layout));
-    });
+            send!(tx, KeyboardLayoutUpdate(layout));
+        });
     }
 
     /// Sends a `WorkspaceUpdate::Focus` event
