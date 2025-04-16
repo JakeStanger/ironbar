@@ -46,20 +46,18 @@ impl Client {
             },
         };
 
-        #[cfg(feature = "workspaces+hyprland")]
         instance.listen_workspace_events();
-
-        #[cfg(feature = "keyboard+hyprland")]
-        instance.listen_keyboard_events();
-
         instance
     }
 
-    #[cfg(feature = "workspaces+hyprland")]
     fn listen_workspace_events(&self) {
         info!("Starting Hyprland event listener");
 
+        #[cfg(feature = "workspaces+hyprland")]
         let tx = self.workspace.tx.clone();
+
+        #[cfg(feature = "keyboard+hyprland")]
+        let keyboard_layout_tx = self.keyboard_layout.tx.clone();
 
         spawn_blocking(move || {
             let mut event_listener = EventListener::new();
@@ -68,10 +66,13 @@ impl Client {
             let lock = arc_mut!(());
 
             // cache the active workspace since Hyprland doesn't give us the prev active
+            #[cfg(feature = "workspaces+hyprland")]
             let active = Self::get_active_workspace().expect("Failed to get active workspace");
 
+            #[cfg(feature = "workspaces+hyprland")]
             let active = arc_mut!(Some(active));
 
+            #[cfg(feature = "workspaces+hyprland")]
             {
                 let tx = tx.clone();
                 let lock = lock.clone();
@@ -92,6 +93,7 @@ impl Client {
                 });
             }
 
+            #[cfg(feature = "workspaces+hyprland")]
             {
                 let tx = tx.clone();
                 let lock = lock.clone();
@@ -124,6 +126,7 @@ impl Client {
                 });
             }
 
+            #[cfg(feature = "workspaces+hyprland")]
             {
                 let tx = tx.clone();
                 let lock = lock.clone();
@@ -153,6 +156,7 @@ impl Client {
                 });
             }
 
+            #[cfg(feature = "workspaces+hyprland")]
             {
                 let tx = tx.clone();
                 let lock = lock.clone();
@@ -177,6 +181,7 @@ impl Client {
                 });
             }
 
+            #[cfg(feature = "workspaces+hyprland")]
             {
                 let tx = tx.clone();
                 let lock = lock.clone();
@@ -195,6 +200,7 @@ impl Client {
                 });
             }
 
+            #[cfg(feature = "workspaces+hyprland")]
             {
                 let tx = tx.clone();
                 let lock = lock.clone();
@@ -206,6 +212,7 @@ impl Client {
                 });
             }
 
+            #[cfg(feature = "workspaces+hyprland")]
             {
                 let tx = tx.clone();
                 let lock = lock.clone();
@@ -238,24 +245,7 @@ impl Client {
                 });
             }
 
-            event_listener
-                .start_listener()
-                .expect("Failed to start listener");
-        });
-    }
-
-    #[cfg(feature = "keyboard+hyprland")]
-    fn listen_keyboard_events(&self) {
-        info!("Starting Hyprland event listener");
-
-        let keyboard_layout_tx = self.keyboard_layout.tx.clone();
-
-        spawn_blocking(move || {
-            let mut event_listener = EventListener::new();
-
-            // we need a lock to ensure events don't run at the same time
-            let lock = arc_mut!(());
-
+            #[cfg(feature = "keyboard+hyprland")]
             {
                 let tx = keyboard_layout_tx.clone();
                 let lock = lock.clone();
