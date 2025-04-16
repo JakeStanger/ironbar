@@ -4,6 +4,11 @@ on:
   workflow_dispatch:
   push:
     branches: [ "master" ]
+    paths:
+      - 'src'
+      - 'Cargo.*'
+      - 'build.rs'
+      - '.github/workflows/schema.yml.yml'
 
 env:
   CARGO_TERM_COLOR: always
@@ -13,15 +18,13 @@ jobs:
   publish-schema:
     name: 'Publish Schema'
     runs-on: ubuntu-latest
+    container: ghcr.io/jakestanger/ironbar-build:master
 
     steps:
       - uses: actions/checkout@v3
 
       - uses: Swatinem/rust-cache@v2
         name: Cache dependencies
-
-      - name: Install build deps
-        run: ./.github/scripts/ubuntu_setup.sh
 
       - name: Build
         run: cargo build --features schema
