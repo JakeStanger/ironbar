@@ -4,6 +4,11 @@ on:
   workflow_dispatch:
   push:
     branches: [ "master" ]
+    paths:
+      - 'src'
+      - 'Cargo.*'
+      - 'build.rs'
+      - '.github/workflows/schema.yml.yml'
 
 env:
   CARGO_TERM_COLOR: always
