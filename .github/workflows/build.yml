@@ -79,3 +79,55 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: test
+
+  feature-checks:
+    name: 'Check feature flag'
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        feature:
+          - http
+          - ipc
+          - cli
+          - config+all
+          - config+json
+          - config+yaml
+          - config+toml
+          - config+corn
+          - config+ron
+          - cairo
+          - clipboard
+          - clock
+          - custom
+          - focused
+          - keyboard
+          - keyboard+all
+          - keyboard+sway
+          - keyboard+hyprland
+          - label
+          - launcher
+          - music+all
+          - music+mpris
+          - music+mpd
+          - network_manager
+          - notifications
+          - sys_info
+          - script
+          - tray
+          - upower
+          - volume
+          - workspaces+all
+          - workspaces+sway
+          - workspaces+hyprland
+          - workspaces+niri
+          - schema
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check
+        run: cargo check --no-default-features --features ${{ matrix.feature }}
+        env:
+          # Allow some warnings through as we'll never get it perfect
+          RUSTFLAGS: '-A unused-imports -A unused-variables -A unused-mut -A dead-code'
