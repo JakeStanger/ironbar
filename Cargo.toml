@@ -30,11 +30,11 @@ default = [
     "tray",
     "upower",
     "volume",
-    "workspaces+all"
+    "workspaces+all",
 ]
 
-cli = ["dep:clap", "ipc"]
-ipc = ["dep:serde_json"]
+cli = ["ipc"]
+ipc = ["dep:serde_json", "dep:clap"]
 
 http = ["dep:reqwest"]
 
@@ -61,7 +61,7 @@ custom = []
 
 focused = []
 
-keyboard = ["dep:colpetto", "dep:evdev-rs", "dep:rustix"]
+keyboard = ["dep:colpetto", "dep:evdev-rs", "dep:rustix", "futures-lite"]
 "keyboard+all" = ["keyboard", "keyboard+sway", "keyboard+hyprland"]
 "keyboard+sway" = ["keyboard", "sway"]
 "keyboard+hyprland" = ["keyboard", "hyprland"]
@@ -93,9 +93,11 @@ workspaces = ["futures-lite"]
 "workspaces+all" = ["workspaces", "workspaces+sway", "workspaces+hyprland", "workspaces+niri"]
 "workspaces+sway" = ["workspaces", "sway"]
 "workspaces+hyprland" = ["workspaces", "hyprland"]
-"workspaces+niri" = ["workspaces"]
+"workspaces+niri" = ["workspaces", "niri"]
 
 sway = ["swayipc-async", "futures-lite"]
+
+niri = ["dep:serde_json"]
 
 schema = ["dep:schemars"]
 
@@ -136,9 +138,6 @@ cfg-if = "1.0.0"
 # cli
 clap = { version = "4.5.36", optional = true, features = ["derive"] }
 
-# ipc
-serde_json = { version = "1.0.140", optional = true }
-
 # http
 reqwest = { version = "0.12.15", default-features = false, features = ["default-tls", "http2"], optional = true }
 
@@ -174,11 +173,12 @@ system-tray = { version = "0.7.0", features = ["dbusmenu-gtk3"], optional = true
 libpulse-binding = { version = "2.29.0", optional = true }
 
 # shared
-futures-lite = { version = "2.6.0", optional = true } # network_manager, upower, workspaces
+futures-lite = { version = "2.6.0", optional = true } # network_manager, upower, workspaces, keyboard
 zbus = { version = "5.5.0", default-features = false, features = ["tokio"], optional = true } # network_manager, notifications, upower
 swayipc-async = { version = "2.0.4", optional = true } # workspaces, keyboard
 hyprland = { version = "0.4.0-alpha.3", features = ["silent"], optional = true } # workspaces, keyboard
 rustix = { version = "1.0.5", default-features = false, features = ["std", "fs", "pipe", "event"], optional = true } # clipboard, input
+serde_json = { version = "1.0.140", optional = true } # ipc, niri
 
 # schema
 schemars = { version = "0.8.22", optional = true }

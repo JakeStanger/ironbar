@@ -1,11 +1,11 @@
-use super::{KeyboardLayoutClient, KeyboardLayoutUpdate, Visibility, Workspace, WorkspaceUpdate};
+use super::{Visibility, Workspace, WorkspaceUpdate};
 use crate::clients::sway::Client;
 use crate::{await_sync, error, send, spawn};
 use color_eyre::Report;
 use swayipc_async::{InputChange, InputEvent, Node, WorkspaceChange, WorkspaceEvent};
 use tokio::sync::broadcast::{Receiver, channel};
 
-#[cfg(feature = "workspaces")]
+#[cfg(feature = "workspaces+sway")]
 impl super::WorkspaceClient for Client {
     fn focus(&self, id: i64) {
         let client = self.connection().clone();
@@ -153,6 +153,10 @@ impl From<WorkspaceEvent> for WorkspaceUpdate {
     }
 }
 
+#[cfg(feature = "keyboard+sway")]
+use super::{KeyboardLayoutClient, KeyboardLayoutUpdate};
+
+#[cfg(feature = "keyboard+sway")]
 impl KeyboardLayoutClient for Client {
     fn set_next_active(&self) {
         let client = self.connection().clone();
@@ -210,6 +214,7 @@ impl KeyboardLayoutClient for Client {
     }
 }
 
+#[cfg(feature = "keyboard+sway")]
 impl TryFrom<InputEvent> for KeyboardLayoutUpdate {
     type Error = ();
 

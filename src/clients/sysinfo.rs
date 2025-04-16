@@ -1,4 +1,3 @@
-use crate::ironvar::Namespace;
 use crate::modules::sysinfo::Interval;
 use crate::{lock, register_client};
 use color_eyre::{Report, Result};
@@ -483,6 +482,10 @@ impl FromStr for TokenType {
     }
 }
 
+#[cfg(feature = "ipc")]
+use crate::ironvar::Namespace;
+
+#[cfg(feature = "ipc")]
 impl Namespace for Client {
     fn get(&self, key: &str) -> Option<String> {
         let get = |value: Value| Some(value.get(Prefix::None).to_string());
@@ -591,6 +594,7 @@ impl Namespace for Client {
     }
 }
 
+#[cfg(feature = "ipc")]
 impl Namespace for ValueSet {
     fn get(&self, key: &str) -> Option<String> {
         let function = Function::from_str(key).ok()?;
