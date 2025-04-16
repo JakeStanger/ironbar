@@ -24,15 +24,13 @@ jobs:
 
   clippy-base:
     runs-on: ubuntu-latest
+    container: ghcr.io/jakestanger/ironbar-build:master
     name: 'Clippy (Base features)'
     steps:
       - uses: actions/checkout@v4
 
       - uses: Swatinem/rust-cache@v2
         name: Cache dependencies
-
-      - name: Install build deps
-        run: ./.github/scripts/ubuntu_setup.sh
 
       - name: Clippy
         run: cargo clippy --no-default-features --features config+json
@@ -43,15 +41,13 @@ jobs:
 
   clippy-all:
     runs-on: ubuntu-latest
+    container: ghcr.io/jakestanger/ironbar-build:master
     name: 'Clippy (All features)'
     steps:
       - uses: actions/checkout@v4
 
       - uses: Swatinem/rust-cache@v2
         name: Cache dependencies
-
-      - name: Install build deps
-        run: ./.github/scripts/ubuntu_setup.sh
 
       - name: Clippy
         run: cargo clippy --all-targets --all-features
@@ -62,15 +58,13 @@ jobs:
   build:
     name: 'Build & Test'
     runs-on: ubuntu-latest
+    container: ghcr.io/jakestanger/ironbar-build:master
 
     steps:
       - uses: actions/checkout@v4
 
       - uses: Swatinem/rust-cache@v2
         name: Cache dependencies
-
-      - name: Install build deps
-        run: ./.github/scripts/ubuntu_setup.sh
 
       - name: Build
         run: cargo build --verbose
@@ -83,6 +77,7 @@ jobs:
   feature-checks:
     name: 'Check feature flag'
     runs-on: ubuntu-latest
+    container: ghcr.io/jakestanger/ironbar-build:master
 
     strategy:
       matrix:
@@ -125,6 +120,9 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+
+      - uses: Swatinem/rust-cache@v2
+        name: Cache dependencies
 
       - name: Check
         run: cargo check --no-default-features --features ${{ matrix.feature }}
