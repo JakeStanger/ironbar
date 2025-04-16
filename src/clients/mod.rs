@@ -7,7 +7,7 @@ use std::sync::Arc;
 
 #[cfg(feature = "clipboard")]
 pub mod clipboard;
-#[cfg(any(feature = "keyboard", feature = "workspaces"))]
+#[cfg(any(feature = "keyboard", feature = "workspaces", feature = "hyprland"))]
 pub mod compositor;
 #[cfg(feature = "keyboard")]
 pub mod libinput;
@@ -195,7 +195,10 @@ impl Clients {
         self.sys_info
             .get_or_insert_with(|| {
                 let client = Arc::new(sysinfo::Client::new());
+
+                #[cfg(feature = "ipc")]
                 Ironbar::variable_manager().register_namespace("sysinfo", client.clone());
+
                 client
             })
             .clone()
