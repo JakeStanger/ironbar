@@ -4,8 +4,17 @@ on:
   workflow_dispatch:
   push:
     branches: [ "master" ]
+    paths:
+      - 'src'
+      - 'Cargo.*'
+      - 'build.rs'
   pull_request:
     branches: [ "master" ]
+    paths:
+      - 'src'
+      - 'Cargo.*'
+      - 'build.rs'
+      - '.github/workflows/build.yml'
 
 env:
   CARGO_TERM_COLOR: always
@@ -96,7 +105,6 @@ jobs:
           - clock
           - custom
           - focused
-          - keyboard
           - keyboard+all
           - keyboard+sway
           - keyboard+hyprland
