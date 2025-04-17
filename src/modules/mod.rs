@@ -17,6 +17,8 @@ use crate::gtk_helpers::{IronbarGtkExt, WidgetGeometry};
 use crate::popup::Popup;
 use crate::{Ironbar, glib_recv_mpsc, send};
 
+#[cfg(feature = "bluetooth")]
+pub mod bluetooth;
 #[cfg(feature = "cairo")]
 pub mod cairo;
 #[cfg(feature = "clipboard")]
