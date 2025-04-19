@@ -74,9 +74,7 @@ impl Compositor {
         debug!("Getting keyboard_layout client for: {current}");
         match current {
             #[cfg(feature = "bindmode+sway")]
-            Self::Sway => clients
-                .sway()
-                .map(|client| client as Arc<dyn BindModeClient + Send + Sync>),
+            Self::Sway => Ok(clients.sway()?),
             #[cfg(feature = "bindmode+hyprland")]
             Self::Hyprland => Ok(clients.hyprland()),
             #[cfg(feature = "niri")]
@@ -98,9 +96,7 @@ impl Compositor {
         debug!("Getting keyboard_layout client for: {current}");
         match current {
             #[cfg(feature = "keyboard+sway")]
-            Self::Sway => clients
-                .sway()
-                .map(|client| client as Arc<dyn KeyboardLayoutClient + Send + Sync>),
+            Self::Sway => Ok(clients.sway()?),
             #[cfg(feature = "keyboard+hyprland")]
             Self::Hyprland => Ok(clients.hyprland()),
             #[cfg(feature = "niri")]
@@ -126,9 +122,7 @@ impl Compositor {
         debug!("Getting workspace client for: {current}");
         match current {
             #[cfg(feature = "workspaces+sway")]
-            Self::Sway => clients
-                .sway()
-                .map(|client| client as Arc<dyn WorkspaceClient + Send + Sync>),
+            Self::Sway => Ok(clients.sway()?),
             #[cfg(feature = "workspaces+hyprland")]
             Self::Hyprland => Ok(clients.hyprland()),
             #[cfg(feature = "workspaces+niri")]
