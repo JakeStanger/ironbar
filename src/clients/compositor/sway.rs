@@ -231,3 +231,27 @@ impl TryFrom<InputEvent> for KeyboardLayoutUpdate {
         }
     }
 }
+
+#[cfg(feature = "bindmode")]
+use super::{BindModeClient, BindModeUpdate};
+
+#[cfg(feature = "bindmode")]
+impl BindModeClient for Client {
+    fn subscribe(&self) -> Result<Receiver<BindModeUpdate>, Report> {
+        let (tx, rx) = channel(16);
+        await_sync(async {
+            self.add_listener::<swayipc_async::ModeEvent>(move |mode| {
+                tracing::trace!("mode: {:?}", mode);
+                send!(
+                    tx,
+                    BindModeUpdate {
+                        name: mode.change.clone(),
+                        pango_markup: mode.pango_markup,
+                    }
+                );
+            })
+            .await
+        })?;
+        Ok(rx)
+    }
+}

@@ -3,6 +3,8 @@ mod r#impl;
 mod layout;
 mod truncate;
 
+#[cfg(any(feature = "bindmode"))]
+use crate::modules::bindmode::Bindmode;
 #[cfg(feature = "cairo")]
 use crate::modules::cairo::CairoModule;
 #[cfg(feature = "clipboard")]
@@ -27,8 +29,6 @@ use crate::modules::networkmanager::NetworkManagerModule;
 use crate::modules::notifications::NotificationsModule;
 #[cfg(feature = "script")]
 use crate::modules::script::ScriptModule;
-#[cfg(feature = "sway")]
-use crate::modules::sway::mode::SwayModeModule;
 #[cfg(feature = "sys_info")]
 use crate::modules::sysinfo::SysInfoModule;
 #[cfg(feature = "tray")]
@@ -83,8 +83,10 @@ pub enum ModuleConfig {
     Script(Box<ScriptModule>),
     #[cfg(feature = "sys_info")]
     SysInfo(Box<SysInfoModule>),
-    #[cfg(feature = "sway")]
-    SwayMode(Box<SwayModeModule>),
+    #[cfg(feature = "bindmode")]
+    SwayMode(Box<Bindmode>),
+    #[cfg(feature = "bindmode")]
+    Bindmode(Box<Bindmode>),
     #[cfg(feature = "tray")]
     Tray(Box<TrayModule>),
     #[cfg(feature = "upower")]
@@ -135,7 +137,7 @@ impl ModuleConfig {
             Self::Script(module) => create!(module),
             #[cfg(feature = "sys_info")]
             Self::SysInfo(module) => create!(module),
-            #[cfg(feature = "sway")]
+            #[cfg(feature = "bindmode")]
             Self::SwayMode(module) => create!(module),
             #[cfg(feature = "tray")]
             Self::Tray(module) => create!(module),
@@ -145,6 +147,8 @@ impl ModuleConfig {
             Self::Volume(module) => create!(module),
             #[cfg(feature = "workspaces")]
             Self::Workspaces(module) => create!(module),
+            #[cfg(feature = "bindmode")]
+            Self::Bindmode(module) => create!(module),
         }
     }
 }
