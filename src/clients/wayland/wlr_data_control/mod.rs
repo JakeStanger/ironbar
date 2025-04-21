@@ -147,6 +147,11 @@ impl Environment {
     pub fn copy_to_clipboard(&mut self, item: ClipboardItem) {
         debug!("Copying item to clipboard: {item:?}");
 
+        let Some(data_control_device_manager) = &self.data_control_device_manager_state else {
+            error!("data_control_device_manager not available, cannot copy");
+            return;
+        };
+
         let seat = self.default_seat();
         let Some(device) = self
             .data_control_devices
@@ -156,8 +161,7 @@ impl Environment {
             return;
         };
 
-        let source = self
-            .data_control_device_manager_state
+        let source = data_control_device_manager
             .create_copy_paste_source(&self.queue_handle, [&item.mime_type, INTERNAL_MIME_TYPE]);
 
         source.set_selection(&device.device);

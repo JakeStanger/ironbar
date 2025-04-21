@@ -1,6 +1,6 @@
 use super::Environment;
 use smithay_client_toolkit::seat::{Capability, SeatHandler, SeatState};
-use tracing::debug;
+use tracing::{debug, error};
 use wayland_client::protocol::wl_seat::WlSeat;
 use wayland_client::{Connection, QueueHandle};
 
@@ -37,7 +37,11 @@ impl SeatHandler for Environment {
         {
             debug!("Adding new data control device");
             // create the data device here for this seat
-            let data_control_device_manager = &self.data_control_device_manager_state;
+            let Some(data_control_device_manager) = &self.data_control_device_manager_state else {
+                error!("data_control_device_manager not available, cannot copy");
+                return;
+            };
+
             let data_control_device = data_control_device_manager.get_data_device(qh, &seat);
             self.data_control_devices
                 .push(super::DataControlDeviceEntry {
