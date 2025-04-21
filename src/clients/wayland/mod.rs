@@ -9,7 +9,7 @@ use std::sync::{Arc, Mutex};
 
 use calloop_channel::Event::Msg;
 use cfg_if::cfg_if;
-use color_eyre::Report;
+use color_eyre::{Help, Report};
 use smithay_client_toolkit::output::OutputState;
 use smithay_client_toolkit::reexports::calloop::EventLoop;
 use smithay_client_toolkit::reexports::calloop::channel as calloop_channel;
@@ -204,7 +204,7 @@ pub struct Environment {
 
     // -- clipboard --
     #[cfg(feature = "clipboard")]
-    data_control_device_manager_state: DataControlDeviceManagerState,
+    data_control_device_manager_state: Option<DataControlDeviceManagerState>,
 
     #[cfg(feature = "clipboard")]
     data_control_devices: Vec<DataControlDeviceEntry>,
@@ -263,12 +263,30 @@ impl Environment {
         let output_state = OutputState::new(&globals, &qh);
         let seat_state = SeatState::new(&globals, &qh);
         #[cfg(any(feature = "focused", feature = "launcher"))]
-        ToplevelManagerState::bind(&globals, &qh)
-            .expect("to bind to wlr_foreign_toplevel_manager global");
+        if let Err(err) = ToplevelManagerState::bind(&globals, &qh) {
+            error!("{:?}",
+                Report::new(err)
+                    .wrap_err("Failed to bind to wlr_foreign_toplevel_manager global")
+                    .note("This is likely a due to the current compositor not supporting the required protocol")
+                    .note("launcher and focused modules will not work")
+            );
+        }
 
         #[cfg(feature = "clipboard")]
-        let data_control_device_manager_state = DataControlDeviceManagerState::bind(&globals, &qh)
-            .expect("to bind to wlr_data_control_device_manager global");
+        let data_control_device_manager_state = match DataControlDeviceManagerState::bind(
+            &globals, &qh,
+        ) {
+            Ok(state) => Some(state),
+            Err(err) => {
+                error!("{:?}",
+                    Report::new(err)
+                        .wrap_err("Failed to bind to wlr_data_control_device global")
+                        .note("This is likely a due to the current compositor not supporting the required protocol")
+                        .note("clipboard module will not work")
+                    );
+                None
+            }
+        };
 
         let mut env = Self {
             registry_state,
