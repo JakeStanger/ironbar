@@ -8,7 +8,7 @@ on:
       - 'src'
       - 'Cargo.*'
       - 'build.rs'
-      - '.github/workflows/schema.yml.yml'
+      - '.github/workflows/schema.yml'
 
 env:
   CARGO_TERM_COLOR: always
