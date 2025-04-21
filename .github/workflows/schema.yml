@@ -5,7 +5,7 @@ on:
   push:
     branches: [ "master" ]
     paths:
-      - 'src'
+      - 'src/**/*'
       - 'Cargo.*'
       - 'build.rs'
       - '.github/workflows/schema.yml'

@@ -5,13 +5,13 @@ on:
   push:
     branches: [ "master" ]
     paths:
-      - 'src'
+      - 'src/**/*'
       - 'Cargo.*'
       - 'build.rs'
   pull_request:
     branches: [ "master" ]
     paths:
-      - 'src'
+      - 'src/**/*'
       - 'Cargo.*'
       - 'build.rs'
       - '.github/workflows/build.yml'
