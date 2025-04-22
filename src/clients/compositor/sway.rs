@@ -231,3 +231,36 @@ impl TryFrom<InputEvent> for KeyboardLayoutUpdate {
         }
     }
 }
+
+#[cfg(feature = "bindmode+sway")]
+use super::{BindModeClient, BindModeUpdate};
+
+#[cfg(feature = "bindmode+sway")]
+impl BindModeClient for Client {
+    fn subscribe(&self) -> Result<Receiver<BindModeUpdate>, Report> {
+        let (tx, rx) = channel(16);
+        await_sync(async {
+            self.add_listener::<swayipc_async::ModeEvent>(move |mode| {
+                tracing::trace!("mode: {:?}", mode);
+
+                // when no bindind is active the bindmode is named "default", but we must display
+                // nothing in this case.
+                let name = if mode.change == "default" {
+                    String::new()
+                } else {
+                    mode.change.clone()
+                };
+
+                send!(
+                    tx,
+                    BindModeUpdate {
+                        name,
+                        pango_markup: mode.pango_markup,
+                    }
+                );
+            })
+            .await
+        })?;
+        Ok(rx)
+    }
+}

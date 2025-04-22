@@ -66,6 +66,28 @@ impl Compositor {
         }
     }
 
+    #[cfg(feature = "bindmode")]
+    pub fn create_bindmode_client(
+        clients: &mut super::Clients,
+    ) -> ClientResult<dyn BindModeClient + Send + Sync> {
+        let current = Self::get_current();
+        debug!("Getting keyboard_layout client for: {current}");
+        match current {
+            #[cfg(feature = "bindmode+sway")]
+            Self::Sway => Ok(clients.sway()?),
+            #[cfg(feature = "bindmode+hyprland")]
+            Self::Hyprland => Ok(clients.hyprland()),
+            #[cfg(feature = "niri")]
+            Self::Niri => Err(Report::msg("Unsupported compositor")
+                .note("Currently bindmode is only supported by Sway and Hyprland")),
+            Self::Unsupported => Err(Report::msg("Unsupported compositor")
+                .note("Currently bindmode is only supported by Sway and Hyprland")),
+            #[allow(unreachable_patterns)]
+            _ => Err(Report::msg("Unsupported compositor")
+                .note("Bindmode feature is disabled for this compositor")),
+        }
+    }
+
     #[cfg(feature = "keyboard")]
     pub fn create_keyboard_layout_client(
         clients: &mut super::Clients,
@@ -74,9 +96,7 @@ impl Compositor {
         debug!("Getting keyboard_layout client for: {current}");
         match current {
             #[cfg(feature = "keyboard+sway")]
-            Self::Sway => clients
-                .sway()
-                .map(|client| client as Arc<dyn KeyboardLayoutClient + Send + Sync>),
+            Self::Sway => Ok(clients.sway()?),
             #[cfg(feature = "keyboard+hyprland")]
             Self::Hyprland => Ok(clients.hyprland()),
             #[cfg(feature = "niri")]
@@ -102,9 +122,7 @@ impl Compositor {
         debug!("Getting workspace client for: {current}");
         match current {
             #[cfg(feature = "workspaces+sway")]
-            Self::Sway => clients
-                .sway()
-                .map(|client| client as Arc<dyn WorkspaceClient + Send + Sync>),
+            Self::Sway => Ok(clients.sway()?),
             #[cfg(feature = "workspaces+hyprland")]
             Self::Hyprland => Ok(clients.hyprland()),
             #[cfg(feature = "workspaces+niri")]
@@ -195,6 +213,14 @@ pub enum WorkspaceUpdate {
     Unknown,
 }
 
+#[derive(Clone, Debug)]
+pub struct BindModeUpdate {
+    /// The binding mode that became active.
+    pub name: String,
+    /// Whether the mode should be parsed as pango markup.
+    pub pango_markup: bool,
+}
+
 #[cfg(feature = "workspaces")]
 pub trait WorkspaceClient: Debug + Send + Sync {
     /// Requests the workspace with this id is focused.
@@ -218,3 +244,12 @@ pub trait KeyboardLayoutClient: Debug + Send + Sync {
 
 #[cfg(feature = "keyboard")]
 register_fallible_client!(dyn KeyboardLayoutClient, keyboard_layout);
+
+#[cfg(feature = "bindmode")]
+pub trait BindModeClient: Debug + Send + Sync {
+    /// Add a callback for bindmode updates.
+    fn subscribe(&self) -> Result<broadcast::Receiver<BindModeUpdate>>;
+}
+
+#[cfg(feature = "bindmode")]
+register_fallible_client!(dyn BindModeClient, bindmode);

@@ -1,18 +1,18 @@
+use crate::clients::compositor::BindModeUpdate;
 use crate::config::{CommonConfig, LayoutConfig, TruncateMode};
 use crate::gtk_helpers::IronbarLabelExt;
-use crate::modules::{Module, ModuleInfo, ModuleParts, ModuleUpdateEvent, WidgetContext};
-use crate::{await_sync, glib_recv, module_impl, try_send};
-use color_eyre::{Report, Result};
+use crate::modules::{Module, ModuleInfo, ModuleParts, WidgetContext};
+use crate::{glib_recv, module_impl, module_update, send_async, spawn};
+use color_eyre::Result;
 use gtk::Label;
 use gtk::prelude::*;
 use serde::Deserialize;
-use swayipc_async::ModeEvent;
 use tokio::sync::mpsc;
 use tracing::{info, trace};
 
 #[derive(Debug, Deserialize, Clone)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
-pub struct SwayModeModule {
+pub struct Bindmode {
     // -- Common --
     /// See [truncate options](module-level-options#truncate-mode).
     ///
@@ -28,11 +28,11 @@ pub struct SwayModeModule {
     pub common: Option<CommonConfig>,
 }
 
-impl Module<Label> for SwayModeModule {
-    type SendMessage = ModeEvent;
+impl Module<Label> for Bindmode {
+    type SendMessage = BindModeUpdate;
     type ReceiveMessage = ();
 
-    module_impl!("sway_mode");
+    module_impl!("bindmode");
 
     fn spawn_controller(
         &self,
@@ -40,20 +40,18 @@ impl Module<Label> for SwayModeModule {
         context: &WidgetContext<Self::SendMessage, Self::ReceiveMessage>,
         _rx: mpsc::Receiver<Self::ReceiveMessage>,
     ) -> Result<()> {
-        info!("Sway Mode module started");
+        info!("Bindmode module started");
+
+        let client = context.try_client::<dyn crate::clients::compositor::BindModeClient>()?;
+
         let tx = context.tx.clone();
 
-        await_sync(async move {
-            let client = context.ironbar.clients.borrow_mut().sway()?;
-            client
-                .add_listener::<swayipc_async::ModeEvent>(move |mode| {
-                    trace!("mode: {:?}", mode);
-                    try_send!(tx, ModuleUpdateEvent::Update(mode.clone()));
-                })
-                .await?;
-
-            Ok::<(), Report>(())
-        })?;
+        let mut rx = client.subscribe()?;
+        spawn(async move {
+            while let Ok(ev) = rx.recv().await {
+                module_update!(tx, ev);
+            }
+        });
 
         Ok(())
     }
@@ -69,24 +67,20 @@ impl Module<Label> for SwayModeModule {
             .justify(self.layout.justify.into())
             .build();
 
+        if let Some(truncate) = self.truncate {
+            label.truncate(truncate);
+        }
+
         {
             let label = label.clone();
 
-            if let Some(truncate) = self.truncate {
-                label.truncate(truncate);
-            }
-
-            let on_mode = move |mode: ModeEvent| {
+            let on_mode = move |mode: BindModeUpdate| {
                 trace!("mode: {:?}", mode);
                 label.set_use_markup(mode.pango_markup);
-                if mode.change == "default" {
-                    label.set_label_escaped("");
-                } else {
-                    label.set_label_escaped(&mode.change);
-                }
+                label.set_label_escaped(&mode.name);
             };
 
-            glib_recv!(context.subscribe(), mode => on_mode(mode));
+            glib_recv!(context.subscribe(), on_mode);
         }
 
         Ok(ModuleParts {
