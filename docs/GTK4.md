@@ -20,10 +20,11 @@ A full list of feature flags can be found [here](Compiling#features).
 | Area            | Status | Notes                                                                                                 |
 |-----------------|--------|-------------------------------------------------------------------------------------------------------|
 | Bar             | ✅      |                                                                                                       |
-| Popups          | ⚠️     | Display in correct position but suffer from minor focus-steal issue on close, and other edge cases.   |
+| Popups          | ✅      | Potential styling issues, otherwise working.                                                          |
 | Theming - CSS   | ✅      |                                                                                                       |
 | Theming - Icons | ⚠️     | GTK4 does not support icon theming - always uses default theme. Image scaling may be incorrect.       |
 | Config - Format | ❌ ️    | Angle/justify properties have been removed from widgets and should now be controlled via CSS instead. |
+| IPC             | ⚠️     | Some popup-related commands not implemented.                                                          | 
 
 ## Modules
 
@@ -37,7 +38,7 @@ A full list of feature flags can be found [here](Compiling#features).
 | Focused         | ✅      |                                                                                                                                          |
 | Keyboard        | ✅      |                                                                                                                                          |
 | Label           | ✅      |                                                                                                                                          |
-| Launcher        | ❌      |                                                                                                                                          |
+| Launcher        | ⚠      | Popup behaviour may be a little strange.                                                                                                 |
 | Music           | ✅      |                                                                                                                                          |
 | Network Manager | ❌      |                                                                                                                                          |
 | Notifications   | ✅      |                                                                                                                                          |
