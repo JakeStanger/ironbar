@@ -329,7 +329,20 @@ impl Module<gtk::Box> for KeyboardModule {
                 }
             }
             KeyboardUpdate::Layout(KeyboardLayoutUpdate(language)) => {
-                let text = icons.layout_map.get(&language).unwrap_or(&language);
+                let text = icons
+                    .layout_map
+                    .iter()
+                    .find_map(|(pattern, display_text)| {
+                        let is_match = if pattern.ends_with("*") {
+                            let pattern_stripped = pattern.strip_suffix("*").unwrap();
+                            language.starts_with(pattern_stripped)
+                        } else {
+                            pattern == &language
+                        };
+
+                        is_match.then(|| display_text)
+                    })
+                    .unwrap_or(&language);
                 layout_button.set_label(text);
             }
         };
