@@ -1,23 +1,13 @@
-{ pkgs ? import <nixpkgs> {} }:
-
-pkgs.mkShell {
-  buildInputs = with pkgs; [
-    cargo
-    clippy
-    rustfmt
-    gtk3
-    gtk-layer-shell
-    gcc
-    openssl
-    libdbusmenu-gtk3
-    libpulseaudio
-    libinput
-    libevdev
-    luajit
-    luajitPackages.lgi
-  ];
-
-  nativeBuildInputs = with pkgs; [
-    pkg-config
-  ];
-}
+(import
+  (
+    let
+      lock = builtins.fromJSON (builtins.readFile ./flake.lock);
+      nodeName = lock.nodes.root.inputs.flake-compat;
+    in
+    fetchTarball {
+      url = lock.nodes.${nodeName}.locked.url or "https://github.com/edolstra/flake-compat/archive/${lock.nodes.${nodeName}.locked.rev}.tar.gz";
+      sha256 = lock.nodes.${nodeName}.locked.narHash;
+    }
+  )
+  { src = ./.; }
+).shellNix
