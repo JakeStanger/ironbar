@@ -37,9 +37,25 @@
 
     pname = "ironbar";
 
-    src = builtins.path {
-      name = "ironbar";
-      path = lib.cleanSource ../.;
+    src = let
+      fs = lib.fileset;
+      root = ../.;
+      nixRelated = fs.fileFilter (file: file.hasExt "nix" || file.name == "flake.lock") root;
+      cicdRelated = fs.unions [
+        (lib.path.append root "Dockerfile")
+        (lib.path.append root ".github")
+      ];
+      ideRelated = fs.unions [
+        (lib.path.append root ".idea")
+      ];
+    in fs.toSource {
+      inherit root;
+      # NOTE: can possibly filter out more
+      fileset = fs.difference root (fs.unions [
+        nixRelated
+        cicdRelated
+        ideRelated
+      ]);
     };
 
     nativeBuildInputs = [
