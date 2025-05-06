@@ -10,6 +10,7 @@ keywords = ["gtk", "bar", "wayland", "wlroots", "gtk-layer-shell"]
 
 [features]
 default = [
+    "bluetooth",
     "cli",
     "cairo",
     "clipboard",
@@ -56,6 +57,8 @@ bindmode = []
 "config+toml" = ["universal-config/toml"]
 "config+corn" = ["universal-config/corn"]
 "config+ron" = ["universal-config/ron"]
+
+bluetooth = ["dep:bluer"]
 
 cairo = ["lua-src", "mlua", "cairo-rs"]
 
@@ -140,6 +143,9 @@ smithay-client-toolkit = { version = "0.18.1", default-features = false, feature
 universal-config = { version = "0.5.1", default-features = false }
 ctrlc = "3.4.6"
 cfg-if = "1.0.0"
+
+# bluetooth
+bluer = { version = "0.17.3", optional = true, features = ["bluetoothd"] }
 
 # cli
 clap = { version = "4.5.37", optional = true, features = ["derive"] }
