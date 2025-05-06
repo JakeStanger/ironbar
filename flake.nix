@@ -3,40 +3,75 @@
 
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
-
+    flake-parts.url = "github:hercules-ci/flake-parts";
+    flake-compat.url = "github:edolstra/flake-compat";
     rust-overlay = {
       url = "github:oxalica/rust-overlay";
       inputs.nixpkgs.follows = "nixpkgs";
     };
-
-    crane = {
-      url = "github:ipetkov/crane";
-    };
-
+    crane.url = "github:ipetkov/crane";
     naersk.url = "github:nix-community/naersk";
   };
 
-  outputs = { self, nixpkgs, rust-overlay, crane, naersk, ... }:
-    let
-      inherit (nixpkgs) lib;
-
-      genSystems = lib.genAttrs [ "aarch64-linux" "x86_64-linux" ];
-
-      pkgsFor = system:
-        import nixpkgs {
-          inherit system;
-
-          overlays = [ self.overlays.default rust-overlay.overlays.default ];
-        };
-
+  outputs = inputs @ {
+    self,
+    nixpkgs,
+    rust-overlay,
+    crane,
+    naersk,
+    flake-parts,
+    ...
+  }:
+    flake-parts.lib.mkFlake {inherit inputs;} (let
       mkRustToolchain = pkgs:
         pkgs.rust-bin.stable.latest.default.override {
-          extensions = [ "rust-src" ];
+          extensions = ["rust-src"];
+        };
+    in {
+      systems = [
+        "aarch64-linux"
+        "x86_64-linux"
+      ];
+
+      imports = [
+        ./nix/devshell.nix
+      ];
+
+      perSystem = {
+        system,
+        config,
+        pkgs,
+        lib,
+        ...
+      }: {
+        _module.args.pkgs = import nixpkgs {
+          inherit system;
+          overlays = [
+            self.overlays.default
+            rust-overlay.overlays.default
+          ];
         };
 
-    in {
-      overlays.default = final: prev:
-        let
+        # Packages
+        packages = {
+          ironbar = pkgs.ironbar;
+          default = pkgs.ironbar;
+        };
+
+        # Apps
+        apps = {
+          ironbar = {
+            type = "app";
+            program = lib.getExe pkgs.ironbar;
+          };
+          default = config.apps.ironbar;
+        };
+      };
+
+      flake = {
+        overlays.default = final: prev: let
+          inherit (nixpkgs) lib;
+
           rust = mkRustToolchain final;
 
           craneLib = (crane.mkLib final).overrideToolchain rust;
@@ -53,176 +88,52 @@
 
           props = builtins.fromTOML (builtins.readFile ./Cargo.toml);
 
-          mkDate = longDate:
-            (lib.concatStringsSep "-" [
-              (builtins.substring 0 4 longDate)
-              (builtins.substring 4 2 longDate)
-              (builtins.substring 6 2 longDate)
-            ]);
+          mkDate = longDate: (lib.concatStringsSep "-" [
+            (builtins.substring 0 4 longDate)
+            (builtins.substring 4 2 longDate)
+            (builtins.substring 6 2 longDate)
+          ]);
 
           builder = "naersk";
         in {
           ironbar = let
-            version = props.package.version + "+date="
-              + (mkDate (self.lastModifiedDate or "19700101")) + "_"
+            version =
+              props.package.version
+              + "+date="
+              + (mkDate (self.lastModifiedDate or "19700101"))
+              + "_"
               + (self.shortRev or "dirty");
-          in if builder == "crane" then
-            prev.callPackage ./nix/default.nix {
-              inherit version;
-              inherit rustPlatform;
-              builderName = builder;
-              builder = craneLib;
-            }
-          else if builder == "naersk" then
-            prev.callPackage ./nix/default.nix {
-              inherit version;
-              inherit rustPlatform;
-              builderName = builder;
-              builder = naersk';
-            }
-          else
-            prev.callPackage ./nix/default.nix {
-              inherit version;
-              inherit rustPlatform;
-              builderName = builder;
-            };
+          in
+            if builder == "crane"
+            then
+              prev.callPackage ./nix/package.nix {
+                inherit version;
+                inherit rustPlatform;
+                builderName = builder;
+                builder = craneLib;
+              }
+            else if builder == "naersk"
+            then
+              prev.callPackage ./nix/package.nix {
+                inherit version;
+                inherit rustPlatform;
+                builderName = builder;
+                builder = naersk';
+              }
+            else
+              prev.callPackage ./nix/package.nix {
+                inherit version;
+                inherit rustPlatform;
+                builderName = builder;
+              };
         };
 
-      packages = genSystems (system:
-        let pkgs = pkgsFor system;
-        in (self.overlays.default pkgs pkgs) // {
-          default = self.packages.${system}.ironbar;
-        });
-
-      apps = genSystems (system:
-        let pkgs = pkgsFor system;
-        in rec {
-          ironbar = {
-            type = "app";
-            program = "${pkgs.ironbar}/bin/ironbar";
-          };
-
-          default = ironbar;
-        });
-
-      devShells = genSystems (system:
-        let
-          pkgs = pkgsFor system;
-          rust = mkRustToolchain pkgs;
-
-        in {
-          default = pkgs.mkShell {
-            packages = with pkgs; [
-              rust
-              rust-analyzer-unwrapped
-              gcc
-              gtk3
-              gtk-layer-shell
-              pkg-config
-              openssl
-              gdk-pixbuf
-              glib
-              glib-networking
-              shared-mime-info
-              adwaita-icon-theme
-              hicolor-icon-theme
-              gsettings-desktop-schemas
-              libxkbcommon
-              libdbusmenu-gtk3
-              libpulseaudio
-              libinput
-              libevdev
-              luajit
-              luajitPackages.lgi
-            ];
-
-            RUST_SRC_PATH = "${rust}/lib/rustlib/src/rust/library";
-          };
-
-        });
-
-      homeManagerModules.default = { config, lib, pkgs, ... }:
-        let
-          cfg = config.programs.ironbar;
-          defaultIronbarPackage =
-            self.packages.${pkgs.hostPlatform.system}.default;
-          jsonFormat = pkgs.formats.json { };
-        in {
-          options.programs.ironbar = {
-            enable = lib.mkEnableOption "ironbar status bar";
-
-            package = lib.mkOption {
-              type = with lib.types; package;
-              default = defaultIronbarPackage;
-              description = "The package for ironbar to use.";
-            };
-
-            systemd = lib.mkOption {
-              type = lib.types.bool;
-              default = pkgs.stdenv.isLinux;
-              description = "Whether to enable to systemd service for ironbar.";
-            };
-
-            style = lib.mkOption {
-              type = lib.types.either (lib.types.lines) (lib.types.path);
-              default = "";
-              description = "The stylesheet to apply to ironbar.";
-            };
-
-            config = lib.mkOption {
-              type = jsonFormat.type;
-              default = { };
-              description = "The config to pass to ironbar.";
-            };
-
-            features = lib.mkOption {
-              type = lib.types.listOf lib.types.nonEmptyStr;
-              default = [ ];
-              description = "The features to be used.";
-            };
-
-          };
-          config = let pkg = cfg.package.override { features = cfg.features; };
-          in lib.mkIf cfg.enable {
-            home.packages = [ pkg ];
-
-            xdg.configFile = {
-              "ironbar/config.json" = lib.mkIf (cfg.config != "") {
-                source = jsonFormat.generate "ironbar-config" cfg.config;
-              };
-
-              "ironbar/style.css" = lib.mkIf (cfg.style != "") (
-                if builtins.isPath cfg.style || lib.isStorePath cfg.style then
-                  { source = cfg.style; }
-                else
-                  { text = cfg.style; }
-              );
-            };
-
-            systemd.user.services.ironbar = lib.mkIf cfg.systemd {
-              Unit = {
-                Description = "Systemd service for Ironbar";
-                Requires = [ "graphical-session.target" ];
-              };
-
-              Service = {
-                Type = "simple";
-                ExecStart = "${pkg}/bin/ironbar";
-              };
-
-              Install.WantedBy = with config.wayland.windowManager; [
-                (lib.mkIf hyprland.systemd.enable "hyprland-session.target")
-                (lib.mkIf sway.systemd.enable "sway-session.target")
-                (lib.mkIf river.systemd.enable "river-session.target")
-              ];
-            };
-          };
-        };
-    };
+        homeManagerModules.default = import ./nix/module.nix self;
+      };
+    });
 
   nixConfig = {
-    extra-substituters = [ "https://cache.garnix.io" ];
-    extra-trusted-public-keys =
-      [ "cache.garnix.io:CTFPyKSLcx5RMJKfLo5EEPUObbA78b0YQ2DTCJXqr9g=" ];
+    extra-substituters = ["https://cache.garnix.io"];
+    extra-trusted-public-keys = ["cache.garnix.io:CTFPyKSLcx5RMJKfLo5EEPUObbA78b0YQ2DTCJXqr9g="];
   };
 }
