@@ -295,12 +295,11 @@ pub struct BarConfig {
     #[serde(default)]
     pub autohide: Option<u64>,
 
-    /// The name of the GTK icon theme to use.
-    /// Leave unset to use the default Adwaita theme.
-    ///
-    /// **Default**: `null`
-    pub icon_theme: Option<String>,
-
+    // /// The name of the GTK icon theme to use.
+    // /// Leave unset to use the default Adwaita theme.
+    // ///
+    // /// **Default**: `null`
+    // pub icon_theme: Option<String>,
     /// An array of modules to append to the start of the bar.
     /// Depending on the orientation, this is either the top of the left edge.
     ///
@@ -348,7 +347,7 @@ impl Default for BarConfig {
             height: default_bar_height(),
             start_hidden: None,
             autohide: None,
-            icon_theme: None,
+            // icon_theme: None,
             #[cfg(feature = "label")]
             start: Some(vec![ModuleConfig::Label(
                 LabelModule::new("ℹ️ Using default config".to_string()).into(),
