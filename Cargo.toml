@@ -153,7 +153,7 @@ mlua = { version = "0.10.3", optional = true, features = ["luajit", "send"] }
 cairo-rs = { version = "0.18.5", optional = true, features = ["png"] }
 
 # clock
-chrono = { version = "0.4.40", optional = true, default-features = false, features = ["clock", "unstable-locales"] }
+chrono = { version = "0.4.41", optional = true, default-features = false, features = ["clock", "unstable-locales"] }
 
 # keyboard
 colpetto = { version = "0.6.0", features = ["tokio", "tracing"], optional = true }
