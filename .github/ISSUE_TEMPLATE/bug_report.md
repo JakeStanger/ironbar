@@ -10,7 +10,7 @@ assignees: ''
 **Describe the bug**
 <!-- A clear and concise description of what the bug is. -->
 
-**To Reproduce**
+**To reproduce**
 Steps to reproduce the behavior:
 
 1. Add module `clock`
@@ -18,21 +18,22 @@ Steps to reproduce the behavior:
 3. Observe X is broken
 
 **Expected behavior**
-<1-- A clear and concise description of what you expected to happen. -->
+<!-- A clear and concise description of what you expected to happen. -->
 
 **System information:**
- - Distro: [e.g. Arch Linux, Ubuntu 22.10]
+- Distro: [e.g. Arch Linux, Ubuntu 22.10]
 - Compositor: [e.g. Sway]
- - Ironbar version: [e.g. 0.16.1]
+- Ironbar version: [e.g. 0.16.1]
 
 **Configuration**
-<-- Share your bar configuration and stylesheet as applicable: -->
+<!-- Share your bar configuration and stylesheet as applicable: -->
 
 <details><summary>Config</summary>
 
 ```
 
 ```
+
 </details>
 
 
@@ -41,6 +42,7 @@ Steps to reproduce the behavior:
 ```css
 
 ```
+
 </details>
 
 **Additional context**
