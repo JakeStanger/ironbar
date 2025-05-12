@@ -40,13 +40,18 @@ pub enum PlayerCommand {
 }
 
 /// Formats a duration given in seconds
-/// in hh:mm format
+/// in hh:mm:ss format
 fn format_time(duration: Duration) -> String {
     let time = duration.as_secs();
+    let hours = time / (60 * 60);
     let minutes = (time / 60) % 60;
     let seconds = time % 60;
 
-    format!("{minutes:0>2}:{seconds:0>2}")
+    if hours > 0 {
+        format!("{hours}:{minutes:0>2}:{seconds:0>2}")
+    } else {
+        format!("{minutes:0>2}:{seconds:0>2}")
+    }
 }
 
 /// Extracts the formatting tokens from a formatting string
