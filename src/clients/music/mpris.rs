@@ -290,14 +290,22 @@ impl MusicClient for Client {
 
     fn seek(&self, duration: Duration) -> Result<()> {
         if let Some(player) = Self::get_player(self) {
-            let pos = player.get_position().unwrap_or_default();
+            // if possible, use `set_position` instead of `seek` because some players have issues with seeking
+            // see https://github.com/JakeStanger/ironbar/issues/970
+            if let Ok(metadata) = player.get_metadata() {
+                if let Some(track_id) = metadata.track_id() {
+                    player.set_position(track_id, &duration)?;
+                } else {
+                    let pos = player.get_position().unwrap_or_default();
 
-            let duration = duration.as_micros() as i64;
-            let position = pos.as_micros() as i64;
+                    let duration = duration.as_micros() as i64;
+                    let position = pos.as_micros() as i64;
 
-            let seek = cmp::max(duration, 0) - position;
+                    let seek = cmp::max(duration, 0) - position;
 
-            player.seek(seek)?;
+                    player.seek(seek)?;
+                }
+            }
         } else {
             error!("Could not find player");
         }
