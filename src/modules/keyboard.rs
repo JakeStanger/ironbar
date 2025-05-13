@@ -1,8 +1,7 @@
-use std::collections::HashMap;
-
 use color_eyre::Result;
 use color_eyre::eyre::Report;
 use gtk::prelude::*;
+use indexmap::IndexMap;
 use serde::Deserialize;
 use tokio::sync::mpsc;
 use tracing::{debug, trace};
@@ -128,7 +127,7 @@ struct Icons {
     /// }
     /// ```
     #[serde(default)]
-    layout_map: HashMap<String, String>,
+    layout_map: IndexMap<String, String>,
 }
 
 impl Default for Icons {
@@ -140,7 +139,7 @@ impl Default for Icons {
             num_off: String::new(),
             scroll_on: default_icon_scroll(),
             scroll_off: String::new(),
-            layout_map: HashMap::new(),
+            layout_map: IndexMap::new(),
         }
     }
 }
