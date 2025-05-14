@@ -3,7 +3,7 @@ use crate::modules::{Module, ModuleInfo, ModuleParts, ModuleUpdateEvent, WidgetC
 use crate::{glib_recv, module_impl, spawn, try_send};
 use cairo::{Format, ImageSurface};
 use glib::Propagation;
-use glib::translate::IntoGlibPtr;
+use glib::translate::ToGlibPtr;
 use gtk::DrawingArea;
 use gtk::prelude::*;
 use mlua::{Error, Function, LightUserData};
@@ -146,21 +146,23 @@ impl Module<gtk::Box> for CairoModule {
 
             let path = self.path.clone();
 
-            area.connect_draw(move |_, cr| {
-                let function: Function = lua
-                    .load(include_str!("../../lua/draw.lua"))
-                    .eval()
-                    .expect("to be valid");
+            let function: Function = lua
+                .load(include_str!("../../lua/draw.lua"))
+                .eval()
+                .expect("to be valid");
 
+            area.connect_draw(move |_, cr| {
                 if let Err(err) = cr.set_source_surface(&surface, 0.0, 0.0) {
                     error!("{err}");
                     return Propagation::Stop;
                 }
 
-                let ptr = unsafe { cr.clone().into_glib_ptr().cast() };
+                let ptr = cr.to_glib_full();
 
                 // mlua needs a valid return type, even if we don't return anything
-                if let Err(err) = function.call::<Option<bool>>((id.as_str(), LightUserData(ptr))) {
+                if let Err(err) =
+                    function.call::<Option<bool>>((id.as_str(), LightUserData(ptr.cast())))
+                {
                     if let Error::RuntimeError(message) = err {
                         let message = message.split_once("]:").expect("to exist").1;
                         error!("[lua runtime error] {}:{message}", path.display());
@@ -169,6 +171,10 @@ impl Module<gtk::Box> for CairoModule {
                     }
 
                     return Propagation::Stop;
+                }
+
+                unsafe {
+                    cairo::ffi::cairo_destroy(ptr);
                 }
 
                 Propagation::Proceed
