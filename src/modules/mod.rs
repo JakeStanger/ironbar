@@ -19,6 +19,8 @@ use crate::{Ironbar, glib_recv_mpsc, send};
 
 #[cfg(feature = "bindmode")]
 pub mod bindmode;
+#[cfg(feature = "bluetooth")]
+pub mod bluetooth;
 #[cfg(feature = "cairo")]
 pub mod cairo;
 #[cfg(feature = "clipboard")]

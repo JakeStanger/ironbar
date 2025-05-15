@@ -5,6 +5,8 @@ use std::path::Path;
 use std::rc::Rc;
 use std::sync::Arc;
 
+#[cfg(feature = "bluetooth")]
+pub mod bluetooth;
 #[cfg(feature = "clipboard")]
 pub mod clipboard;
 #[cfg(any(
@@ -71,6 +73,8 @@ pub struct Clients {
     upower: Option<Arc<zbus::fdo::PropertiesProxy<'static>>>,
     #[cfg(feature = "volume")]
     volume: Option<Arc<volume::Client>>,
+    #[cfg(feature = "bluetooth")]
+    bluetooth: Option<Arc<bluetooth::Client>>,
 }
 
 pub type ClientResult<T> = Result<Arc<T>>;
@@ -256,6 +260,20 @@ impl Clients {
         self.volume
             .get_or_insert_with(volume::create_client)
             .clone()
+    }
+
+    #[cfg(feature = "bluetooth")]
+    pub fn bluetooth(&mut self) -> ClientResult<bluetooth::Client> {
+        let client = if let Some(client) = &self.bluetooth {
+            client.clone()
+        } else {
+            let client = await_sync(async { bluetooth::Client::new().await })?;
+            let client = Arc::new(client);
+            self.bluetooth.replace(client.clone());
+            client
+        };
+
+        Ok(client)
     }
 }
 
