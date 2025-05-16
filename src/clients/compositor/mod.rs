@@ -179,9 +179,11 @@ impl Visibility {
 }
 
 #[derive(Debug, Clone)]
+#[cfg(feature = "keyboard")]
 pub struct KeyboardLayoutUpdate(pub String);
 
 #[derive(Debug, Clone)]
+#[cfg(feature = "workspaces")]
 pub enum WorkspaceUpdate {
     /// Provides an initial list of workspaces.
     /// This is re-sent to all subscribers when a new subscription is created.
@@ -214,6 +216,7 @@ pub enum WorkspaceUpdate {
 }
 
 #[derive(Clone, Debug)]
+#[cfg(feature = "bindmode")]
 pub struct BindModeUpdate {
     /// The binding mode that became active.
     pub name: String,

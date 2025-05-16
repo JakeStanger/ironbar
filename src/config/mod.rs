@@ -3,7 +3,7 @@ mod r#impl;
 mod layout;
 mod truncate;
 
-#[cfg(any(feature = "bindmode"))]
+#[cfg(feature = "bindmode")]
 use crate::modules::bindmode::Bindmode;
 #[cfg(feature = "cairo")]
 use crate::modules::cairo::CairoModule;
