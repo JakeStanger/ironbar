@@ -79,6 +79,12 @@ impl Module<Label> for Bindmode {
                 trace!("mode: {:?}", mode);
                 label.set_use_markup(mode.pango_markup);
                 label.set_label_escaped(&mode.name);
+
+                if mode.name.is_empty() {
+                    label.hide();
+                } else {
+                    label.show();
+                }
             };
 
             context.subscribe().recv_glib(on_mode);
