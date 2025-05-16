@@ -38,7 +38,7 @@ A full list of feature flags can be found [here](Compiling#features).
 | Focused         | ✅      |                                                                                                                                          |
 | Keyboard        | ✅      |                                                                                                                                          |
 | Label           | ✅      |                                                                                                                                          |
-| Launcher        | ⚠      | Popup behaviour may be a little strange.                                                                                                 |
+| Launcher        | ⚠️     | Popup behaviour may be a little strange.                                                                                                 |
 | Music           | ✅      |                                                                                                                                          |
 | Network Manager | ❌      |                                                                                                                                          |
 | Notifications   | ✅      |                                                                                                                                          |
