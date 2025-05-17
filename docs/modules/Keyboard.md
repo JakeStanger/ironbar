@@ -25,7 +25,7 @@ Displays the toggle state of the capslock, num lock and scroll lock keys, and th
 | `icons.num_off`    | `string` or [image](images)    | `''`    | Icon to show for disabled num lock indicator.                                                                             |
 | `icons.scroll_on`  | `string` or [image](images)    | ``     | Icon to show for enabled scroll lock indicator.                                                                           |
 | `icons.scroll_off` | `string` or [image](images)    | `''`    | Icon to show for disabled scroll lock indicator.                                                                          |
-| `icons.layout_map` | `Map<string, string or image>` | `{}`    | Map of icons or labels to show for a particular keyboard layout. Layouts use their actual name if not present in the map. |
+| `icons.layout_map` | `Map<string, string or image>` | `{}`    | Map of icons or labels to show for a particular keyboard layout. Layouts use their actual name if not present in the map. Layouts are matched in the order they appear in the map. If a pattern to match ends with a `*`, it acts as a wildcard, matching any layout name that begins with the part before the `*` |
 | `seat`             | `string`                       | `seat0` | ID of the Wayland seat to attach to.                                                                                      |
 
 <details>
