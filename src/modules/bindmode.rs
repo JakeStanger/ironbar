@@ -2,7 +2,7 @@ use crate::channels::{AsyncSenderExt, BroadcastReceiverExt};
 use crate::clients::compositor::BindModeUpdate;
 use crate::config::{CommonConfig, LayoutConfig, TruncateMode};
 use crate::gtk_helpers::IronbarLabelExt;
-use crate::modules::{Module, ModuleInfo, ModuleParts, WidgetContext};
+use crate::modules::{Module, ModuleInfo, ModuleParts, ModuleUpdateEvent, WidgetContext};
 use crate::{module_impl, spawn};
 use color_eyre::Result;
 use gtk::Label;
@@ -72,6 +72,15 @@ impl Module<Label> for Bindmode {
             label.truncate(truncate);
         }
 
+        // Send a dummy event on init so that the widget starts hidden
+        {
+            let tx = context.tx.clone();
+            tx.send_spawn(ModuleUpdateEvent::Update(BindModeUpdate {
+                name: String::new(),
+                pango_markup: true,
+            }));
+        }
+
         {
             let label = label.clone();
 
@@ -79,6 +88,12 @@ impl Module<Label> for Bindmode {
                 trace!("mode: {:?}", mode);
                 label.set_use_markup(mode.pango_markup);
                 label.set_label_escaped(&mode.name);
+
+                if mode.name.is_empty() {
+                    label.hide();
+                } else {
+                    label.show();
+                }
             };
 
             context.subscribe().recv_glib(on_mode);
