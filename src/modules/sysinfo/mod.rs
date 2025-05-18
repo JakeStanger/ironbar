@@ -2,12 +2,13 @@ mod parser;
 mod renderer;
 mod token;
 
+use crate::channels::{AsyncSenderExt, BroadcastReceiverExt};
 use crate::clients::sysinfo::TokenType;
 use crate::config::{CommonConfig, LayoutConfig, ModuleOrientation};
 use crate::gtk_helpers::{IronbarGtkExt, IronbarLabelExt};
 use crate::modules::sysinfo::token::Part;
-use crate::modules::{Module, ModuleInfo, ModuleParts, ModuleUpdateEvent, WidgetContext};
-use crate::{clients, glib_recv, module_impl, send_async, spawn, try_send};
+use crate::modules::{Module, ModuleInfo, ModuleParts, WidgetContext};
+use crate::{clients, module_impl, spawn};
 use color_eyre::Result;
 use gtk::Label;
 use gtk::prelude::*;
@@ -216,7 +217,7 @@ impl Module<gtk::Box> for SysInfoModule {
 
         for (i, token_set) in format_tokens.iter().enumerate() {
             let rendered = Part::render_all(token_set, &client, interval);
-            try_send!(context.tx, ModuleUpdateEvent::Update((i, rendered)));
+            context.tx.send_update_spawn((i, rendered));
         }
 
         let (refresh_tx, mut refresh_rx) = mpsc::channel(16);
@@ -226,7 +227,7 @@ impl Module<gtk::Box> for SysInfoModule {
                 let tx = refresh_tx.clone();
                 spawn(async move {
                     loop {
-                        send_async!(tx, $refresh_type);
+                        tx.send_expect($refresh_type).await;
                         sleep(Duration::from_secs(interval.$func())).await;
                     }
                 });
@@ -266,7 +267,7 @@ impl Module<gtk::Box> for SysInfoModule {
 
                     if is_affected {
                         let rendered = Part::render_all(token_set, &client, interval);
-                        send_async!(tx, ModuleUpdateEvent::Update((i, rendered)));
+                        tx.send_update((i, rendered)).await;
                     }
                 }
             }
@@ -302,7 +303,7 @@ impl Module<gtk::Box> for SysInfoModule {
             labels.push(label);
         }
 
-        glib_recv!(context.subscribe(), data => {
+        context.subscribe().recv_glib(move |data| {
             let label = &labels[data.0];
             label.set_label_escaped(&data.1);
         });

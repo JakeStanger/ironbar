@@ -3,12 +3,13 @@ mod button_map;
 mod open_state;
 
 use self::button::Button;
+use crate::channels::{AsyncSenderExt, BroadcastReceiverExt};
 use crate::clients::compositor::{Workspace, WorkspaceClient, WorkspaceUpdate};
 use crate::config::{CommonConfig, LayoutConfig};
 use crate::modules::workspaces::button_map::{ButtonMap, Identifier};
 use crate::modules::workspaces::open_state::OpenState;
-use crate::modules::{Module, ModuleInfo, ModuleParts, ModuleUpdateEvent, WidgetContext};
-use crate::{glib_recv, module_impl, send_async, spawn};
+use crate::modules::{Module, ModuleInfo, ModuleParts, WidgetContext};
+use crate::{module_impl, spawn};
 use color_eyre::{Report, Result};
 use gtk::IconTheme;
 use gtk::prelude::*;
@@ -208,7 +209,7 @@ impl Module<gtk::Box> for WorkspacesModule {
 
             while let Ok(payload) = srx.recv().await {
                 debug!("Received update: {payload:?}");
-                send_async!(tx, ModuleUpdateEvent::Update(payload));
+                tx.send_update(payload).await;
             }
         });
 
@@ -317,7 +318,7 @@ impl Module<gtk::Box> for WorkspacesModule {
             }
 
             let name_map = self.name_map;
-            let mut handle_event = move |event: WorkspaceUpdate| match event {
+            let handle_event = move |event: WorkspaceUpdate| match event {
                 WorkspaceUpdate::Init(workspaces) => {
                     if has_initialized {
                         return;
@@ -403,7 +404,7 @@ impl Module<gtk::Box> for WorkspacesModule {
                 WorkspaceUpdate::Unknown => warn!("received unknown type workspace event"),
             };
 
-            glib_recv!(context.subscribe(), handle_event);
+            context.subscribe().recv_glib(handle_event);
         }
 
         Ok(ModuleParts {

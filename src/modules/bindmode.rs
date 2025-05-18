@@ -1,8 +1,9 @@
+use crate::channels::{AsyncSenderExt, BroadcastReceiverExt};
 use crate::clients::compositor::BindModeUpdate;
 use crate::config::{CommonConfig, LayoutConfig, TruncateMode};
 use crate::gtk_helpers::IronbarLabelExt;
 use crate::modules::{Module, ModuleInfo, ModuleParts, WidgetContext};
-use crate::{glib_recv, module_impl, module_update, send_async, spawn};
+use crate::{module_impl, spawn};
 use color_eyre::Result;
 use gtk::Label;
 use gtk::prelude::*;
@@ -49,7 +50,7 @@ impl Module<Label> for Bindmode {
         let mut rx = client.subscribe()?;
         spawn(async move {
             while let Ok(ev) = rx.recv().await {
-                module_update!(tx, ev);
+                tx.send_update(ev).await;
             }
         });
 
@@ -80,7 +81,7 @@ impl Module<Label> for Bindmode {
                 label.set_label_escaped(&mode.name);
             };
 
-            glib_recv!(context.subscribe(), on_mode);
+            context.subscribe().recv_glib(on_mode);
         }
 
         Ok(ModuleParts {

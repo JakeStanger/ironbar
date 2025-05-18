@@ -1,4 +1,4 @@
-use crate::{clients::compositor::Visibility, send, spawn};
+use crate::{clients::compositor::Visibility, spawn};
 use color_eyre::Report;
 use tracing::{error, warn};
 
@@ -7,6 +7,7 @@ use tokio::sync::broadcast;
 use super::{Workspace as IronWorkspace, WorkspaceClient, WorkspaceUpdate};
 mod connection;
 
+use crate::channels::SyncSenderExt;
 use connection::{Action, Connection, Event, Request, WorkspaceReferenceArg};
 
 #[derive(Debug)]
@@ -151,7 +152,7 @@ impl Client {
                 };
 
                 for event in events {
-                    send!(tx, event);
+                    tx.send_expect(event);
                 }
             }
 

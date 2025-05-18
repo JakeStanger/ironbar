@@ -1,8 +1,8 @@
 use super::open_state::OpenState;
+use crate::channels::AsyncSenderExt;
 use crate::gtk_helpers::IronbarGtkExt;
 use crate::image::IconButton;
 use crate::modules::workspaces::WorkspaceItemContext;
-use crate::try_send;
 use gtk::Button as GtkButton;
 use gtk::prelude::*;
 
@@ -23,7 +23,7 @@ impl Button {
         let tx = context.tx.clone();
 
         button.connect_clicked(move |_item| {
-            try_send!(tx, id);
+            tx.send_spawn(id);
         });
 
         let btn = Self {

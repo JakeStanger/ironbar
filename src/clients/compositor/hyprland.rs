@@ -3,7 +3,8 @@ use super::{BindModeClient, BindModeUpdate};
 #[cfg(feature = "keyboard+hyprland")]
 use super::{KeyboardLayoutClient, KeyboardLayoutUpdate};
 use super::{Visibility, Workspace};
-use crate::{arc_mut, lock, send, spawn_blocking};
+use crate::channels::SyncSenderExt;
+use crate::{arc_mut, lock, spawn_blocking};
 use color_eyre::Result;
 use hyprland::ctl::switch_xkb_layout;
 use hyprland::data::{Devices, Workspace as HWorkspace, Workspaces};
@@ -121,7 +122,7 @@ impl Client {
 
                 match workspace {
                     Ok(Some(workspace)) => {
-                        send!(tx, WorkspaceUpdate::Add(workspace));
+                        tx.send_expect(WorkspaceUpdate::Add(workspace));
                     }
                     Err(e) => error!("Failed to get workspace: {e:#}"),
                     _ => {}
@@ -230,13 +231,10 @@ impl Client {
                 let _lock = lock!(lock);
                 debug!("Received workspace rename: {data:?}");
 
-                send!(
-                    tx,
-                    WorkspaceUpdate::Rename {
-                        id: data.id as i64,
-                        name: data.name
-                    }
-                );
+                tx.send_expect(WorkspaceUpdate::Rename {
+                    id: data.id as i64,
+                    name: data.name,
+                });
             });
         }
 
@@ -247,7 +245,7 @@ impl Client {
             event_listener.add_workspace_deleted_handler(move |data| {
                 let _lock = lock!(lock);
                 debug!("Received workspace destroy: {data:?}");
-                send!(tx, WorkspaceUpdate::Remove(data.id as i64));
+                tx.send_expect(WorkspaceUpdate::Remove(data.id as i64));
             });
         }
 
@@ -271,13 +269,10 @@ impl Client {
                         error!("Unable to locate client");
                     },
                     |c| {
-                        send!(
-                            tx,
-                            WorkspaceUpdate::Urgent {
-                                id: c.workspace.id as i64,
-                                urgent: true,
-                            }
-                        );
+                        tx.send_expect(WorkspaceUpdate::Urgent {
+                            id: c.workspace.id as i64,
+                            urgent: true,
+                        });
                     },
                 );
             });
@@ -333,8 +328,7 @@ impl Client {
             };
 
             debug!("Received layout: {layout:?}");
-
-            send!(tx, KeyboardLayoutUpdate(layout));
+            tx.send_expect(KeyboardLayoutUpdate(layout));
         });
     }
 
@@ -351,13 +345,10 @@ impl Client {
             let _lock = lock!(lock);
             debug!("Received bind mode: {bind_mode:?}");
 
-            send!(
-                tx,
-                BindModeUpdate {
-                    name: bind_mode,
-                    pango_markup: false,
-                }
-            );
+            tx.send_expect(BindModeUpdate {
+                name: bind_mode,
+                pango_markup: false,
+            });
         });
     }
 
@@ -369,21 +360,15 @@ impl Client {
         workspace: Workspace,
         tx: &Sender<WorkspaceUpdate>,
     ) {
-        send!(
-            tx,
-            WorkspaceUpdate::Focus {
-                old: prev_workspace.take(),
-                new: workspace.clone(),
-            }
-        );
+        tx.send_expect(WorkspaceUpdate::Focus {
+            old: prev_workspace.take(),
+            new: workspace.clone(),
+        });
 
-        send!(
-            tx,
-            WorkspaceUpdate::Urgent {
-                id: workspace.id,
-                urgent: false,
-            }
-        );
+        tx.send_expect(WorkspaceUpdate::Urgent {
+            id: workspace.id,
+            urgent: false,
+        });
 
         prev_workspace.replace(workspace);
     }
@@ -439,7 +424,9 @@ impl super::WorkspaceClient for Client {
                     })
                     .collect();
 
-                send!(self.workspace.tx, WorkspaceUpdate::Init(workspaces));
+                self.workspace
+                    .tx
+                    .send_expect(WorkspaceUpdate::Init(workspaces));
             }
             Err(e) => {
                 error!("Failed to get workspaces: {e:#}");
@@ -486,7 +473,9 @@ impl KeyboardLayoutClient for Client {
                 .map(|k| k.active_keymap.clone())
         }) {
             Ok(Some(layout)) => {
-                send!(self.keyboard_layout.tx, KeyboardLayoutUpdate(layout));
+                self.keyboard_layout
+                    .tx
+                    .send_expect(KeyboardLayoutUpdate(layout));
             }
             Ok(None) => error!("Failed to get current keyboard layout hyprland"),
             Err(err) => error!("Failed to get devices: {err:#?}"),

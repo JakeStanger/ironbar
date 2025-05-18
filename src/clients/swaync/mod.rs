@@ -1,6 +1,7 @@
 mod dbus;
 
-use crate::{register_fallible_client, send, spawn};
+use crate::channels::SyncSenderExt;
+use crate::{register_fallible_client, spawn};
 use color_eyre::{Report, Result};
 use dbus::SwayNcProxy;
 use serde::Deserialize;
@@ -60,7 +61,7 @@ impl Client {
                         .deserialize::<Event>()
                         .expect("to deserialize");
                     debug!("Received event: {ev:?}");
-                    send!(tx, ev);
+                    tx.send_expect(ev);
                 }
             });
         }

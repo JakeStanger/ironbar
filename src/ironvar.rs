@@ -1,6 +1,7 @@
 #![doc = include_str!("../docs/Ironvars.md")]
 
-use crate::{arc_rw, read_lock, send, write_lock};
+use crate::channels::SyncSenderExt;
+use crate::{arc_rw, read_lock, write_lock};
 use color_eyre::{Report, Result};
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
@@ -74,14 +75,10 @@ impl VariableManager {
 impl Namespace for VariableManager {
     fn get(&self, key: &str) -> Option<String> {
         if key.contains('.') {
-            let Some((ns, key)) = key.split_once('.') else {
-                return None;
-            };
+            let (ns, key) = key.split_once('.')?;
 
             let namespaces = read_lock!(self.namespaces);
-            let Some(ns) = namespaces.get(ns) else {
-                return None;
-            };
+            let ns = namespaces.get(ns)?;
 
             ns.get(key).map(|v| v.to_owned())
         } else {
@@ -161,14 +158,14 @@ impl IronVar {
     /// The change is broadcast to all receivers.
     fn set(&mut self, value: Option<String>) {
         self.value.clone_from(&value);
-        send!(self.tx, value);
+        self.tx.send_expect(value);
     }
 
     /// Subscribes to the variable.
     /// The latest value is immediately sent to all receivers.
     fn subscribe(&self) -> broadcast::Receiver<Option<String>> {
         let rx = self.tx.subscribe();
-        send!(self.tx, self.value.clone());
+        self.tx.send_expect(self.value.clone());
         rx
     }
 }

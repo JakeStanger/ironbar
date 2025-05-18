@@ -3,11 +3,12 @@ use gtk::{Button, Label};
 use serde::Deserialize;
 
 use super::{CustomWidget, CustomWidgetContext, ExecEvent, WidgetConfig};
+use crate::build;
+use crate::channels::AsyncSenderExt;
 use crate::config::LayoutConfig;
 use crate::dynamic_value::dynamic_string;
 use crate::gtk_helpers::IronbarLabelExt;
 use crate::modules::PopupButton;
-use crate::{build, try_send};
 
 #[derive(Debug, Deserialize, Clone)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
@@ -81,14 +82,11 @@ impl CustomWidget for ButtonWidget {
             let tx = context.tx.clone();
 
             button.connect_clicked(move |button| {
-                try_send!(
-                    tx,
-                    ExecEvent {
-                        cmd: exec.clone(),
-                        args: None,
-                        id: button.try_popup_id().unwrap_or(usize::MAX), // may not be a popup button
-                    }
-                );
+                tx.send_spawn(ExecEvent {
+                    cmd: exec.clone(),
+                    args: None,
+                    id: button.try_popup_id().unwrap_or(usize::MAX), // may not be a popup button
+                });
             });
         }
 

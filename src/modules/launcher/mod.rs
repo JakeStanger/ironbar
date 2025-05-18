@@ -5,13 +5,14 @@ mod pagination;
 use self::item::{AppearanceOptions, Item, ItemButton, Window};
 use self::open_state::OpenState;
 use super::{Module, ModuleInfo, ModuleParts, ModulePopup, ModuleUpdateEvent, WidgetContext};
+use crate::channels::{AsyncSenderExt, BroadcastReceiverExt};
 use crate::clients::wayland::{self, ToplevelEvent};
 use crate::config::{CommonConfig, EllipsizeMode, LayoutConfig, TruncateMode};
 use crate::desktop_file::find_desktop_file;
 use crate::gtk_helpers::{IronbarGtkExt, IronbarLabelExt};
 use crate::modules::launcher::item::ImageTextButton;
 use crate::modules::launcher::pagination::{IconContext, Pagination};
-use crate::{arc_mut, glib_recv, lock, module_impl, send_async, spawn, try_send, write_lock};
+use crate::{arc_mut, lock, module_impl, spawn, write_lock};
 use color_eyre::{Help, Report};
 use gtk::prelude::*;
 use gtk::{Button, Orientation};
@@ -271,10 +272,7 @@ impl Module<gtk::Box> for LauncherModule {
                 let items = lock!(items);
                 let items = items.iter();
                 for (_, item) in items {
-                    try_send!(
-                        tx,
-                        ModuleUpdateEvent::Update(LauncherUpdate::AddItem(item.clone()))
-                    );
+                    tx.send_update_spawn(LauncherUpdate::AddItem(item.clone()));
                 }
             }
 
@@ -410,7 +408,7 @@ impl Module<gtk::Box> for LauncherModule {
                         },
                     );
                 } else {
-                    send_async!(tx, ModuleUpdateEvent::ClosePopup);
+                    tx.send_expect(ModuleUpdateEvent::ClosePopup).await;
 
                     let minimize_window = matches!(event, ItemEvent::MinimizeItem(_));
 
@@ -494,7 +492,7 @@ impl Module<gtk::Box> for LauncherModule {
             let tx = context.tx.clone();
             let rx = context.subscribe();
 
-            let mut handle_event = move |event: LauncherUpdate| {
+            let handle_event = move |event: LauncherUpdate| {
                 // all widgets show by default
                 // so check if pagination should be shown
                 // to ensure correct state on init.
@@ -598,7 +596,7 @@ impl Module<gtk::Box> for LauncherModule {
                 };
             };
 
-            glib_recv!(rx, handle_event);
+            rx.recv_glib(handle_event);
         }
 
         let rx = context.subscribe();
@@ -632,7 +630,7 @@ impl Module<gtk::Box> for LauncherModule {
 
         {
             let container = container.clone();
-            glib_recv!(rx, event => {
+            rx.recv_glib(move |event| {
                 match event {
                     LauncherUpdate::AddItem(item) => {
                         let app_id = item.app_id.clone();
@@ -651,7 +649,7 @@ impl Module<gtk::Box> for LauncherModule {
                                 {
                                     let tx = controller_tx.clone();
                                     button.connect_clicked(move |_| {
-                                        try_send!(tx, ItemEvent::FocusWindow(win.id));
+                                        tx.send_spawn(ItemEvent::FocusWindow(win.id));
                                     });
                                 }
 
@@ -677,7 +675,7 @@ impl Module<gtk::Box> for LauncherModule {
                             {
                                 let tx = controller_tx.clone();
                                 button.connect_clicked(move |_button| {
-                                    try_send!(tx, ItemEvent::FocusWindow(win.id));
+                                    tx.send_spawn(ItemEvent::FocusWindow(win.id));
                                 });
                             }
 

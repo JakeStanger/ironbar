@@ -1,4 +1,5 @@
-use crate::{Ironbar, arc_rw, read_lock, send, spawn, write_lock};
+use crate::channels::SyncSenderExt;
+use crate::{Ironbar, arc_rw, read_lock, spawn, write_lock};
 use color_eyre::{Report, Result};
 use colpetto::event::{AsRawEvent, DeviceEvent, KeyState, KeyboardEvent};
 use colpetto::{DeviceCapability, Libinput};
@@ -179,7 +180,7 @@ impl Client {
                                 device_path.display()
                             );
                             write_lock!(self.known_devices).push(device_path.to_path_buf());
-                            send!(self.tx, Event::Device);
+                            self.tx.send_expect(Event::Device);
                         }
                     }
                 }
@@ -208,7 +209,7 @@ impl Client {
                             let data = KeyData { device_path, key };
 
                             if let Ok(event) = data.try_into() {
-                                send!(tx, event);
+                                tx.send_expect(event);
                             }
                         });
                     }
