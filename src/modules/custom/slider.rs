@@ -8,12 +8,12 @@ use serde::Deserialize;
 use tokio::sync::mpsc;
 use tracing::error;
 
+use super::{CustomWidget, CustomWidgetContext, ExecEvent};
+use crate::channels::{AsyncSenderExt, MpscReceiverExt};
 use crate::config::ModuleOrientation;
 use crate::modules::custom::set_length;
 use crate::script::{OutputStream, Script, ScriptInput};
-use crate::{build, glib_recv_mpsc, spawn, try_send};
-
-use super::{CustomWidget, CustomWidgetContext, ExecEvent};
+use crate::{build, spawn};
 
 #[derive(Debug, Deserialize, Clone)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
@@ -134,14 +134,11 @@ impl CustomWidget for SliderWidget {
                 let val = val.clamp(min, max);
 
                 if val != prev_value.get() {
-                    try_send!(
-                        tx,
-                        ExecEvent {
-                            cmd: on_change.clone(),
-                            args: Some(vec![val.to_string()]),
-                            id: usize::MAX // ignored
-                        }
-                    );
+                    tx.send_spawn(ExecEvent {
+                        cmd: on_change.clone(),
+                        args: Some(vec![val.to_string()]),
+                        id: usize::MAX, // ignored
+                    });
 
                     prev_value.set(val);
                 }
@@ -160,7 +157,7 @@ impl CustomWidget for SliderWidget {
                 script
                     .run(None, move |stream, _success| match stream {
                         OutputStream::Stdout(out) => match out.parse() {
-                            Ok(value) => try_send!(tx, value),
+                            Ok(value) => tx.send_spawn(value),
                             Err(err) => error!("{err:?}"),
                         },
                         OutputStream::Stderr(err) => error!("{err:?}"),
@@ -168,7 +165,7 @@ impl CustomWidget for SliderWidget {
                     .await;
             });
 
-            glib_recv_mpsc!(rx, value => scale.set_value(value));
+            rx.recv_glib(move |value| scale.set_value(value));
         }
 
         scale

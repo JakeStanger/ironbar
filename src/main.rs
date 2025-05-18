@@ -25,6 +25,7 @@ use tracing::{debug, error, info, warn};
 use universal_config::ConfigLoader;
 
 use crate::bar::{Bar, create_bar};
+use crate::channels::SyncSenderExt;
 use crate::clients::Clients;
 use crate::clients::wayland::OutputEventType;
 use crate::config::{Config, MonitorConfig};
@@ -34,6 +35,7 @@ use crate::ironvar::{VariableManager, WritableNamespace};
 use crate::style::load_css;
 
 mod bar;
+mod channels;
 #[cfg(feature = "cli")]
 mod cli;
 mod clients;
@@ -202,7 +204,7 @@ impl Ironbar {
                 .expect("Error setting Ctrl-C handler");
 
             let hold = app.hold();
-            send!(activate_tx, hold);
+            activate_tx.send_expect(hold);
         });
 
         {
