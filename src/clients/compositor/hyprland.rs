@@ -2,7 +2,7 @@
 use super::{BindModeClient, BindModeUpdate};
 #[cfg(feature = "keyboard+hyprland")]
 use super::{KeyboardLayoutClient, KeyboardLayoutUpdate};
-use super::{Visibility, Workspace, WorkspaceUpdate};
+use super::{Visibility, Workspace};
 use crate::{arc_mut, lock, send, spawn_blocking};
 use color_eyre::Result;
 use hyprland::ctl::switch_xkb_layout;
@@ -13,6 +13,9 @@ use hyprland::prelude::*;
 use hyprland::shared::{HyprDataVec, WorkspaceType};
 use tokio::sync::broadcast::{Receiver, Sender, channel};
 use tracing::{debug, error, info, warn};
+
+#[cfg(feature = "workspaces")]
+use super::WorkspaceUpdate;
 
 #[derive(Debug)]
 struct TxRx<T> {

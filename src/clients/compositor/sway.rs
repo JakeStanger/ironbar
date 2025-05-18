@@ -1,11 +1,14 @@
-use super::{Visibility, Workspace, WorkspaceUpdate};
+use super::{Visibility, Workspace};
 use crate::clients::sway::Client;
 use crate::{await_sync, error, send, spawn};
 use color_eyre::Report;
 use swayipc_async::{InputChange, InputEvent, Node, WorkspaceChange, WorkspaceEvent};
 use tokio::sync::broadcast::{Receiver, channel};
 
-#[cfg(feature = "workspaces+sway")]
+#[cfg(feature = "workspaces")]
+use super::WorkspaceUpdate;
+
+#[cfg(feature = "workspaces")]
 impl super::WorkspaceClient for Client {
     fn focus(&self, id: i64) {
         let client = self.connection().clone();
@@ -112,6 +115,7 @@ impl From<&swayipc_async::Workspace> for Visibility {
     }
 }
 
+#[cfg(feature = "workspaces")]
 impl From<WorkspaceEvent> for WorkspaceUpdate {
     fn from(event: WorkspaceEvent) -> Self {
         match event.change {
