@@ -21,7 +21,7 @@ use smithay_client_toolkit::data_device_manager::WritePipe;
 use std::cmp::min;
 use std::fmt::{Debug, Formatter};
 use std::fs::File;
-use std::io::{ErrorKind, Write};
+use std::io::Write;
 use std::os::fd::{AsFd, BorrowedFd, OwnedFd};
 use std::sync::Arc;
 use std::time::Duration;
@@ -297,7 +297,7 @@ impl DataControlSourceHandler for Environment {
                     ClipboardValue::Image(bytes) => bytes.as_ref(),
                     ClipboardValue::Other => panic!(
                         "{:?}",
-                        io::Error::new(ErrorKind::Other, "Attempted to copy unsupported mime type")
+                        io::Error::other("Attempted to copy unsupported mime type")
                     ),
                 };
 

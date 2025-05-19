@@ -248,7 +248,7 @@ impl BindModeClient for Client {
             self.add_listener::<swayipc_async::ModeEvent>(move |mode| {
                 tracing::trace!("mode: {:?}", mode);
 
-                // when no bindind is active the bindmode is named "default", but we must display
+                // when no binding is active the bindmode is named "default", but we must display
                 // nothing in this case.
                 let name = if mode.change == "default" {
                     String::new()
