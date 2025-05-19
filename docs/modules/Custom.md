@@ -47,6 +47,8 @@ A container to place nested widgets inside.
 |---------------|------------------------------------------------------------|----------------|-------------------------------------------------------------------|
 | `orientation` | `'horizontal'` or `'vertical'` (shorthand: `'h'` or `'v'`) | `'horizontal'` | Whether child widgets should be horizontally or vertically added. |
 | `widgets`     | `(Module or Widget)[]`                                     | `[]`           | List of modules/widgets to add to this box.                       |
+| `halign`      | `'start'` or `'center'` or `'end'` or `'fill'`             | `'fill'`       | The horizontal alignment of the box within its parent container.   |
+| `valign`      | `'start'` or `'center'` or `'end'` or `'fill'`             | `'fill'`       | The vertical alignment of the box within its parent container.     |
 
 #### Label
 
