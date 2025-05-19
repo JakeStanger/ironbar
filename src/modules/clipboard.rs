@@ -17,7 +17,7 @@ use gtk::{Button, EventBox, Image, Label, Orientation, RadioButton, Widget};
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::ops::Deref;
-use tokio::sync::{broadcast, mpsc};
+use tokio::sync::mpsc;
 use tracing::{debug, error};
 
 #[derive(Debug, Deserialize, Clone)]
@@ -158,9 +158,8 @@ impl Module<Button> for ClipboardModule {
             tx.send_spawn(ModuleUpdateEvent::TogglePopup(button.popup_id()));
         });
 
-        let rx = context.subscribe();
         let popup = self
-            .into_popup(context.controller_tx.clone(), rx, context, info)
+            .into_popup(context, info)
             .into_popup_parts(vec![&button]);
 
         Ok(ModuleParts::new(button.deref().clone(), popup))
@@ -168,9 +167,7 @@ impl Module<Button> for ClipboardModule {
 
     fn into_popup(
         self,
-        tx: mpsc::Sender<Self::ReceiveMessage>,
-        rx: broadcast::Receiver<Self::SendMessage>,
-        _context: WidgetContext<Self::SendMessage, Self::ReceiveMessage>,
+        context: WidgetContext<Self::SendMessage, Self::ReceiveMessage>,
         _info: &ModuleInfo,
     ) -> Option<gtk::Box>
     where
@@ -188,7 +185,7 @@ impl Module<Button> for ClipboardModule {
 
         {
             let hidden_option = hidden_option.clone();
-            rx.recv_glib(move |event| {
+            context.subscribe().recv_glib(move |event| {
                 match event {
                     ControllerEvent::Add(id, item) => {
                         debug!("Adding new value with ID {}", id);
@@ -250,7 +247,7 @@ impl Module<Button> for ClipboardModule {
                         button_wrapper.set_above_child(true);
 
                         {
-                            let tx = tx.clone();
+                            let tx = context.controller_tx.clone();
                             button_wrapper.connect_button_press_event(
                                 move |button_wrapper, event| {
                                     // left click
@@ -272,7 +269,7 @@ impl Module<Button> for ClipboardModule {
                         remove_button.style_context().add_class("btn-remove");
 
                         {
-                            let tx = tx.clone();
+                            let tx = context.controller_tx.clone();
                             let entries = entries.clone();
                             let row = row.clone();
 

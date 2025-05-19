@@ -21,7 +21,7 @@ use serde::Deserialize;
 use std::ops::Deref;
 use std::process::{Command, Stdio};
 use std::sync::Arc;
-use tokio::sync::{broadcast, mpsc};
+use tokio::sync::mpsc;
 use tracing::{debug, error, trace};
 
 #[derive(Debug, Deserialize, Clone)]
@@ -599,10 +599,7 @@ impl Module<gtk::Box> for LauncherModule {
             rx.recv_glib(handle_event);
         }
 
-        let rx = context.subscribe();
-        let popup = self
-            .into_popup(context.controller_tx.clone(), rx, context, info)
-            .into_popup_parts(vec![]); // since item buttons are dynamic, they pass their geometry directly
+        let popup = self.into_popup(context, info).into_popup_parts(vec![]); // since item buttons are dynamic, they pass their geometry directly
 
         Ok(ModuleParts {
             widget: container,
@@ -612,9 +609,7 @@ impl Module<gtk::Box> for LauncherModule {
 
     fn into_popup(
         self,
-        controller_tx: mpsc::Sender<Self::ReceiveMessage>,
-        rx: broadcast::Receiver<Self::SendMessage>,
-        _context: WidgetContext<Self::SendMessage, Self::ReceiveMessage>,
+        context: WidgetContext<Self::SendMessage, Self::ReceiveMessage>,
         _info: &ModuleInfo,
     ) -> Option<gtk::Box> {
         const MAX_WIDTH: i32 = 250;
@@ -630,7 +625,7 @@ impl Module<gtk::Box> for LauncherModule {
 
         {
             let container = container.clone();
-            rx.recv_glib(move |event| {
+            context.subscribe().recv_glib(move |event| {
                 match event {
                     LauncherUpdate::AddItem(item) => {
                         let app_id = item.app_id.clone();
@@ -647,7 +642,7 @@ impl Module<gtk::Box> for LauncherModule {
                                 button.label.truncate(self.truncate_popup);
 
                                 {
-                                    let tx = controller_tx.clone();
+                                    let tx = context.controller_tx.clone();
                                     button.connect_clicked(move |_| {
                                         tx.send_spawn(ItemEvent::FocusWindow(win.id));
                                     });
@@ -673,7 +668,7 @@ impl Module<gtk::Box> for LauncherModule {
                             button.label.truncate(self.truncate_popup);
 
                             {
-                                let tx = controller_tx.clone();
+                                let tx = context.controller_tx.clone();
                                 button.connect_clicked(move |_button| {
                                     tx.send_spawn(ItemEvent::FocusWindow(win.id));
                                 });

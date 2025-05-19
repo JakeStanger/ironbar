@@ -270,8 +270,6 @@ where
 
     fn into_popup(
         self,
-        _tx: mpsc::Sender<Self::ReceiveMessage>,
-        _rx: broadcast::Receiver<Self::SendMessage>,
         _context: WidgetContext<Self::SendMessage, Self::ReceiveMessage>,
         _info: &ModuleInfo,
     ) -> Option<gtk::Box>

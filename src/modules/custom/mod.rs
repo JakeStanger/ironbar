@@ -25,7 +25,7 @@ use gtk::{Button, IconTheme, Orientation};
 use serde::Deserialize;
 use std::cell::RefCell;
 use std::rc::Rc;
-use tokio::sync::{broadcast, mpsc};
+use tokio::sync::mpsc;
 use tracing::{debug, error};
 
 #[derive(Debug, Deserialize, Clone)]
@@ -258,12 +258,7 @@ impl Module<gtk::Box> for CustomModule {
             .map_or(usize::MAX, PopupButton::popup_id);
 
         let popup = self
-            .into_popup(
-                context.controller_tx.clone(),
-                context.subscribe(),
-                context,
-                info,
-            )
+            .into_popup(context, info)
             .into_popup_parts_owned(popup_buttons.take());
 
         Ok(ModuleParts {
@@ -274,8 +269,6 @@ impl Module<gtk::Box> for CustomModule {
 
     fn into_popup(
         self,
-        tx: mpsc::Sender<Self::ReceiveMessage>,
-        _rx: broadcast::Receiver<Self::SendMessage>,
         context: WidgetContext<Self::SendMessage, Self::ReceiveMessage>,
         info: &ModuleInfo,
     ) -> Option<gtk::Box>
@@ -287,7 +280,7 @@ impl Module<gtk::Box> for CustomModule {
         if let Some(popup) = self.popup {
             let custom_context = CustomWidgetContext {
                 info,
-                tx: &tx,
+                tx: &context.controller_tx,
                 bar_orientation: Orientation::Horizontal,
                 is_popup: true,
                 icon_theme: info.icon_theme,
