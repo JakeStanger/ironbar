@@ -255,12 +255,7 @@ impl Module<Button> for VolumeModule {
         }
 
         let popup = self
-            .into_popup(
-                context.controller_tx.clone(),
-                context.subscribe(),
-                context,
-                info,
-            )
+            .into_popup(context, info)
             .into_popup_parts(vec![&button]);
 
         Ok(ModuleParts::new(button, popup))
@@ -268,9 +263,7 @@ impl Module<Button> for VolumeModule {
 
     fn into_popup(
         self,
-        tx: mpsc::Sender<Self::ReceiveMessage>,
-        rx: tokio::sync::broadcast::Receiver<Self::SendMessage>,
-        _context: WidgetContext<Self::SendMessage, Self::ReceiveMessage>,
+        context: WidgetContext<Self::SendMessage, Self::ReceiveMessage>,
         _info: &ModuleInfo,
     ) -> Option<gtk::Box>
     where
@@ -302,7 +295,7 @@ impl Module<Button> for VolumeModule {
         renderer.set_ellipsize(EllipsizeMode::End);
 
         {
-            let tx = tx.clone();
+            let tx = context.controller_tx.clone();
             sink_selector.connect_changed(move |selector| {
                 if let Some(name) = selector.active_id() {
                     tx.send_spawn(Update::SinkChange(name.into()));
@@ -325,7 +318,7 @@ impl Module<Button> for VolumeModule {
         sink_container.add(&slider);
 
         {
-            let tx = tx.clone();
+            let tx = context.controller_tx.clone();
             let selector = sink_selector.clone();
 
             slider.connect_button_release_event(move |scale, _| {
@@ -344,7 +337,7 @@ impl Module<Button> for VolumeModule {
         sink_container.add(&btn_mute);
 
         {
-            let tx = tx.clone();
+            let tx = context.controller_tx.clone();
             let selector = sink_selector.clone();
 
             btn_mute.connect_toggled(move |btn| {
@@ -364,7 +357,7 @@ impl Module<Button> for VolumeModule {
 
             let mut sinks = vec![];
 
-            rx.recv_glib(move |event| {
+            context.subscribe().recv_glib(move |event| {
                 match event {
                     Event::AddSink(info) => {
                         sink_selector.append(Some(&info.name), &info.description);
@@ -420,7 +413,7 @@ impl Module<Button> for VolumeModule {
                         slider.add_class("slider");
 
                         {
-                            let tx = tx.clone();
+                            let tx = context.controller_tx.clone();
                             slider.connect_button_release_event(move |scale, _| {
                                 // GTK will send values outside min/max range
                                 let val = scale.value().clamp(0.0, self.max_volume);
@@ -441,7 +434,7 @@ impl Module<Button> for VolumeModule {
                         });
 
                         {
-                            let tx = tx.clone();
+                            let tx = context.controller_tx.clone();
                             btn_mute.connect_toggled(move |btn| {
                                 let muted = btn.is_active();
                                 tx.send_spawn(Update::InputMute(index, muted));

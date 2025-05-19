@@ -5,7 +5,7 @@ use color_eyre::Result;
 use gtk::prelude::*;
 use gtk::{Align, Button, Calendar, Label, Orientation};
 use serde::Deserialize;
-use tokio::sync::{broadcast, mpsc};
+use tokio::sync::mpsc;
 use tokio::time::sleep;
 
 use crate::channels::{AsyncSenderExt, BroadcastReceiverExt};
@@ -145,12 +145,7 @@ impl Module<Button> for ClockModule {
         });
 
         let popup = self
-            .into_popup(
-                context.controller_tx.clone(),
-                context.subscribe(),
-                context,
-                info,
-            )
+            .into_popup(context, info)
             .into_popup_parts(vec![&button]);
 
         Ok(ModuleParts::new(button, popup))
@@ -158,9 +153,7 @@ impl Module<Button> for ClockModule {
 
     fn into_popup(
         self,
-        _tx: mpsc::Sender<Self::ReceiveMessage>,
-        rx: broadcast::Receiver<Self::SendMessage>,
-        _context: WidgetContext<Self::SendMessage, Self::ReceiveMessage>,
+        context: WidgetContext<Self::SendMessage, Self::ReceiveMessage>,
         _info: &ModuleInfo,
     ) -> Option<gtk::Box> {
         let container = gtk::Box::new(Orientation::Vertical, 0);
@@ -180,7 +173,7 @@ impl Module<Button> for ClockModule {
         let format = self.format_popup;
         let locale = Locale::try_from(self.locale.as_str()).unwrap_or(Locale::POSIX);
 
-        rx.recv_glib(move |date| {
+        context.subscribe().recv_glib(move |date| {
             let date_string = format!("{}", date.format_localized(&format, locale));
             clock.set_label(&date_string);
         });

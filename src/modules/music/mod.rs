@@ -9,7 +9,7 @@ use glib::{Propagation, PropertySet};
 use gtk::prelude::*;
 use gtk::{Button, IconTheme, Label, Orientation, Scale};
 use regex::Regex;
-use tokio::sync::{broadcast, mpsc};
+use tokio::sync::mpsc;
 use tracing::error;
 
 pub use self::config::MusicModule;
@@ -257,9 +257,8 @@ impl Module<Button> for MusicModule {
             });
         };
 
-        let rx = context.subscribe();
         let popup = self
-            .into_popup(context.controller_tx.clone(), rx, context, info)
+            .into_popup(context, info)
             .into_popup_parts(vec![&button]);
 
         Ok(ModuleParts::new(button, popup))
@@ -267,9 +266,7 @@ impl Module<Button> for MusicModule {
 
     fn into_popup(
         self,
-        tx: mpsc::Sender<Self::ReceiveMessage>,
-        rx: broadcast::Receiver<Self::SendMessage>,
-        _context: WidgetContext<Self::SendMessage, Self::ReceiveMessage>,
+        context: WidgetContext<Self::SendMessage, Self::ReceiveMessage>,
         info: &ModuleInfo,
     ) -> Option<gtk::Box> {
         let icon_theme = info.icon_theme;
@@ -338,27 +335,27 @@ impl Module<Button> for MusicModule {
         main_container.add(&volume_box);
         container.add(&main_container);
 
-        let tx_prev = tx.clone();
+        let tx_prev = context.controller_tx.clone();
         btn_prev.connect_clicked(move |_| {
             tx_prev.send_spawn(PlayerCommand::Previous);
         });
 
-        let tx_play = tx.clone();
+        let tx_play = context.controller_tx.clone();
         btn_play.connect_clicked(move |_| {
             tx_play.send_spawn(PlayerCommand::Play);
         });
 
-        let tx_pause = tx.clone();
+        let tx_pause = context.controller_tx.clone();
         btn_pause.connect_clicked(move |_| {
             tx_pause.send_spawn(PlayerCommand::Pause);
         });
 
-        let tx_next = tx.clone();
+        let tx_next = context.controller_tx.clone();
         btn_next.connect_clicked(move |_| {
             tx_next.send_spawn(PlayerCommand::Next);
         });
 
-        let tx_vol = tx.clone();
+        let tx_vol = context.controller_tx.clone();
         volume_slider.connect_change_value(move |_, _, val| {
             tx_vol.send_spawn(PlayerCommand::Volume(val as u8));
             Propagation::Proceed
@@ -392,6 +389,7 @@ impl Module<Button> for MusicModule {
 
         {
             let drag_lock = drag_lock.clone();
+            let tx = context.controller_tx.clone();
             progress.connect_button_release_event(move |scale, _| {
                 let value = scale.value();
                 tx.send_spawn(PlayerCommand::Seek(Duration::from_secs_f64(value)));
@@ -408,7 +406,7 @@ impl Module<Button> for MusicModule {
             let image_size = self.cover_image_size;
 
             let mut prev_cover = None;
-            rx.recv_glib(move |event| {
+            context.subscribe().recv_glib(move |event| {
                 match event {
                     ControllerEvent::Update(Some(update)) => {
                         // only update art when album changes

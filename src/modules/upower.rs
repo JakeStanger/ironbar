@@ -3,7 +3,7 @@ use futures_lite::stream::StreamExt;
 use gtk::{Button, prelude::*};
 use gtk::{Label, Orientation};
 use serde::Deserialize;
-use tokio::sync::{broadcast, mpsc};
+use tokio::sync::mpsc;
 use zbus;
 use zbus::fdo::PropertiesProxy;
 
@@ -225,9 +225,8 @@ impl Module<Button> for UpowerModule {
             label.set_label_escaped(&format);
         });
 
-        let rx = context.subscribe();
         let popup = self
-            .into_popup(context.controller_tx.clone(), rx, context, info)
+            .into_popup(context, info)
             .into_popup_parts(vec![&button]);
 
         Ok(ModuleParts::new(button, popup))
@@ -235,9 +234,7 @@ impl Module<Button> for UpowerModule {
 
     fn into_popup(
         self,
-        _tx: mpsc::Sender<Self::ReceiveMessage>,
-        rx: broadcast::Receiver<Self::SendMessage>,
-        _context: WidgetContext<Self::SendMessage, Self::ReceiveMessage>,
+        context: WidgetContext<Self::SendMessage, Self::ReceiveMessage>,
         _info: &ModuleInfo,
     ) -> Option<gtk::Box>
     where
@@ -251,7 +248,7 @@ impl Module<Button> for UpowerModule {
         label.add_class("upower-details");
         container.add(&label);
 
-        rx.recv_glib(move |properties| {
+        context.subscribe().recv_glib(move |properties| {
             let state = properties.state;
             let format = match state {
                 BatteryState::Charging | BatteryState::PendingCharge => {
