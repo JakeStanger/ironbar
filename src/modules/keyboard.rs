@@ -7,12 +7,13 @@ use tokio::sync::mpsc;
 use tracing::{debug, trace};
 
 use super::{Module, ModuleInfo, ModuleParts, WidgetContext};
+use crate::channels::{AsyncSenderExt, BroadcastReceiverExt};
 use crate::clients::compositor::{self, KeyboardLayoutUpdate};
 use crate::clients::libinput::{Event, Key, KeyEvent};
 use crate::config::{CommonConfig, LayoutConfig};
 use crate::gtk_helpers::IronbarGtkExt;
 use crate::image::{IconButton, IconLabel};
-use crate::{glib_recv, module_impl, module_update, send_async, spawn, try_send};
+use crate::{module_impl, spawn};
 
 #[derive(Debug, Deserialize, Clone)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
@@ -195,11 +196,11 @@ impl Module<gtk::Box> for KeyboardModule {
                                 key,
                                 state: client.get_state(key),
                             };
-                            module_update!(tx, KeyboardUpdate::Key(event));
+                            tx.send_update(KeyboardUpdate::Key(event)).await;
                         }
                     }
                     Event::Key(ev) => {
-                        module_update!(tx, KeyboardUpdate::Key(ev));
+                        tx.send_update(KeyboardUpdate::Key(ev)).await;
                     }
                 }
             }
@@ -218,7 +219,7 @@ impl Module<gtk::Box> for KeyboardModule {
                     match srx.recv().await {
                         Ok(payload) => {
                             debug!("Received update: {payload:?}");
-                            module_update!(tx, KeyboardUpdate::Layout(payload));
+                            tx.send_update(KeyboardUpdate::Layout(payload)).await;
                         }
                         Err(tokio::sync::broadcast::error::RecvError::Lagged(count)) => {
                             tracing::warn!(
@@ -296,7 +297,7 @@ impl Module<gtk::Box> for KeyboardModule {
         {
             let tx = context.controller_tx.clone();
             layout_button.connect_clicked(move |_| {
-                try_send!(tx, ());
+                tx.send_spawn(());
             });
         }
 
@@ -346,7 +347,7 @@ impl Module<gtk::Box> for KeyboardModule {
             }
         };
 
-        glib_recv!(context.subscribe(), handle_event);
+        context.subscribe().recv_glib(handle_event);
         Ok(ModuleParts::new(container, None))
     }
 }

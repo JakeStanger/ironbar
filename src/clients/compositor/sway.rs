@@ -1,9 +1,13 @@
-use super::{Visibility, Workspace, WorkspaceUpdate};
+use super::{Visibility, Workspace};
+use crate::channels::SyncSenderExt;
 use crate::clients::sway::Client;
-use crate::{await_sync, error, send, spawn};
+use crate::{await_sync, error, spawn};
 use color_eyre::Report;
 use swayipc_async::{InputChange, InputEvent, Node, WorkspaceChange, WorkspaceEvent};
 use tokio::sync::broadcast::{Receiver, channel};
+
+#[cfg(feature = "workspaces")]
+use super::WorkspaceUpdate;
 
 #[cfg(feature = "workspaces+sway")]
 impl super::WorkspaceClient for Client {
@@ -46,13 +50,13 @@ impl super::WorkspaceClient for Client {
             let event =
                 WorkspaceUpdate::Init(workspaces.into_iter().map(Workspace::from).collect());
 
-            send!(tx, event);
+            tx.send_expect(event);
 
             drop(client);
 
             self.add_listener::<WorkspaceEvent>(move |event| {
                 let update = WorkspaceUpdate::from(event.clone());
-                send!(tx, update);
+                tx.send_expect(update);
             })
             .await
             .expect("to add listener");
@@ -112,6 +116,7 @@ impl From<&swayipc_async::Workspace> for Visibility {
     }
 }
 
+#[cfg(feature = "workspaces")]
 impl From<WorkspaceEvent> for WorkspaceUpdate {
     fn from(event: WorkspaceEvent) -> Self {
         match event.change {
@@ -194,7 +199,7 @@ impl KeyboardLayoutClient for Client {
             let inputs = client.get_inputs().await.expect("to get inputs");
 
             if let Some(layout) = inputs.into_iter().find_map(|i| i.xkb_active_layout_name) {
-                send!(tx, KeyboardLayoutUpdate(layout));
+                tx.send_expect(KeyboardLayoutUpdate(layout));
             } else {
                 error!("Failed to get keyboard layout from Sway!");
             }
@@ -203,7 +208,7 @@ impl KeyboardLayoutClient for Client {
 
             self.add_listener::<InputEvent>(move |event| {
                 if let Ok(layout) = KeyboardLayoutUpdate::try_from(event.clone()) {
-                    send!(tx, layout);
+                    tx.send_expect(layout);
                 }
             })
             .await
@@ -243,7 +248,7 @@ impl BindModeClient for Client {
             self.add_listener::<swayipc_async::ModeEvent>(move |mode| {
                 tracing::trace!("mode: {:?}", mode);
 
-                // when no bindind is active the bindmode is named "default", but we must display
+                // when no binding is active the bindmode is named "default", but we must display
                 // nothing in this case.
                 let name = if mode.change == "default" {
                     String::new()
@@ -251,13 +256,10 @@ impl BindModeClient for Client {
                     mode.change.clone()
                 };
 
-                send!(
-                    tx,
-                    BindModeUpdate {
-                        name,
-                        pango_markup: mode.pango_markup,
-                    }
-                );
+                tx.send_expect(BindModeUpdate {
+                    name,
+                    pango_markup: mode.pango_markup,
+                });
             })
             .await
         })?;

@@ -1,9 +1,10 @@
+use crate::channels::{AsyncSenderExt, BroadcastReceiverExt};
 use crate::config::CommonConfig;
-use crate::modules::{Module, ModuleInfo, ModuleParts, ModuleUpdateEvent, WidgetContext};
-use crate::{glib_recv, module_impl, spawn, try_send};
+use crate::modules::{Module, ModuleInfo, ModuleParts, WidgetContext};
+use crate::{module_impl, spawn};
 use cairo::{Format, ImageSurface};
 use glib::Propagation;
-use glib::translate::IntoGlibPtr;
+use glib::translate::ToGlibPtr;
 use gtk::DrawingArea;
 use gtk::prelude::*;
 use mlua::{Error, Function, LightUserData};
@@ -87,7 +88,7 @@ impl Module<gtk::Box> for CairoModule {
                         debug!("{event:?}");
 
                         if event.paths.first().is_some_and(|p| p == &path) {
-                            try_send!(tx, ModuleUpdateEvent::Update(()));
+                            tx.send_update_spawn(());
                         }
                     }
                     Err(e) => error!("Error occurred when watching stylesheet: {:?}", e),
@@ -146,21 +147,23 @@ impl Module<gtk::Box> for CairoModule {
 
             let path = self.path.clone();
 
-            area.connect_draw(move |_, cr| {
-                let function: Function = lua
-                    .load(include_str!("../../lua/draw.lua"))
-                    .eval()
-                    .expect("to be valid");
+            let function: Function = lua
+                .load(include_str!("../../lua/draw.lua"))
+                .eval()
+                .expect("to be valid");
 
+            area.connect_draw(move |_, cr| {
                 if let Err(err) = cr.set_source_surface(&surface, 0.0, 0.0) {
                     error!("{err}");
                     return Propagation::Stop;
                 }
 
-                let ptr = unsafe { cr.clone().into_glib_ptr().cast() };
+                let ptr = cr.to_glib_full();
 
                 // mlua needs a valid return type, even if we don't return anything
-                if let Err(err) = function.call::<Option<bool>>((id.as_str(), LightUserData(ptr))) {
+                if let Err(err) =
+                    function.call::<Option<bool>>((id.as_str(), LightUserData(ptr.cast())))
+                {
                     if let Error::RuntimeError(message) = err {
                         let message = message.split_once("]:").expect("to exist").1;
                         error!("[lua runtime error] {}:{message}", path.display());
@@ -169,6 +172,10 @@ impl Module<gtk::Box> for CairoModule {
                     }
 
                     return Propagation::Stop;
+                }
+
+                unsafe {
+                    cairo::ffi::cairo_destroy(ptr);
                 }
 
                 Propagation::Proceed
@@ -185,22 +192,20 @@ impl Module<gtk::Box> for CairoModule {
             }
         });
 
-        glib_recv!(context.subscribe(), _ev => {
+        context.subscribe().recv_glib(move |_ev| {
             let res = fs::read_to_string(&self.path)
                 .map(|s| s.replace("function draw", format!("function __draw_{id}").as_str()));
 
             match res {
-                Ok(script) => {
-                    match lua.load(&script).exec() {
-                        Ok(()) => {},
-                        Err(Error::SyntaxError { message, ..}) => {
-                            let message = message.split_once("]:").expect("to exist").1;
-                            error!("[lua syntax error] {}:{message}", self.path.display());
-                        },
-                        Err(err) => error!("lua error: {err:?}")
+                Ok(script) => match lua.load(&script).exec() {
+                    Ok(()) => {}
+                    Err(Error::SyntaxError { message, .. }) => {
+                        let message = message.split_once("]:").expect("to exist").1;
+                        error!("[lua syntax error] {}:{message}", self.path.display());
                     }
+                    Err(err) => error!("lua error: {err:?}"),
                 },
-                Err(err) => error!("{err:?}")
+                Err(err) => error!("{err:?}"),
             }
         });
 

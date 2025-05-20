@@ -1,5 +1,10 @@
-use super::{Visibility, Workspace, WorkspaceUpdate};
-use crate::{arc_mut, lock, send, spawn_blocking};
+#[cfg(feature = "bindmode+hyprland")]
+use super::{BindModeClient, BindModeUpdate};
+#[cfg(feature = "keyboard+hyprland")]
+use super::{KeyboardLayoutClient, KeyboardLayoutUpdate};
+use super::{Visibility, Workspace};
+use crate::channels::SyncSenderExt;
+use crate::{arc_mut, lock, spawn_blocking};
 use color_eyre::Result;
 use hyprland::ctl::switch_xkb_layout;
 use hyprland::data::{Devices, Workspace as HWorkspace, Workspaces};
@@ -8,12 +13,10 @@ use hyprland::event_listener::EventListener;
 use hyprland::prelude::*;
 use hyprland::shared::{HyprDataVec, WorkspaceType};
 use tokio::sync::broadcast::{Receiver, Sender, channel};
-use tracing::{debug, error, info};
+use tracing::{debug, error, info, warn};
 
-#[cfg(feature = "bindmode+hyprland")]
-use super::{BindModeClient, BindModeUpdate};
-#[cfg(feature = "keyboard+hyprland")]
-use super::{KeyboardLayoutClient, KeyboardLayoutUpdate};
+#[cfg(feature = "workspaces")]
+use super::WorkspaceUpdate;
 
 #[derive(Debug)]
 struct TxRx<T> {
@@ -74,45 +77,55 @@ impl Client {
 
             // cache the active workspace since Hyprland doesn't give us the prev active
             #[cfg(feature = "workspaces+hyprland")]
-            Self::listen_workspace_events(workspace_tx, &mut event_listener, &lock);
+            Self::listen_workspace_events(&workspace_tx, &mut event_listener, &lock);
 
             #[cfg(feature = "keyboard+hyprland")]
-            Self::listen_keyboard_events(keyboard_layout_tx, &mut event_listener, &lock);
+            Self::listen_keyboard_events(&keyboard_layout_tx, &mut event_listener, &lock);
 
             #[cfg(feature = "bindmode+hyprland")]
-            Self::listen_bindmode_events(bindmode_tx, &mut event_listener, &lock);
+            Self::listen_bindmode_events(&bindmode_tx, &mut event_listener, &lock);
 
-            event_listener
-                .start_listener()
-                .expect("Failed to start listener");
+            if let Err(err) = event_listener.start_listener() {
+                error!("Failed to start listener: {err:#}");
+            }
         });
     }
 
     #[cfg(feature = "workspaces+hyprland")]
     fn listen_workspace_events(
-        tx: Sender<WorkspaceUpdate>,
+        tx: &Sender<WorkspaceUpdate>,
         event_listener: &mut EventListener,
         lock: &std::sync::Arc<std::sync::Mutex<()>>,
     ) {
-        let active = Self::get_active_workspace().expect("Failed to get active workspace");
-        let active = arc_mut!(Some(active));
+        let active = Self::get_active_workspace().map_or_else(
+            |err| {
+                error!("Failed to get active workspace: {err:#?}");
+                None
+            },
+            Some,
+        );
+        let active = arc_mut!(active);
 
         {
             let tx = tx.clone();
             let lock = lock.clone();
             let active = active.clone();
 
-            event_listener.add_workspace_added_handler(move |workspace_type| {
+            event_listener.add_workspace_added_handler(move |event| {
                 let _lock = lock!(lock);
-                debug!("Added workspace: {workspace_type:?}");
+                debug!("Added workspace: {event:?}");
 
-                let workspace_name = get_workspace_name(workspace_type);
+                let workspace_name = get_workspace_name(event.name);
                 let prev_workspace = lock!(active);
 
                 let workspace = Self::get_workspace(&workspace_name, prev_workspace.as_ref());
 
-                if let Some(workspace) = workspace {
-                    send!(tx, WorkspaceUpdate::Add(workspace));
+                match workspace {
+                    Ok(Some(workspace)) => {
+                        tx.send_expect(WorkspaceUpdate::Add(workspace));
+                    }
+                    Err(e) => error!("Failed to get workspace: {e:#}"),
+                    _ => {}
                 }
             });
         }
@@ -122,30 +135,29 @@ impl Client {
             let lock = lock.clone();
             let active = active.clone();
 
-            event_listener.add_workspace_change_handler(move |workspace_type| {
+            event_listener.add_workspace_changed_handler(move |event| {
                 let _lock = lock!(lock);
 
                 let mut prev_workspace = lock!(active);
 
                 debug!(
-                    "Received workspace change: {:?} -> {workspace_type:?}",
+                    "Received workspace change: {:?} -> {event:?}",
                     prev_workspace.as_ref().map(|w| &w.id)
                 );
 
-                let workspace_name = get_workspace_name(workspace_type);
+                let workspace_name = get_workspace_name(event.name);
                 let workspace = Self::get_workspace(&workspace_name, prev_workspace.as_ref());
 
-                workspace.map_or_else(
-                    || {
+                match workspace {
+                    Ok(Some(workspace)) if !workspace.visibility.is_focused() => {
+                        Self::send_focus_change(&mut prev_workspace, workspace, &tx);
+                    }
+                    Ok(None) => {
                         error!("Unable to locate workspace");
-                    },
-                    |workspace| {
-                        // there may be another type of update so dispatch that regardless of focus change
-                        if !workspace.visibility.is_focused() {
-                            Self::send_focus_change(&mut prev_workspace, workspace, &tx);
-                        }
-                    },
-                );
+                    }
+                    Err(e) => error!("Failed to get workspace: {e:#}"),
+                    _ => {}
+                }
             });
         }
 
@@ -154,9 +166,12 @@ impl Client {
             let lock = lock.clone();
             let active = active.clone();
 
-            event_listener.add_active_monitor_change_handler(move |event_data| {
+            event_listener.add_active_monitor_changed_handler(move |event_data| {
                 let _lock = lock!(lock);
-                let workspace_type = event_data.workspace;
+                let Some(workspace_type) = event_data.workspace_name else {
+                    warn!("Received active monitor change with no workspace name");
+                    return;
+                };
 
                 let mut prev_workspace = lock!(active);
 
@@ -168,11 +183,15 @@ impl Client {
                 let workspace_name = get_workspace_name(workspace_type);
                 let workspace = Self::get_workspace(&workspace_name, prev_workspace.as_ref());
 
-                if let Some((false, workspace)) = workspace.map(|w| (w.visibility.is_focused(), w))
-                {
-                    Self::send_focus_change(&mut prev_workspace, workspace, &tx);
-                } else {
-                    error!("unable to locate workspace: {workspace_name}");
+                match workspace {
+                    Ok(Some(workspace)) if !workspace.visibility.is_focused() => {
+                        Self::send_focus_change(&mut prev_workspace, workspace, &tx);
+                    }
+                    Ok(None) => {
+                        error!("Unable to locate workspace");
+                    }
+                    Err(e) => error!("Failed to get workspace: {e:#}"),
+                    _ => {}
                 }
             });
         }
@@ -183,7 +202,7 @@ impl Client {
 
             event_listener.add_workspace_moved_handler(move |event_data| {
                 let _lock = lock!(lock);
-                let workspace_type = event_data.workspace;
+                let workspace_type = event_data.name;
                 debug!("Received workspace move: {workspace_type:?}");
 
                 let mut prev_workspace = lock!(active);
@@ -191,12 +210,15 @@ impl Client {
                 let workspace_name = get_workspace_name(workspace_type);
                 let workspace = Self::get_workspace(&workspace_name, prev_workspace.as_ref());
 
-                if let Some(workspace) = workspace {
-                    send!(tx, WorkspaceUpdate::Move(workspace.clone()));
-
-                    if !workspace.visibility.is_focused() {
+                match workspace {
+                    Ok(Some(workspace)) if !workspace.visibility.is_focused() => {
                         Self::send_focus_change(&mut prev_workspace, workspace, &tx);
                     }
+                    Ok(None) => {
+                        error!("Unable to locate workspace");
+                    }
+                    Err(e) => error!("Failed to get workspace: {e:#}"),
+                    _ => {}
                 }
             });
         }
@@ -205,17 +227,14 @@ impl Client {
             let tx = tx.clone();
             let lock = lock.clone();
 
-            event_listener.add_workspace_rename_handler(move |data| {
+            event_listener.add_workspace_renamed_handler(move |data| {
                 let _lock = lock!(lock);
                 debug!("Received workspace rename: {data:?}");
 
-                send!(
-                    tx,
-                    WorkspaceUpdate::Rename {
-                        id: data.workspace_id as i64,
-                        name: data.workspace_name
-                    }
-                );
+                tx.send_expect(WorkspaceUpdate::Rename {
+                    id: data.id as i64,
+                    name: data.name,
+                });
             });
         }
 
@@ -223,10 +242,10 @@ impl Client {
             let tx = tx.clone();
             let lock = lock.clone();
 
-            event_listener.add_workspace_destroy_handler(move |data| {
+            event_listener.add_workspace_deleted_handler(move |data| {
                 let _lock = lock!(lock);
                 debug!("Received workspace destroy: {data:?}");
-                send!(tx, WorkspaceUpdate::Remove(data.workspace_id as i64));
+                tx.send_expect(WorkspaceUpdate::Remove(data.id as i64));
             });
         }
 
@@ -234,7 +253,7 @@ impl Client {
             let tx = tx.clone();
             let lock = lock.clone();
 
-            event_listener.add_urgent_state_handler(move |address| {
+            event_listener.add_urgent_state_changed_handler(move |address| {
                 let _lock = lock!(lock);
                 debug!("Received urgent state: {address:?}");
 
@@ -250,13 +269,10 @@ impl Client {
                         error!("Unable to locate client");
                     },
                     |c| {
-                        send!(
-                            tx,
-                            WorkspaceUpdate::Urgent {
-                                id: c.workspace.id as i64,
-                                urgent: true,
-                            }
-                        );
+                        tx.send_expect(WorkspaceUpdate::Urgent {
+                            id: c.workspace.id as i64,
+                            urgent: true,
+                        });
                     },
                 );
             });
@@ -265,14 +281,14 @@ impl Client {
 
     #[cfg(feature = "keyboard+hyprland")]
     fn listen_keyboard_events(
-        keyboard_layout_tx: Sender<KeyboardLayoutUpdate>,
+        keyboard_layout_tx: &Sender<KeyboardLayoutUpdate>,
         event_listener: &mut EventListener,
         lock: &std::sync::Arc<std::sync::Mutex<()>>,
     ) {
         let tx = keyboard_layout_tx.clone();
         let lock = lock.clone();
 
-        event_listener.add_keyboard_layout_change_handler(move |layout_event| {
+        event_listener.add_layout_changed_handler(move |layout_event| {
             let _lock = lock!(lock);
 
             let layout = if layout_event.layout_name.is_empty() {
@@ -312,31 +328,27 @@ impl Client {
             };
 
             debug!("Received layout: {layout:?}");
-
-            send!(tx, KeyboardLayoutUpdate(layout));
+            tx.send_expect(KeyboardLayoutUpdate(layout));
         });
     }
 
     #[cfg(feature = "bindmode+hyprland")]
     fn listen_bindmode_events(
-        bindmode_tx: Sender<BindModeUpdate>,
+        bindmode_tx: &Sender<BindModeUpdate>,
         event_listener: &mut EventListener,
         lock: &std::sync::Arc<std::sync::Mutex<()>>,
     ) {
         let tx = bindmode_tx.clone();
         let lock = lock.clone();
 
-        event_listener.add_sub_map_change_handler(move |bind_mode| {
+        event_listener.add_sub_map_changed_handler(move |bind_mode| {
             let _lock = lock!(lock);
             debug!("Received bind mode: {bind_mode:?}");
 
-            send!(
-                tx,
-                BindModeUpdate {
-                    name: bind_mode,
-                    pango_markup: false,
-                }
-            );
+            tx.send_expect(BindModeUpdate {
+                name: bind_mode,
+                pango_markup: false,
+            });
         });
     }
 
@@ -348,42 +360,35 @@ impl Client {
         workspace: Workspace,
         tx: &Sender<WorkspaceUpdate>,
     ) {
-        send!(
-            tx,
-            WorkspaceUpdate::Focus {
-                old: prev_workspace.take(),
-                new: workspace.clone(),
-            }
-        );
+        tx.send_expect(WorkspaceUpdate::Focus {
+            old: prev_workspace.take(),
+            new: workspace.clone(),
+        });
 
-        send!(
-            tx,
-            WorkspaceUpdate::Urgent {
-                id: workspace.id,
-                urgent: false,
-            }
-        );
+        tx.send_expect(WorkspaceUpdate::Urgent {
+            id: workspace.id,
+            urgent: false,
+        });
 
         prev_workspace.replace(workspace);
     }
 
     /// Gets a workspace by name from the server, given the active workspace if known.
     #[cfg(feature = "workspaces+hyprland")]
-    fn get_workspace(name: &str, active: Option<&Workspace>) -> Option<Workspace> {
-        Workspaces::get()
-            .expect("Failed to get workspaces")
-            .into_iter()
-            .find_map(|w| {
-                if w.name == name {
-                    let vis = Visibility::from((&w, active.map(|w| w.name.as_ref()), &|w| {
-                        create_is_visible()(w)
-                    }));
+    fn get_workspace(name: &str, active: Option<&Workspace>) -> Result<Option<Workspace>> {
+        let workspace = Workspaces::get()?.into_iter().find_map(|w| {
+            if w.name == name {
+                let vis = Visibility::from((&w, active.map(|w| w.name.as_ref()), &|w| {
+                    create_is_visible()(w)
+                }));
 
-                    Some(Workspace::from((vis, w)))
-                } else {
-                    None
-                }
-            })
+                Some(Workspace::from((vis, w)))
+            } else {
+                None
+            }
+        });
+
+        Ok(workspace)
     }
 
     /// Gets the active workspace from the server.
@@ -409,17 +414,24 @@ impl super::WorkspaceClient for Client {
         let active_id = HWorkspace::get_active().ok().map(|active| active.name);
         let is_visible = create_is_visible();
 
-        let workspaces = Workspaces::get()
-            .expect("Failed to get workspaces")
-            .into_iter()
-            .map(|w| {
-                let vis = Visibility::from((&w, active_id.as_deref(), &is_visible));
+        match Workspaces::get() {
+            Ok(workspaces) => {
+                let workspaces = workspaces
+                    .into_iter()
+                    .map(|w| {
+                        let vis = Visibility::from((&w, active_id.as_deref(), &is_visible));
+                        Workspace::from((vis, w))
+                    })
+                    .collect();
 
-                Workspace::from((vis, w))
-            })
-            .collect();
-
-        send!(self.workspace.tx, WorkspaceUpdate::Init(workspaces));
+                self.workspace
+                    .tx
+                    .send_expect(WorkspaceUpdate::Init(workspaces));
+            }
+            Err(e) => {
+                error!("Failed to get workspaces: {e:#}");
+            }
+        }
 
         rx
     }
@@ -428,8 +440,12 @@ impl super::WorkspaceClient for Client {
 #[cfg(feature = "keyboard+hyprland")]
 impl KeyboardLayoutClient for Client {
     fn set_next_active(&self) {
-        let device = Devices::get()
-            .expect("Failed to get devices")
+        let Ok(devices) = Devices::get() else {
+            error!("Failed to get devices");
+            return;
+        };
+
+        let device = devices
             .keyboards
             .iter()
             .find(|k| k.main)
@@ -449,17 +465,20 @@ impl KeyboardLayoutClient for Client {
     fn subscribe(&self) -> Receiver<KeyboardLayoutUpdate> {
         let rx = self.keyboard_layout.tx.subscribe();
 
-        let layout = Devices::get()
-            .expect("Failed to get devices")
-            .keyboards
-            .iter()
-            .find(|k| k.main)
-            .map(|k| k.active_keymap.clone());
-
-        if let Some(layout) = layout {
-            send!(self.keyboard_layout.tx, KeyboardLayoutUpdate(layout));
-        } else {
-            error!("Failed to get current keyboard layout hyprland");
+        match Devices::get().map(|devices| {
+            devices
+                .keyboards
+                .iter()
+                .find(|k| k.main)
+                .map(|k| k.active_keymap.clone())
+        }) {
+            Ok(Some(layout)) => {
+                self.keyboard_layout
+                    .tx
+                    .send_expect(KeyboardLayoutUpdate(layout));
+            }
+            Ok(None) => error!("Failed to get current keyboard layout hyprland"),
+            Err(err) => error!("Failed to get devices: {err:#?}"),
         }
 
         rx

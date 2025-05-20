@@ -7,7 +7,8 @@ use self::device::{DataControlDeviceDataExt, DataControlDeviceHandler};
 use self::offer::{DataControlDeviceOffer, DataControlOfferHandler};
 use self::source::DataControlSourceHandler;
 use super::{Client, Environment, Event, Request, Response};
-use crate::{Ironbar, lock, spawn, try_send};
+use crate::channels::AsyncSenderExt;
+use crate::{Ironbar, lock, spawn};
 use color_eyre::Result;
 use device::DataControlDevice;
 use glib::Bytes;
@@ -20,7 +21,7 @@ use smithay_client_toolkit::data_device_manager::WritePipe;
 use std::cmp::min;
 use std::fmt::{Debug, Formatter};
 use std::fs::File;
-use std::io::{ErrorKind, Write};
+use std::io::Write;
 use std::os::fd::{AsFd, BorrowedFd, OwnedFd};
 use std::sync::Arc;
 use std::time::Duration;
@@ -219,14 +220,12 @@ impl DataControlDeviceHandler for Environment {
             let Some(mime_type) = MimeType::parse_multiple(&mime_types) else {
                 lock!(self.clipboard).take();
                 // send an event so the clipboard module is aware it's changed
-                try_send!(
-                    self.event_tx,
-                    Event::Clipboard(ClipboardItem {
-                        id: usize::MAX,
-                        mime_type: String::new().into(),
-                        value: Arc::new(ClipboardValue::Other)
-                    })
-                );
+                self.event_tx.send_spawn(Event::Clipboard(ClipboardItem {
+                    id: usize::MAX,
+                    mime_type: String::new().into(),
+                    value: Arc::new(ClipboardValue::Other),
+                }));
+
                 return;
             };
 
@@ -239,7 +238,7 @@ impl DataControlDeviceHandler for Environment {
                     match Self::read_file(&mime_type, &mut read_pipe).await {
                         Ok(item) => {
                             lock!(clipboard).replace(item.clone());
-                            try_send!(tx, Event::Clipboard(item));
+                            tx.send_spawn(Event::Clipboard(item));
                         }
                         Err(err) => error!("{err:?}"),
                     }
@@ -298,7 +297,7 @@ impl DataControlSourceHandler for Environment {
                     ClipboardValue::Image(bytes) => bytes.as_ref(),
                     ClipboardValue::Other => panic!(
                         "{:?}",
-                        io::Error::new(ErrorKind::Other, "Attempted to copy unsupported mime type")
+                        io::Error::other("Attempted to copy unsupported mime type")
                     ),
                 };
 

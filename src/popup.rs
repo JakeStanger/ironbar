@@ -3,11 +3,12 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
 
+use crate::channels::BroadcastReceiverExt;
 use crate::clients::wayland::{OutputEvent, OutputEventType};
 use crate::config::BarPosition;
 use crate::gtk_helpers::{IronbarGtkExt, WidgetGeometry};
 use crate::modules::{ModuleInfo, ModulePopupParts, PopupButton};
-use crate::{Ironbar, glib_recv, rc_mut};
+use crate::{Ironbar, rc_mut};
 use gtk::prelude::*;
 use gtk::{ApplicationWindow, Button, Orientation};
 use gtk_layer_shell::LayerShell;
@@ -124,10 +125,8 @@ impl Popup {
                 }
             };
 
-            glib_recv!(
-                ironbar.clients.borrow_mut().wayland().subscribe_outputs(),
-                on_output_event
-            );
+            let rx = ironbar.clients.borrow_mut().wayland().subscribe_outputs();
+            rx.recv_glib(on_output_event);
         }
 
         Self {

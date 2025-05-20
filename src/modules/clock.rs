@@ -1,19 +1,20 @@
 use std::env;
 
-use chrono::{DateTime, Local, Locale};
+use chrono::{DateTime, Datelike, Local, Locale};
 use color_eyre::Result;
 use gtk::prelude::*;
 use gtk::{Align, Button, Calendar, Label, Orientation};
 use serde::Deserialize;
-use tokio::sync::{broadcast, mpsc};
+use tokio::sync::mpsc;
 use tokio::time::sleep;
 
+use crate::channels::{AsyncSenderExt, BroadcastReceiverExt};
 use crate::config::{CommonConfig, LayoutConfig};
 use crate::gtk_helpers::IronbarGtkExt;
 use crate::modules::{
     Module, ModuleInfo, ModuleParts, ModulePopup, ModuleUpdateEvent, PopupButton, WidgetContext,
 };
-use crate::{glib_recv, module_impl, send_async, spawn, try_send};
+use crate::{module_impl, spawn};
 
 #[derive(Debug, Deserialize, Clone)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
@@ -107,7 +108,7 @@ impl Module<Button> for ClockModule {
         spawn(async move {
             loop {
                 let date = Local::now();
-                send_async!(tx, ModuleUpdateEvent::Update(date));
+                tx.send_update(date).await;
                 sleep(tokio::time::Duration::from_millis(500)).await;
             }
         });
@@ -131,25 +132,20 @@ impl Module<Button> for ClockModule {
 
         let tx = context.tx.clone();
         button.connect_clicked(move |button| {
-            try_send!(tx, ModuleUpdateEvent::TogglePopup(button.popup_id()));
+            tx.send_spawn(ModuleUpdateEvent::TogglePopup(button.popup_id()));
         });
 
         let format = self.format.clone();
         let locale = Locale::try_from(self.locale.as_str()).unwrap_or(Locale::POSIX);
 
         let rx = context.subscribe();
-        glib_recv!(rx, date => {
+        rx.recv_glib(move |date| {
             let date_string = format!("{}", date.format_localized(&format, locale));
             label.set_label(&date_string);
         });
 
         let popup = self
-            .into_popup(
-                context.controller_tx.clone(),
-                context.subscribe(),
-                context,
-                info,
-            )
+            .into_popup(context, info)
             .into_popup_parts(vec![&button]);
 
         Ok(ModuleParts::new(button, popup))
@@ -157,9 +153,7 @@ impl Module<Button> for ClockModule {
 
     fn into_popup(
         self,
-        _tx: mpsc::Sender<Self::ReceiveMessage>,
-        rx: broadcast::Receiver<Self::SendMessage>,
-        _context: WidgetContext<Self::SendMessage, Self::ReceiveMessage>,
+        context: WidgetContext<Self::SendMessage, Self::ReceiveMessage>,
         _info: &ModuleInfo,
     ) -> Option<gtk::Box> {
         let container = gtk::Box::new(Orientation::Vertical, 0);
@@ -179,9 +173,16 @@ impl Module<Button> for ClockModule {
         let format = self.format_popup;
         let locale = Locale::try_from(self.locale.as_str()).unwrap_or(Locale::POSIX);
 
-        glib_recv!(rx, date => {
+        context.subscribe().recv_glib(move |date| {
             let date_string = format!("{}", date.format_localized(&format, locale));
             clock.set_label(&date_string);
+        });
+
+        // Reset selected date on each popup open
+        context.popup.window.connect_show(move |_| {
+            let date = Local::now();
+            calendar.select_day(date.day());
+            calendar.select_month(date.month() - 1, date.year() as u32);
         });
 
         container.show_all();

@@ -9,9 +9,12 @@ use glib::{Propagation, PropertySet};
 use gtk::prelude::*;
 use gtk::{Button, IconTheme, Label, Orientation, Scale};
 use regex::Regex;
-use tokio::sync::{broadcast, mpsc};
+use tokio::sync::mpsc;
 use tracing::error;
 
+pub use self::config::MusicModule;
+use self::config::PlayerType;
+use crate::channels::{AsyncSenderExt, BroadcastReceiverExt};
 use crate::clients::Clients;
 use crate::clients::music::{
     self, MusicClient, PlayerState, PlayerUpdate, ProgressTick, Status, Track,
@@ -22,10 +25,7 @@ use crate::modules::PopupButton;
 use crate::modules::{
     Module, ModuleInfo, ModuleParts, ModulePopup, ModuleUpdateEvent, WidgetContext,
 };
-use crate::{glib_recv, module_impl, send_async, spawn, try_send};
-
-pub use self::config::MusicModule;
-use self::config::PlayerType;
+use crate::{module_impl, spawn};
 
 mod config;
 
@@ -136,24 +136,14 @@ impl Module<Button> for MusicModule {
                                         display_string,
                                     };
 
-                                    send_async!(
-                                        tx,
-                                        ModuleUpdateEvent::Update(ControllerEvent::Update(Some(
-                                            update
-                                        )))
-                                    );
+                                    tx.send_update(ControllerEvent::Update(Some(update))).await;
                                 }
-                                None => send_async!(
-                                    tx,
-                                    ModuleUpdateEvent::Update(ControllerEvent::Update(None))
-                                ),
+                                None => tx.send_update(ControllerEvent::Update(None)).await,
                             },
-                            PlayerUpdate::ProgressTick(progress_tick) => send_async!(
-                                tx,
-                                ModuleUpdateEvent::Update(ControllerEvent::UpdateProgress(
-                                    progress_tick
-                                ))
-                            ),
+                            PlayerUpdate::ProgressTick(progress_tick) => {
+                                tx.send_update(ControllerEvent::UpdateProgress(progress_tick))
+                                    .await
+                            }
                         }
                     }
                 }
@@ -221,7 +211,7 @@ impl Module<Button> for MusicModule {
             let tx = context.tx.clone();
 
             button.connect_clicked(move |button| {
-                try_send!(tx, ModuleUpdateEvent::TogglePopup(button.popup_id()));
+                tx.send_spawn(ModuleUpdateEvent::TogglePopup(button.popup_id()));
             });
         }
 
@@ -231,9 +221,9 @@ impl Module<Button> for MusicModule {
             let tx = context.tx.clone();
             let rx = context.subscribe();
 
-            glib_recv!(rx, event => {
+            rx.recv_glib(move |event| {
                 let ControllerEvent::Update(mut event) = event else {
-                    continue;
+                    return;
                 };
 
                 if let Some(event) = event.take() {
@@ -262,14 +252,13 @@ impl Module<Button> for MusicModule {
                     }
                 } else {
                     button.hide();
-                    try_send!(tx, ModuleUpdateEvent::ClosePopup);
+                    tx.send_spawn(ModuleUpdateEvent::ClosePopup);
                 }
             });
         };
 
-        let rx = context.subscribe();
         let popup = self
-            .into_popup(context.controller_tx.clone(), rx, context, info)
+            .into_popup(context, info)
             .into_popup_parts(vec![&button]);
 
         Ok(ModuleParts::new(button, popup))
@@ -277,9 +266,7 @@ impl Module<Button> for MusicModule {
 
     fn into_popup(
         self,
-        tx: mpsc::Sender<Self::ReceiveMessage>,
-        rx: broadcast::Receiver<Self::SendMessage>,
-        _context: WidgetContext<Self::SendMessage, Self::ReceiveMessage>,
+        context: WidgetContext<Self::SendMessage, Self::ReceiveMessage>,
         info: &ModuleInfo,
     ) -> Option<gtk::Box> {
         let icon_theme = info.icon_theme;
@@ -348,29 +335,29 @@ impl Module<Button> for MusicModule {
         main_container.add(&volume_box);
         container.add(&main_container);
 
-        let tx_prev = tx.clone();
+        let tx_prev = context.controller_tx.clone();
         btn_prev.connect_clicked(move |_| {
-            try_send!(tx_prev, PlayerCommand::Previous);
+            tx_prev.send_spawn(PlayerCommand::Previous);
         });
 
-        let tx_play = tx.clone();
+        let tx_play = context.controller_tx.clone();
         btn_play.connect_clicked(move |_| {
-            try_send!(tx_play, PlayerCommand::Play);
+            tx_play.send_spawn(PlayerCommand::Play);
         });
 
-        let tx_pause = tx.clone();
+        let tx_pause = context.controller_tx.clone();
         btn_pause.connect_clicked(move |_| {
-            try_send!(tx_pause, PlayerCommand::Pause);
+            tx_pause.send_spawn(PlayerCommand::Pause);
         });
 
-        let tx_next = tx.clone();
+        let tx_next = context.controller_tx.clone();
         btn_next.connect_clicked(move |_| {
-            try_send!(tx_next, PlayerCommand::Next);
+            tx_next.send_spawn(PlayerCommand::Next);
         });
 
-        let tx_vol = tx.clone();
+        let tx_vol = context.controller_tx.clone();
         volume_slider.connect_change_value(move |_, _, val| {
-            try_send!(tx_vol, PlayerCommand::Volume(val as u8));
+            tx_vol.send_spawn(PlayerCommand::Volume(val as u8));
             Propagation::Proceed
         });
 
@@ -402,9 +389,10 @@ impl Module<Button> for MusicModule {
 
         {
             let drag_lock = drag_lock.clone();
+            let tx = context.controller_tx.clone();
             progress.connect_button_release_event(move |scale, _| {
                 let value = scale.value();
-                try_send!(tx, PlayerCommand::Seek(Duration::from_secs_f64(value)));
+                tx.send_spawn(PlayerCommand::Seek(Duration::from_secs_f64(value)));
 
                 drag_lock.set(false);
                 Propagation::Proceed
@@ -418,7 +406,7 @@ impl Module<Button> for MusicModule {
             let image_size = self.cover_image_size;
 
             let mut prev_cover = None;
-            glib_recv!(rx, event =>  {
+            context.subscribe().recv_glib(move |event| {
                 match event {
                     ControllerEvent::Update(Some(update)) => {
                         // only update art when album changes
