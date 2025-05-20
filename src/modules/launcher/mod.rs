@@ -269,10 +269,16 @@ impl Module<gtk::Box> for LauncherModule {
             }
 
             {
-                let items = lock!(items);
-                let items = items.iter();
-                for (_, item) in items {
-                    tx.send_update_spawn(LauncherUpdate::AddItem(item.clone()));
+                let items = {
+                    let items = lock!(items);
+                    items
+                        .iter()
+                        .map(|(_, item)| item.clone())
+                        .collect::<Vec<_>>() // need to collect to be able to drop lock
+                };
+
+                for item in items {
+                    tx.send_update(LauncherUpdate::AddItem(item)).await;
                 }
             }
 
