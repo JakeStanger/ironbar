@@ -1,6 +1,6 @@
 use std::env;
 
-use chrono::{DateTime, Local, Locale};
+use chrono::{DateTime, Datelike, Local, Locale};
 use color_eyre::Result;
 use gtk::prelude::*;
 use gtk::{Align, Button, Calendar, Label, Orientation};
@@ -176,6 +176,13 @@ impl Module<Button> for ClockModule {
         context.subscribe().recv_glib(move |date| {
             let date_string = format!("{}", date.format_localized(&format, locale));
             clock.set_label(&date_string);
+        });
+
+        // Reset selected date on each popup open
+        context.popup.window.connect_show(move |_| {
+            let date = Local::now();
+            calendar.select_day(date.day());
+            calendar.select_month(date.month() - 1, date.year() as u32);
         });
 
         container.show_all();
