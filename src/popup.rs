@@ -35,7 +35,7 @@ impl Popup {
     /// This includes setting up gtk-layer-shell
     /// and an empty `gtk::Box` container.
     pub fn new(
-        ironbar: Rc<Ironbar>,
+        ironbar: &Ironbar,
         module_info: &ModuleInfo,
         output_size: (i32, i32),
         gap: i32,

@@ -217,7 +217,7 @@ impl Script {
                     }
                     Err(err) => error!("{err:?}"),
                 },
-            };
+            }
 
             sleep(tokio::time::Duration::from_millis(self.interval)).await;
         }

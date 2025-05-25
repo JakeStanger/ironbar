@@ -125,6 +125,12 @@ where
     fn recv_glib<F>(self, f: F)
     where
         F: FnMut(T) + 'static;
+
+    /// Like [`BroadcastReceiverExt::recv_glib`], but the closure must return a [`Future`].
+    fn recv_glib_async<Fn, F>(self, f: Fn)
+    where
+        Fn: FnMut(T) -> F + 'static,
+        F: Future;
 }
 
 impl<T> BroadcastReceiverExt<T> for broadcast::Receiver<T>
@@ -139,6 +145,31 @@ where
             loop {
                 match self.recv().await {
                     Ok(val) => f(val),
+                    Err(broadcast::error::RecvError::Lagged(count)) => {
+                        tracing::warn!(
+                            "Channel lagged behind by {count}, this may result in unexpected or broken behaviour"
+                        );
+                    }
+                    Err(err) => {
+                        tracing::error!("{err:?}");
+                        break;
+                    }
+                }
+            }
+        });
+    }
+
+    fn recv_glib_async<Fn, F>(mut self, mut f: Fn)
+    where
+        Fn: FnMut(T) -> F + 'static,
+        F: Future,
+    {
+        glib::spawn_future_local(async move {
+            loop {
+                match self.recv().await {
+                    Ok(val) => {
+                        f(val).await;
+                    }
                     Err(broadcast::error::RecvError::Lagged(count)) => {
                         tracing::warn!(
                             "Channel lagged behind by {count}, this may result in unexpected or broken behaviour"

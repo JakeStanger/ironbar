@@ -18,12 +18,11 @@ pub fn handle_command(command: IronvarCommand) -> Response {
 
             if key.contains('.') {
                 for part in key.split('.') {
-                    ns = match ns.get_namespace(part) {
-                        Some(ns) => ns.clone(),
-                        None => {
-                            key = part.into();
-                            break;
-                        }
+                    ns = if let Some(ns) = ns.get_namespace(part) {
+                        ns.clone()
+                    } else {
+                        key = part.into();
+                        break;
                     };
                 }
             }

@@ -157,7 +157,7 @@ impl Client {
                         Event::Toplevel(event) => toplevel_tx.send_expect(event),
                         #[cfg(feature = "clipboard")]
                         Event::Clipboard(item) => clipboard_tx.send_expect(item),
-                    };
+                    }
                 }
             });
         }

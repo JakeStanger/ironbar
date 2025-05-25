@@ -1,0 +1,8 @@
+[Desktop Entry]
+Name=Factorio
+Comment=Play this game on Steam
+Exec=steam steam://rungameid/427520
+Icon=steam_icon_427520
+Terminal=false
+Type=Application
+Categories=Game;

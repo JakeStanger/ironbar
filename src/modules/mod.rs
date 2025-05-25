@@ -1,4 +1,3 @@
-use std::collections::HashMap;
 use std::fmt::Debug;
 use std::rc::Rc;
 use std::sync::Arc;
@@ -7,7 +6,7 @@ use color_eyre::Result;
 use glib::IsA;
 use gtk::gdk::{EventMask, Monitor};
 use gtk::prelude::*;
-use gtk::{Application, Button, EventBox, IconTheme, Orientation, Revealer, Widget};
+use gtk::{Application, Button, EventBox, Orientation, Revealer, Widget};
 use tokio::sync::{broadcast, mpsc};
 use tracing::debug;
 
@@ -78,8 +77,6 @@ pub struct ModuleInfo<'a> {
     pub bar_position: BarPosition,
     pub monitor: &'a Monitor,
     pub output_name: &'a str,
-    pub icon_theme: &'a IconTheme,
-    pub icon_overrides: Arc<HashMap<String, String>>,
 }
 
 #[derive(Debug, Clone)]

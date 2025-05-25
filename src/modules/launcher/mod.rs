@@ -8,7 +8,6 @@ use super::{Module, ModuleInfo, ModuleParts, ModulePopup, ModuleUpdateEvent, Wid
 use crate::channels::{AsyncSenderExt, BroadcastReceiverExt};
 use crate::clients::wayland::{self, ToplevelEvent};
 use crate::config::{CommonConfig, EllipsizeMode, LayoutConfig, TruncateMode};
-use crate::desktop_file::find_desktop_file;
 use crate::gtk_helpers::{IronbarGtkExt, IronbarLabelExt};
 use crate::modules::launcher::item::ImageTextButton;
 use crate::modules::launcher::pagination::{IconContext, Pagination};
@@ -18,11 +17,10 @@ use gtk::prelude::*;
 use gtk::{Button, Orientation};
 use indexmap::IndexMap;
 use serde::Deserialize;
-use std::ops::Deref;
 use std::process::{Command, Stdio};
 use std::sync::Arc;
 use tokio::sync::mpsc;
-use tracing::{debug, error, trace};
+use tracing::{debug, error, trace, warn};
 
 #[derive(Debug, Deserialize, Clone)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
@@ -212,7 +210,7 @@ impl Module<gtk::Box> for LauncherModule {
 
     fn spawn_controller(
         &self,
-        info: &ModuleInfo,
+        _info: &ModuleInfo,
         context: &WidgetContext<Self::SendMessage, Self::ReceiveMessage>,
         mut rx: mpsc::Receiver<Self::ReceiveMessage>,
     ) -> crate::Result<()> {
@@ -223,14 +221,9 @@ impl Module<gtk::Box> for LauncherModule {
                 favorites
                     .iter()
                     .map(|app_id| {
-                        let icon_override = info
-                            .icon_overrides
-                            .get(app_id)
-                            .map_or_else(String::new, ToString::to_string);
-
                         (
                             app_id.to_string(),
-                            Item::new(app_id.to_string(), icon_override, OpenState::Closed, true),
+                            Item::new(app_id.to_string(), OpenState::Closed, true),
                         )
                     })
                     .collect::<IndexMap<_, _>>()
@@ -238,8 +231,6 @@ impl Module<gtk::Box> for LauncherModule {
 
         let items = arc_mut!(items);
         let items2 = Arc::clone(&items);
-
-        let icon_overrides = info.icon_overrides.clone();
 
         let tx = context.tx.clone();
         let tx2 = context.tx.clone();
@@ -258,12 +249,7 @@ impl Module<gtk::Box> for LauncherModule {
                 if let Some(item) = item {
                     item.merge_toplevel(info.clone());
                 } else {
-                    let mut item = Item::from(info.clone());
-
-                    if let Some(icon) = icon_overrides.get(&info.app_id) {
-                        item.icon_override.clone_from(icon);
-                    }
-
+                    let item = Item::from(info.clone());
                     items.insert(info.app_id.clone(), item);
                 }
             }
@@ -271,6 +257,7 @@ impl Module<gtk::Box> for LauncherModule {
             {
                 let items = {
                     let items = lock!(items);
+
                     items
                         .iter()
                         .map(|(_, item)| item.clone())
@@ -296,12 +283,7 @@ impl Module<gtk::Box> for LauncherModule {
                             let item = items.get_mut(&info.app_id);
                             match item {
                                 None => {
-                                    let mut item: Item = info.into();
-
-                                    if let Some(icon) = icon_overrides.get(&app_id) {
-                                        item.icon_override.clone_from(icon);
-                                    }
-
+                                    let item: Item = info.into();
                                     items.insert(app_id.clone(), item.clone());
 
                                     ItemOrWindow::Item(item)
@@ -378,7 +360,7 @@ impl Module<gtk::Box> for LauncherModule {
                                 .await?;
                             }
                             None => {}
-                        };
+                        }
                     }
                 }
             }
@@ -389,17 +371,16 @@ impl Module<gtk::Box> for LauncherModule {
         // listen to ui events
         let minimize_focused = self.minimize_focused;
         let wl = context.client::<wayland::Client>();
+
+        let desktop_files = context.ironbar.desktop_files();
+
         spawn(async move {
             while let Some(event) = rx.recv().await {
                 if let ItemEvent::OpenItem(app_id) = event {
-                    find_desktop_file(&app_id).map_or_else(
-                        || error!("Could not find desktop file for {}", app_id),
-                        |file| {
+                    match desktop_files.find(&app_id).await {
+                        Ok(Some(file)) => {
                             if let Err(err) = Command::new("gtk-launch")
-                                .arg(
-                                    file.file_name()
-                                        .expect("File segment missing from path to desktop file"),
-                                )
+                                .arg(file.file_name)
                                 .stdout(Stdio::null())
                                 .stderr(Stdio::null())
                                 .spawn()
@@ -408,11 +389,13 @@ impl Module<gtk::Box> for LauncherModule {
                                     "{:?}",
                                     Report::new(err)
                                         .wrap_err("Failed to run gtk-launch command.")
-                                        .suggestion("Perhaps the desktop file is invalid?")
+                                        .suggestion("Perhaps the applications file is invalid?")
                                 );
                             }
-                        },
-                    );
+                        }
+                        Ok(None) => warn!("Could not find applications file for {}", app_id),
+                        Err(err) => error!("Failed to find parse file for {}: {}", app_id, err),
+                    }
                 } else {
                     tx.send_expect(ModuleUpdateEvent::ClosePopup).await;
 
@@ -457,26 +440,25 @@ impl Module<gtk::Box> for LauncherModule {
         context: WidgetContext<Self::SendMessage, Self::ReceiveMessage>,
         info: &ModuleInfo,
     ) -> crate::Result<ModuleParts<gtk::Box>> {
-        let icon_theme = info.icon_theme;
-
         let container = gtk::Box::new(self.layout.orientation(info), 0);
         let page_size = self.page_size;
+
+        let image_provider = context.ironbar.image_provider();
 
         let pagination = Pagination::new(
             &container,
             self.page_size,
             self.layout.orientation(info),
-            IconContext {
-                icon_back: &self.icons.page_back,
-                icon_fwd: &self.icons.page_forward,
-                icon_size: self.pagination_icon_size,
-                icon_theme: info.icon_theme,
+            &IconContext {
+                back: &self.icons.page_back,
+                fwd: &self.icons.page_forward,
+                size: self.pagination_icon_size,
             },
+            &image_provider,
         );
 
         {
             let container = container.clone();
-            let icon_theme = icon_theme.clone();
 
             let controller_tx = context.controller_tx.clone();
 
@@ -517,16 +499,16 @@ impl Module<gtk::Box> for LauncherModule {
                             let button = ItemButton::new(
                                 &item,
                                 appearance_options,
-                                &icon_theme,
+                                image_provider.clone(),
                                 bar_position,
                                 &tx,
                                 &controller_tx,
                             );
 
                             if self.reversed {
-                                container.pack_end(button.button.deref(), false, false, 0);
+                                container.pack_end(&*button.button, false, false, 0);
                             } else {
-                                container.add(button.button.deref());
+                                container.add(&*button.button);
                             }
 
                             if buttons.len() + 1 >= pagination.offset() + page_size {
@@ -599,7 +581,7 @@ impl Module<gtk::Box> for LauncherModule {
                         }
                     }
                     LauncherUpdate::Hover(_) => {}
-                };
+                }
             };
 
             rx.recv_glib(handle_event);

@@ -29,6 +29,7 @@ use crate::channels::SyncSenderExt;
 use crate::clients::Clients;
 use crate::clients::wayland::OutputEventType;
 use crate::config::{Config, MonitorConfig};
+use crate::desktop_file::DesktopFiles;
 use crate::error::ExitCode;
 #[cfg(feature = "ipc")]
 use crate::ironvar::{VariableManager, WritableNamespace};
@@ -106,7 +107,7 @@ fn run_with_args() {
                         error!("{err:#}");
                         exit(ExitCode::IpcResponseError as i32)
                     }
-                };
+                }
             });
         }
         None => start_ironbar(),
@@ -119,17 +120,26 @@ pub struct Ironbar {
     clients: Rc<RefCell<Clients>>,
     config: Rc<RefCell<Config>>,
     config_dir: PathBuf,
+
+    desktop_files: DesktopFiles,
+    image_provider: image::Provider,
 }
 
 impl Ironbar {
     fn new() -> Self {
-        let (config, config_dir) = load_config();
+        let (mut config, config_dir) = load_config();
+
+        let desktop_files = DesktopFiles::new();
+        let image_provider =
+            image::Provider::new(desktop_files.clone(), &mut config.icon_overrides);
 
         Self {
             bars: Rc::new(RefCell::new(vec![])),
             clients: Rc::new(RefCell::new(Clients::new())),
             config: Rc::new(RefCell::new(config)),
             config_dir,
+            desktop_files,
+            image_provider,
         }
     }
 
@@ -215,6 +225,10 @@ impl Ironbar {
                 let _hold = activate_rx.recv().expect("to receive activation signal");
                 debug!("Received activation signal, initialising bars");
 
+                instance
+                    .image_provider
+                    .set_icon_theme(instance.config.borrow().icon_theme.as_deref());
+
                 while let Ok(event) = rx_outputs.recv().await {
                     match event.event_type {
                         OutputEventType::New => {
@@ -268,6 +282,16 @@ impl Ironbar {
         VARIABLE_MANAGER
             .get_or_init(|| Arc::new(VariableManager::new()))
             .clone()
+    }
+
+    #[must_use]
+    pub fn desktop_files(&self) -> DesktopFiles {
+        self.desktop_files.clone()
+    }
+
+    #[must_use]
+    pub fn image_provider(&self) -> image::Provider {
+        self.image_provider.clone()
     }
 
     /// Gets clones of bars by their name.
@@ -370,7 +394,7 @@ fn load_output_bars(
     };
 
     let config = ironbar.config.borrow();
-    let icon_overrides = Arc::new(config.icon_overrides.clone());
+
     let display = get_display();
 
     let pos = output.logical_position.unwrap_or_default();
@@ -392,7 +416,6 @@ fn load_output_bars(
                 &monitor,
                 monitor_name.to_string(),
                 output_size,
-                icon_overrides,
                 config.clone(),
                 ironbar.clone(),
             )?]
@@ -405,7 +428,6 @@ fn load_output_bars(
                     &monitor,
                     monitor_name.to_string(),
                     output_size,
-                    icon_overrides.clone(),
                     config.clone(),
                     ironbar.clone(),
                 )
@@ -416,7 +438,6 @@ fn load_output_bars(
             &monitor,
             monitor_name.to_string(),
             output_size,
-            icon_overrides,
             config.bar.clone(),
             ironbar.clone(),
         )?],

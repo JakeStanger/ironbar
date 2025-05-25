@@ -231,7 +231,7 @@ impl Module<gtk::Box> for KeyboardModule {
                             tracing::error!("{err:?}");
                             break;
                         }
-                    };
+                    }
                 }
             });
         }
@@ -257,9 +257,11 @@ impl Module<gtk::Box> for KeyboardModule {
     ) -> Result<ModuleParts<gtk::Box>> {
         let container = gtk::Box::new(self.layout.orientation(info), 0);
 
-        let caps = IconLabel::new(&self.icons.caps_off, info.icon_theme, self.icon_size);
-        let num = IconLabel::new(&self.icons.num_off, info.icon_theme, self.icon_size);
-        let scroll = IconLabel::new(&self.icons.scroll_off, info.icon_theme, self.icon_size);
+        let image_provider = context.ironbar.image_provider();
+
+        let caps = IconLabel::new(&self.icons.caps_off, self.icon_size, &image_provider);
+        let num = IconLabel::new(&self.icons.num_off, self.icon_size, &image_provider);
+        let scroll = IconLabel::new(&self.icons.scroll_off, self.icon_size, &image_provider);
 
         caps.label().set_angle(self.layout.angle(info));
         caps.label().set_justify(self.layout.justify.into());
@@ -270,7 +272,7 @@ impl Module<gtk::Box> for KeyboardModule {
         scroll.label().set_angle(self.layout.angle(info));
         scroll.label().set_justify(self.layout.justify.into());
 
-        let layout_button = IconButton::new("", info.icon_theme, self.icon_size);
+        let layout_button = IconButton::new("", self.icon_size, image_provider);
 
         if self.show_caps {
             caps.add_class("key");

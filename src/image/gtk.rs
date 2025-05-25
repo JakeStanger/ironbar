@@ -1,7 +1,7 @@
-use super::ImageProvider;
 use crate::gtk_helpers::{IronbarGtkExt, IronbarLabelExt};
+use crate::image;
 use gtk::prelude::*;
-use gtk::{Button, IconTheme, Image, Label, Orientation};
+use gtk::{Button, Image, Label, Orientation};
 use std::ops::Deref;
 
 #[derive(Debug, Clone)]
@@ -29,27 +29,33 @@ pub struct IconButton {
     feature = "workspaces",
 ))]
 impl IconButton {
-    pub fn new(input: &str, icon_theme: &IconTheme, size: i32) -> Self {
+    pub fn new(input: &str, size: i32, image_provider: image::Provider) -> Self {
         let button = Button::new();
         let image = Image::new();
         let label = Label::new(Some(input));
 
-        if ImageProvider::is_definitely_image_input(input) {
+        if image::Provider::is_explicit_input(input) {
             image.add_class("image");
             image.add_class("icon");
 
-            match ImageProvider::parse(input, icon_theme, false, size)
-                .map(|provider| provider.load_into_image(&image))
-            {
-                Some(_) => {
+            let image = image.clone();
+            let label = label.clone();
+            let button = button.clone();
+
+            let input = input.to_string(); // ew
+
+            glib::spawn_future_local(async move {
+                if let Ok(true) = image_provider
+                    .load_into_image(&input, size, false, &image)
+                    .await
+                {
                     button.set_image(Some(&image));
                     button.set_always_show_image(true);
-                }
-                None => {
+                } else {
                     button.set_child(Some(&label));
                     label.show();
                 }
-            }
+            });
         } else {
             button.set_child(Some(&label));
             label.show();
@@ -82,17 +88,17 @@ impl Deref for IconButton {
 
 #[cfg(any(feature = "keyboard", feature = "music", feature = "workspaces"))]
 pub struct IconLabel {
+    provider: image::Provider,
     container: gtk::Box,
     label: Label,
     image: Image,
 
-    icon_theme: IconTheme,
     size: i32,
 }
 
 #[cfg(any(feature = "keyboard", feature = "music", feature = "workspaces"))]
 impl IconLabel {
-    pub fn new(input: &str, icon_theme: &IconTheme, size: i32) -> Self {
+    pub fn new(input: &str, size: i32, image_provider: &image::Provider) -> Self {
         let container = gtk::Box::new(Orientation::Horizontal, 0);
 
         let label = Label::builder().use_markup(true).build();
@@ -106,21 +112,34 @@ impl IconLabel {
         container.add(&image);
         container.add(&label);
 
-        if ImageProvider::is_definitely_image_input(input) {
-            ImageProvider::parse(input, icon_theme, false, size)
-                .map(|provider| provider.load_into_image(&image));
+        if image::Provider::is_explicit_input(input) {
+            let image = image.clone();
+            let label = label.clone();
+            let image_provider = image_provider.clone();
 
-            image.show();
+            let input = input.to_string();
+
+            glib::spawn_future_local(async move {
+                let res = image_provider
+                    .load_into_image(&input, size, false, &image)
+                    .await;
+                if matches!(res, Ok(true)) {
+                    image.show();
+                } else {
+                    label.set_text(&input);
+                    label.show();
+                }
+            });
         } else {
             label.set_text(input);
             label.show();
         }
 
         Self {
+            provider: image_provider.clone(),
             container,
             label,
             image,
-            icon_theme: icon_theme.clone(),
             size,
         }
     }
@@ -130,12 +149,26 @@ impl IconLabel {
         let image = &self.image;
 
         if let Some(input) = input {
-            if ImageProvider::is_definitely_image_input(input) {
-                ImageProvider::parse(input, &self.icon_theme, false, self.size)
-                    .map(|provider| provider.load_into_image(image));
+            if image::Provider::is_explicit_input(input) {
+                let provider = self.provider.clone();
+                let size = self.size;
 
-                label.hide();
-                image.show();
+                let label = label.clone();
+                let image = image.clone();
+                let input = input.to_string();
+
+                glib::spawn_future_local(async move {
+                    let res = provider.load_into_image(&input, size, false, &image).await;
+                    if matches!(res, Ok(true)) {
+                        label.hide();
+                        image.show();
+                    } else {
+                        label.set_label_escaped(&input);
+
+                        image.hide();
+                        label.show();
+                    }
+                });
             } else {
                 label.set_label_escaped(input);
 

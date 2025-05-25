@@ -93,7 +93,7 @@ impl Module<gtk::Box> for TrayModule {
             while let Some(cmd) = rx.recv().await {
                 if let Err(err) = client.activate(cmd).await {
                     error!("{err:?}");
-                };
+                }
             }
 
             Ok::<_, Report>(())
@@ -120,7 +120,7 @@ impl Module<gtk::Box> for TrayModule {
         {
             let container = container.clone();
             let mut menus = HashMap::new();
-            let icon_theme = info.icon_theme.clone();
+            let icon_theme = context.ironbar.image_provider().icon_theme();
 
             // listen for UI updates
             context.subscribe().recv_glib(move |update| {
@@ -159,12 +159,12 @@ fn on_update(
             let mut menu_item = TrayMenu::new(&address, *item);
             container.pack_start(&menu_item.event_box, true, true, 0);
 
-            if let Ok(image) = icon::get_image(&menu_item, icon_theme, icon_size, prefer_icons) {
+            if let Ok(image) = icon::get_image(&menu_item, icon_size, prefer_icons, icon_theme) {
                 menu_item.set_image(&image);
             } else {
                 let label = menu_item.title.clone().unwrap_or(address.clone());
                 menu_item.set_label(&label);
-            };
+            }
 
             menu_item.event_box.show();
             menus.insert(address.into(), menu_item);
@@ -185,10 +185,10 @@ fn on_update(
                 UpdateEvent::Icon(icon) => {
                     if icon.as_ref() != menu_item.icon_name() {
                         menu_item.set_icon_name(icon);
-                        match icon::get_image(menu_item, icon_theme, icon_size, prefer_icons) {
+                        match icon::get_image(menu_item, icon_size, prefer_icons, icon_theme) {
                             Ok(image) => menu_item.set_image(&image),
                             Err(_) => menu_item.show_label(),
-                        };
+                        }
                     }
                 }
                 UpdateEvent::OverlayIcon(_icon) => {
@@ -219,5 +219,5 @@ fn on_update(
                 container.remove(&menu.event_box);
             }
         }
-    };
+    }
 }

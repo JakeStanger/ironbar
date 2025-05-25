@@ -9,9 +9,8 @@ use crate::config::{CommonConfig, LayoutConfig};
 use crate::modules::workspaces::button_map::{ButtonMap, Identifier};
 use crate::modules::workspaces::open_state::OpenState;
 use crate::modules::{Module, ModuleInfo, ModuleParts, WidgetContext};
-use crate::{module_impl, spawn};
+use crate::{image, module_impl, spawn};
 use color_eyre::{Report, Result};
-use gtk::IconTheme;
 use gtk::prelude::*;
 use serde::Deserialize;
 use std::cmp::Ordering;
@@ -145,8 +144,8 @@ const fn default_icon_size() -> i32 {
 #[derive(Debug, Clone)]
 pub struct WorkspaceItemContext {
     name_map: HashMap<String, String>,
-    icon_theme: IconTheme,
     icon_size: i32,
+    image_provider: image::Provider,
     tx: mpsc::Sender<i64>,
 }
 
@@ -240,8 +239,8 @@ impl Module<gtk::Box> for WorkspacesModule {
 
         let item_context = WorkspaceItemContext {
             name_map: self.name_map.clone(),
-            icon_theme: info.icon_theme.clone(),
             icon_size: self.icon_size,
+            image_provider: context.ironbar.image_provider(),
             tx: context.controller_tx.clone(),
         };
 

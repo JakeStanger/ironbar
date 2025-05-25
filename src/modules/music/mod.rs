@@ -7,10 +7,10 @@ use std::time::Duration;
 use color_eyre::Result;
 use glib::{Propagation, PropertySet};
 use gtk::prelude::*;
-use gtk::{Button, IconTheme, Label, Orientation, Scale};
+use gtk::{Button, Label, Orientation, Scale};
 use regex::Regex;
 use tokio::sync::mpsc;
-use tracing::error;
+use tracing::{error, warn};
 
 pub use self::config::MusicModule;
 use self::config::PlayerType;
@@ -20,12 +20,12 @@ use crate::clients::music::{
     self, MusicClient, PlayerState, PlayerUpdate, ProgressTick, Status, Track,
 };
 use crate::gtk_helpers::{IronbarGtkExt, IronbarLabelExt};
-use crate::image::{IconButton, IconLabel, ImageProvider};
+use crate::image::{IconButton, IconLabel};
 use crate::modules::PopupButton;
 use crate::modules::{
     Module, ModuleInfo, ModuleParts, ModulePopup, ModuleUpdateEvent, WidgetContext,
 };
-use crate::{module_impl, spawn};
+use crate::{image, module_impl, spawn};
 
 mod config;
 
@@ -142,7 +142,7 @@ impl Module<Button> for MusicModule {
                             },
                             PlayerUpdate::ProgressTick(progress_tick) => {
                                 tx.send_update(ControllerEvent::UpdateProgress(progress_tick))
-                                    .await
+                                    .await;
                             }
                         }
                     }
@@ -184,8 +184,10 @@ impl Module<Button> for MusicModule {
 
         button.add(&button_contents);
 
-        let icon_play = IconLabel::new(&self.icons.play, info.icon_theme, self.icon_size);
-        let icon_pause = IconLabel::new(&self.icons.pause, info.icon_theme, self.icon_size);
+        let image_provider = context.ironbar.image_provider();
+
+        let icon_play = IconLabel::new(&self.icons.play, self.icon_size, &image_provider);
+        let icon_pause = IconLabel::new(&self.icons.pause, self.icon_size, &image_provider);
 
         icon_play.label().set_angle(self.layout.angle(info));
         icon_play.label().set_justify(self.layout.justify.into());
@@ -267,9 +269,9 @@ impl Module<Button> for MusicModule {
     fn into_popup(
         self,
         context: WidgetContext<Self::SendMessage, Self::ReceiveMessage>,
-        info: &ModuleInfo,
+        _info: &ModuleInfo,
     ) -> Option<gtk::Box> {
-        let icon_theme = info.icon_theme;
+        let image_provider = context.ironbar.image_provider();
 
         let container = gtk::Box::new(Orientation::Vertical, 10);
         let main_container = gtk::Box::new(Orientation::Horizontal, 10);
@@ -283,9 +285,9 @@ impl Module<Button> for MusicModule {
         let icons = self.icons;
 
         let info_box = gtk::Box::new(Orientation::Vertical, 10);
-        let title_label = IconPrefixedLabel::new(&icons.track, None, icon_theme);
-        let album_label = IconPrefixedLabel::new(&icons.album, None, icon_theme);
-        let artist_label = IconPrefixedLabel::new(&icons.artist, None, icon_theme);
+        let title_label = IconPrefixedLabel::new(&icons.track, None, &image_provider);
+        let album_label = IconPrefixedLabel::new(&icons.album, None, &image_provider);
+        let artist_label = IconPrefixedLabel::new(&icons.artist, None, &image_provider);
 
         title_label.container.add_class("title");
         album_label.container.add_class("album");
@@ -298,16 +300,16 @@ impl Module<Button> for MusicModule {
         let controls_box = gtk::Box::new(Orientation::Horizontal, 0);
         controls_box.add_class("controls");
 
-        let btn_prev = IconButton::new(&icons.prev, icon_theme, self.icon_size);
+        let btn_prev = IconButton::new(&icons.prev, self.icon_size, image_provider.clone());
         btn_prev.add_class("btn-prev");
 
-        let btn_play = IconButton::new(&icons.play, icon_theme, self.icon_size);
+        let btn_play = IconButton::new(&icons.play, self.icon_size, image_provider.clone());
         btn_play.add_class("btn-play");
 
-        let btn_pause = IconButton::new(&icons.pause, icon_theme, self.icon_size);
+        let btn_pause = IconButton::new(&icons.pause, self.icon_size, image_provider.clone());
         btn_pause.add_class("btn-pause");
 
-        let btn_next = IconButton::new(&icons.next, icon_theme, self.icon_size);
+        let btn_next = IconButton::new(&icons.next, self.icon_size, image_provider.clone());
         btn_next.add_class("btn-next");
 
         controls_box.add(&*btn_prev);
@@ -324,7 +326,7 @@ impl Module<Button> for MusicModule {
         volume_slider.set_inverted(true);
         volume_slider.add_class("slider");
 
-        let volume_icon = IconLabel::new(&icons.volume, icon_theme, self.icon_size);
+        let volume_icon = IconLabel::new(&icons.volume, self.icon_size, &image_provider);
         volume_icon.add_class("icon");
 
         volume_box.pack_start(&volume_slider, true, true, 0);
@@ -402,7 +404,6 @@ impl Module<Button> for MusicModule {
         container.show_all();
 
         {
-            let icon_theme = icon_theme.clone();
             let image_size = self.cover_image_size;
 
             let mut prev_cover = None;
@@ -413,19 +414,43 @@ impl Module<Button> for MusicModule {
                         let new_cover = update.song.cover_path;
                         if prev_cover != new_cover {
                             prev_cover.clone_from(&new_cover);
-                            let res = if let Some(image) = new_cover.and_then(|cover_path| {
-                                ImageProvider::parse(&cover_path, &icon_theme, false, image_size)
-                            }) {
-                                album_image.show();
-                                image.load_into_image(&album_image)
+
+                            if let Some(cover_path) = new_cover {
+                                let image_provider = image_provider.clone();
+                                let album_image = album_image.clone();
+
+                                glib::spawn_future_local(async move {
+                                    let success = match image_provider
+                                        .load_into_image(
+                                            &cover_path,
+                                            image_size,
+                                            false,
+                                            &album_image,
+                                        )
+                                        .await
+                                    {
+                                        Ok(true) => {
+                                            album_image.show();
+                                            true
+                                        }
+                                        Ok(false) => {
+                                            warn!("failed to parse image: {}", cover_path);
+                                            false
+                                        }
+                                        Err(err) => {
+                                            error!("failed to load image: {}", err);
+                                            false
+                                        }
+                                    };
+
+                                    if !success {
+                                        album_image.set_from_pixbuf(None);
+                                        album_image.hide();
+                                    }
+                                });
                             } else {
                                 album_image.set_from_pixbuf(None);
                                 album_image.hide();
-                                Ok(())
-                            };
-
-                            if let Err(err) = res {
-                                error!("{err:?}");
                             }
                         }
 
@@ -490,7 +515,7 @@ impl Module<Button> for MusicModule {
                         }
                     }
                     _ => {}
-                };
+                }
             });
         }
 
@@ -544,10 +569,10 @@ struct IconPrefixedLabel {
 }
 
 impl IconPrefixedLabel {
-    fn new(icon_input: &str, label: Option<&str>, icon_theme: &IconTheme) -> Self {
+    fn new(icon_input: &str, label: Option<&str>, image_provider: &image::Provider) -> Self {
         let container = gtk::Box::new(Orientation::Horizontal, 5);
 
-        let icon = IconLabel::new(icon_input, icon_theme, 24);
+        let icon = IconLabel::new(icon_input, 24, image_provider);
 
         let mut builder = Label::builder().use_markup(true);
 

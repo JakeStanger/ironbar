@@ -237,7 +237,7 @@ fn parse_formatting(chars: &mut Peekable<Chars>, mut formatting: Formatting) -> 
                 formatting.align = Alignment::try_from(char)?;
             }
             (_, FormattingMode::WidthFillAlign) => formatting.fill = char,
-        };
+        }
 
         next_char = chars.next();
     }

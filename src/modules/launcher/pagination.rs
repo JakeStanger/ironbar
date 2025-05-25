@@ -1,7 +1,8 @@
 use crate::gtk_helpers::IronbarGtkExt;
+use crate::image;
 use crate::image::IconButton;
 use gtk::prelude::*;
-use gtk::{Button, IconTheme, Orientation};
+use gtk::{Button, Orientation};
 use std::cell::RefCell;
 use std::ops::Deref;
 use std::rc::Rc;
@@ -14,10 +15,9 @@ pub struct Pagination {
 }
 
 pub struct IconContext<'a> {
-    pub icon_back: &'a str,
-    pub icon_fwd: &'a str,
-    pub icon_size: i32,
-    pub icon_theme: &'a IconTheme,
+    pub back: &'a str,
+    pub fwd: &'a str,
+    pub size: i32,
 }
 
 impl Pagination {
@@ -25,21 +25,16 @@ impl Pagination {
         container: &gtk::Box,
         page_size: usize,
         orientation: Orientation,
-        icon_context: IconContext,
+        icon_context: &IconContext,
+        image_provider: &image::Provider,
     ) -> Self {
         let scroll_box = gtk::Box::new(orientation, 0);
 
-        let scroll_back = IconButton::new(
-            icon_context.icon_back,
-            icon_context.icon_theme,
-            icon_context.icon_size,
-        );
+        let scroll_back =
+            IconButton::new(icon_context.back, icon_context.size, image_provider.clone());
 
-        let scroll_fwd = IconButton::new(
-            icon_context.icon_fwd,
-            icon_context.icon_theme,
-            icon_context.icon_size,
-        );
+        let scroll_fwd =
+            IconButton::new(icon_context.fwd, icon_context.size, image_provider.clone());
 
         scroll_back.set_sensitive(false);
         scroll_fwd.set_sensitive(false);
@@ -86,8 +81,8 @@ impl Pagination {
                 if page_size < *offset {
                     *offset -= page_size;
                 } else {
-                    *offset = 1
-                };
+                    *offset = 1;
+                }
 
                 Self::update_page(&container, *offset, page_size);
 
