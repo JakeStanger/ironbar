@@ -21,7 +21,7 @@ use crate::script::Script;
 use crate::{module_impl, spawn};
 use color_eyre::Result;
 use gtk::prelude::*;
-use gtk::{Button, IconTheme, Orientation};
+use gtk::{Button, Orientation};
 use serde::Deserialize;
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -93,9 +93,9 @@ struct CustomWidgetContext<'a> {
     tx: &'a mpsc::Sender<ExecEvent>,
     bar_orientation: Orientation,
     is_popup: bool,
-    icon_theme: &'a IconTheme,
     popup_buttons: Rc<RefCell<Vec<Button>>>,
     module_factory: AnyModuleFactory,
+    image_provider: crate::image::Provider,
 }
 
 trait CustomWidget {
@@ -134,7 +134,7 @@ pub fn set_length<W: WidgetExt>(widget: &W, length: i32, bar_orientation: Orient
         Orientation::Horizontal => widget.set_width_request(length),
         Orientation::Vertical => widget.set_height_request(length),
         _ => {}
-    };
+    }
 }
 
 impl WidgetOrModule {
@@ -236,10 +236,10 @@ impl Module<gtk::Box> for CustomModule {
             tx: &context.controller_tx,
             bar_orientation: orientation,
             is_popup: false,
-            icon_theme: info.icon_theme,
             popup_buttons: popup_buttons.clone(),
             module_factory: BarModuleFactory::new(context.ironbar.clone(), context.popup.clone())
                 .into(),
+            image_provider: context.ironbar.image_provider(),
         };
 
         self.bar.clone().into_iter().for_each(|widget| {
@@ -283,8 +283,8 @@ impl Module<gtk::Box> for CustomModule {
                 tx: &context.controller_tx,
                 bar_orientation: Orientation::Horizontal,
                 is_popup: true,
-                icon_theme: info.icon_theme,
                 popup_buttons: Rc::new(RefCell::new(vec![])),
+                image_provider: context.ironbar.image_provider(),
                 module_factory: PopupModuleFactory::new(
                     context.ironbar,
                     context.popup,

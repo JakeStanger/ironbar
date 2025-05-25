@@ -3,7 +3,6 @@ use crate::clients::wayland::{self, ToplevelEvent};
 use crate::config::{CommonConfig, LayoutConfig, TruncateMode};
 use crate::gtk_helpers::IronbarGtkExt;
 use crate::gtk_helpers::IronbarLabelExt;
-use crate::image::ImageProvider;
 use crate::modules::{Module, ModuleInfo, ModuleParts, WidgetContext};
 use crate::{module_impl, spawn};
 use color_eyre::Result;
@@ -93,7 +92,7 @@ impl Module<gtk::Box> for FocusedModule {
 
                 tx.send_update(Some((focused.title.clone(), focused.app_id)))
                     .await;
-            };
+            }
 
             while let Ok(event) = wlrx.recv().await {
                 match event {
@@ -153,31 +152,33 @@ impl Module<gtk::Box> for FocusedModule {
         container.add(&label);
 
         {
-            let icon_overrides = info.icon_overrides.clone();
-            let icon_theme = info.icon_theme.clone();
+            let image_provider = context.ironbar.image_provider();
 
-            context.subscribe().recv_glib(move |data| {
-                if let Some((name, mut id)) = data {
-                    if self.show_icon {
-                        if let Some(icon) = icon_overrides.get(&id) {
-                            id = icon.clone();
+            context.subscribe().recv_glib_async(move |data| {
+                let icon = icon.clone();
+                let label = label.clone();
+                let image_provider = image_provider.clone();
+
+                async move {
+                    if let Some((name, id)) = data {
+                        if self.show_icon {
+                            match image_provider
+                                .load_into_image(&id, self.icon_size, true, &icon)
+                                .await
+                            {
+                                Ok(true) => icon.show(),
+                                _ => icon.hide(),
+                            }
                         }
 
-                        match ImageProvider::parse(&id, &icon_theme, true, self.icon_size)
-                            .map(|image| image.load_into_image(&icon))
-                        {
-                            Some(Ok(())) => icon.show(),
-                            _ => icon.hide(),
+                        if self.show_title {
+                            label.show();
+                            label.set_label(&name);
                         }
+                    } else {
+                        icon.hide();
+                        label.hide();
                     }
-
-                    if self.show_title {
-                        label.show();
-                        label.set_label(&name);
-                    }
-                } else {
-                    icon.hide();
-                    label.hide();
                 }
             });
         }

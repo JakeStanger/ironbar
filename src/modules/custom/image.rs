@@ -1,10 +1,8 @@
+use crate::build;
+use crate::dynamic_value::dynamic_string;
 use gtk::Image;
 use gtk::prelude::*;
 use serde::Deserialize;
-
-use crate::build;
-use crate::dynamic_value::dynamic_string;
-use crate::image::ImageProvider;
 
 use super::{CustomWidget, CustomWidgetContext};
 
@@ -48,11 +46,15 @@ impl CustomWidget for ImageWidget {
 
         {
             let gtk_image = gtk_image.clone();
-            let icon_theme = context.icon_theme.clone();
 
             dynamic_string(&self.src, move |src| {
-                ImageProvider::parse(&src, &icon_theme, false, self.size)
-                    .map(|image| image.load_into_image(&gtk_image));
+                let gtk_image = gtk_image.clone();
+                let image_provider = context.image_provider.clone();
+                glib::spawn_future_local(async move {
+                    image_provider
+                        .load_into_image_silent(&src, self.size, false, &gtk_image)
+                        .await;
+                });
             });
         }
 

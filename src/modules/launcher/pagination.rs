@@ -1,7 +1,8 @@
 use crate::gtk_helpers::IronbarGtkExt;
+use crate::image;
 use crate::image::IconButton;
 use gtk::prelude::*;
-use gtk::{Button, IconTheme, Orientation};
+use gtk::{Button, Orientation};
 use std::cell::RefCell;
 use std::ops::Deref;
 use std::rc::Rc;
@@ -24,20 +25,21 @@ impl Pagination {
         container: &gtk::Box,
         page_size: usize,
         orientation: Orientation,
-        icon_context: IconContext,
+        icon_context: &IconContext,
+        image_provider: &image::Provider,
     ) -> Self {
         let scroll_box = gtk::Box::new(orientation, 0);
 
         let scroll_back = IconButton::new(
-            icon_context.icon_back,
-            icon_context.icon_theme,
-            icon_context.icon_size,
+            icon_context.back,
+            icon_context.size,
+            image_provider.clone(),
         );
 
         let scroll_fwd = IconButton::new(
-            icon_context.icon_fwd,
-            icon_context.icon_theme,
-            icon_context.icon_size,
+            icon_context.fwd,
+            icon_context.size,
+            image_provider.clone(),
         );
 
         scroll_back.set_sensitive(false);

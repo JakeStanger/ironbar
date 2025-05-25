@@ -3,20 +3,18 @@ use crate::channels::AsyncSenderExt;
 use crate::clients::wayland::ToplevelInfo;
 use crate::config::{BarPosition, TruncateMode};
 use crate::gtk_helpers::{IronbarGtkExt, IronbarLabelExt};
-use crate::image::ImageProvider;
 use crate::modules::ModuleUpdateEvent;
 use crate::modules::launcher::{ItemEvent, LauncherUpdate};
-use crate::read_lock;
+use crate::{image, read_lock};
 use glib::Propagation;
 use gtk::gdk::{BUTTON_MIDDLE, BUTTON_PRIMARY};
 use gtk::prelude::*;
-use gtk::{Align, Button, IconTheme, Image, Justification, Label, Orientation};
+use gtk::{Align, Button, Image, Justification, Label, Orientation};
 use indexmap::IndexMap;
 use std::ops::Deref;
 use std::rc::Rc;
 use std::sync::RwLock;
 use tokio::sync::mpsc::Sender;
-use tracing::error;
 
 #[derive(Debug, Clone)]
 pub struct Item {
@@ -166,7 +164,7 @@ impl ItemButton {
     pub fn new(
         item: &Item,
         appearance: AppearanceOptions,
-        icon_theme: &IconTheme,
+        image_provider: image::Provider,
         bar_position: BarPosition,
         tx: &Sender<ModuleUpdateEvent<LauncherUpdate>>,
         controller_tx: &Sender<ItemEvent>,
@@ -188,14 +186,13 @@ impl ItemButton {
             } else {
                 item.app_id.clone()
             };
-            let image = ImageProvider::parse(&input, icon_theme, true, appearance.icon_size);
-            if let Some(image) = image {
-                button.set_always_show_image(true);
 
-                if let Err(err) = image.load_into_image(&button.image) {
-                    error!("{err:?}");
-                }
-            };
+            let button = button.clone();
+            glib::spawn_future_local(async move {
+                image_provider
+                    .load_into_image_silent(&input, appearance.icon_size, true, &button.image)
+                    .await;
+            });
         }
 
         button.add_class("item");
