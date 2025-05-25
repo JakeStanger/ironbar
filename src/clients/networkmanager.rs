@@ -140,7 +140,7 @@ pub async fn create_client() -> Result<Arc<Client>> {
         spawn(async move {
             if let Err(error) = client.run().await {
                 error!("{}", error);
-            };
+            }
         });
     }
     Ok(client)

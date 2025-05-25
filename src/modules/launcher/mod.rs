@@ -466,11 +466,10 @@ impl Module<gtk::Box> for LauncherModule {
             &container,
             self.page_size,
             self.layout.orientation(info),
-            IconContext {
-                icon_back: &self.icons.page_back,
-                icon_fwd: &self.icons.page_forward,
-                icon_size: self.pagination_icon_size,
-                icon_theme: info.icon_theme,
+            &IconContext {
+                back: &self.icons.page_back,
+                fwd: &self.icons.page_forward,
+                size: self.pagination_icon_size,
             },
         );
 
@@ -524,9 +523,9 @@ impl Module<gtk::Box> for LauncherModule {
                             );
 
                             if self.reversed {
-                                container.pack_end(button.button.deref(), false, false, 0);
+                                container.pack_end(&*button.button, false, false, 0);
                             } else {
-                                container.add(button.button.deref());
+                                container.add(&*button.button);
                             }
 
                             if buttons.len() + 1 >= pagination.offset() + page_size {
@@ -599,7 +598,7 @@ impl Module<gtk::Box> for LauncherModule {
                         }
                     }
                     LauncherUpdate::Hover(_) => {}
-                };
+                }
             };
 
             rx.recv_glib(handle_event);

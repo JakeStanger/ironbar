@@ -80,7 +80,7 @@ impl Namespace for VariableManager {
             let namespaces = read_lock!(self.namespaces);
             let ns = namespaces.get(ns)?;
 
-            ns.get(key).map(|v| v.to_owned())
+            ns.get(key).as_deref().map(ToOwned::to_owned)
         } else {
             read_lock!(self.variables).get(key).and_then(IronVar::get)
         }

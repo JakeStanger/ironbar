@@ -156,7 +156,7 @@ impl Module<Overlay> for NotificationsModule {
                 match initial_state {
                     Ok(ev) => tx.send_update(ev).await,
                     Err(err) => error!("{err:?}"),
-                };
+                }
 
                 while let Ok(ev) = rx.recv().await {
                     tx.send_update(ev).await;

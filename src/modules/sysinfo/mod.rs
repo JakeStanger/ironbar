@@ -251,7 +251,7 @@ impl Module<gtk::Box> for SysInfoModule {
                     RefreshType::Disks => client.refresh_disks(),
                     RefreshType::Network => client.refresh_network(),
                     RefreshType::System => client.refresh_load_average(),
-                };
+                }
 
                 for (i, token_set) in format_tokens.iter().enumerate() {
                     let is_affected = token_set

@@ -14,10 +14,9 @@ pub struct Pagination {
 }
 
 pub struct IconContext<'a> {
-    pub icon_back: &'a str,
-    pub icon_fwd: &'a str,
-    pub icon_size: i32,
-    pub icon_theme: &'a IconTheme,
+    pub back: &'a str,
+    pub fwd: &'a str,
+    pub size: i32,
 }
 
 impl Pagination {
@@ -86,8 +85,8 @@ impl Pagination {
                 if page_size < *offset {
                     *offset -= page_size;
                 } else {
-                    *offset = 1
-                };
+                    *offset = 1;
+                }
 
                 Self::update_page(&container, *offset, page_size);
 
