@@ -126,12 +126,12 @@ impl IconLabel {
                 if matches!(res, Ok(true)) {
                     image.show();
                 } else {
-                    label.set_text(&input);
+                    label.set_label_escaped(&input);
                     label.show();
                 }
             });
         } else {
-            label.set_text(input);
+            label.set_label_escaped(input);
             label.show();
         }
 
