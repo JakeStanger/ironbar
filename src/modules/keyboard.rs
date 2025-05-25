@@ -2,6 +2,7 @@ use std::collections::HashMap;
 
 use color_eyre::Result;
 use color_eyre::eyre::Report;
+use gtk::Label;
 use gtk::prelude::*;
 use serde::Deserialize;
 use tokio::sync::mpsc;
@@ -12,13 +13,29 @@ use crate::channels::{AsyncSenderExt, BroadcastReceiverExt};
 use crate::clients::compositor::{self, KeyboardLayoutUpdate};
 use crate::clients::libinput::{Event, Key, KeyEvent};
 use crate::config::{CommonConfig, LayoutConfig};
-use crate::gtk_helpers::IronbarGtkExt;
+use crate::gtk_helpers::{IronbarGtkExt, IronbarLabelExt};
 use crate::image::{IconButton, IconLabel};
 use crate::{module_impl, spawn};
 
 #[derive(Debug, Deserialize, Clone)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 pub struct KeyboardModule {
+    /// The format string to use for the widget button label.
+    /// For available tokens, see [below](#formatting-tokens).
+    ///
+    /// **Default**: ``
+    #[serde(default = "default_format")]
+    caps_format: String,
+
+    #[serde(default = "default_format")]
+    layout_format: String,
+
+    #[serde(default = "crate::config::default_false")]
+    show_caps_format: bool,
+
+    #[serde(default = "crate::config::default_false")]
+    show_layout_format: bool,
+
     /// Whether to show capslock indicator.
     ///
     /// **Default**: `true`
@@ -70,6 +87,10 @@ pub struct KeyboardModule {
     /// See [common options](module-level-options#common-options).
     #[serde(flatten)]
     pub common: Option<CommonConfig>,
+}
+
+fn default_format() -> String {
+    String::from("KEYBOAR DEFAULT")
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -257,6 +278,20 @@ impl Module<gtk::Box> for KeyboardModule {
     ) -> Result<ModuleParts<gtk::Box>> {
         let container = gtk::Box::new(self.layout.orientation(info), 0);
 
+        let caps_label = Label::builder()
+            .label(&self.caps_format)
+            .angle(self.layout.angle(info))
+            .use_markup(true)
+            .justify(self.layout.justify.into())
+            .build();
+
+        let layout_label = Label::builder()
+            .label(&self.layout_format)
+            .angle(self.layout.angle(info))
+            .use_markup(true)
+            .justify(self.layout.justify.into())
+            .build();
+
         let caps = IconLabel::new(&self.icons.caps_off, info.icon_theme, self.icon_size);
         let num = IconLabel::new(&self.icons.num_off, info.icon_theme, self.icon_size);
         let scroll = IconLabel::new(&self.icons.scroll_off, info.icon_theme, self.icon_size);
@@ -271,6 +306,10 @@ impl Module<gtk::Box> for KeyboardModule {
         scroll.label().set_justify(self.layout.justify.into());
 
         let layout_button = IconButton::new("", info.icon_theme, self.icon_size);
+
+        if self.show_caps_format {
+            container.add(&caps_label);
+        }
 
         if self.show_caps {
             caps.add_class("key");
@@ -290,6 +329,10 @@ impl Module<gtk::Box> for KeyboardModule {
             container.add(&*scroll);
         }
 
+        if self.show_layout_format {
+            container.add(&layout_label);
+        }
+
         if self.show_layout {
             layout_button.add_class("layout");
             container.add(&*layout_button);
@@ -301,6 +344,9 @@ impl Module<gtk::Box> for KeyboardModule {
                 tx.send_spawn(());
             });
         }
+
+        let caps_format = self.caps_format.clone();
+        let layout_format = self.layout_format.clone();
 
         let icons = self.icons;
         let handle_event = move |ev: KeyboardUpdate| match ev {
@@ -319,6 +365,22 @@ impl Module<gtk::Box> for KeyboardModule {
                     _ => None,
                 };
 
+                match ev.key {
+                    Key::Caps => {
+                        let caps_icon = match (ev.key, ev.state) {
+                            (Key::Caps, true) => Some(icons.caps_on.as_str()),
+                            (Key::Caps, false) => Some(icons.caps_off.as_str()),
+                            _ => None,
+                        };
+                        let mut new_label = caps_format.clone();
+                        if let Some(ci) = caps_icon {
+                            new_label = new_label.replace("{caps_icon}", ci);
+                            caps_label.set_label_escaped(&new_label);
+                        }
+                    }
+                    _ => {}
+                };
+
                 if let Some((label, input)) = parts {
                     label.set_label(Some(input));
 
@@ -332,6 +394,8 @@ impl Module<gtk::Box> for KeyboardModule {
             KeyboardUpdate::Layout(KeyboardLayoutUpdate(language)) => {
                 let text = icons.layout_map.get(&language).unwrap_or(&language);
                 layout_button.set_label(text);
+                let new_label = layout_format.replace("{layout_icon}", text);
+                layout_label.set_label_escaped(&new_label);
             }
         };
 
