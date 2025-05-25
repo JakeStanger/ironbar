@@ -394,7 +394,7 @@ fn load_output_bars(
     };
 
     let config = ironbar.config.borrow();
-    let icon_overrides = Arc::new(config.icon_overrides.clone());
+
     let display = get_display();
 
     let pos = output.logical_position.unwrap_or_default();
@@ -416,7 +416,6 @@ fn load_output_bars(
                 &monitor,
                 monitor_name.to_string(),
                 output_size,
-                icon_overrides,
                 config.clone(),
                 ironbar.clone(),
             )?]
@@ -429,7 +428,6 @@ fn load_output_bars(
                     &monitor,
                     monitor_name.to_string(),
                     output_size,
-                    icon_overrides.clone(),
                     config.clone(),
                     ironbar.clone(),
                 )
@@ -440,7 +438,6 @@ fn load_output_bars(
             &monitor,
             monitor_name.to_string(),
             output_size,
-            icon_overrides,
             config.bar.clone(),
             ironbar.clone(),
         )?],

@@ -23,23 +23,16 @@ pub struct Item {
     pub open_state: OpenState,
     pub windows: IndexMap<usize, Window>,
     pub name: String,
-    pub icon_override: String,
 }
 
 impl Item {
-    pub fn new(
-        app_id: String,
-        icon_override: String,
-        open_state: OpenState,
-        favorite: bool,
-    ) -> Self {
+    pub fn new(app_id: String, open_state: OpenState, favorite: bool) -> Self {
         Self {
             app_id,
             favorite,
             open_state,
             windows: IndexMap::new(),
             name: String::new(),
-            icon_override,
         }
     }
 
@@ -114,7 +107,6 @@ impl From<ToplevelInfo> for Item {
             open_state,
             windows,
             name,
-            icon_override: String::new(),
         }
     }
 }
@@ -179,9 +171,7 @@ impl ItemButton {
         }
 
         if appearance.show_icons {
-            let input = if !item.icon_override.is_empty() {
-                item.icon_override.clone()
-            } else if item.app_id.is_empty() {
+            let input = if item.app_id.is_empty() {
                 item.name.clone()
             } else {
                 item.app_id.clone()

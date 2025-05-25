@@ -261,11 +261,7 @@ impl Module<gtk::Box> for KeyboardModule {
 
         let caps = IconLabel::new(&self.icons.caps_off, self.icon_size, &image_provider);
         let num = IconLabel::new(&self.icons.num_off, self.icon_size, &image_provider);
-        let scroll = IconLabel::new(
-            &self.icons.scroll_off,
-            self.icon_size,
-            &image_provider,
-        );
+        let scroll = IconLabel::new(&self.icons.scroll_off, self.icon_size, &image_provider);
 
         caps.label().set_angle(self.layout.angle(info));
         caps.label().set_justify(self.layout.justify.into());

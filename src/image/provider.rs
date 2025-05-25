@@ -166,10 +166,7 @@ impl Provider {
     ) -> Result<Option<ImageLocation>> {
         const MAX_RECURSE_DEPTH: u8 = 2;
 
-        let input = self
-            .overrides
-            .get(input)
-            .map_or(input, String::as_str);
+        let input = self.overrides.get(input).map_or(input, String::as_str);
 
         let should_parse_desktop_file = !Self::is_explicit_input(input);
 
