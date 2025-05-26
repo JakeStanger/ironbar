@@ -81,23 +81,17 @@ impl Module<Label> for Bindmode {
             }));
         }
 
-        {
-            let label = label.clone();
+        context.subscribe().recv_glib(&label, |label, mode| {
+            trace!("mode: {:?}", mode);
+            label.set_use_markup(mode.pango_markup);
+            label.set_label_escaped(&mode.name);
 
-            let on_mode = move |mode: BindModeUpdate| {
-                trace!("mode: {:?}", mode);
-                label.set_use_markup(mode.pango_markup);
-                label.set_label_escaped(&mode.name);
-
-                if mode.name.is_empty() {
-                    label.hide();
-                } else {
-                    label.show();
-                }
-            };
-
-            context.subscribe().recv_glib(on_mode);
-        }
+            if mode.name.is_empty() {
+                label.hide();
+            } else {
+                label.show();
+            }
+        });
 
         Ok(ModuleParts {
             widget: label,

@@ -44,19 +44,15 @@ impl CustomWidget for ImageWidget {
     fn into_widget(self, context: CustomWidgetContext) -> Self::Widget {
         let gtk_image = build!(self, Self::Widget);
 
-        {
+        dynamic_string(&self.src, &gtk_image, move |gtk_image, src| {
             let gtk_image = gtk_image.clone();
-
-            dynamic_string(&self.src, move |src| {
-                let gtk_image = gtk_image.clone();
-                let image_provider = context.image_provider.clone();
-                glib::spawn_future_local(async move {
-                    image_provider
-                        .load_into_image_silent(&src, self.size, false, &gtk_image)
-                        .await;
-                });
+            let image_provider = context.image_provider.clone();
+            glib::spawn_future_local(async move {
+                image_provider
+                    .load_into_image_silent(&src, self.size, false, &gtk_image)
+                    .await;
             });
-        }
+        });
 
         gtk_image
     }

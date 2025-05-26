@@ -73,7 +73,7 @@ impl CustomWidget for ButtonWidget {
 
             button.add(&label);
 
-            dynamic_string(&text, move |string| {
+            dynamic_string(&text, (), move |(), string| {
                 label.set_label_escaped(&string);
             });
         }

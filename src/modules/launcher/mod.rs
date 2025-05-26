@@ -458,10 +458,6 @@ impl Module<gtk::Box> for LauncherModule {
         );
 
         {
-            let container = container.clone();
-
-            let controller_tx = context.controller_tx.clone();
-
             let appearance_options = AppearanceOptions {
                 show_names: self.show_names,
                 show_icons: self.show_icons,
@@ -477,114 +473,114 @@ impl Module<gtk::Box> for LauncherModule {
 
             let mut buttons = IndexMap::<String, ItemButton>::new();
 
-            let tx = context.tx.clone();
             let rx = context.subscribe();
 
-            let handle_event = move |event: LauncherUpdate| {
-                // all widgets show by default
-                // so check if pagination should be shown
-                // to ensure correct state on init.
-                if buttons.len() <= page_size {
-                    pagination.hide();
-                }
+            rx.recv_glib(
+                (&container, &context.controller_tx, &context.tx),
+                move |(container, controller_tx, tx), event: LauncherUpdate| {
+                    // all widgets show by default
+                    // so check if pagination should be shown
+                    // to ensure correct state on init.
+                    if buttons.len() <= page_size {
+                        pagination.hide();
+                    }
 
-                match event {
-                    LauncherUpdate::AddItem(item) => {
-                        debug!("Adding item with id '{}' to the bar: {item:?}", item.app_id);
+                    match event {
+                        LauncherUpdate::AddItem(item) => {
+                            debug!("Adding item with id '{}' to the bar: {item:?}", item.app_id);
 
-                        if let Some(button) = buttons.get(&item.app_id) {
-                            button.set_open(true);
-                            button.set_focused(item.open_state.is_focused());
-                        } else {
-                            let button = ItemButton::new(
-                                &item,
-                                appearance_options,
-                                image_provider.clone(),
-                                bar_position,
-                                &tx,
-                                &controller_tx,
-                            );
-
-                            if self.reversed {
-                                container.pack_end(&*button.button, false, false, 0);
+                            if let Some(button) = buttons.get(&item.app_id) {
+                                button.set_open(true);
+                                button.set_focused(item.open_state.is_focused());
                             } else {
-                                container.add(&*button.button);
-                            }
+                                let button = ItemButton::new(
+                                    &item,
+                                    appearance_options,
+                                    image_provider.clone(),
+                                    bar_position,
+                                    &tx,
+                                    &controller_tx,
+                                );
 
-                            if buttons.len() + 1 >= pagination.offset() + page_size {
-                                button.button.set_visible(false);
-                                pagination.set_sensitive_fwd(true);
-                            }
-
-                            if buttons.len() + 1 > page_size {
-                                pagination.show_all();
-                            }
-
-                            buttons.insert(item.app_id, button);
-                        }
-                    }
-                    LauncherUpdate::AddWindow(app_id, win) => {
-                        if let Some(button) = buttons.get(&app_id) {
-                            button.set_open(true);
-                            button.set_focused(win.open_state.is_focused());
-
-                            write_lock!(button.menu_state).num_windows += 1;
-                        }
-                    }
-                    LauncherUpdate::RemoveItem(app_id) => {
-                        debug!("Removing item with id {}", app_id);
-
-                        if let Some(button) = buttons.get(&app_id) {
-                            if button.persistent {
-                                button.set_open(false);
-                                if button.show_names {
-                                    button.button.label.set_label(&app_id);
+                                if self.reversed {
+                                    container.pack_end(&*button.button, false, false, 0);
+                                } else {
+                                    container.add(&*button.button);
                                 }
-                            } else {
-                                container.remove(&button.button.button);
-                                buttons.shift_remove(&app_id);
+
+                                if buttons.len() + 1 >= pagination.offset() + page_size {
+                                    button.button.set_visible(false);
+                                    pagination.set_sensitive_fwd(true);
+                                }
+
+                                if buttons.len() + 1 > page_size {
+                                    pagination.show_all();
+                                }
+
+                                buttons.insert(item.app_id, button);
                             }
                         }
-
-                        if buttons.len() < pagination.offset() + page_size {
-                            pagination.set_sensitive_fwd(false);
-                        }
-
-                        if buttons.len() <= page_size {
-                            pagination.hide();
-                        }
-                    }
-                    LauncherUpdate::RemoveWindow(app_id, win_id) => {
-                        debug!("Removing window {win_id} with id {app_id}");
-
-                        if let Some(button) = buttons.get(&app_id) {
-                            button.set_focused(false);
-
-                            let mut menu_state = write_lock!(button.menu_state);
-                            menu_state.num_windows -= 1;
-                        }
-                    }
-                    LauncherUpdate::Focus(app_id, focus) => {
-                        debug!("Changing focus to {} on item with id {}", focus, app_id);
-
-                        if let Some(button) = buttons.get(&app_id) {
-                            button.set_focused(focus);
-                        }
-                    }
-                    LauncherUpdate::Title(app_id, _, name) => {
-                        debug!("Updating title for item with id {}: {:?}", app_id, name);
-
-                        if show_names {
+                        LauncherUpdate::AddWindow(app_id, win) => {
                             if let Some(button) = buttons.get(&app_id) {
-                                button.button.label.set_label(&name);
+                                button.set_open(true);
+                                button.set_focused(win.open_state.is_focused());
+
+                                write_lock!(button.menu_state).num_windows += 1;
                             }
                         }
-                    }
-                    LauncherUpdate::Hover(_) => {}
-                }
-            };
+                        LauncherUpdate::RemoveItem(app_id) => {
+                            debug!("Removing item with id {}", app_id);
 
-            rx.recv_glib(handle_event);
+                            if let Some(button) = buttons.get(&app_id) {
+                                if button.persistent {
+                                    button.set_open(false);
+                                    if button.show_names {
+                                        button.button.label.set_label(&app_id);
+                                    }
+                                } else {
+                                    container.remove(&button.button.button);
+                                    buttons.shift_remove(&app_id);
+                                }
+                            }
+
+                            if buttons.len() < pagination.offset() + page_size {
+                                pagination.set_sensitive_fwd(false);
+                            }
+
+                            if buttons.len() <= page_size {
+                                pagination.hide();
+                            }
+                        }
+                        LauncherUpdate::RemoveWindow(app_id, win_id) => {
+                            debug!("Removing window {win_id} with id {app_id}");
+
+                            if let Some(button) = buttons.get(&app_id) {
+                                button.set_focused(false);
+
+                                let mut menu_state = write_lock!(button.menu_state);
+                                menu_state.num_windows -= 1;
+                            }
+                        }
+                        LauncherUpdate::Focus(app_id, focus) => {
+                            debug!("Changing focus to {} on item with id {}", focus, app_id);
+
+                            if let Some(button) = buttons.get(&app_id) {
+                                button.set_focused(focus);
+                            }
+                        }
+                        LauncherUpdate::Title(app_id, _, name) => {
+                            debug!("Updating title for item with id {}: {:?}", app_id, name);
+
+                            if show_names {
+                                if let Some(button) = buttons.get(&app_id) {
+                                    button.button.label.set_label(&name);
+                                }
+                            }
+                        }
+                        LauncherUpdate::Hover(_) => {}
+                    }
+                },
+            );
         }
 
         let popup = self.into_popup(context, info).into_popup_parts(vec![]); // since item buttons are dynamic, they pass their geometry directly
@@ -611,9 +607,9 @@ impl Module<gtk::Box> for LauncherModule {
 
         let mut buttons = IndexMap::<String, IndexMap<usize, ImageTextButton>>::new();
 
-        {
-            let container = container.clone();
-            context.subscribe().recv_glib(move |event| {
+        context
+            .subscribe()
+            .recv_glib(&container, move |container, event| {
                 match event {
                     LauncherUpdate::AddItem(item) => {
                         let app_id = item.app_id.clone();
@@ -703,7 +699,6 @@ impl Module<gtk::Box> for LauncherModule {
                     _ => {}
                 }
             });
-        }
 
         Some(container)
     }

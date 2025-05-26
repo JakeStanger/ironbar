@@ -305,39 +305,43 @@ impl Module<gtk::Box> for KeyboardModule {
         }
 
         let icons = self.icons;
-        let handle_event = move |ev: KeyboardUpdate| match ev {
-            KeyboardUpdate::Key(ev) => {
-                let parts = match (ev.key, ev.state) {
-                    (Key::Caps, true) if self.show_caps => Some((&caps, icons.caps_on.as_str())),
-                    (Key::Caps, false) if self.show_caps => Some((&caps, icons.caps_off.as_str())),
-                    (Key::Num, true) if self.show_num => Some((&num, icons.num_on.as_str())),
-                    (Key::Num, false) if self.show_num => Some((&num, icons.num_off.as_str())),
-                    (Key::Scroll, true) if self.show_scroll => {
-                        Some((&scroll, icons.scroll_on.as_str()))
-                    }
-                    (Key::Scroll, false) if self.show_scroll => {
-                        Some((&scroll, icons.scroll_off.as_str()))
-                    }
-                    _ => None,
-                };
+        context
+            .subscribe()
+            .recv_glib((), move |(), ev: KeyboardUpdate| match ev {
+                KeyboardUpdate::Key(ev) => {
+                    let parts = match (ev.key, ev.state) {
+                        (Key::Caps, true) if self.show_caps => {
+                            Some((&caps, icons.caps_on.as_str()))
+                        }
+                        (Key::Caps, false) if self.show_caps => {
+                            Some((&caps, icons.caps_off.as_str()))
+                        }
+                        (Key::Num, true) if self.show_num => Some((&num, icons.num_on.as_str())),
+                        (Key::Num, false) if self.show_num => Some((&num, icons.num_off.as_str())),
+                        (Key::Scroll, true) if self.show_scroll => {
+                            Some((&scroll, icons.scroll_on.as_str()))
+                        }
+                        (Key::Scroll, false) if self.show_scroll => {
+                            Some((&scroll, icons.scroll_off.as_str()))
+                        }
+                        _ => None,
+                    };
 
-                if let Some((label, input)) = parts {
-                    label.set_label(Some(input));
+                    if let Some((label, input)) = parts {
+                        label.set_label(Some(input));
 
-                    if ev.state {
-                        label.add_class("enabled");
-                    } else {
-                        label.remove_class("enabled");
+                        if ev.state {
+                            label.add_class("enabled");
+                        } else {
+                            label.remove_class("enabled");
+                        }
                     }
                 }
-            }
-            KeyboardUpdate::Layout(KeyboardLayoutUpdate(language)) => {
-                let text = icons.layout_map.get(&language).unwrap_or(&language);
-                layout_button.set_label(text);
-            }
-        };
-
-        context.subscribe().recv_glib(handle_event);
+                KeyboardUpdate::Layout(KeyboardLayoutUpdate(language)) => {
+                    let text = icons.layout_map.get(&language).unwrap_or(&language);
+                    layout_button.set_label(text);
+                }
+            });
         Ok(ModuleParts::new(container, None))
     }
 }

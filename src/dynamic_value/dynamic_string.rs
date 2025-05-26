@@ -1,6 +1,6 @@
 #[cfg(feature = "ipc")]
 use crate::Ironbar;
-use crate::channels::{AsyncSenderExt, MpscReceiverExt};
+use crate::channels::{AsyncSenderExt, Dependency, MpscReceiverExt};
 use crate::script::{OutputStream, Script};
 use crate::{arc_mut, lock, spawn};
 use tokio::sync::mpsc;
@@ -26,9 +26,11 @@ enum DynamicStringSegment {
 ///     label.set_label_escaped(&string);
 /// });
 /// ```
-pub fn dynamic_string<F>(input: &str, f: F)
+pub fn dynamic_string<D, F>(input: &str, deps: D, f: F)
 where
-    F: FnMut(String) + 'static,
+    D: Dependency,
+    D::Target: Clone + 'static,
+    F: FnMut(&D::Target, String) + 'static,
 {
     let (tokens, is_static) = parse_input(input);
 
@@ -89,7 +91,7 @@ where
         }
     }
 
-    rx.recv_glib(f);
+    rx.recv_glib(deps, f);
 
     // initialize
     if is_static {

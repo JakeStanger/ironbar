@@ -154,7 +154,7 @@ impl Module<gtk::Box> for FocusedModule {
         {
             let image_provider = context.ironbar.image_provider();
 
-            context.subscribe().recv_glib_async(move |data| {
+            context.subscribe().recv_glib_async((), move |(), data| {
                 let icon = icon.clone();
                 let label = label.clone();
                 let image_provider = image_provider.clone();

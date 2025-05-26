@@ -56,8 +56,7 @@ impl Module<Label> for LabelModule {
         context: &WidgetContext<Self::SendMessage, Self::ReceiveMessage>,
         _rx: mpsc::Receiver<Self::ReceiveMessage>,
     ) -> Result<()> {
-        let tx = context.tx.clone();
-        dynamic_string(&self.label, move |string| {
+        dynamic_string(&self.label, &context.tx, move |tx, string| {
             tx.send_update_spawn(string);
         });
 
@@ -79,12 +78,9 @@ impl Module<Label> for LabelModule {
             label.truncate(truncate);
         }
 
-        {
-            let label = label.clone();
-            context
-                .subscribe()
-                .recv_glib(move |string| label.set_label_escaped(&string));
-        }
+        context.subscribe().recv_glib(&label, move |label, string| {
+            label.set_label_escaped(&string)
+        });
 
         Ok(ModuleParts {
             widget: label,

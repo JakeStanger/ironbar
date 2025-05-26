@@ -113,21 +113,15 @@ impl Popup {
         let output_size = rc_mut!(output_size);
 
         // respond to resolution changes
-        {
-            let output_size = output_size.clone();
-            let output_name = module_info.output_name.to_string();
-
-            let on_output_event = move |event: OutputEvent| {
-                if event.event_type == OutputEventType::Update
-                    && event.output.name.unwrap_or_default() == output_name
-                {
-                    *output_size.borrow_mut() = event.output.logical_size.unwrap_or_default();
-                }
-            };
-
-            let rx = ironbar.clients.borrow_mut().wayland().subscribe_outputs();
-            rx.recv_glib(on_output_event);
-        }
+        let rx = ironbar.clients.borrow_mut().wayland().subscribe_outputs();
+        let output_name = module_info.output_name.to_string();
+        rx.recv_glib(&output_size, move |output_size, event: OutputEvent| {
+            if event.event_type == OutputEventType::Update
+                && event.output.name.unwrap_or_default() == output_name
+            {
+                *output_size.borrow_mut() = event.output.logical_size.unwrap_or_default();
+            }
+        });
 
         Self {
             window: win,

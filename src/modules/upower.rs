@@ -202,7 +202,7 @@ impl Module<Button> for UpowerModule {
 
         let rx = context.subscribe();
         let provider = context.ironbar.image_provider();
-        rx.recv_glib_async(move |properties| {
+        rx.recv_glib_async((), move |(), properties| {
             let state = properties.state;
 
             let is_charging =
@@ -258,7 +258,7 @@ impl Module<Button> for UpowerModule {
         label.add_class("upower-details");
         container.add(&label);
 
-        context.subscribe().recv_glib(move |properties| {
+        context.subscribe().recv_glib((), move |(), properties| {
             let state = properties.state;
             let format = match state {
                 BatteryState::Charging | BatteryState::PendingCharge => {

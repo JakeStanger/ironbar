@@ -217,47 +217,42 @@ impl Module<Button> for MusicModule {
             });
         }
 
-        {
-            let button = button.clone();
+        let rx = context.subscribe();
 
-            let tx = context.tx.clone();
-            let rx = context.subscribe();
+        rx.recv_glib((&button, &context.tx), move |(button, tx), event| {
+            let ControllerEvent::Update(mut event) = event else {
+                return;
+            };
 
-            rx.recv_glib(move |event| {
-                let ControllerEvent::Update(mut event) = event else {
-                    return;
-                };
+            if let Some(event) = event.take() {
+                label.set_label_escaped(&event.display_string);
 
-                if let Some(event) = event.take() {
-                    label.set_label_escaped(&event.display_string);
+                button.show();
 
-                    button.show();
-
-                    match event.status.state {
-                        PlayerState::Playing if self.show_status_icon => {
-                            icon_play.show();
-                            icon_pause.hide();
-                        }
-                        PlayerState::Paused if self.show_status_icon => {
-                            icon_pause.show();
-                            icon_play.hide();
-                        }
-                        PlayerState::Stopped => {
-                            button.hide();
-                        }
-                        _ => {}
-                    }
-
-                    if !self.show_status_icon {
+                match event.status.state {
+                    PlayerState::Playing if self.show_status_icon => {
+                        icon_play.show();
                         icon_pause.hide();
+                    }
+                    PlayerState::Paused if self.show_status_icon => {
+                        icon_pause.show();
                         icon_play.hide();
                     }
-                } else {
-                    button.hide();
-                    tx.send_spawn(ModuleUpdateEvent::ClosePopup);
+                    PlayerState::Stopped => {
+                        button.hide();
+                    }
+                    _ => {}
                 }
-            });
-        };
+
+                if !self.show_status_icon {
+                    icon_pause.hide();
+                    icon_play.hide();
+                }
+            } else {
+                button.hide();
+                tx.send_spawn(ModuleUpdateEvent::ClosePopup);
+            }
+        });
 
         let popup = self
             .into_popup(context, info)
@@ -403,121 +398,114 @@ impl Module<Button> for MusicModule {
 
         container.show_all();
 
-        {
-            let image_size = self.cover_image_size;
+        let image_size = self.cover_image_size;
 
-            let mut prev_cover = None;
-            context.subscribe().recv_glib(move |event| {
-                match event {
-                    ControllerEvent::Update(Some(update)) => {
-                        // only update art when album changes
-                        let new_cover = update.song.cover_path;
-                        if prev_cover != new_cover {
-                            prev_cover.clone_from(&new_cover);
+        let mut prev_cover = None;
+        context.subscribe().recv_glib((), move |(), event| {
+            match event {
+                ControllerEvent::Update(Some(update)) => {
+                    // only update art when album changes
+                    let new_cover = update.song.cover_path;
+                    if prev_cover != new_cover {
+                        prev_cover.clone_from(&new_cover);
 
-                            if let Some(cover_path) = new_cover {
-                                let image_provider = image_provider.clone();
-                                let album_image = album_image.clone();
+                        if let Some(cover_path) = new_cover {
+                            let image_provider = image_provider.clone();
+                            let album_image = album_image.clone();
 
-                                glib::spawn_future_local(async move {
-                                    let success = match image_provider
-                                        .load_into_image(
-                                            &cover_path,
-                                            image_size,
-                                            false,
-                                            &album_image,
-                                        )
-                                        .await
-                                    {
-                                        Ok(true) => {
-                                            album_image.show();
-                                            true
-                                        }
-                                        Ok(false) => {
-                                            warn!("failed to parse image: {}", cover_path);
-                                            false
-                                        }
-                                        Err(err) => {
-                                            error!("failed to load image: {}", err);
-                                            false
-                                        }
-                                    };
-
-                                    if !success {
-                                        album_image.set_from_pixbuf(None);
-                                        album_image.hide();
+                            glib::spawn_future_local(async move {
+                                let success = match image_provider
+                                    .load_into_image(&cover_path, image_size, false, &album_image)
+                                    .await
+                                {
+                                    Ok(true) => {
+                                        album_image.show();
+                                        true
                                     }
-                                });
-                            } else {
-                                album_image.set_from_pixbuf(None);
-                                album_image.hide();
-                            }
-                        }
+                                    Ok(false) => {
+                                        warn!("failed to parse image: {}", cover_path);
+                                        false
+                                    }
+                                    Err(err) => {
+                                        error!("failed to load image: {}", err);
+                                        false
+                                    }
+                                };
 
-                        update_popup_metadata_label(update.song.title, &title_label);
-                        update_popup_metadata_label(update.song.album, &album_label);
-                        update_popup_metadata_label(update.song.artist, &artist_label);
-
-                        match update.status.state {
-                            PlayerState::Stopped => {
-                                btn_pause.hide();
-                                btn_play.show();
-                                btn_play.set_sensitive(false);
-                            }
-                            PlayerState::Playing => {
-                                btn_play.set_sensitive(false);
-                                btn_play.hide();
-
-                                btn_pause.set_sensitive(true);
-                                btn_pause.show();
-                            }
-                            PlayerState::Paused => {
-                                btn_pause.set_sensitive(false);
-                                btn_pause.hide();
-
-                                btn_play.set_sensitive(true);
-                                btn_play.show();
-                            }
-                        }
-
-                        let enable_prev = update.status.playlist_position > 0;
-
-                        let enable_next =
-                            update.status.playlist_position < update.status.playlist_length;
-
-                        btn_prev.set_sensitive(enable_prev);
-                        btn_next.set_sensitive(enable_next);
-
-                        if let Some(volume) = update.status.volume_percent {
-                            volume_slider.set_value(f64::from(volume));
-                            volume_box.show();
+                                if !success {
+                                    album_image.set_from_pixbuf(None);
+                                    album_image.hide();
+                                }
+                            });
                         } else {
-                            volume_box.hide();
+                            album_image.set_from_pixbuf(None);
+                            album_image.hide();
                         }
                     }
-                    ControllerEvent::UpdateProgress(progress_tick)
-                        if !drag_lock.load(Ordering::Relaxed) =>
-                    {
-                        if let (Some(elapsed), Some(duration)) =
-                            (progress_tick.elapsed, progress_tick.duration)
-                        {
-                            progress_label.set_label_escaped(&format!(
-                                "{}/{}",
-                                format_time(elapsed),
-                                format_time(duration)
-                            ));
 
-                            progress.set_value(elapsed.as_secs_f64());
-                            progress.set_range(0.0, duration.as_secs_f64());
-                            progress_box.show_all();
-                        } else {
-                            progress_box.hide();
+                    update_popup_metadata_label(update.song.title, &title_label);
+                    update_popup_metadata_label(update.song.album, &album_label);
+                    update_popup_metadata_label(update.song.artist, &artist_label);
+
+                    match update.status.state {
+                        PlayerState::Stopped => {
+                            btn_pause.hide();
+                            btn_play.show();
+                            btn_play.set_sensitive(false);
+                        }
+                        PlayerState::Playing => {
+                            btn_play.set_sensitive(false);
+                            btn_play.hide();
+
+                            btn_pause.set_sensitive(true);
+                            btn_pause.show();
+                        }
+                        PlayerState::Paused => {
+                            btn_pause.set_sensitive(false);
+                            btn_pause.hide();
+
+                            btn_play.set_sensitive(true);
+                            btn_play.show();
                         }
                     }
-                    _ => {}
+
+                    let enable_prev = update.status.playlist_position > 0;
+
+                    let enable_next =
+                        update.status.playlist_position < update.status.playlist_length;
+
+                    btn_prev.set_sensitive(enable_prev);
+                    btn_next.set_sensitive(enable_next);
+
+                    if let Some(volume) = update.status.volume_percent {
+                        volume_slider.set_value(f64::from(volume));
+                        volume_box.show();
+                    } else {
+                        volume_box.hide();
+                    }
                 }
-            });
-        }
+                ControllerEvent::UpdateProgress(progress_tick)
+                    if !drag_lock.load(Ordering::Relaxed) =>
+                {
+                    if let (Some(elapsed), Some(duration)) =
+                        (progress_tick.elapsed, progress_tick.duration)
+                    {
+                        progress_label.set_label_escaped(&format!(
+                            "{}/{}",
+                            format_time(elapsed),
+                            format_time(duration)
+                        ));
+
+                        progress.set_value(elapsed.as_secs_f64());
+                        progress.set_range(0.0, duration.as_secs_f64());
+                        progress_box.show_all();
+                    } else {
+                        progress_box.hide();
+                    }
+                }
+                _ => {}
+            }
+        });
 
         Some(container)
     }

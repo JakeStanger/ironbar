@@ -110,12 +110,9 @@ impl Module<Label> for ScriptModule {
             .justify(self.layout.justify.into())
             .build();
 
-        {
-            let label = label.clone();
-            context
-                .subscribe()
-                .recv_glib(move |s| label.set_label_escaped(&s));
-        }
+        context
+            .subscribe()
+            .recv_glib(&label, |label, s| label.set_label_escaped(&s));
 
         Ok(ModuleParts {
             widget: label,
