@@ -117,13 +117,13 @@ impl Module<gtk::Box> for TrayModule {
         // Each widget is wrapped in an EventBox, copying what Waybar does here.
         let container = gtk::Box::new(orientation, 10);
 
-        {
-            let container = container.clone();
-            let mut menus = HashMap::new();
-            let icon_theme = context.ironbar.image_provider().icon_theme();
+        let mut menus = HashMap::new();
+        let icon_theme = context.ironbar.image_provider().icon_theme();
 
-            // listen for UI updates
-            context.subscribe().recv_glib(move |update| {
+        // listen for UI updates
+        context
+            .subscribe()
+            .recv_glib(&container, move |container, update| {
                 on_update(
                     update,
                     &container,
@@ -133,7 +133,6 @@ impl Module<gtk::Box> for TrayModule {
                     self.prefer_theme_icons,
                 );
             });
-        };
 
         Ok(ModuleParts {
             widget: container,

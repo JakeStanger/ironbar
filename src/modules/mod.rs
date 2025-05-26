@@ -388,8 +388,7 @@ impl ModuleFactory for BarModuleFactory {
     ) where
         TSend: Debug + Clone + Send + 'static,
     {
-        let popup = self.popup.clone();
-        rx.recv_glib(move |ev| match ev {
+        rx.recv_glib(&self.popup, move |popup, ev| match ev {
             ModuleUpdateEvent::Update(update) => {
                 tx.send_expect(update);
             }
@@ -464,10 +463,9 @@ impl ModuleFactory for PopupModuleFactory {
     ) where
         TSend: Debug + Clone + Send + 'static,
     {
-        let popup = self.popup.clone();
         let button_id = self.button_id;
 
-        rx.recv_glib(move |ev| match ev {
+        rx.recv_glib(&self.popup, move |popup, ev| match ev {
             ModuleUpdateEvent::Update(update) => {
                 tx.send_expect(update);
             }

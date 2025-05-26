@@ -95,14 +95,13 @@ impl CustomWidget for ProgressWidget {
                     .await;
             });
 
-            rx.recv_glib(move |value| progress.set_fraction(value / self.max));
+            rx.recv_glib((), move |(), value| progress.set_fraction(value / self.max));
         }
 
         if let Some(text) = self.label {
-            let progress = progress.clone();
             progress.set_show_text(true);
 
-            dynamic_string(&text, move |string| {
+            dynamic_string(&text, &progress, move |progress, string| {
                 progress.set_text(Some(&string));
             });
         }

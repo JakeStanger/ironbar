@@ -209,17 +209,18 @@ impl Module<Button> for MenuModule {
         center_section.add_class("main-center");
         end_section.add_class("main-end");
 
-        let container2 = container.clone();
-        {
-            let main_menu = main_menu.clone();
-            let container = container.clone();
-            let start_section = start_section.clone();
-            let center_section = center_section.clone();
-            let end_section = end_section.clone();
+        let truncate_mode = self.truncate;
 
-            let truncate_mode = self.truncate;
-
-            context.subscribe().recv_glib(move |applications| {
+        context.subscribe().recv_glib(
+            (
+                &main_menu,
+                &container,
+                &start_section,
+                &center_section,
+                &end_section,
+            ),
+            move |(main_menu, container, start_section, center_section, end_section),
+                  applications| {
                 for application in applications.iter() {
                     let mut inserted = false;
 
@@ -288,15 +289,14 @@ impl Module<Button> for MenuModule {
                 add_entries!(&center_entries, &center_section);
                 add_entries!(&end_entries, &end_section);
 
-                main_menu.add(&start_section);
-                main_menu.add(&center_section);
-                main_menu.add(&end_section);
-            });
-        }
+                main_menu.add(start_section);
+                main_menu.add(center_section);
+                main_menu.add(end_section);
+            },
+        );
 
         {
-            let container = container2;
-
+            let container = container.clone();
             context.popup.window.connect_hide(move |_| {
                 start_section.foreach(|child| {
                     child.remove_class("open");

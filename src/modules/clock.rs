@@ -139,7 +139,7 @@ impl Module<Button> for ClockModule {
         let locale = Locale::try_from(self.locale.as_str()).unwrap_or(Locale::POSIX);
 
         let rx = context.subscribe();
-        rx.recv_glib(move |date| {
+        rx.recv_glib((), move |(), date| {
             let date_string = format!("{}", date.format_localized(&format, locale));
             label.set_label(&date_string);
         });
@@ -173,7 +173,7 @@ impl Module<Button> for ClockModule {
         let format = self.format_popup;
         let locale = Locale::try_from(self.locale.as_str()).unwrap_or(Locale::POSIX);
 
-        context.subscribe().recv_glib(move |date| {
+        context.subscribe().recv_glib((), move |(), date| {
             let date_string = format!("{}", date.format_localized(&format, locale));
             clock.set_label(&date_string);
         });

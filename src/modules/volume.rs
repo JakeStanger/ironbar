@@ -228,13 +228,11 @@ impl Module<Button> for VolumeModule {
             });
         }
 
-        {
-            let rx = context.subscribe();
-            let icons = self.icons.clone();
+        let rx = context.subscribe();
 
-            let format = self.format.clone();
-
-            rx.recv_glib(move |event| match event {
+        rx.recv_glib(
+            (&self.icons, &self.format),
+            move |(icons, format), event| match event {
                 Event::AddSink(sink) | Event::UpdateSink(sink) if sink.active => {
                     let label = format
                         .replace(
@@ -251,8 +249,8 @@ impl Module<Button> for VolumeModule {
                     button_label.set_label_escaped(&label);
                 }
                 _ => {}
-            });
-        }
+            },
+        );
 
         let popup = self
             .into_popup(context, info)
@@ -351,13 +349,11 @@ impl Module<Button> for VolumeModule {
         container.show_all();
 
         let mut inputs = HashMap::new();
+        let mut sinks = vec![];
 
-        {
-            let input_container = input_container.clone();
-
-            let mut sinks = vec![];
-
-            context.subscribe().recv_glib(move |event| {
+        context
+            .subscribe()
+            .recv_glib(&input_container, move |input_container, event| {
                 match event {
                     Event::AddSink(info) => {
                         sink_selector.append(Some(&info.name), &info.description);
@@ -477,7 +473,6 @@ impl Module<Button> for VolumeModule {
                     }
                 }
             });
-        }
 
         Some(container)
     }

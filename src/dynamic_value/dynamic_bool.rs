@@ -1,6 +1,6 @@
 #[cfg(feature = "ipc")]
 use crate::Ironbar;
-use crate::channels::{AsyncSenderExt, MpscReceiverExt};
+use crate::channels::{AsyncSenderExt, Dependency, MpscReceiverExt};
 use crate::script::Script;
 use crate::spawn;
 use cfg_if::cfg_if;
@@ -19,9 +19,11 @@ pub enum DynamicBool {
 }
 
 impl DynamicBool {
-    pub fn subscribe<F>(self, f: F)
+    pub fn subscribe<D, F>(self, deps: D, f: F)
     where
-        F: FnMut(bool) + 'static,
+        D: Dependency,
+        D::Target: Clone + 'static,
+        F: FnMut(&D::Target, bool) + 'static,
     {
         let value = match self {
             Self::Unknown(input) => {
@@ -43,7 +45,7 @@ impl DynamicBool {
 
         let (tx, rx) = mpsc::channel(32);
 
-        rx.recv_glib(f);
+        rx.recv_glib(deps, f);
 
         spawn(async move {
             match value {

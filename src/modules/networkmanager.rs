@@ -76,7 +76,7 @@ impl Module<GtkBox> for NetworkManagerModule {
             }
         });
 
-        context.subscribe().recv_glib_async(move |state| {
+        context.subscribe().recv_glib_async((), move |(), state| {
             let image_provider = image_provider.clone();
             let icon = icon.clone();
 

@@ -165,7 +165,7 @@ impl CustomWidget for SliderWidget {
                     .await;
             });
 
-            rx.recv_glib(move |value| scale.set_value(value));
+            rx.recv_glib((), move |(), value| scale.set_value(value));
         }
 
         scale

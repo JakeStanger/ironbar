@@ -55,12 +55,9 @@ impl CustomWidget for LabelWidget {
             label.truncate(truncate);
         }
 
-        {
-            let label = label.clone();
-            dynamic_string(&self.label, move |string| {
-                label.set_label_escaped(&string);
-            });
-        }
+        dynamic_string(&self.label, &label, move |label, string| {
+            label.set_label_escaped(&string);
+        });
 
         label
     }

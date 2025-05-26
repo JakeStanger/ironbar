@@ -317,93 +317,95 @@ impl Module<gtk::Box> for WorkspacesModule {
             }
 
             let name_map = self.name_map;
-            let handle_event = move |event: WorkspaceUpdate| match event {
-                WorkspaceUpdate::Init(workspaces) => {
-                    if has_initialized {
-                        return;
-                    }
+            context
+                .subscribe()
+                .recv_glib((), move |(), event| match event {
+                    WorkspaceUpdate::Init(workspaces) => {
+                        if has_initialized {
+                            return;
+                        }
 
-                    trace!("Creating workspace buttons");
+                        trace!("Creating workspace buttons");
 
-                    for workspace in workspaces
-                        .into_iter()
-                        .filter(|w| self.all_monitors || w.monitor == output_name)
-                        .filter(|w| !self.hidden.contains(&w.name))
-                    {
-                        add_workspace(workspace, &mut button_map);
-                    }
+                        for workspace in workspaces
+                            .into_iter()
+                            .filter(|w| self.all_monitors || w.monitor == output_name)
+                            .filter(|w| !self.hidden.contains(&w.name))
+                        {
+                            add_workspace(workspace, &mut button_map);
+                        }
 
-                    reorder!();
-
-                    has_initialized = true;
-                }
-                WorkspaceUpdate::Add(workspace) => {
-                    if !self.hidden.contains(&workspace.name)
-                        && (self.all_monitors || workspace.monitor == output_name)
-                    {
-                        add_workspace(workspace, &mut button_map);
-                    }
-
-                    reorder!();
-                }
-                WorkspaceUpdate::Remove(id) => remove_workspace(id, &mut button_map),
-                WorkspaceUpdate::Move(workspace) => {
-                    if self.all_monitors {
-                        return;
-                    }
-
-                    if workspace.monitor == output_name && !self.hidden.contains(&workspace.name) {
-                        add_workspace(workspace, &mut button_map);
                         reorder!();
-                    } else {
-                        remove_workspace(workspace.id, &mut button_map);
+
+                        has_initialized = true;
                     }
-                }
-                WorkspaceUpdate::Focus { old, new } => {
-                    // Open states are calculated here rather than using the workspace visibility
-                    // as that seems to come back wrong, at least on Hyprland.
-                    // Likely a deeper issue that needs exploring.
+                    WorkspaceUpdate::Add(workspace) => {
+                        if !self.hidden.contains(&workspace.name)
+                            && (self.all_monitors || workspace.monitor == output_name)
+                        {
+                            add_workspace(workspace, &mut button_map);
+                        }
 
-                    if let Some(old) = old {
-                        if let Some(button) = button_map.find_button_mut(&old) {
-                            let open_state = if new.monitor == old.monitor {
-                                OpenState::Hidden
-                            } else {
-                                OpenState::Visible
-                            };
+                        reorder!();
+                    }
+                    WorkspaceUpdate::Remove(id) => remove_workspace(id, &mut button_map),
+                    WorkspaceUpdate::Move(workspace) => {
+                        if self.all_monitors {
+                            return;
+                        }
 
-                            button.set_open_state(open_state);
+                        if workspace.monitor == output_name
+                            && !self.hidden.contains(&workspace.name)
+                        {
+                            add_workspace(workspace, &mut button_map);
+                            reorder!();
+                        } else {
+                            remove_workspace(workspace.id, &mut button_map);
                         }
                     }
+                    WorkspaceUpdate::Focus { old, new } => {
+                        // Open states are calculated here rather than using the workspace visibility
+                        // as that seems to come back wrong, at least on Hyprland.
+                        // Likely a deeper issue that needs exploring.
 
-                    if let Some(button) = button_map.find_button_mut(&new) {
-                        button.set_open_state(OpenState::Focused);
-                    }
-                }
-                WorkspaceUpdate::Rename { id, name } => {
-                    if let Some(button) = button_map
-                        .get(&Identifier::Id(id))
-                        .or_else(|| button_map.get(&Identifier::Name(name.clone())))
-                        .map(Button::button)
-                    {
-                        let display_name = name_map.get(&name).unwrap_or(&name);
+                        if let Some(old) = old {
+                            if let Some(button) = button_map.find_button_mut(&old) {
+                                let open_state = if new.monitor == old.monitor {
+                                    OpenState::Hidden
+                                } else {
+                                    OpenState::Visible
+                                };
 
-                        button.set_label(display_name);
-                        button.set_widget_name(&name);
-                    }
-                }
-                WorkspaceUpdate::Urgent { id, urgent } => {
-                    if let Some(button) = button_map
-                        .get(&Identifier::Id(id))
-                        .or_else(|| button_map.find_button_by_id(id))
-                    {
-                        button.set_urgent(urgent);
-                    }
-                }
-                WorkspaceUpdate::Unknown => warn!("received unknown type workspace event"),
-            };
+                                button.set_open_state(open_state);
+                            }
+                        }
 
-            context.subscribe().recv_glib(handle_event);
+                        if let Some(button) = button_map.find_button_mut(&new) {
+                            button.set_open_state(OpenState::Focused);
+                        }
+                    }
+                    WorkspaceUpdate::Rename { id, name } => {
+                        if let Some(button) = button_map
+                            .get(&Identifier::Id(id))
+                            .or_else(|| button_map.get(&Identifier::Name(name.clone())))
+                            .map(Button::button)
+                        {
+                            let display_name = name_map.get(&name).unwrap_or(&name);
+
+                            button.set_label(display_name);
+                            button.set_widget_name(&name);
+                        }
+                    }
+                    WorkspaceUpdate::Urgent { id, urgent } => {
+                        if let Some(button) = button_map
+                            .get(&Identifier::Id(id))
+                            .or_else(|| button_map.find_button_by_id(id))
+                        {
+                            button.set_urgent(urgent);
+                        }
+                    }
+                    WorkspaceUpdate::Unknown => warn!("received unknown type workspace event"),
+                });
         }
 
         Ok(ModuleParts {

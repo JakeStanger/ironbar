@@ -303,7 +303,7 @@ impl Module<gtk::Box> for SysInfoModule {
             labels.push(label);
         }
 
-        context.subscribe().recv_glib(move |data| {
+        context.subscribe().recv_glib((), move |(), data| {
             let label = &labels[data.0];
             label.set_label_escaped(&data.1);
         });

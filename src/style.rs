@@ -73,7 +73,7 @@ pub fn load_css(style_path: PathBuf, application: Application) {
         }
     });
 
-    rx.recv_glib(move |path| {
+    rx.recv_glib((), move |(), path| {
         info!("Reloading CSS");
         if let Err(err) = provider.load_from_file(&gio::File::for_path(path)) {
             error!("{:?}", Report::new(err)
