@@ -103,7 +103,7 @@ pub trait MpscReceiverExt<T> {
     fn recv_glib<D, Fn>(self, deps: D, f: Fn)
     where
         D: Dependency,
-        D::Target: Clone + 'static,
+        D::Target: 'static,
         Fn: FnMut(&D::Target, T) + 'static;
 }
 
@@ -111,7 +111,7 @@ impl<T: 'static> MpscReceiverExt<T> for mpsc::Receiver<T> {
     fn recv_glib<D, Fn>(mut self, deps: D, mut f: Fn)
     where
         D: Dependency,
-        D::Target: Clone + 'static,
+        D::Target: 'static,
         Fn: FnMut(&D::Target, T) + 'static,
     {
         let deps = deps.clone_content();
@@ -138,14 +138,14 @@ where
     fn recv_glib<D, Fn>(self, deps: D, f: Fn)
     where
         D: Dependency,
-        D::Target: Clone + 'static,
+        D::Target: 'static,
         Fn: FnMut(&D::Target, T) + 'static;
 
     /// Like [`BroadcastReceiverExt::recv_glib`], but the closure must return a [`Future`].
     fn recv_glib_async<D, Fn, F>(self, deps: D, f: Fn)
     where
         D: Dependency,
-        D::Target: Clone + 'static,
+        D::Target: 'static,
         Fn: FnMut(&D::Target, T) -> F + 'static,
         F: Future;
 }
@@ -157,7 +157,7 @@ where
     fn recv_glib<D, Fn>(mut self, deps: D, mut f: Fn)
     where
         D: Dependency,
-        D::Target: Clone + 'static,
+        D::Target: 'static,
         Fn: FnMut(&D::Target, T) + 'static,
     {
         let deps = deps.clone_content();
@@ -182,7 +182,7 @@ where
     fn recv_glib_async<D, Fn, F>(mut self, deps: D, mut f: Fn)
     where
         D: Dependency,
-        D::Target: Clone + 'static,
+        D::Target: 'static,
         Fn: FnMut(&D::Target, T) -> F + 'static,
         F: Future,
     {
