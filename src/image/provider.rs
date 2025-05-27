@@ -175,21 +175,21 @@ impl Provider {
             .map_or((None, input), |(t, n)| (Some(t), n));
 
         let location = match input_type {
-            Some(_t @ "icon") => Some(ImageLocation::Icon(input.to_string())),
+            Some(_t @ "icon") => Some(ImageLocation::Icon(input_name.to_string())),
             Some(_t @ "file") => Some(ImageLocation::Local(PathBuf::from(
                 input_name[2..].to_string(),
             ))),
             #[cfg(feature = "http")]
-            Some(_t @ ("http" | "https")) => input.parse().ok().map(ImageLocation::Remote),
-            None if input.starts_with("steam_app_") => Some(ImageLocation::Steam(
+            Some(_t @ ("http" | "https")) => input_name.parse().ok().map(ImageLocation::Remote),
+            None if input_name.starts_with("steam_app_") => Some(ImageLocation::Steam(
                 input_name.chars().skip("steam_app_".len()).collect(),
             )),
             None if self
                 .icon_theme()
-                .lookup_icon(input, size, IconLookupFlags::empty())
+                .lookup_icon(input_name, size, IconLookupFlags::empty())
                 .is_some() =>
             {
-                Some(ImageLocation::Icon(input.to_string()))
+                Some(ImageLocation::Icon(input_name.to_string()))
             }
             Some(input_type) => {
                 warn!(
@@ -211,7 +211,7 @@ impl Provider {
                     .and_then(|input| input.icon);
 
                 if let Some(location) = location {
-                    if location == input {
+                    if location == input_name {
                         None
                     } else {
                         Box::pin(self.resolve_location(&location, size, recurse_depth + 1)).await?
