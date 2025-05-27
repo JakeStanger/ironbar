@@ -126,7 +126,7 @@ impl Module<gtk::Box> for TrayModule {
             .recv_glib(&container, move |container, update| {
                 on_update(
                     update,
-                    &container,
+                    container,
                     &mut menus,
                     &icon_theme,
                     self.icon_size,

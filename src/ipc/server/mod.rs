@@ -66,7 +66,7 @@ impl Ipc {
         });
 
         cmd_rx.recv_glib(application, move |application, command| {
-            let res = Self::handle_command(command, &application, &ironbar);
+            let res = Self::handle_command(command, application, &ironbar);
             res_tx.send_spawn(res);
         });
     }

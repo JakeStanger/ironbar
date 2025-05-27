@@ -498,8 +498,8 @@ impl Module<gtk::Box> for LauncherModule {
                                     appearance_options,
                                     image_provider.clone(),
                                     bar_position,
-                                    &tx,
-                                    &controller_tx,
+                                    tx,
+                                    controller_tx,
                                 );
 
                                 if self.reversed {
