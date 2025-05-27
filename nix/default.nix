@@ -1,5 +1,5 @@
 {
-  gtk3,
+  gtk4,
   gdk-pixbuf,
   librsvg,
   webp-pixbuf-loader,
@@ -9,7 +9,7 @@
   shared-mime-info,
   gsettings-desktop-schemas,
   wrapGAppsHook,
-  gtk-layer-shell,
+  gtk4-layer-shell,
   gnome,
   libxkbcommon,
   libdbusmenu-gtk3,
@@ -50,10 +50,10 @@
     ];
 
     buildInputs = [
-      gtk3
+      gtk4
       gdk-pixbuf
       glib
-      gtk-layer-shell
+      gtk4-layer-shell
       glib-networking
       shared-mime-info
       adwaita-icon-theme
@@ -66,7 +66,7 @@
       ++ lib.optionals (hasFeature "cairo") [ luajit ]
       ++ lib.optionals (hasFeature "keyboard") [ libinput libevdev ];
 
-    propagatedBuildInputs = [ gtk3 ];
+    propagatedBuildInputs = [ gtk4 ];
 
     lgi = luajitPackages.lgi;
 
@@ -78,7 +78,7 @@
             --prefix XDG_DATA_DIRS : "${shared-mime-info}/share"
 
             # gtk-launch
-            --suffix PATH : "${lib.makeBinPath [ gtk3 ]}"
+            --suffix PATH : "${lib.makeBinPath [ gtk4 ]}"
     ''
     + lib.optionalString (hasFeature "cairo") ''
         --prefix LUA_PATH : "./?.lua;${lgi}/share/lua/5.1/?.lua;${lgi}/share/lua/5.1/?/init.lua;${luajit}/share/lua/5.1/\?.lua;${luajit}/share/lua/5.1/?/init.lua"
