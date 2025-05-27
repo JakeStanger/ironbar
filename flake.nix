@@ -116,8 +116,8 @@
               rust
               rust-analyzer-unwrapped
               gcc
-              gtk3
-              gtk-layer-shell
+              gtk4
+              gtk4-layer-shell
               pkg-config
               openssl
               gdk-pixbuf
@@ -128,7 +128,7 @@
               hicolor-icon-theme
               gsettings-desktop-schemas
               libxkbcommon
-              libdbusmenu-gtk3
+              # libdbusmenu-gtk3
               libpulseaudio
               libinput
               libevdev
