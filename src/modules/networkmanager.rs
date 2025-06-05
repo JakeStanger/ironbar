@@ -7,7 +7,7 @@ use crate::{module_impl, spawn};
 use color_eyre::Result;
 use futures_lite::StreamExt;
 use futures_signals::signal::SignalExt;
-use gtk::prelude::ContainerExt;
+use gtk::prelude::BoxExt;
 use gtk::{Box as GtkBox, Image};
 use serde::Deserialize;
 use tokio::sync::mpsc::Receiver;
@@ -61,7 +61,7 @@ impl Module<GtkBox> for NetworkManagerModule {
         let container = GtkBox::new(info.bar_position.orientation(), 0);
         let icon = Image::new();
         icon.add_css_class("icon");
-        container.add(&icon);
+        container.append(&icon);
 
         let image_provider = context.ironbar.image_provider();
 
