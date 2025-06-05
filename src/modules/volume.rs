@@ -218,12 +218,13 @@ impl Module<Button> for VolumeModule {
     {
         let button_label = Label::builder()
             .use_markup(true)
-            .angle(self.layout.angle(info))
+            // TODO: can't find the replacement for now
+            //.angle(self.layout.angle(info))
             .justify(self.layout.justify.into())
             .build();
 
         let button = Button::new();
-        button.add(&button_label);
+        button.set_child(Some(&button_label));
 
         {
             let tx = context.tx.clone();
@@ -280,8 +281,8 @@ impl Module<Button> for VolumeModule {
         let input_container = gtk::Box::new(Orientation::Vertical, 5);
         input_container.add_class("apps-box");
 
-        container.add(&sink_container);
-        container.add(&input_container);
+        container.append(&sink_container);
+        container.append(&input_container);
 
         let sink_selector = ComboBoxText::new();
         sink_selector.add_class("device-selector");
@@ -306,7 +307,7 @@ impl Module<Button> for VolumeModule {
             });
         }
 
-        sink_container.add(&sink_selector);
+        sink_container.append(&sink_selector);
 
         let slider = Scale::builder()
             .orientation(Orientation::Vertical)
@@ -318,26 +319,24 @@ impl Module<Button> for VolumeModule {
 
         slider.set_range(0.0, self.max_volume);
         slider.set_value(50.0);
-        sink_container.add(&slider);
+        sink_container.append(&slider);
 
         {
             let tx = context.controller_tx.clone();
             let selector = sink_selector.clone();
 
-            slider.connect_button_release_event(move |scale, _| {
+            slider.connect_value_changed(move |scale| {
                 if let Some(sink) = selector.active_id() {
                     // GTK will send values outside min/max range
                     let val = scale.value().clamp(0.0, self.max_volume);
                     tx.send_spawn(Update::SinkVolume(sink.into(), val));
                 }
-
-                Propagation::Proceed
             });
         }
 
         let btn_mute = ToggleButton::new();
         btn_mute.add_class("btn-mute");
-        sink_container.add(&btn_mute);
+        sink_container.append(&btn_mute);
 
         {
             let tx = context.controller_tx.clone();
@@ -351,7 +350,7 @@ impl Module<Button> for VolumeModule {
             });
         }
 
-        container.show_all();
+        container.show();
 
         let mut inputs = HashMap::new();
         let mut sinks = vec![];
@@ -394,7 +393,7 @@ impl Module<Button> for VolumeModule {
                     }
                     Event::RemoveSink(name) => {
                         if let Some(pos) = sinks.iter().position(|s| s.name == name) {
-                            ComboBoxTextExt::remove(&sink_selector, pos as i32);
+                            sink_selector.remove(pos as i32);
                             sinks.remove(pos);
                         }
                     }
@@ -419,12 +418,11 @@ impl Module<Button> for VolumeModule {
 
                         {
                             let tx = context.controller_tx.clone();
-                            slider.connect_button_release_event(move |scale, _| {
+                            slider.connect_value_changed(move |scale| {
                                 // GTK will send values outside min/max range
                                 let val = scale.value().clamp(0.0, self.max_volume);
                                 tx.send_spawn(Update::InputVolume(index, val));
 
-                                Propagation::Proceed
                             });
                         }
 
@@ -446,12 +444,12 @@ impl Module<Button> for VolumeModule {
                             });
                         }
 
-                        item_container.add(&label);
-                        item_container.add(&slider);
-                        item_container.add(&btn_mute);
-                        item_container.show_all();
+                        item_container.append(&label);
+                        item_container.append(&slider);
+                        item_container.append(&btn_mute);
+                        item_container.show();
 
-                        input_container.add(&item_container);
+                        input_container.append(&item_container);
 
                         inputs.insert(
                             info.index,
