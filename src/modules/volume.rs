@@ -9,7 +9,7 @@ use crate::{lock, module_impl, spawn};
 use glib::Propagation;
 use gtk::pango::EllipsizeMode;
 use gtk::prelude::*;
-use gtk::{Button, CellRendererText, ComboBoxText, Label, Orientation, Scale, ToggleButton};
+use gtk::{Button, GestureClick, CellRendererText, ComboBoxText, Label, Orientation, Scale, ToggleButton};
 use serde::Deserialize;
 use std::collections::HashMap;
 use tokio::sync::mpsc;
@@ -195,13 +195,47 @@ impl Module<Button> for VolumeModule {
         // ui events
         spawn(async move {
             while let Some(update) = rx.recv().await {
+                let mut sink_change = None;
+                let mut sink_volume = None;
+                let mut sink_mute = None;
+                let mut input_volume = None;
+                let mut input_mute = None;
+
                 match update {
-                    Update::SinkChange(name) => client.set_default_sink(&name),
-                    Update::SinkVolume(name, volume) => client.set_sink_volume(&name, volume),
-                    Update::SinkMute(name, muted) => client.set_sink_muted(&name, muted),
-                    Update::InputVolume(index, volume) => client.set_input_volume(index, volume),
-                    Update::InputMute(index, muted) => client.set_input_muted(index, muted),
+                    Update::SinkChange(name) => sink_change= Some (name),
+                    Update::SinkVolume(name, volume) => sink_volume = Some((name, volume)),
+                    Update::SinkMute(name, muted) => sink_mute = Some((name, muted)),
+                    Update::InputVolume(index, volume) => input_volume= Some((index, volume)),
+                    Update::InputMute(index, muted) => input_mute=Some((index, muted)),
                 }
+                while let Ok(update) = rx.try_recv() {
+                    match update {
+                        Update::SinkChange(name) => sink_change= Some (name),
+                        Update::SinkVolume(name, volume) => sink_volume = Some((name, volume)),
+                        Update::SinkMute(name, muted) => sink_mute = Some((name, muted)),
+                        Update::InputVolume(index, volume) => input_volume= Some((index, volume)),
+                        Update::InputMute(index, muted) => input_mute=Some((index, muted)),
+                    }
+                }
+
+                if let Some(name) = sink_change {
+                    client.set_default_sink(&name);
+                }
+                if let Some((name, volume)) = sink_volume {
+                    client.set_sink_volume(&name, volume);
+                }
+                if let Some ((name, muted)) = sink_mute {
+                    client.set_sink_muted(&name, muted);
+                }
+
+                if let Some ((index, volume)) = input_volume {
+                    client.set_input_volume(index, volume);
+                }
+
+                if let Some ((index, muted)) = input_mute {
+                    client.set_input_muted(index, muted);
+                }
+                tokio::time::sleep(std::time::Duration::from_millis(30)).await
             }
         });
 
@@ -218,8 +252,6 @@ impl Module<Button> for VolumeModule {
     {
         let button_label = Label::builder()
             .use_markup(true)
-            // TODO: can't find the replacement for now
-            //.angle(self.layout.angle(info))
             .justify(self.layout.justify.into())
             .build();
 
@@ -350,8 +382,6 @@ impl Module<Button> for VolumeModule {
             });
         }
 
-        container.show();
-
         let mut inputs = HashMap::new();
         let mut sinks = vec![];
 
@@ -447,7 +477,6 @@ impl Module<Button> for VolumeModule {
                         item_container.append(&label);
                         item_container.append(&slider);
                         item_container.append(&btn_mute);
-                        item_container.show();
 
                         input_container.append(&item_container);
 

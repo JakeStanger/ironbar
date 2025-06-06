@@ -177,8 +177,6 @@ impl Module<Button> for UpowerModule {
         let label = Label::builder()
             .label(&self.format)
             .use_markup(true)
-            // TODO: find replacement
-            //.angle(self.layout.angle(info))
             .justify(self.layout.justify.into())
             .build();
 
