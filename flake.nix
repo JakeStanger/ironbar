@@ -3,134 +3,85 @@
 
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
-    flake-parts.url = "github:hercules-ci/flake-parts";
     flake-compat.url = "github:edolstra/flake-compat";
-    rust-overlay = {
-      url = "github:oxalica/rust-overlay";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
-    crane.url = "github:ipetkov/crane";
     naersk.url = "github:nix-community/naersk";
+    nix-systems.url = "github:nix-systems/default-linux";
   };
 
-  outputs = inputs @ {
+  outputs = {
     self,
     nixpkgs,
-    rust-overlay,
-    crane,
     naersk,
-    flake-parts,
+    nix-systems,
     ...
-  }:
-    flake-parts.lib.mkFlake {inherit inputs;} (let
-      mkRustToolchain = pkgs:
-        pkgs.rust-bin.stable.latest.default.override {
-          extensions = ["rust-src"];
-        };
-    in {
-      systems = [
-        "aarch64-linux"
-        "x86_64-linux"
-      ];
-
-      imports = [
-        ./nix/devshell.nix
-      ];
-
-      perSystem = {
-        system,
-        config,
-        pkgs,
-        lib,
-        ...
-      }: {
-        _module.args.pkgs = import nixpkgs {
-          inherit system;
-          overlays = [
-            self.overlays.default
-            rust-overlay.overlays.default
-          ];
-        };
-
-        # Packages
-        packages = {
-          ironbar = pkgs.ironbar;
-          default = pkgs.ironbar;
+  }: let
+    forAllSystems = function:
+      nixpkgs.lib.genAttrs (import nix-systems) (system: function nixpkgs.legacyPackages.${system});
+    mkDate = longDate: (nixpkgs.lib.concatStringsSep "-" [
+      (builtins.substring 0 4 longDate)
+      (builtins.substring 4 2 longDate)
+      (builtins.substring 6 2 longDate)
+    ]);
+  in {
+    # Devshell
+    devShells = forAllSystems (pkgs: {
+      default = pkgs.mkShell {
+        packages = builtins.attrValues {
+          inherit
+            (pkgs)
+            cargo
+            clippy
+            rustfmt
+            gtk3
+            gtk-layer-shell
+            gcc
+            openssl
+            libdbusmenu-gtk3
+            libpulseaudio
+            libinput
+            libevdev
+            luajit
+            ;
+          inherit (pkgs.luajitPackages) lgi;
         };
 
-        # Apps
-        apps = {
-          ironbar = {
-            type = "app";
-            program = lib.getExe pkgs.ironbar;
-          };
-          default = config.apps.ironbar;
-        };
-      };
-
-      flake = {
-        overlays.default = final: prev: let
-          inherit (nixpkgs) lib;
-
-          rust = mkRustToolchain final;
-
-          craneLib = (crane.mkLib final).overrideToolchain rust;
-
-          naersk' = prev.callPackage naersk {
-            cargo = rust;
-            rustc = rust;
-          };
-
-          rustPlatform = prev.makeRustPlatform {
-            cargo = rust;
-            rustc = rust;
-          };
-
-          props = builtins.fromTOML (builtins.readFile ./Cargo.toml);
-
-          mkDate = longDate: (lib.concatStringsSep "-" [
-            (builtins.substring 0 4 longDate)
-            (builtins.substring 4 2 longDate)
-            (builtins.substring 6 2 longDate)
-          ]);
-
-          builder = "naersk";
-        in {
-          ironbar = let
-            version =
-              props.package.version
-              + "+date="
-              + (mkDate (self.lastModifiedDate or "19700101"))
-              + "_"
-              + (self.shortRev or "dirty");
-          in
-            if builder == "crane"
-            then
-              prev.callPackage ./nix/package.nix {
-                inherit version;
-                inherit rustPlatform;
-                builderName = builder;
-                builder = craneLib;
-              }
-            else if builder == "naersk"
-            then
-              prev.callPackage ./nix/package.nix {
-                inherit version;
-                inherit rustPlatform;
-                builderName = builder;
-                builder = naersk';
-              }
-            else
-              prev.callPackage ./nix/package.nix {
-                inherit version;
-                inherit rustPlatform;
-                builderName = builder;
-              };
-        };
-
-        homeManagerModules.default = import ./nix/module.nix self;
+        nativeBuildInputs = [
+          pkgs.pkg-config
+        ];
       };
     });
+
+    # Packages
+    packages = forAllSystems (pkgs: {
+      ironbar = let
+        props = builtins.fromTOML (builtins.readFile ./Cargo.toml);
+        version =
+          props.package.version
+          + "+date="
+          + (mkDate (self.lastModifiedDate or "19700101"))
+          + "_"
+          + (self.shortRev or "dirty");
+        naersk' = pkgs.callPackage naersk {};
+      in
+        pkgs.callPackage ./nix/package.nix {
+          inherit version;
+          naersk = naersk';
+        };
+
+      default = self.packages.${pkgs.hostPlatform.system}.ironbar;
+    });
+
+    # Apps
+    apps = forAllSystems (pkgs: {
+      ironbar = {
+        type = "app";
+        program = pkgs.lib.getExe self.packages.${pkgs.hostPlatform.system}.ironbar;
+      };
+      default = self.apps.ironbar;
+    });
+
+    homeManagerModules.default = import ./nix/module.nix self;
+  };
 
   nixConfig = {
     extra-substituters = ["https://cache.garnix.io"];
