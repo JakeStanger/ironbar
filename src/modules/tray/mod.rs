@@ -11,6 +11,7 @@ use gtk::{IconTheme, Orientation};
 use interface::TrayMenu;
 use serde::Deserialize;
 use std::collections::HashMap;
+use std::collections::hash_map::Entry;
 use system_tray::client::Event;
 use system_tray::client::{ActivateRequest, UpdateEvent};
 use tokio::sync::mpsc;
@@ -154,7 +155,8 @@ fn on_update(
             debug!("Received new tray item at '{address}': {item:?}");
 
             let mut menu_item = TrayMenu::new(&address, *item);
-            container.pack_start(&menu_item.event_box, true, true, 0);
+            let x: Option<&gtk::Widget> = None;
+            container.insert_child_after(&menu_item.widget, x);
 
             if let Ok(image) = icon::get_image(&menu_item, icon_theme, icon_size, prefer_icons) {
                 menu_item.set_image(&image);
@@ -163,8 +165,9 @@ fn on_update(
                 menu_item.set_label(&label);
             };
 
-            menu_item.event_box.show();
+            menu_item.widget.show();
             menus.insert(address.into(), menu_item);
+            container.show();
         }
         Event::Update(address, update) => {
             debug!("Received tray update for '{address}'");
@@ -203,17 +206,20 @@ fn on_update(
                     menu_item.set_tooltip(tooltip);
                 }
                 UpdateEvent::MenuConnect(menu) => {
-                    let menu = system_tray::gtk_menu::Menu::new(&address, &menu);
-                    menu_item.set_menu_widget(menu);
+                    //menu_item.set_menu_widget(&address, &menu);
                 }
-                UpdateEvent::Menu(_) | UpdateEvent::MenuDiff(_) => {}
+                UpdateEvent::Menu(menu) => {
+                    menu_item.set_menu_widget(&menu);
+                    container.show();
+                }
+                UpdateEvent::MenuDiff(_) => {}
             }
         }
         Event::Remove(address) => {
             debug!("Removing tray item at '{address}'");
 
             if let Some(menu) = menus.get(address.as_str()) {
-                container.remove(&menu.event_box);
+                container.remove(&menu.widget);
             }
         }
     };
