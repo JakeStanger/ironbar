@@ -1,14 +1,18 @@
-use glib::{Propagation, SignalHandlerId};
+use glib::{Bytes, Propagation, SignalHandlerId};
 use gtk::gdk::Gravity;
-use gtk::prelude::*;
-use gtk::{EventBox, Image, Label, MenuItem};
+use gtk::gdk_pixbuf::Pixbuf;
+use gtk::gio::{Cancellable, MemoryInputStream, Menu, MenuItem};
+use gtk::{Box as GtkBox, Orientation, prelude::*};
+use gtk::{EventController, Image, Label, MenuButton, PopoverMenu};
 use system_tray::item::{IconPixmap, StatusNotifierItem, Tooltip};
+use tracing::{debug, error, trace, warn};
 
 /// Main tray icon to show on the bar
 pub(crate) struct TrayMenu {
-    pub event_box: EventBox,
     button_handler: Option<SignalHandlerId>,
-    widget: MenuItem,
+    pub box_content: GtkBox,
+    pub widget: MenuButton,
+    pub popover: PopoverMenu,
     image_widget: Option<Image>,
     label_widget: Option<Label>,
 
@@ -20,18 +24,18 @@ pub(crate) struct TrayMenu {
 
 impl TrayMenu {
     pub fn new(address: &str, item: StatusNotifierItem) -> Self {
-        let event_box = EventBox::new();
-
-        let widget = MenuItem::new();
+        let popover = PopoverMenu::builder().build();
+        let widget = MenuButton::builder().build();
+        let content = GtkBox::new(Orientation::Horizontal, 0);
+        widget.set_popover(Some(&popover));
+        widget.set_child(Some(&content));
         widget.style_context().add_class("item");
-        event_box.add(&widget);
-
-        event_box.show_all();
 
         let mut slf = Self {
-            event_box,
             button_handler: None,
+            box_content: content,
             widget,
+            popover,
             image_widget: None,
             label_widget: None,
             title: item.title,
@@ -39,11 +43,6 @@ impl TrayMenu {
             icon_theme_path: item.icon_theme_path,
             icon_pixmap: item.icon_pixmap,
         };
-
-        if let Some(menu) = item.menu {
-            let menu = system_tray::gtk_menu::Menu::new(address, &menu);
-            slf.set_menu_widget(menu);
-        }
 
         slf
     }
@@ -53,15 +52,15 @@ impl TrayMenu {
         if let Some(image) = &self.image_widget {
             image.hide();
         }
-
         self.label_widget
             .get_or_insert_with(|| {
                 let label = Label::new(None);
-                self.widget.add(&label);
+                self.box_content.append(&label);
                 label.show();
                 label
             })
             .set_label(text);
+        self.widget.set_label(text);
     }
 
     /// Shows the label, using its current text.
@@ -83,11 +82,10 @@ impl TrayMenu {
         }
 
         if let Some(old) = self.image_widget.replace(image.clone()) {
-            self.widget.remove(&old);
+            self.box_content.remove(&old);
         }
 
-        self.widget.add(image);
-        image.show();
+        self.box_content.append(image);
     }
 
     pub fn label_widget(&self) -> Option<&Label> {
@@ -114,15 +112,49 @@ impl TrayMenu {
         }
     }
 
-    pub fn set_menu_widget(&mut self, menu: system_tray::gtk_menu::Menu) {
-        let button_handler = self
-            .event_box
-            .connect_button_press_event(move |event_box, _event| {
-                menu.popup_at_widget(event_box, Gravity::North, Gravity::South, None);
-                Propagation::Proceed
-            });
-        if let Some(handler) = self.button_handler.replace(button_handler) {
-            self.event_box.disconnect(handler);
+    pub fn set_menu_widget(&mut self, tray_menu: &system_tray::menu::TrayMenu) {
+        debug!("set menu");
+        use gtk::gio::MenuModel;
+        let model: MenuModel = to_menu(&tray_menu.submenus).into();
+        self.widget.set_menu_model(Some(&model));
+    }
+}
+
+fn to_menu(items: &Vec<system_tray::menu::MenuItem>) -> Menu {
+    use gtk::gio::{MenuItem, MenuModel};
+    use system_tray::menu::{MenuType, ToggleType};
+
+    let val = Menu::new();
+    for sub in items.iter() {
+        match sub.menu_type {
+            MenuType::Standard => {
+                let label = sub.label.as_ref().map(String::as_str);
+                debug!("has children: '{:?}'", sub.children_display);
+                let item = if sub.children_display == Some("submenu".to_owned()) {
+                    let submenu: MenuModel = to_menu(&sub.submenu).into();
+                    MenuItem::new_submenu(label, &submenu)
+                } else {
+                    //menu.m
+                    match sub.toggle_type {
+                        ToggleType::Radio => {
+                            // TOOD: hadle the flag with the action
+                            MenuItem::new(label, None)
+                        }
+                        ToggleType::Checkmark => {
+                            // TOOD: hadle the flag with the action
+                            MenuItem::new(label, None)
+                        }
+                        ToggleType::CannotBeToggled => {
+                            debug!("new item {:?}", label);
+                            MenuItem::new(label, None)
+                        }
+                    }
+                };
+                debug!("inserting {}", sub.id);
+                val.insert_item(sub.id, &item);
+            }
+            MenuType::Separator => {}
         }
     }
+    val
 }
