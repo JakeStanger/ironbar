@@ -174,7 +174,7 @@ regex = { version = "1.11.1", default-features = false, features = [
 futures-signals = { version = "0.3.34", optional = true }
 
 # sys_info
-sysinfo = { version = "0.35.1", optional = true }
+sysinfo = { version = "0.35.2", optional = true }
 
 # tray
 system-tray = { version = "0.7.0", features = ["dbusmenu-gtk3"], optional = true }
