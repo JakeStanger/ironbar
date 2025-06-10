@@ -6,9 +6,13 @@ use crate::modules::{
     Module, ModuleInfo, ModuleParts, ModulePopup, ModuleUpdateEvent, PopupButton, WidgetContext,
 };
 use crate::{lock, module_impl, spawn};
+use glib::Propagation;
+use gtk::gdk::BUTTON_PRIMARY;
 use gtk::pango::EllipsizeMode;
 use gtk::prelude::*;
-use gtk::{Button, GestureClick, CellRendererText, ComboBoxText, Label, Orientation, Scale, ToggleButton};
+use gtk::{
+    Button, CellRendererText, ComboBoxText, GestureClick, Label, Orientation, Scale, ToggleButton,
+};
 use serde::Deserialize;
 use std::collections::HashMap;
 use tokio::sync::mpsc;
@@ -194,6 +198,15 @@ impl Module<Button> for VolumeModule {
         // ui events
         spawn(async move {
             while let Some(update) = rx.recv().await {
+                match update {
+                    Update::SinkChange(name) => client.set_default_sink(&name),
+                    Update::SinkVolume(name, volume) => client.set_sink_volume(&name, volume),
+                    Update::SinkMute(name, muted) => client.set_sink_muted(&name, muted),
+                    Update::InputVolume(index, volume) => client.set_input_volume(index, volume),
+                    Update::InputMute(index, muted) => client.set_input_muted(index, muted),
+                }
+
+                /*
                 let mut sink_change = None;
                 let mut sink_volume = None;
                 let mut sink_mute = None;
@@ -220,9 +233,11 @@ impl Module<Button> for VolumeModule {
                 if let Some(name) = sink_change {
                     client.set_default_sink(&name);
                 }
+
                 if let Some((name, volume)) = sink_volume {
                     client.set_sink_volume(&name, volume);
                 }
+
                 if let Some ((name, muted)) = sink_mute {
                     client.set_sink_muted(&name, muted);
                 }
@@ -235,6 +250,7 @@ impl Module<Button> for VolumeModule {
                     client.set_input_muted(index, muted);
                 }
                 tokio::time::sleep(std::time::Duration::from_millis(30)).await
+                */
             }
         });
 
@@ -356,6 +372,18 @@ impl Module<Button> for VolumeModule {
             let tx = context.controller_tx.clone();
             let selector = sink_selector.clone();
 
+            let event_controller = GestureClick::new();
+            event_controller.set_button(BUTTON_PRIMARY);
+            let scale = slider.clone();
+            event_controller.connect_released(move |_, _, _, _| {
+                if let Some(sink) = selector.active_id() {
+                    // GTK will send values outside min/max range
+                    let val = scale.value().clamp(0.0, self.max_volume);
+                    try_send!(tx, Update::SinkVolume(sink.into(), val));
+                }
+            });
+            slider.add_controller(event_controller);
+            /*
             slider.connect_value_changed(move |scale| {
                 if let Some(sink) = selector.active_id() {
                     // GTK will send values outside min/max range
@@ -363,6 +391,7 @@ impl Module<Button> for VolumeModule {
                     tx.send_spawn(Update::SinkVolume(sink.into(), val));
                 }
             });
+            */
         }
 
         let btn_mute = ToggleButton::new();
