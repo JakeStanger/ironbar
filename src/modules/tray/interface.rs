@@ -1,11 +1,16 @@
 use glib::{Bytes, Propagation, SignalHandlerId};
 use gtk::gdk::Gravity;
 use gtk::gdk_pixbuf::Pixbuf;
-use gtk::gio::{Cancellable, MemoryInputStream, Menu, MenuItem};
+use gtk::gio::{
+    Action, ActionEntry, Cancellable, MemoryInputStream, Menu, MenuItem, SimpleAction,
+    SimpleActionGroup,
+};
 use gtk::{Box as GtkBox, Orientation, prelude::*};
 use gtk::{EventController, Image, Label, MenuButton, PopoverMenu};
+use system_tray::client::ActivateRequest;
 use system_tray::item::{IconPixmap, StatusNotifierItem, Tooltip};
-use tracing::{debug, error, trace, warn};
+use tokio::sync::mpsc;
+use tracing::{debug, error, info, trace, warn};
 
 /// Main tray icon to show on the bar
 pub(crate) struct TrayMenu {
@@ -15,22 +20,31 @@ pub(crate) struct TrayMenu {
     pub popover: PopoverMenu,
     image_widget: Option<Image>,
     label_widget: Option<Label>,
+    action_group: Option<SimpleActionGroup>,
+    activated_channel: mpsc::Sender<ActivateRequest>,
 
     pub title: Option<String>,
     pub icon_name: Option<String>,
     pub icon_theme_path: Option<String>,
     pub icon_pixmap: Option<Vec<IconPixmap>>,
+    pub path: String,
+    address: String,
 }
 
 impl TrayMenu {
-    pub fn new(address: &str, item: StatusNotifierItem) -> Self {
+    pub fn new(
+        address: &str,
+        path: &str,
+        item: StatusNotifierItem,
+        activated_channel: mpsc::Sender<ActivateRequest>,
+    ) -> Self {
         let popover = PopoverMenu::builder().build();
         let widget = MenuButton::builder().build();
         let content = GtkBox::new(Orientation::Horizontal, 0);
         widget.set_popover(Some(&popover));
         widget.set_child(Some(&content));
         widget.style_context().add_class("item");
-
+        let menu_path = item.menu.unwrap_or_else(|| "".to_owned());
         let mut slf = Self {
             button_handler: None,
             box_content: content,
@@ -38,10 +52,14 @@ impl TrayMenu {
             popover,
             image_widget: None,
             label_widget: None,
+            action_group: None,
+            activated_channel,
             title: item.title,
             icon_name: item.icon_name,
             icon_theme_path: item.icon_theme_path,
             icon_pixmap: item.icon_pixmap,
+            path: path.to_owned(),
+            address: address.to_owned(),
         };
 
         slf
@@ -115,46 +133,72 @@ impl TrayMenu {
     pub fn set_menu_widget(&mut self, tray_menu: &system_tray::menu::TrayMenu) {
         debug!("set menu");
         use gtk::gio::MenuModel;
-        let model: MenuModel = to_menu(&tray_menu.submenus).into();
+        let mut action_group = SimpleActionGroup::new();
+        let model: MenuModel = self.to_menu(&tray_menu.submenus, &mut action_group).into();
         self.widget.set_menu_model(Some(&model));
+        self.widget.insert_action_group("base", Some(&action_group));
     }
-}
 
-fn to_menu(items: &Vec<system_tray::menu::MenuItem>) -> Menu {
-    use gtk::gio::{MenuItem, MenuModel};
-    use system_tray::menu::{MenuType, ToggleType};
+    fn to_menu(
+        &mut self,
+        items: &Vec<system_tray::menu::MenuItem>,
+        action_group: &mut SimpleActionGroup,
+    ) -> Menu {
+        use gtk::gio::{MenuItem, MenuModel};
+        use system_tray::menu::{MenuType, ToggleType};
 
-    let val = Menu::new();
-    for sub in items.iter() {
-        match sub.menu_type {
-            MenuType::Standard => {
-                let label = sub.label.as_ref().map(String::as_str);
-                debug!("has children: '{:?}'", sub.children_display);
-                let item = if sub.children_display == Some("submenu".to_owned()) {
-                    let submenu: MenuModel = to_menu(&sub.submenu).into();
-                    MenuItem::new_submenu(label, &submenu)
-                } else {
-                    //menu.m
-                    match sub.toggle_type {
-                        ToggleType::Radio => {
-                            // TOOD: hadle the flag with the action
-                            MenuItem::new(label, None)
+        let val = Menu::new();
+        for sub in items.iter() {
+            match sub.menu_type {
+                MenuType::Standard => {
+                    let label = sub.label.as_ref().map(String::as_str);
+                    debug!("has children: '{:?}'", sub.children_display);
+                    let item = if sub.children_display == Some("submenu".to_owned()) {
+                        let submenu: MenuModel = self.to_menu(&sub.submenu, action_group).into();
+                        MenuItem::new_submenu(label, &submenu)
+                    } else {
+                        //menu.m
+                        match sub.toggle_type {
+                            ToggleType::Radio => {
+                                // TOOD: hadle the flag with the action
+                                MenuItem::new(label, None)
+                            }
+                            ToggleType::Checkmark => {
+                                // TOOD: hadle the flag with the action
+                                MenuItem::new(label, None)
+                            }
+                            ToggleType::CannotBeToggled => {
+                                debug!("new item {:?}", label);
+                                let action_name = format!("action_{}", sub.id);
+                                let channel = self.activated_channel.clone();
+                                let id = sub.id;
+                                let lab = sub.label.clone();
+                                let action = SimpleAction::new(&action_name, None);
+                                let address = self.address.clone();
+                                let path = self.path.clone();
+                                action.connect_activate(move |_, _| {
+                                    info!("activated {}, {}, {} {:?} ", address, path, id, lab);
+                                    channel.send(ActivateRequest::MenuItem {
+                                        address: address.clone(),
+                                        menu_path: path.clone(),
+                                        submenu_id: id,
+                                    });
+                                });
+                                action_group.add_action(&action);
+                                MenuItem::new(
+                                    label,
+                                    Some(format!("base.{}", &action_name).as_str()),
+                                )
+                                //MenuItem::new(label,None)
+                            }
                         }
-                        ToggleType::Checkmark => {
-                            // TOOD: hadle the flag with the action
-                            MenuItem::new(label, None)
-                        }
-                        ToggleType::CannotBeToggled => {
-                            debug!("new item {:?}", label);
-                            MenuItem::new(label, None)
-                        }
-                    }
-                };
-                debug!("inserting {}", sub.id);
-                val.insert_item(sub.id, &item);
+                    };
+                    debug!("inserting {}", sub.id);
+                    val.insert_item(sub.id, &item);
+                }
+                MenuType::Separator => {}
             }
-            MenuType::Separator => {}
         }
+        val
     }
-    val
 }

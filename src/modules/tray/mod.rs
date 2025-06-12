@@ -77,7 +77,11 @@ impl Module<gtk::Box> for TrayModule {
             for (key, (item, menu)) in initial_items {
                 send_async!(
                     tx,
-                    ModuleUpdateEvent::Update(Event::Add(key.clone(), item.into()))
+                    ModuleUpdateEvent::Update(Event::Add(
+                        key.clone(),
+                        "arg".to_owned(),
+                        item.into()
+                    ))
                 );
 
                 if let Some(menu) = menu.clone() {
@@ -126,10 +130,10 @@ impl Module<gtk::Box> for TrayModule {
             let container = container.clone();
             let mut menus = HashMap::new();
             let icon_theme = info.icon_theme.clone();
-
+            let activated_channel = context.controller_tx.clone();
             // listen for UI updates
             glib_recv!(context.subscribe(), update =>
-                on_update(update, &container, &mut menus, &icon_theme, self.icon_size, self.prefer_theme_icons)
+                on_update(update, &container, &mut menus, &icon_theme, self.icon_size, self.prefer_theme_icons, activated_channel.clone())
             );
         };
 
@@ -149,12 +153,13 @@ fn on_update(
     icon_theme: &IconTheme,
     icon_size: u32,
     prefer_icons: bool,
+    activated_channel: mpsc::Sender<ActivateRequest>,
 ) {
     match update {
-        Event::Add(address, item) => {
+        Event::Add(address, path, item) => {
             debug!("Received new tray item at '{address}': {item:?}");
 
-            let mut menu_item = TrayMenu::new(&address, *item);
+            let mut menu_item = TrayMenu::new(&address, &path, *item, activated_channel.clone());
             let x: Option<&gtk::Widget> = None;
             container.insert_child_after(&menu_item.widget, x);
 
