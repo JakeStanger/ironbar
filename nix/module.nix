@@ -36,7 +36,7 @@ in {
 
     config = mkOption {
       type = jsonFormat.type;
-      default = {};
+      default = null;
       description = "The config to pass to ironbar.";
     };
 
@@ -53,7 +53,7 @@ in {
     ];
 
     xdg.configFile = {
-      "ironbar/config.json" = mkIf (cfg.config != "") {
+      "ironbar/config.json" = mkIf (cfg.config != null) {
         onChange = "${getExe cfg.package} reload";
         source = jsonFormat.generate "ironbar-config" cfg.config;
       };
