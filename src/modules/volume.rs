@@ -6,6 +6,7 @@ use crate::modules::{
     Module, ModuleInfo, ModuleParts, ModulePopup, ModuleUpdateEvent, PopupButton, WidgetContext,
 };
 use crate::{lock, module_impl, spawn};
+use glib::ControlFlow::Continue;
 use glib::Propagation;
 use gtk::pango::EllipsizeMode;
 use gtk::prelude::*;
@@ -13,6 +14,7 @@ use gtk::{Button, CellRendererText, ComboBoxText, Label, Orientation, Scale, Tog
 use serde::Deserialize;
 use std::collections::HashMap;
 use tokio::sync::mpsc;
+use tracing::debug;
 use tracing::trace;
 
 #[derive(Debug, Clone, Deserialize)]
@@ -408,9 +410,36 @@ impl Module<Button> for VolumeModule {
                         let label = Label::new(Some(&info.name));
                         label.add_class("title");
 
+                        // TODO: address conflict between truncation and marquee
                         if let Some(truncate) = self.truncate {
                             label.truncate(truncate);
                         };
+
+                        label.set_label(&format!("{}    {}", &info.name, &info.name)); // Add spacing between repeats
+
+                        let label_container = gtk::Box::new(Orientation::Horizontal, 4);
+
+                        let scrolled = gtk::ScrolledWindow::builder()
+                            .min_content_width(100) // TODO: replace with scroll.max_length when configuration is added
+                            .vscrollbar_policy(gtk::PolicyType::Never)
+                            .build();
+
+                        let label_hadjustment = scrolled.hadjustment();
+
+                        scrolled.add_tick_callback(move |_, _| {
+                            let new = label_hadjustment.value() + 0.5;
+
+                            if new >= label_hadjustment.upper() / 2.0 {
+                                label_hadjustment.set_value(0.0);
+                            } else {
+                                label_hadjustment.set_value(new);
+                            }
+
+                            Continue
+                        });
+
+                        scrolled.add(&label);
+                        label_container.add(&scrolled);
 
                         let slider = Scale::builder().sensitive(info.can_set_volume).build();
                         slider.set_range(0.0, self.max_volume);
@@ -446,7 +475,7 @@ impl Module<Button> for VolumeModule {
                             });
                         }
 
-                        item_container.add(&label);
+                        item_container.add(&label_container);
                         item_container.add(&slider);
                         item_container.add(&btn_mute);
                         item_container.show_all();
