@@ -149,7 +149,7 @@ cfg-if = "1.0.0"
 clap = { version = "4.5.39", optional = true, features = ["derive"] }
 
 # http
-reqwest = { version = "0.12.19", default-features = false, features = ["default-tls", "http2"], optional = true }
+reqwest = { version = "0.12.20", default-features = false, features = ["default-tls", "http2"], optional = true }
 
 # cairo
 lua-src = { version = "548.0.0", optional = true }
