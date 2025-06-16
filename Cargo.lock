@@ -2032,9 +2032,9 @@ checksum = "30bde2b3dc3671ae49d8e2e9f044c7c005836e7a023ee57cffa25ab82764bb9e"
 
 [[package]]
 name = "lua-src"
-version = "548.0.0"
+version = "548.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3afa963ac6b0fc8fd4ced5a28e6f7637652e02a086d04bf36d732765f4b62ae7"
+checksum = "09637af20abb43b2405bb7c37285a7f3cfec423f173c131c4a7443f7456196dc"
 dependencies = [
  "cc",
 ]
