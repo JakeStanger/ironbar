@@ -280,9 +280,21 @@ impl Module<Button> for MusicModule {
         let icons = self.icons;
 
         let info_box = gtk::Box::new(Orientation::Vertical, 10);
+
         let title_label = IconPrefixedLabel::new(&icons.track, None, &image_provider);
+        if let Some(truncate) = self.truncate_popup_title {
+            title_label.label.truncate(truncate);
+        }
+
         let album_label = IconPrefixedLabel::new(&icons.album, None, &image_provider);
+        if let Some(truncate) = self.truncate_popup_album {
+            album_label.label.truncate(truncate);
+        }
+
         let artist_label = IconPrefixedLabel::new(&icons.artist, None, &image_provider);
+        if let Some(truncate) = self.truncate_popup_artist {
+            artist_label.label.truncate(truncate);
+        }
 
         title_label.container.add_class("title");
         album_label.container.add_class("album");
