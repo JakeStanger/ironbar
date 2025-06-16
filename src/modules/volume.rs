@@ -1,6 +1,6 @@
 use crate::channels::{AsyncSenderExt, BroadcastReceiverExt};
 use crate::clients::volume::{self, Event};
-use crate::config::{CommonConfig, LayoutConfig};
+use crate::config::{CommonConfig, LayoutConfig, TruncateMode};
 use crate::gtk_helpers::{IronbarGtkExt, IronbarLabelExt};
 use crate::modules::{
     Module, ModuleInfo, ModuleParts, ModulePopup, ModuleUpdateEvent, PopupButton, WidgetContext,
@@ -39,6 +39,11 @@ pub struct VolumeModule {
     icons: Icons,
 
     // -- Common --
+    /// See [truncate options](module-level-options#truncate-mode).
+    ///
+    /// **Default**: `null`
+    pub(crate) truncate: Option<TruncateMode>,
+
     /// See [layout options](module-level-options#layout)
     #[serde(default, flatten)]
     layout: LayoutConfig,
@@ -402,6 +407,10 @@ impl Module<Button> for VolumeModule {
 
                         let label = Label::new(Some(&info.name));
                         label.add_class("title");
+
+                        if let Some(truncate) = self.truncate {
+                            label.truncate(truncate);
+                        };
 
                         let slider = Scale::builder().sensitive(info.can_set_volume).build();
                         slider.set_range(0.0, self.max_volume);
