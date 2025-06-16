@@ -148,10 +148,10 @@ dependencies = [
 ]
 
 [[package]]
-name = "async-pidfd-next"
-version = "0.1.0"
+name = "async-pidfd"
+version = "0.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8d735ceae68fef3fc01e2b54e3f8971db1e5f5f3774bd7ff4a679c96ce2c145c"
+checksum = "958321a23896f573a3f1809437af5816f3bc90dd2d5ffe8b1cd5645f42230c17"
 dependencies = [
  "async-io",
  "libc",
@@ -1931,9 +1931,9 @@ checksum = "bbd2bcb4c963f2ddae06a2efc7e9f3591312473c50c6685e1f298068316e66fe"
 
 [[package]]
 name = "libc"
-version = "0.2.171"
+version = "0.2.173"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c19937216e9d3aa9956d9bb8dfc0b0c8beb6058fc4f7a4dc4d850edf86a237d6"
+checksum = "d8cfeafaffdbc32176b64fb251369d52ea9f0a8fbc6f8759edffef7b525d64bb"
 
 [[package]]
 name = "libcorn"
@@ -3233,12 +3233,12 @@ checksum = "13c2bddecc57b384dee18652358fb23172facb8a2c51ccc10d74c157bdea3292"
 
 [[package]]
 name = "swayipc-async"
-version = "2.0.4"
+version = "2.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9928dd773eb37a4253a4b266269be6eb3ed99c4c71d5b700b24dd852bd03cb89"
+checksum = "4ef7d92946d5f53db0d8922bb1dfb0da6d718e4f073936bf717906bf3a1c7835"
 dependencies = [
  "async-io",
- "async-pidfd-next",
+ "async-pidfd",
  "futures-lite",
  "serde",
  "serde_json",
