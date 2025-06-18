@@ -34,6 +34,7 @@
 - [Keyboard](keyboard)
 - [Label](label)
 - [Launcher](launcher)
+- [Menu](menu)
 - [Music](music)
 - [Network Manager](network-manager)
 - [Notifications](notifications)

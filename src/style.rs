@@ -35,7 +35,7 @@ pub fn load_css(style_path: PathBuf, application: Application) {
                     .suggestion("Check the CSS file for errors")
                     .suggestion("GTK CSS uses a subset of the full CSS spec and many properties are not available. Ensure you are not using any unsupported property.")
                 )
-    };
+    }
 
     let screen = gdk::Screen::default().expect("Failed to get default GTK screen");
     StyleContext::add_provider_for_screen(
@@ -73,7 +73,7 @@ pub fn load_css(style_path: PathBuf, application: Application) {
         }
     });
 
-    rx.recv_glib(move |path| {
+    rx.recv_glib((), move |(), path| {
         info!("Reloading CSS");
         if let Err(err) = provider.load_from_file(&gio::File::for_path(path)) {
             error!("{:?}", Report::new(err)

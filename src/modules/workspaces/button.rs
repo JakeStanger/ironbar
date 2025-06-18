@@ -16,7 +16,7 @@ impl Button {
     pub fn new(id: i64, name: &str, open_state: OpenState, context: &WorkspaceItemContext) -> Self {
         let label = context.name_map.get(name).map_or(name, String::as_str);
 
-        let button = IconButton::new(label, &context.icon_theme, context.icon_size);
+        let button = IconButton::new(label, context.icon_size, context.image_provider.clone());
         button.set_widget_name(name);
         button.add_class("item");
 

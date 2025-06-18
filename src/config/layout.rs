@@ -25,13 +25,11 @@ pub struct LayoutConfig {
 impl LayoutConfig {
     pub fn orientation(&self, info: &ModuleInfo) -> gtk::Orientation {
         self.orientation
-            .map(ModuleOrientation::into)
-            .unwrap_or(info.bar_position.orientation())
+            .map_or(info.bar_position.orientation(), ModuleOrientation::into)
     }
 
     pub fn angle(&self, info: &ModuleInfo) -> f64 {
         self.orientation
-            .map(ModuleOrientation::to_angle)
-            .unwrap_or(info.bar_position.angle())
+            .map_or(info.bar_position.angle(), ModuleOrientation::to_angle)
     }
 }

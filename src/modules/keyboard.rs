@@ -230,7 +230,7 @@ impl Module<gtk::Box> for KeyboardModule {
                             tracing::error!("{err:?}");
                             break;
                         }
-                    };
+                    }
                 }
             });
         }
@@ -256,9 +256,11 @@ impl Module<gtk::Box> for KeyboardModule {
     ) -> Result<ModuleParts<gtk::Box>> {
         let container = gtk::Box::new(self.layout.orientation(info), 0);
 
-        let caps = IconLabel::new(&self.icons.caps_off, info.icon_theme, self.icon_size);
-        let num = IconLabel::new(&self.icons.num_off, info.icon_theme, self.icon_size);
-        let scroll = IconLabel::new(&self.icons.scroll_off, info.icon_theme, self.icon_size);
+        let image_provider = context.ironbar.image_provider();
+
+        let caps = IconLabel::new(&self.icons.caps_off, self.icon_size, &image_provider);
+        let num = IconLabel::new(&self.icons.num_off, self.icon_size, &image_provider);
+        let scroll = IconLabel::new(&self.icons.scroll_off, self.icon_size, &image_provider);
 
         caps.label().set_angle(self.layout.angle(info));
         caps.label().set_justify(self.layout.justify.into());
@@ -269,7 +271,7 @@ impl Module<gtk::Box> for KeyboardModule {
         scroll.label().set_angle(self.layout.angle(info));
         scroll.label().set_justify(self.layout.justify.into());
 
-        let layout_button = IconButton::new("", info.icon_theme, self.icon_size);
+        let layout_button = IconButton::new("", self.icon_size, image_provider);
 
         if self.show_caps {
             caps.add_class("key");
@@ -302,52 +304,56 @@ impl Module<gtk::Box> for KeyboardModule {
         }
 
         let icons = self.icons;
-        let handle_event = move |ev: KeyboardUpdate| match ev {
-            KeyboardUpdate::Key(ev) => {
-                let parts = match (ev.key, ev.state) {
-                    (Key::Caps, true) if self.show_caps => Some((&caps, icons.caps_on.as_str())),
-                    (Key::Caps, false) if self.show_caps => Some((&caps, icons.caps_off.as_str())),
-                    (Key::Num, true) if self.show_num => Some((&num, icons.num_on.as_str())),
-                    (Key::Num, false) if self.show_num => Some((&num, icons.num_off.as_str())),
-                    (Key::Scroll, true) if self.show_scroll => {
-                        Some((&scroll, icons.scroll_on.as_str()))
-                    }
-                    (Key::Scroll, false) if self.show_scroll => {
-                        Some((&scroll, icons.scroll_off.as_str()))
-                    }
-                    _ => None,
-                };
+        context
+            .subscribe()
+            .recv_glib((), move |(), ev: KeyboardUpdate| match ev {
+                KeyboardUpdate::Key(ev) => {
+                    let parts = match (ev.key, ev.state) {
+                        (Key::Caps, true) if self.show_caps => {
+                            Some((&caps, icons.caps_on.as_str()))
+                        }
+                        (Key::Caps, false) if self.show_caps => {
+                            Some((&caps, icons.caps_off.as_str()))
+                        }
+                        (Key::Num, true) if self.show_num => Some((&num, icons.num_on.as_str())),
+                        (Key::Num, false) if self.show_num => Some((&num, icons.num_off.as_str())),
+                        (Key::Scroll, true) if self.show_scroll => {
+                            Some((&scroll, icons.scroll_on.as_str()))
+                        }
+                        (Key::Scroll, false) if self.show_scroll => {
+                            Some((&scroll, icons.scroll_off.as_str()))
+                        }
+                        _ => None,
+                    };
 
-                if let Some((label, input)) = parts {
-                    label.set_label(Some(input));
+                    if let Some((label, input)) = parts {
+                        label.set_label(Some(input));
 
-                    if ev.state {
-                        label.add_class("enabled");
-                    } else {
-                        label.remove_class("enabled");
+                        if ev.state {
+                            label.add_class("enabled");
+                        } else {
+                            label.remove_class("enabled");
+                        }
                     }
                 }
-            }
-            KeyboardUpdate::Layout(KeyboardLayoutUpdate(language)) => {
-                let text = icons
-                    .layout_map
-                    .iter()
-                    .find_map(|(pattern, display_text)| {
-                        let is_match = if pattern.ends_with("*") {
-                            let pattern_stripped = pattern.strip_suffix("*").unwrap();
-                            language.starts_with(pattern_stripped)
-                        } else {
-                            pattern == &language
-                        };
+                KeyboardUpdate::Layout(KeyboardLayoutUpdate(language)) => {
+                    let text = icons
+                        .layout_map
+                        .iter()
+                        .find_map(|(pattern, display_text)| {
+                            let is_match = if pattern.ends_with("*") {
+                                let pattern_stripped = pattern.strip_suffix("*").unwrap();
+                                language.starts_with(pattern_stripped)
+                            } else {
+                                pattern == &language
+                            };
 
-                        is_match.then(|| display_text)
-                    })
-                    .unwrap_or(&language);
-                layout_button.set_label(text);
-            }
-        };
-
-        context.subscribe().recv_glib(handle_event);
+                            is_match.then(|| display_text)
+                        })
+                        .unwrap_or(&language);
+                    layout_button.set_label(text);
+                }
+            });
         Ok(ModuleParts::new(container, None))
     }
 }

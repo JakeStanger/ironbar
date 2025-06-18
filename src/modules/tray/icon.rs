@@ -1,4 +1,4 @@
-use crate::image::ImageProvider;
+use crate::image::create_and_load_surface;
 use crate::modules::tray::interface::TrayMenu;
 use color_eyre::{Report, Result};
 use glib::ffi::g_strfreev;
@@ -40,21 +40,21 @@ fn get_icon_theme_search_paths(icon_theme: &IconTheme) -> HashSet<String> {
 
 pub fn get_image(
     item: &TrayMenu,
-    icon_theme: &IconTheme,
     size: u32,
     prefer_icons: bool,
+    icon_theme: &IconTheme,
 ) -> Result<Image> {
     if !prefer_icons && item.icon_pixmap.is_some() {
         get_image_from_pixmap(item, size)
     } else {
-        get_image_from_icon_name(item, icon_theme, size)
+        get_image_from_icon_name(item, size, icon_theme)
             .or_else(|_| get_image_from_pixmap(item, size))
     }
 }
 
 /// Attempts to get a GTK `Image` component
 /// for the status notifier item's icon.
-fn get_image_from_icon_name(item: &TrayMenu, icon_theme: &IconTheme, size: u32) -> Result<Image> {
+fn get_image_from_icon_name(item: &TrayMenu, size: u32, icon_theme: &IconTheme) -> Result<Image> {
     if let Some(path) = item.icon_theme_path.as_ref() {
         if !path.is_empty() && !get_icon_theme_search_paths(icon_theme).contains(path) {
             icon_theme.append_search_path(path);
@@ -68,7 +68,7 @@ fn get_image_from_icon_name(item: &TrayMenu, icon_theme: &IconTheme, size: u32) 
     if let Some(icon_info) = icon_info {
         let pixbuf = icon_info.load_icon()?;
         let image = Image::new();
-        ImageProvider::create_and_load_surface(&pixbuf, &image)?;
+        create_and_load_surface(&pixbuf, &image)?;
         Ok(image)
     } else {
         Err(Report::msg("could not find icon"))
@@ -122,6 +122,6 @@ fn get_image_from_pixmap(item: &TrayMenu, size: u32) -> Result<Image> {
         .unwrap_or(pixbuf);
 
     let image = Image::new();
-    ImageProvider::create_and_load_surface(&pixbuf, &image)?;
+    create_and_load_surface(&pixbuf, &image)?;
     Ok(image)
 }

@@ -21,6 +21,8 @@ use crate::modules::keyboard::KeyboardModule;
 use crate::modules::label::LabelModule;
 #[cfg(feature = "launcher")]
 use crate::modules::launcher::LauncherModule;
+#[cfg(feature = "menu")]
+use crate::modules::menu::MenuModule;
 #[cfg(feature = "music")]
 use crate::modules::music::MusicModule;
 #[cfg(feature = "network_manager")]
@@ -75,6 +77,8 @@ pub enum ModuleConfig {
     Label(Box<LabelModule>),
     #[cfg(feature = "launcher")]
     Launcher(Box<LauncherModule>),
+    #[cfg(feature = "menu")]
+    Menu(Box<MenuModule>),
     #[cfg(feature = "music")]
     Music(Box<MusicModule>),
     #[cfg(feature = "network_manager")]
@@ -127,6 +131,8 @@ impl ModuleConfig {
             Self::Label(module) => create!(module),
             #[cfg(feature = "launcher")]
             Self::Launcher(module) => create!(module),
+            #[cfg(feature = "menu")]
+            Self::Menu(module) => create!(module),
             #[cfg(feature = "music")]
             Self::Music(module) => create!(module),
             #[cfg(feature = "network_manager")]
@@ -295,12 +301,6 @@ pub struct BarConfig {
     #[serde(default)]
     pub autohide: Option<u64>,
 
-    /// The name of the GTK icon theme to use.
-    /// Leave unset to use the default Adwaita theme.
-    ///
-    /// **Default**: `null`
-    pub icon_theme: Option<String>,
-
     /// An array of modules to append to the start of the bar.
     /// Depending on the orientation, this is either the top of the left edge.
     ///
@@ -348,7 +348,6 @@ impl Default for BarConfig {
             height: default_bar_height(),
             start_hidden: None,
             autohide: None,
-            icon_theme: None,
             #[cfg(feature = "label")]
             start: Some(vec![ModuleConfig::Label(
                 LabelModule::new("ℹ️ Using default config".to_string()).into(),
@@ -402,6 +401,12 @@ pub struct Config {
     ///
     /// Providing this option overrides the single, global `bar` option.
     pub monitors: Option<HashMap<String, MonitorConfig>>,
+
+    /// The name of the GTK icon theme to use.
+    /// Leave unset to use the default Adwaita theme.
+    ///
+    /// **Default**: `null`
+    pub icon_theme: Option<String>,
 
     /// Map of app IDs (or classes) to icon names,
     /// overriding the app's default icon.

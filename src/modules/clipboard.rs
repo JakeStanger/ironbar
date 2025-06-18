@@ -147,7 +147,8 @@ impl Module<Button> for ClipboardModule {
         context: WidgetContext<Self::SendMessage, Self::ReceiveMessage>,
         info: &ModuleInfo,
     ) -> color_eyre::Result<ModuleParts<Button>> {
-        let button = IconButton::new(&self.icon, info.icon_theme, self.icon_size);
+        let button = IconButton::new(&self.icon, self.icon_size, context.ironbar.image_provider());
+
         button.label().set_angle(self.layout.angle(info));
         button.label().set_justify(self.layout.justify.into());
 
@@ -183,9 +184,9 @@ impl Module<Button> for ClipboardModule {
 
         let mut items = HashMap::new();
 
-        {
-            let hidden_option = hidden_option.clone();
-            context.subscribe().recv_glib(move |event| {
+        context
+            .subscribe()
+            .recv_glib(&hidden_option, move |hidden_option, event| {
                 match event {
                     ControllerEvent::Add(id, item) => {
                         debug!("Adding new value with ID {}", id);
@@ -195,7 +196,7 @@ impl Module<Button> for ClipboardModule {
 
                         let button = match item.value.as_ref() {
                             ClipboardValue::Text(value) => {
-                                let button = RadioButton::from_widget(&hidden_option);
+                                let button = RadioButton::from_widget(hidden_option);
 
                                 let label = Label::new(Some(value));
                                 button.add(&label);
@@ -221,7 +222,7 @@ impl Module<Button> for ClipboardModule {
                                     Ok(pixbuf) => {
                                         let image = Image::from_pixbuf(Some(&pixbuf));
 
-                                        let button = RadioButton::from_widget(&hidden_option);
+                                        let button = RadioButton::from_widget(hidden_option);
                                         button.set_image(Some(&image));
                                         button.set_always_show_image(true);
                                         button.style_context().add_class("image");
@@ -319,7 +320,6 @@ impl Module<Button> for ClipboardModule {
                     }
                 }
             });
-        }
 
         container.show_all();
         hidden_option.hide();

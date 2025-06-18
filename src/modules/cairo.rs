@@ -192,7 +192,7 @@ impl Module<gtk::Box> for CairoModule {
             }
         });
 
-        context.subscribe().recv_glib(move |_ev| {
+        context.subscribe().recv_glib((), move |(), _ev| {
             let res = fs::read_to_string(&self.path)
                 .map(|s| s.replace("function draw", format!("function __draw_{id}").as_str()));
 

@@ -251,7 +251,7 @@ impl Module<gtk::Box> for SysInfoModule {
                     RefreshType::Disks => client.refresh_disks(),
                     RefreshType::Network => client.refresh_network(),
                     RefreshType::System => client.refresh_load_average(),
-                };
+                }
 
                 for (i, token_set) in format_tokens.iter().enumerate() {
                     let is_affected = token_set
@@ -303,7 +303,7 @@ impl Module<gtk::Box> for SysInfoModule {
             labels.push(label);
         }
 
-        context.subscribe().recv_glib(move |data| {
+        context.subscribe().recv_glib((), move |(), data| {
             let label = &labels[data.0];
             label.set_label_escaped(&data.1);
         });

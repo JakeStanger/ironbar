@@ -280,11 +280,12 @@ Check [here](config) for an example config file for a fully configured bar in ea
 
 The following table lists each of the top-level bar config options:
 
-| Name               | Type                                    | Default | Description                                                                   |
-|--------------------|-----------------------------------------|---------|-------------------------------------------------------------------------------|
-| `ironvar_defaults` | `Map<string, string>`                   | `{}`    | Map of [ironvar](ironvars) keys against their default values.                 |
-| `monitors`         | `Map<string, BarConfig or BarConfig[]>` | `null`  | Map of monitor names against bar configs.                                     |
-| `icon_overrides`   | `Map<string, string>`                   | `{}`    | Map of app IDs (or classes) to icon names, overriding the app's default icon. |
+| Name               | Type                                    | Default | Description                                                                                                                    |
+|--------------------|-----------------------------------------|---------|--------------------------------------------------------------------------------------------------------------------------------|
+| `ironvar_defaults` | `Map<string, string>`                   | `{}`    | Map of [ironvar](ironvars) keys against their default values.                                                                  |
+| `monitors`         | `Map<string, BarConfig or BarConfig[]>` | `null`  | Map of monitor names against bar configs.                                                                                      |
+| `icon_theme`       | `string`                                | `null`  | Name of the GTK icon theme to use. Leave blank to use default.                                                                 |
+| `icon_overrides`   | `Map<string, string>`                   | `{}`    | Map of image inputs to override names. Usually used for app IDs (or classes) to icon names, overriding the app's default icon. |
 
 > [!TIP]
 > `monitors` is only required if you are following **2b** or **2c** (ie not the same bar across all monitors).
@@ -309,7 +310,6 @@ The following table lists each of the bar-level bar config options:
 | `layer`           | `background` or `bottom` or `top` or `overlay` | `top`                                    | The layer-shell layer to place the bar on.                                                                                 |
 | `exclusive_zone`  | `boolean`                                      | `true` unless `start_hidden` is enabled. | Whether the bar should reserve an exclusive zone around it.                                                                |
 | `popup_gap`       | `integer`                                      | `5`                                      | The gap between the bar and popup window.                                                                                  |
-| `icon_theme`      | `string`                                       | `null`                                   | Name of the GTK icon theme to use. Leave blank to use default.                                                             |
 | `start_hidden`    | `boolean`                                      | `false`, or `true` if `autohide` set     | Whether the bar should be hidden when the application starts. Enabled by default when `autohide` is set.                   |
 | `autohide`        | `integer`                                      | `null`                                   | The duration in milliseconds before the bar is hidden after the cursor leaves. Leave unset to disable auto-hide behaviour. |
 | `start`           | `Module[]`                                     | `[]`                                     | Array of left or top modules.                                                                                              |

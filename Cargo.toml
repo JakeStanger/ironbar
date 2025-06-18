@@ -23,6 +23,7 @@ default = [
     "keyboard+all",
     "launcher",
     "label",
+    "menu",
     "music+all",
     "network_manager",
     "notifications",
@@ -76,6 +77,8 @@ label = []
 
 launcher = []
 
+menu = []
+
 music = ["dep:regex"]
 "music+all" = ["music", "music+mpris", "music+mpd"]
 "music+mpris" = ["music", "mpris"]
@@ -112,7 +115,7 @@ schema = ["dep:schemars"]
 gtk = "0.18.2"
 gtk-layer-shell = "0.8.2"
 glib = "0.18.5"
-tokio = { version = "1.45.0", features = [
+tokio = { version = "1.45.1", features = [
     "macros",
     "rt-multi-thread",
     "time",
@@ -120,13 +123,14 @@ tokio = { version = "1.45.0", features = [
     "sync",
     "io-util",
     "net",
+    "fs"
 ] }
 tracing = "0.1.41"
 tracing-subscriber = { version = "0.3.19", features = ["env-filter"] }
 tracing-error = { version = "0.2.1", default-features = false }
 tracing-appender = "0.2.3"
 strip-ansi-escapes = "0.2.0"
-color-eyre = "0.6.3"
+color-eyre = "0.6.5"
 serde = { version = "1.0.219", features = ["derive"] }
 indexmap = { version = "2.9.0", features = ["serde"] }
 dirs = "6.0.0"
@@ -139,17 +143,17 @@ smithay-client-toolkit = { version = "0.18.1", default-features = false, feature
 ] }
 universal-config = { version = "0.5.1", default-features = false }
 ctrlc = "3.4.7"
-cfg-if = "1.0.0"
+cfg-if = "1.0.1"
 
 # cli
-clap = { version = "4.5.38", optional = true, features = ["derive"] }
+clap = { version = "4.5.40", optional = true, features = ["derive"] }
 
 # http
-reqwest = { version = "0.12.15", default-features = false, features = ["default-tls", "http2"], optional = true }
+reqwest = { version = "0.12.20", default-features = false, features = ["default-tls", "http2"], optional = true }
 
 # cairo
-lua-src = { version = "547.1.0", optional = true }
-mlua = { version = "0.10.3", optional = true, features = ["luajit", "send"] }
+lua-src = { version = "548.1.0", optional = true }
+mlua = { version = "0.10.5", optional = true, features = ["luajit", "send"] }
 cairo-rs = { version = "0.18.5", optional = true, features = ["png"] }
 
 # clock
@@ -170,7 +174,7 @@ regex = { version = "1.11.1", default-features = false, features = [
 futures-signals = { version = "0.3.34", optional = true }
 
 # sys_info
-sysinfo = { version = "0.35.1", optional = true }
+sysinfo = { version = "0.35.2", optional = true }
 
 # tray
 system-tray = { version = "0.7.0", features = ["dbusmenu-gtk3"], optional = true }
@@ -180,8 +184,8 @@ libpulse-binding = { version = "2.30.1", optional = true }
 
 # shared
 futures-lite = { version = "2.6.0", optional = true } # network_manager, upower, workspaces, keyboard
-zbus = { version = "5.7.0", default-features = false, features = ["tokio"], optional = true } # network_manager, notifications, upower
-swayipc-async = { version = "2.0.4", optional = true } # workspaces, keyboard
+zbus = { version = "5.7.1", default-features = false, features = ["tokio"], optional = true } # network_manager, notifications, upower
+swayipc-async = { version = "2.1.0", optional = true } # workspaces, keyboard
 hyprland = { version = "0.4.0-beta.2", optional = true } # workspaces, keyboard
 rustix = { version = "1.0.7", default-features = false, features = ["std", "fs", "pipe", "event"], optional = true } # clipboard, input
 serde_json = { version = "1.0.140", optional = true } # ipc, niri
@@ -190,7 +194,7 @@ serde_json = { version = "1.0.140", optional = true } # ipc, niri
 schemars = { version = "0.8.22", optional = true, features = ["indexmap2"] }
 
 [build-dependencies]
-clap = { version = "4.5.38", features = ["derive"] }
-clap_complete = "4.5.50"
+clap = { version = "4.5.40", features = ["derive"] }
+clap_complete = "4.5.54"
 serde = { version = "1.0.219", features = ["derive"] }
 serde_json = "1.0.140"

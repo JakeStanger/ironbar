@@ -1,4 +1,3 @@
-use std::collections::HashMap;
 use std::fmt::Debug;
 use std::rc::Rc;
 use std::sync::Arc;
@@ -7,7 +6,7 @@ use color_eyre::Result;
 use glib::IsA;
 use gtk::gdk::{EventMask, Monitor};
 use gtk::prelude::*;
-use gtk::{Application, Button, EventBox, IconTheme, Orientation, Revealer, Widget};
+use gtk::{Application, Button, EventBox, Orientation, Revealer, Widget};
 use tokio::sync::{broadcast, mpsc};
 use tracing::debug;
 
@@ -44,6 +43,8 @@ pub mod keyboard;
 pub mod label;
 #[cfg(feature = "launcher")]
 pub mod launcher;
+#[cfg(feature = "menu")]
+pub mod menu;
 #[cfg(feature = "music")]
 pub mod music;
 #[cfg(feature = "network_manager")]
@@ -78,8 +79,6 @@ pub struct ModuleInfo<'a> {
     pub bar_position: BarPosition,
     pub monitor: &'a Monitor,
     pub output_name: &'a str,
-    pub icon_theme: &'a IconTheme,
-    pub icon_overrides: Arc<HashMap<String, String>>,
 }
 
 #[derive(Debug, Clone)]
@@ -389,8 +388,7 @@ impl ModuleFactory for BarModuleFactory {
     ) where
         TSend: Debug + Clone + Send + 'static,
     {
-        let popup = self.popup.clone();
-        rx.recv_glib(move |ev| match ev {
+        rx.recv_glib(&self.popup, move |popup, ev| match ev {
             ModuleUpdateEvent::Update(update) => {
                 tx.send_expect(update);
             }
@@ -465,10 +463,9 @@ impl ModuleFactory for PopupModuleFactory {
     ) where
         TSend: Debug + Clone + Send + 'static,
     {
-        let popup = self.popup.clone();
         let button_id = self.button_id;
 
-        rx.recv_glib(move |ev| match ev {
+        rx.recv_glib(&self.popup, move |popup, ev| match ev {
             ModuleUpdateEvent::Update(update) => {
                 tx.send_expect(update);
             }

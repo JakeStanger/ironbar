@@ -157,6 +157,21 @@ pub struct MusicModule {
     /// **Default**: `null`
     pub(crate) truncate: Option<TruncateMode>,
 
+    /// See [truncate options](module-level-options#truncate-mode).
+    ///
+    /// **Default**: `null`
+    pub(crate) truncate_popup_artist: Option<TruncateMode>,
+
+    /// See [truncate options](module-level-options#truncate-mode).
+    ///
+    /// **Default**: `null`
+    pub(crate) truncate_popup_album: Option<TruncateMode>,
+
+    /// See [truncate options](module-level-options#truncate-mode).
+    ///
+    /// **Default**: `null`
+    pub(crate) truncate_popup_title: Option<TruncateMode>,
+
     /// See [layout options](module-level-options#layout)
     #[serde(default, flatten)]
     pub(crate) layout: LayoutConfig,

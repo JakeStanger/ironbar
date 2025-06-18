@@ -3,20 +3,18 @@ use crate::channels::AsyncSenderExt;
 use crate::clients::wayland::ToplevelInfo;
 use crate::config::{BarPosition, TruncateMode};
 use crate::gtk_helpers::{IronbarGtkExt, IronbarLabelExt};
-use crate::image::ImageProvider;
 use crate::modules::ModuleUpdateEvent;
 use crate::modules::launcher::{ItemEvent, LauncherUpdate};
-use crate::read_lock;
+use crate::{image, read_lock};
 use glib::Propagation;
 use gtk::gdk::{BUTTON_MIDDLE, BUTTON_PRIMARY};
 use gtk::prelude::*;
-use gtk::{Align, Button, IconTheme, Image, Justification, Label, Orientation};
+use gtk::{Align, Button, Image, Justification, Label, Orientation};
 use indexmap::IndexMap;
 use std::ops::Deref;
 use std::rc::Rc;
 use std::sync::RwLock;
 use tokio::sync::mpsc::Sender;
-use tracing::error;
 
 #[derive(Debug, Clone)]
 pub struct Item {
@@ -25,23 +23,16 @@ pub struct Item {
     pub open_state: OpenState,
     pub windows: IndexMap<usize, Window>,
     pub name: String,
-    pub icon_override: String,
 }
 
 impl Item {
-    pub fn new(
-        app_id: String,
-        icon_override: String,
-        open_state: OpenState,
-        favorite: bool,
-    ) -> Self {
+    pub fn new(app_id: String, open_state: OpenState, favorite: bool) -> Self {
         Self {
             app_id,
             favorite,
             open_state,
             windows: IndexMap::new(),
             name: String::new(),
-            icon_override,
         }
     }
 
@@ -116,7 +107,6 @@ impl From<ToplevelInfo> for Item {
             open_state,
             windows,
             name,
-            icon_override: String::new(),
         }
     }
 }
@@ -166,7 +156,7 @@ impl ItemButton {
     pub fn new(
         item: &Item,
         appearance: AppearanceOptions,
-        icon_theme: &IconTheme,
+        image_provider: image::Provider,
         bar_position: BarPosition,
         tx: &Sender<ModuleUpdateEvent<LauncherUpdate>>,
         controller_tx: &Sender<ItemEvent>,
@@ -181,21 +171,18 @@ impl ItemButton {
         }
 
         if appearance.show_icons {
-            let input = if !item.icon_override.is_empty() {
-                item.icon_override.clone()
-            } else if item.app_id.is_empty() {
+            let input = if item.app_id.is_empty() {
                 item.name.clone()
             } else {
                 item.app_id.clone()
             };
-            let image = ImageProvider::parse(&input, icon_theme, true, appearance.icon_size);
-            if let Some(image) = image {
-                button.set_always_show_image(true);
 
-                if let Err(err) = image.load_into_image(&button.image) {
-                    error!("{err:?}");
-                }
-            };
+            let button = button.clone();
+            glib::spawn_future_local(async move {
+                image_provider
+                    .load_into_image_silent(&input, appearance.icon_size, true, &button.image)
+                    .await;
+            });
         }
 
         button.add_class("item");

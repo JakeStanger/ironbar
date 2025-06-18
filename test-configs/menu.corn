@@ -1,0 +1,34 @@
+{
+  icon_theme = "Paper"
+  position = "bottom"
+  start = [
+    {
+      type = "menu"
+      label = null
+      label_icon = "archlinux"
+      label_icon_size = 36
+      height = 500
+      width = 440
+      start = [
+        {
+            type = "custom"
+            label = "Terminal"
+            icon = "kitty"
+            on_click = "kitty"
+        }
+      ]
+      end = [
+        {
+            type = "custom"
+            label = "Logout"
+            icon = "logout"
+            on_click = "wlogout"
+        }
+      ]
+    }
+
+    { type = "launcher" }
+  ]
+
+  end = [ { type = "clock" }]
+}

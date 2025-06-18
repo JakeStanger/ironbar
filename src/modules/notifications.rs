@@ -156,7 +156,7 @@ impl Module<Overlay> for NotificationsModule {
                 match initial_state {
                     Ok(ev) => tx.send_update(ev).await,
                     Err(err) => error!("{err:?}"),
-                };
+                }
 
                 while let Ok(ev) = rx.recv().await {
                     tx.send_update(ev).await;
@@ -204,17 +204,13 @@ impl Module<Overlay> for NotificationsModule {
             ctx.send_spawn(UiEvent::ToggleVisibility);
         });
 
-        {
-            let button = button.clone();
+        context.subscribe().recv_glib(&button, move |button, ev| {
+            let icon = self.icons.icon(ev);
+            button.set_label(icon);
 
-            context.subscribe().recv_glib(move |ev| {
-                let icon = self.icons.icon(ev);
-                button.set_label(icon);
-
-                label.set_label(&ev.count.to_string());
-                label.set_visible(self.show_count && ev.count > 0);
-            });
-        }
+            label.set_label(&ev.count.to_string());
+            label.set_visible(self.show_count && ev.count > 0);
+        });
 
         Ok(ModuleParts {
             widget: overlay,

@@ -301,8 +301,7 @@ impl CommonConfig {
         install_oneshot!(self.on_mouse_exit, connect_leave_notify_event);
 
         if let Some(tooltip) = self.tooltip {
-            let container = container.clone();
-            dynamic_string(&tooltip, move |string| {
+            dynamic_string(&tooltip, container, move |container, string| {
                 container.set_tooltip_text(Some(&string));
             });
         }
@@ -314,19 +313,15 @@ impl CommonConfig {
                 container.show_all();
             },
             |show_if| {
+                // need to keep clone here for the notify callback
                 let container = container.clone();
 
-                {
-                    let revealer = revealer.clone();
-                    let container = container.clone();
-
-                    show_if.subscribe(move |success| {
-                        if success {
-                            container.show_all();
-                        }
-                        revealer.set_reveal_child(success);
-                    });
-                }
+                show_if.subscribe((revealer, &container), |(revealer, container), success| {
+                    if success {
+                        container.show_all();
+                    }
+                    revealer.set_reveal_child(success);
+                });
 
                 revealer.connect_child_revealed_notify(move |revealer| {
                     if !revealer.reveals_child() {
