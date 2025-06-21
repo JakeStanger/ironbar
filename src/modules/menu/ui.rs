@@ -6,10 +6,8 @@ use crate::modules::ModuleUpdateEvent;
 use crate::modules::launcher::launch_command;
 use crate::script::Script;
 use crate::{image, spawn};
-use color_eyre::{Help, Report};
 use gtk::prelude::*;
 use gtk::{Align, Button, Label, Orientation};
-use std::process::{Command, Stdio};
 use tokio::sync::mpsc;
 use tracing::{debug, error};
 
