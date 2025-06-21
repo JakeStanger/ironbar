@@ -263,7 +263,7 @@ impl Module<Button> for MenuModule {
                             let container1 = container.clone();
                             let tx = context.tx.clone();
                             let (button, sub_menu) =
-                                ui::make_entry(entry, tx, &image_provider, truncate_mode);
+                                ui::make_entry(entry, tx, &image_provider, truncate_mode, &self.launch_command);
 
                             if let Some(sub_menu) = sub_menu.clone() {
                                 sub_menu.set_valign(alignment);

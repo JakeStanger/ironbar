@@ -108,6 +108,9 @@ pub struct LauncherModule {
     #[serde(default, flatten)]
     layout: LayoutConfig,
 
+    #[serde(default = "default_launch_command")]
+    launch_command: String,
+
     /// See [common options](module-level-options#common-options).
     #[serde(flatten)]
     pub common: Option<CommonConfig>,
@@ -156,6 +159,25 @@ fn default_icon_page_back() -> String {
 
 fn default_icon_page_forward() -> String {
     String::from("󰅂")
+}
+
+pub(crate) fn default_launch_command() -> String { String::from("gtk-launch") }
+pub fn launch_command(file_name: &String, str: &String) {
+    let launch_command_parts: Vec<&str> = str.split_whitespace().collect();
+    if let Err(err) = Command::new(&launch_command_parts[0])
+        .args(&launch_command_parts[1..])
+        .arg(file_name)
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .spawn()
+    {
+        error!(
+            "{:?}",
+            Report::new(err)
+            .wrap_err("Failed to run launch command.")
+            .suggestion("Perhaps the applications file is invalid?")
+        );
+    }
 }
 
 const fn default_truncate_popup() -> TruncateMode {
@@ -373,25 +395,14 @@ impl Module<gtk::Box> for LauncherModule {
         let wl = context.client::<wayland::Client>();
 
         let desktop_files = context.ironbar.desktop_files();
+        let launch_command_str: String = self.launch_command.clone();
 
         spawn(async move {
             while let Some(event) = rx.recv().await {
                 if let ItemEvent::OpenItem(app_id) = event {
                     match desktop_files.find(&app_id).await {
                         Ok(Some(file)) => {
-                            if let Err(err) = Command::new("gtk-launch")
-                                .arg(file.file_name)
-                                .stdout(Stdio::null())
-                                .stderr(Stdio::null())
-                                .spawn()
-                            {
-                                error!(
-                                    "{:?}",
-                                    Report::new(err)
-                                        .wrap_err("Failed to run gtk-launch command.")
-                                        .suggestion("Perhaps the applications file is invalid?")
-                                );
-                            }
+                            launch_command(&file.file_name, &launch_command_str);
                         }
                         Ok(None) => warn!("Could not find applications file for {}", app_id),
                         Err(err) => error!("Failed to find parse file for {}: {}", app_id, err),

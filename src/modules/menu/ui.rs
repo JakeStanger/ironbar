@@ -3,6 +3,7 @@ use crate::channels::AsyncSenderExt;
 use crate::config::TruncateMode;
 use crate::gtk_helpers::{IronbarGtkExt, IronbarLabelExt};
 use crate::modules::ModuleUpdateEvent;
+use crate::modules::launcher::launch_command;
 use crate::script::Script;
 use crate::{image, spawn};
 use color_eyre::{Help, Report};
@@ -17,6 +18,7 @@ pub fn make_entry<R>(
     tx: mpsc::Sender<ModuleUpdateEvent<R>>,
     image_provider: &image::Provider,
     truncate_mode: TruncateMode,
+    launch_command_str: &String,
 ) -> (Button, Option<gtk::Box>)
 where
     R: Send + Clone + 'static,
@@ -96,22 +98,11 @@ where
                 {
                     let sub_menu = sub_menu.clone();
                     let file_name = sub_entry.file_name.clone();
+                    let command = launch_command_str.clone();
                     let tx = tx.clone();
 
                     button.connect_clicked(move |_button| {
-                        if let Err(err) = Command::new("gtk-launch")
-                            .arg(&file_name)
-                            .stdout(Stdio::null())
-                            .stderr(Stdio::null())
-                            .spawn()
-                        {
-                            error!(
-                                "{:?}",
-                                Report::new(err)
-                                    .wrap_err("Failed to run gtk-launch command.")
-                                    .suggestion("Perhaps the applications file is invalid?")
-                            );
-                        }
+                        launch_command(&file_name, &command);
 
                         sub_menu.hide();
                         tx.send_spawn(ModuleUpdateEvent::ClosePopup);

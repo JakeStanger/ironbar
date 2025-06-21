@@ -1,5 +1,6 @@
 use crate::config::{CommonConfig, TruncateMode};
 use crate::modules::menu::{MenuEntry, XdgSection};
+use crate::modules::launcher::default_launch_command;
 use indexmap::IndexMap;
 use serde::Deserialize;
 
@@ -123,6 +124,9 @@ pub struct MenuModule {
     /// See [common options](module-level-options#common-options).
     #[serde(flatten)]
     pub common: Option<CommonConfig>,
+
+    #[serde(default = "default_launch_command")]
+    pub launch_command: String,
 }
 
 impl Default for MenuModule {
@@ -139,6 +143,7 @@ impl Default for MenuModule {
             label_icon: None,
             label_icon_size: default_menu_popup_icon_size(),
             common: Some(CommonConfig::default()),
+            launch_command: default_launch_command(),
         }
     }
 }
