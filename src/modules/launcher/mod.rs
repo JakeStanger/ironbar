@@ -108,6 +108,9 @@ pub struct LauncherModule {
     #[serde(default, flatten)]
     layout: LayoutConfig,
 
+    /// Command used to launch applications.
+    ///
+    /// **Default**: `gtk-launch`
     #[serde(default = "default_launch_command")]
     launch_command: String,
 

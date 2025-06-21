@@ -125,6 +125,9 @@ pub struct MenuModule {
     #[serde(flatten)]
     pub common: Option<CommonConfig>,
 
+    /// Command used to launch applications.
+    ///
+    /// **Default**: `gtk-launch`
     #[serde(default = "default_launch_command")]
     pub launch_command: String,
 }
