@@ -1,9 +1,9 @@
 use super::MenuEntry;
 use crate::channels::AsyncSenderExt;
 use crate::config::TruncateMode;
+use crate::config::launch_command;
 use crate::gtk_helpers::{IronbarGtkExt, IronbarLabelExt};
 use crate::modules::ModuleUpdateEvent;
-use crate::modules::launcher::launch_command;
 use crate::script::Script;
 use crate::{image, spawn};
 use gtk::prelude::*;
@@ -16,7 +16,7 @@ pub fn make_entry<R>(
     tx: mpsc::Sender<ModuleUpdateEvent<R>>,
     image_provider: &image::Provider,
     truncate_mode: TruncateMode,
-    launch_command_str: &String,
+    launch_command_str: &str,
 ) -> (Button, Option<gtk::Box>)
 where
     R: Send + Clone + 'static,
@@ -96,7 +96,7 @@ where
                 {
                     let sub_menu = sub_menu.clone();
                     let file_name = sub_entry.file_name.clone();
-                    let command = launch_command_str.clone();
+                    let command = launch_command_str.to_string();
                     let tx = tx.clone();
 
                     button.connect_clicked(move |_button| {

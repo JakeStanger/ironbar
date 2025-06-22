@@ -7,17 +7,18 @@ use self::open_state::OpenState;
 use super::{Module, ModuleInfo, ModuleParts, ModulePopup, ModuleUpdateEvent, WidgetContext};
 use crate::channels::{AsyncSenderExt, BroadcastReceiverExt};
 use crate::clients::wayland::{self, ToplevelEvent};
-use crate::config::{CommonConfig, EllipsizeMode, LayoutConfig, TruncateMode};
+use crate::config::{
+    CommonConfig, EllipsizeMode, LayoutConfig, TruncateMode, default_launch_command, launch_command,
+};
 use crate::gtk_helpers::{IronbarGtkExt, IronbarLabelExt};
 use crate::modules::launcher::item::ImageTextButton;
 use crate::modules::launcher::pagination::{IconContext, Pagination};
 use crate::{arc_mut, lock, module_impl, spawn, write_lock};
-use color_eyre::{Help, Report};
+use color_eyre::Report;
 use gtk::prelude::*;
 use gtk::{Button, Orientation};
 use indexmap::IndexMap;
 use serde::Deserialize;
-use std::process::{Command, Stdio};
 use std::sync::Arc;
 use tokio::sync::mpsc;
 use tracing::{debug, error, trace, warn};
@@ -162,25 +163,6 @@ fn default_icon_page_back() -> String {
 
 fn default_icon_page_forward() -> String {
     String::from("󰅂")
-}
-
-pub(crate) fn default_launch_command() -> String { String::from("gtk-launch") }
-pub fn launch_command(file_name: &String, str: &String) {
-    let launch_command_parts: Vec<&str> = str.split_whitespace().collect();
-    if let Err(err) = Command::new(&launch_command_parts[0])
-        .args(&launch_command_parts[1..])
-        .arg(file_name)
-        .stdout(Stdio::null())
-        .stderr(Stdio::null())
-        .spawn()
-    {
-        error!(
-            "{:?}",
-            Report::new(err)
-            .wrap_err("Failed to run launch command.")
-            .suggestion("Perhaps the applications file is invalid?")
-        );
-    }
 }
 
 const fn default_truncate_popup() -> TruncateMode {

@@ -44,9 +44,11 @@ use crate::modules::workspaces::WorkspacesModule;
 
 use crate::modules::{AnyModuleFactory, ModuleFactory, ModuleInfo};
 use cfg_if::cfg_if;
-use color_eyre::Result;
+use color_eyre::{Help, Report, Result};
 use serde::Deserialize;
 use std::collections::HashMap;
+use std::process::{Command, Stdio};
+use tracing::error;
 
 #[cfg(feature = "schema")]
 use schemars::JsonSchema;
@@ -434,4 +436,26 @@ pub const fn default_false() -> bool {
 
 pub const fn default_true() -> bool {
     true
+}
+
+pub fn default_launch_command() -> String {
+    String::from("gtk-launch")
+}
+
+pub fn launch_command(file_name: &str, str: &str) {
+    let launch_command_parts: Vec<&str> = str.split_whitespace().collect();
+    if let Err(err) = Command::new(&launch_command_parts[0])
+        .args(&launch_command_parts[1..])
+        .arg(file_name)
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .spawn()
+    {
+        error!(
+            "{:?}",
+            Report::new(err)
+                .wrap_err("Failed to run launch command.")
+                .suggestion("Perhaps the applications file is invalid?")
+        );
+    }
 }

@@ -1,6 +1,6 @@
+use crate::config::default_launch_command;
 use crate::config::{CommonConfig, TruncateMode};
 use crate::modules::menu::{MenuEntry, XdgSection};
-use crate::modules::launcher::default_launch_command;
 use indexmap::IndexMap;
 use serde::Deserialize;
 
