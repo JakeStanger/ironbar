@@ -45,11 +45,10 @@ use crate::modules::workspaces::WorkspacesModule;
 use crate::modules::{AnyModuleFactory, ModuleFactory, ModuleInfo};
 use cfg_if::cfg_if;
 use color_eyre::Result;
-use serde::Deserialize;
-use std::collections::HashMap;
-
 #[cfg(feature = "schema")]
 use schemars::JsonSchema;
+use serde::Deserialize;
+use std::collections::HashMap;
 
 pub use self::common::{CommonConfig, ModuleJustification, ModuleOrientation, TransitionType};
 pub use self::layout::LayoutConfig;
@@ -152,6 +151,53 @@ impl ModuleConfig {
             #[cfg(feature = "workspaces")]
             Self::Workspaces(module) => create!(module),
         }
+    }
+
+    pub fn name(&self) -> String {
+        match self {
+            #[cfg(feature = "bindmode")]
+            ModuleConfig::Bindmode(_) => "Bindmode",
+            #[cfg(feature = "cairo")]
+            ModuleConfig::Cairo(_) => "Cario",
+            #[cfg(feature = "clipboard")]
+            ModuleConfig::Clipboard(_) => "Clipboard",
+            #[cfg(feature = "clock")]
+            ModuleConfig::Clock(_) => "Clock",
+            #[cfg(feature = "custom")]
+            ModuleConfig::Custom(_) => "Custom",
+            #[cfg(feature = "focused")]
+            ModuleConfig::Focused(_) => "Focused",
+            #[cfg(feature = "keyboard")]
+            ModuleConfig::Keyboard(_) => "Keyboard",
+            #[cfg(feature = "label")]
+            ModuleConfig::Label(_) => "Label",
+            #[cfg(feature = "launcher")]
+            ModuleConfig::Launcher(_) => "Launcher",
+            #[cfg(feature = "menu")]
+            ModuleConfig::Menu(_) => "Menu",
+            #[cfg(feature = "music")]
+            ModuleConfig::Music(_) => "Music",
+            #[cfg(feature = "network_manager")]
+            ModuleConfig::NetworkManager(_) => "NetworkManager",
+            #[cfg(feature = "notifications")]
+            ModuleConfig::Notifications(_) => "Notifications",
+            #[cfg(feature = "script")]
+            ModuleConfig::Script(_) => "Script",
+            #[cfg(feature = "sys_info")]
+            ModuleConfig::SysInfo(_) => "SysInfo",
+            #[cfg(feature = "tray")]
+            ModuleConfig::Tray(_) => "Tray",
+            #[cfg(feature = "upower")]
+            ModuleConfig::Upower(_) => "UPower",
+            #[cfg(feature = "volume")]
+            ModuleConfig::Volume(_) => "Volume",
+            #[cfg(feature = "workspaces")]
+            ModuleConfig::Workspaces(_) => "Workspaces",
+            // in case no modules are compiled
+            #[allow(unreachable_patterns)]
+            _ => "",
+        }
+        .to_string()
     }
 }
 
