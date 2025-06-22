@@ -439,14 +439,14 @@ pub const fn default_true() -> bool {
 }
 
 pub fn default_launch_command() -> String {
-    String::from("gtk-launch")
+    String::from("gtk-launch {app_name}")
 }
 
 pub fn launch_command(file_name: &str, str: &str) {
-    let launch_command_parts: Vec<&str> = str.split_whitespace().collect();
+    let expanded = str.replace("{app_name}", file_name);
+    let launch_command_parts: Vec<&str> = expanded.split_whitespace().collect();
     if let Err(err) = Command::new(&launch_command_parts[0])
         .args(&launch_command_parts[1..])
-        .arg(file_name)
         .stdout(Stdio::null())
         .stderr(Stdio::null())
         .spawn()
