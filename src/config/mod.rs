@@ -481,3 +481,7 @@ pub const fn default_false() -> bool {
 pub const fn default_true() -> bool {
     true
 }
+
+pub fn default_launch_command() -> String {
+    String::from("gtk-launch {app_name}")
+}

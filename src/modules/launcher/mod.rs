@@ -7,17 +7,19 @@ use self::open_state::OpenState;
 use super::{Module, ModuleInfo, ModuleParts, ModulePopup, ModuleUpdateEvent, WidgetContext};
 use crate::channels::{AsyncSenderExt, BroadcastReceiverExt};
 use crate::clients::wayland::{self, ToplevelEvent};
-use crate::config::{CommonConfig, EllipsizeMode, LayoutConfig, TruncateMode};
+use crate::config::{
+    CommonConfig, EllipsizeMode, LayoutConfig, TruncateMode, default_launch_command,
+};
+use crate::desktop_file::open_program;
 use crate::gtk_helpers::{IronbarGtkExt, IronbarLabelExt};
 use crate::modules::launcher::item::ImageTextButton;
 use crate::modules::launcher::pagination::{IconContext, Pagination};
 use crate::{arc_mut, lock, module_impl, spawn, write_lock};
-use color_eyre::{Help, Report};
+use color_eyre::Report;
 use gtk::prelude::*;
 use gtk::{Button, Orientation};
 use indexmap::IndexMap;
 use serde::Deserialize;
-use std::process::{Command, Stdio};
 use std::sync::Arc;
 use tokio::sync::mpsc;
 use tracing::{debug, error, trace, warn};
@@ -107,6 +109,12 @@ pub struct LauncherModule {
     /// See [layout options](module-level-options#layout)
     #[serde(default, flatten)]
     layout: LayoutConfig,
+
+    /// Command used to launch applications.
+    ///
+    /// **Default**: `gtk-launch`
+    #[serde(default = "default_launch_command")]
+    launch_command: String,
 
     /// See [common options](module-level-options#common-options).
     #[serde(flatten)]
@@ -373,25 +381,14 @@ impl Module<gtk::Box> for LauncherModule {
         let wl = context.client::<wayland::Client>();
 
         let desktop_files = context.ironbar.desktop_files();
+        let launch_command_str: String = self.launch_command.clone();
 
         spawn(async move {
             while let Some(event) = rx.recv().await {
                 if let ItemEvent::OpenItem(app_id) = event {
                     match desktop_files.find(&app_id).await {
                         Ok(Some(file)) => {
-                            if let Err(err) = Command::new("gtk-launch")
-                                .arg(file.file_name)
-                                .stdout(Stdio::null())
-                                .stderr(Stdio::null())
-                                .spawn()
-                            {
-                                error!(
-                                    "{:?}",
-                                    Report::new(err)
-                                        .wrap_err("Failed to run gtk-launch command.")
-                                        .suggestion("Perhaps the applications file is invalid?")
-                                );
-                            }
+                            open_program(&file.file_name, &launch_command_str);
                         }
                         Ok(None) => warn!("Could not find applications file for {}", app_id),
                         Err(err) => error!("Failed to find parse file for {}: {}", app_id, err),
