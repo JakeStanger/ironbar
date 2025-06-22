@@ -7,10 +7,10 @@ use self::open_state::OpenState;
 use super::{Module, ModuleInfo, ModuleParts, ModulePopup, ModuleUpdateEvent, WidgetContext};
 use crate::channels::{AsyncSenderExt, BroadcastReceiverExt};
 use crate::clients::wayland::{self, ToplevelEvent};
+use crate::desktop_file::open_program;
 use crate::config::{
     CommonConfig, EllipsizeMode, LayoutConfig, TruncateMode, default_launch_command,
 };
-use crate::desktop_file::open_program;
 use crate::gtk_helpers::{IronbarGtkExt, IronbarLabelExt};
 use crate::modules::launcher::item::ImageTextButton;
 use crate::modules::launcher::pagination::{IconContext, Pagination};

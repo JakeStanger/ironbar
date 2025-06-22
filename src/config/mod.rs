@@ -47,10 +47,11 @@ use crate::modules::workspaces::WorkspacesModule;
 use crate::modules::{AnyModuleFactory, ModuleFactory, ModuleInfo, ModuleRef};
 use cfg_if::cfg_if;
 use color_eyre::Result;
-#[cfg(feature = "schema")]
-use schemars::JsonSchema;
 use serde::Deserialize;
 use std::collections::HashMap;
+
+#[cfg(feature = "schema")]
+use schemars::JsonSchema;
 
 pub use self::common::{CommonConfig, ModuleJustification, ModuleOrientation, TransitionType};
 pub use self::layout::LayoutConfig;
