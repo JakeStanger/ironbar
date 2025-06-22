@@ -1,7 +1,7 @@
 use super::MenuEntry;
 use crate::channels::AsyncSenderExt;
 use crate::config::TruncateMode;
-use crate::config::launch_command;
+use crate::desktop_file::open_program;
 use crate::gtk_helpers::{IronbarGtkExt, IronbarLabelExt};
 use crate::modules::ModuleUpdateEvent;
 use crate::script::Script;
@@ -100,7 +100,7 @@ where
                     let tx = tx.clone();
 
                     button.connect_clicked(move |_button| {
-                        launch_command(&file_name, &command);
+                        open_program(&file_name, &command);
 
                         sub_menu.hide();
                         tx.send_spawn(ModuleUpdateEvent::ClosePopup);

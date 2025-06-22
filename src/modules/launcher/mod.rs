@@ -8,8 +8,9 @@ use super::{Module, ModuleInfo, ModuleParts, ModulePopup, ModuleUpdateEvent, Wid
 use crate::channels::{AsyncSenderExt, BroadcastReceiverExt};
 use crate::clients::wayland::{self, ToplevelEvent};
 use crate::config::{
-    CommonConfig, EllipsizeMode, LayoutConfig, TruncateMode, default_launch_command, launch_command,
+    CommonConfig, EllipsizeMode, LayoutConfig, TruncateMode, default_launch_command,
 };
+use crate::desktop_file::open_program;
 use crate::gtk_helpers::{IronbarGtkExt, IronbarLabelExt};
 use crate::modules::launcher::item::ImageTextButton;
 use crate::modules::launcher::pagination::{IconContext, Pagination};
@@ -387,7 +388,7 @@ impl Module<gtk::Box> for LauncherModule {
                 if let ItemEvent::OpenItem(app_id) = event {
                     match desktop_files.find(&app_id).await {
                         Ok(Some(file)) => {
-                            launch_command(&file.file_name, &launch_command_str);
+                            open_program(&file.file_name, &launch_command_str);
                         }
                         Ok(None) => warn!("Could not find applications file for {}", app_id),
                         Err(err) => error!("Failed to find parse file for {}: {}", app_id, err),
