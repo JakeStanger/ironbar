@@ -35,12 +35,10 @@ All error responses will cause the CLI to exit code 3.
 The server listens on a Unix socket. 
 The path is printed on startup, and can usually be found at `/run/user/$UID/ironbar-ipc.sock`.
 
-Commands and responses are sent as JSON objects.
+Commands and responses are sent as JSON objects. 
+The JSON should be minified and must NOT contain any `\n` characters.
 
 Commands will have a `command` key, and a `subcommand` key when part of a sub-command.
-
-The message buffer is currently limited to `1024` bytes. 
-Particularly large messages will be truncated or cause an error.
 
 The full spec can be found below.
 
