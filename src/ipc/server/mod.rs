@@ -8,7 +8,7 @@ use std::rc::Rc;
 use color_eyre::{Report, Result};
 use gtk::Application;
 use gtk::prelude::*;
-use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::net::{UnixListener, UnixStream};
 use tokio::sync::mpsc::{self, Receiver, Sender};
 use tracing::{debug, error, info, warn};
@@ -80,13 +80,14 @@ impl Ipc {
         cmd_tx: &Sender<Command>,
         res_rx: &mut Receiver<Response>,
     ) -> Result<()> {
-        let (mut stream_read, mut stream_write) = stream.split();
+        let (stream_read, mut stream_write) = stream.split();
 
-        let mut read_buffer = vec![0; 1024];
-        let bytes = stream_read.read(&mut read_buffer).await?;
+        let mut read_buffer = String::new();
+        let mut reader = BufReader::new(stream_read);
+        let bytes = reader.read_line(&mut read_buffer).await?;
 
         // FIXME: Error on invalid command
-        let command = serde_json::from_slice::<Command>(&read_buffer[..bytes])?;
+        let command = serde_json::from_str::<Command>(&read_buffer[..bytes])?;
 
         debug!("Received command: {command:?}");
 
@@ -95,7 +96,9 @@ impl Ipc {
             .recv()
             .await
             .unwrap_or(Response::Err { message: None });
-        let res = serde_json::to_vec(&res)?;
+
+        let mut res = serde_json::to_vec(&res)?;
+        res.push(b'\n');
 
         stream_write.write_all(&res).await?;
         stream_write.shutdown().await?;
