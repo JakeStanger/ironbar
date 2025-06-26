@@ -415,28 +415,40 @@ impl Module<Button> for VolumeModule {
                             label.truncate(truncate);
                         };
 
-                        label.set_label(&format!("{}    {}", &info.name, &info.name)); // Add spacing between repeats
-
                         let label_container = gtk::Box::new(Orientation::Horizontal, 4);
 
                         let scrolled = gtk::ScrolledWindow::builder()
-                            .min_content_width(100) // TODO: replace with scroll.max_length when configuration is added
+                            .min_content_width(250) // TODO: replace with scroll.max_length when configuration is added
                             .vscrollbar_policy(gtk::PolicyType::Never)
                             .build();
 
-                        let label_hadjustment = scrolled.hadjustment();
+                        // Set up marquee/scrolling effect
+                        {
+                            let sep = "    ";
+                            label.set_label(&format!("{}{}{}", &info.name, sep, &info.name)); // Add spacing between repeats
 
-                        scrolled.add_tick_callback(move |_, _| {
-                            let new = label_hadjustment.value() + 0.5;
-
-                            if new >= label_hadjustment.upper() / 2.0 {
-                                label_hadjustment.set_value(0.0);
-                            } else {
-                                label_hadjustment.set_value(new);
+                            fn pixel_width(label: &gtk::Label, text: &str) -> i32 {
+                                let layout = label.create_pango_layout(Some(text));
+                                let (w, _) = layout.size(); // in Pango units (1/1024 px)
+                                w / gtk::pango::SCALE // back to integer pixels
                             }
 
-                            Continue
-                        });
+                            let reset_at =
+                                pixel_width(&label, &format!("{}{}", &info.name, sep)) as f64;
+
+                            let label_hadjustment = scrolled.hadjustment();
+
+                            scrolled.add_tick_callback(move |_, _| {
+                                let v = label_hadjustment.value() + 0.5;
+                                if v >= reset_at {
+                                    label_hadjustment.set_value(v - reset_at);
+                                } else {
+                                    label_hadjustment.set_value(v);
+                                }
+
+                                Continue
+                            });
+                        }
 
                         scrolled.add(&label);
                         label_container.add(&scrolled);
