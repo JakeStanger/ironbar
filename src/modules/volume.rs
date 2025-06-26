@@ -6,6 +6,7 @@ use crate::modules::{
     Module, ModuleInfo, ModuleParts, ModulePopup, ModuleUpdateEvent, PopupButton, WidgetContext,
 };
 use crate::{lock, module_impl, spawn};
+use glib::ControlFlow::Continue;
 use glib::Propagation;
 use gtk::pango::EllipsizeMode;
 use gtk::prelude::*;
@@ -13,6 +14,7 @@ use gtk::{Button, CellRendererText, ComboBoxText, Label, Orientation, Scale, Tog
 use serde::Deserialize;
 use std::collections::HashMap;
 use tokio::sync::mpsc;
+use tracing::debug;
 use tracing::trace;
 
 #[derive(Debug, Clone, Deserialize)]
@@ -408,9 +410,48 @@ impl Module<Button> for VolumeModule {
                         let label = Label::new(Some(&info.name));
                         label.add_class("title");
 
+                        // TODO: address conflict between truncation and marquee
                         if let Some(truncate) = self.truncate {
                             label.truncate(truncate);
                         };
+
+                        let label_container = gtk::Box::new(Orientation::Horizontal, 4);
+
+                        let scrolled = gtk::ScrolledWindow::builder()
+                            .min_content_width(250) // TODO: replace with scroll.max_length when configuration is added
+                            .vscrollbar_policy(gtk::PolicyType::Never)
+                            .build();
+
+                        // Set up marquee/scrolling effect
+                        {
+                            let sep = "    ";
+                            label.set_label(&format!("{}{}{}", &info.name, sep, &info.name)); // Add spacing between repeats
+
+                            fn pixel_width(label: &gtk::Label, text: &str) -> i32 {
+                                let layout = label.create_pango_layout(Some(text));
+                                let (w, _) = layout.size(); // in Pango units (1/1024 px)
+                                w / gtk::pango::SCALE // back to integer pixels
+                            }
+
+                            let reset_at =
+                                pixel_width(&label, &format!("{}{}", &info.name, sep)) as f64;
+
+                            let label_hadjustment = scrolled.hadjustment();
+
+                            scrolled.add_tick_callback(move |_, _| {
+                                let v = label_hadjustment.value() + 0.5;
+                                if v >= reset_at {
+                                    label_hadjustment.set_value(v - reset_at);
+                                } else {
+                                    label_hadjustment.set_value(v);
+                                }
+
+                                Continue
+                            });
+                        }
+
+                        scrolled.add(&label);
+                        label_container.add(&scrolled);
 
                         let slider = Scale::builder().sensitive(info.can_set_volume).build();
                         slider.set_range(0.0, self.max_volume);
@@ -446,7 +487,7 @@ impl Module<Button> for VolumeModule {
                             });
                         }
 
-                        item_container.add(&label);
+                        item_container.add(&label_container);
                         item_container.add(&slider);
                         item_container.add(&btn_mute);
                         item_container.show_all();
