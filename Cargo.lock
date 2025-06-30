@@ -3351,10 +3351,11 @@ dependencies = [
 
 [[package]]
 name = "system-tray"
-version = "0.7.0"
+version = "0.8.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c3397841ed755bf361606a845779e0f7333d35fb4e39627ef6f656d7cdad4c73"
+checksum = "90d5d024b1573d22079347055d817863c21ea0903df404668095499c08800e4a"
 dependencies = [
+ "cfg-if",
  "dbusmenu-gtk3-sys",
  "futures-lite",
  "gtk",
