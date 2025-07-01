@@ -422,6 +422,10 @@ impl Module<Button> for VolumeModule {
                             .vscrollbar_policy(gtk::PolicyType::Never)
                             .build();
 
+                        scrolled.add(&label);
+                        label_container.add(&scrolled);
+
+                        // TODO: refactor into src/gtk_helpers.rs
                         // Set up marquee/scrolling effect
                         {
                             let sep = "    ";
@@ -449,9 +453,6 @@ impl Module<Button> for VolumeModule {
                                 Continue
                             });
                         }
-
-                        scrolled.add(&label);
-                        label_container.add(&scrolled);
 
                         let slider = Scale::builder().sensitive(info.can_set_volume).build();
                         slider.set_range(0.0, self.max_volume);
