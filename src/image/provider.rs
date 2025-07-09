@@ -168,7 +168,7 @@ impl<'a> ImageProvider<'a> {
                     // Different error types makes this a bit awkward
                     match pixbuf.map(|pixbuf| image.set_from_pixbuf(Some(&pixbuf)))
                     {
-                        Ok(Err(err)) => error!("{err:?}"),
+                        Ok(()) => error!("Ok()"),
                         Err(err) => error!("{err:?}"),
                         _ => {}
                     }
