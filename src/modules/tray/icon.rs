@@ -5,39 +5,14 @@ use glib::ffi::g_strfreev;
 use glib::translate::ToGlibPtr;
 use gtk::ffi::gtk_icon_theme_get_search_path;
 use gtk::gdk_pixbuf::{Colorspace, InterpType, Pixbuf};
-use gtk::prelude::IconThemeExt;
+use gtk::prelude::WidgetExt;
 use gtk::{IconLookupFlags, IconTheme, Image};
 use std::collections::HashSet;
 use std::ffi::CStr;
 use std::os::raw::{c_char, c_int};
 use std::ptr;
 use system_tray::item::IconPixmap;
-
-/// Gets the GTK icon theme search paths by calling the FFI function.
-/// Conveniently returns the result as a `HashSet`.
-fn get_icon_theme_search_paths(icon_theme: &IconTheme) -> HashSet<String> {
-    let mut gtk_paths: *mut *mut c_char = ptr::null_mut();
-    let mut n_elements: c_int = 0;
-    let mut paths = HashSet::new();
-    unsafe {
-        gtk_icon_theme_get_search_path(
-            icon_theme.to_glib_none().0,
-            &mut gtk_paths,
-            &mut n_elements,
-        );
-        // n_elements is never negative (that would be weird)
-        for i in 0..n_elements as usize {
-            let c_str = CStr::from_ptr(*gtk_paths.add(i));
-            if let Ok(str) = c_str.to_str() {
-                paths.insert(str.to_owned());
-            }
-        }
-
-        g_strfreev(gtk_paths);
-    }
-
-    paths
-}
+use tracing::trace;
 
 pub fn get_image(
     item: &TrayMenu,
@@ -122,6 +97,6 @@ fn get_image_from_pixmap(item: Option<&[IconPixmap]>, size: u32) -> Result<Image
         .unwrap_or(pixbuf);
 
     let image = Image::new();
-    create_and_load_surface(&pixbuf, &image)?;
+    image.set_from_pixbuf(Some(&pixbuf));
     Ok(image)
 }
