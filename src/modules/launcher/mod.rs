@@ -388,7 +388,7 @@ impl Module<gtk::Box> for LauncherModule {
                 if let ItemEvent::OpenItem(app_id) = event {
                     match desktop_files.find(&app_id).await {
                         Ok(Some(file)) => {
-                            open_program(&file.file_name, &launch_command_str);
+                            open_program(&file.file_name, &launch_command_str).await;
                         }
                         Ok(None) => warn!("Could not find applications file for {}", app_id),
                         Err(err) => error!("Failed to find parse file for {}: {}", app_id, err),
