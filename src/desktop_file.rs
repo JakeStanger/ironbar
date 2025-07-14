@@ -328,7 +328,7 @@ fn files(dir: &Path) -> Vec<PathBuf> {
 pub fn open_program(file_name: &str, str: &str) {
     let expanded = str.replace("{app_name}", file_name);
     let launch_command_parts: Vec<&str> = expanded.split_whitespace().collect();
-    if let Err(err) = Command::new(&launch_command_parts[0])
+    if let Err(err) = Command::new(launch_command_parts[0])
         .args(&launch_command_parts[1..])
         .stdout(Stdio::null())
         .stderr(Stdio::null())

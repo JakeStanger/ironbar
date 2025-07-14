@@ -181,7 +181,10 @@ fn on_update(
                 UpdateEvent::AttentionIcon(_icon) => {
                     warn!("received unimplemented NewAttentionIcon event");
                 }
-                UpdateEvent::Icon { icon_name, icon_pixmap} => {
+                UpdateEvent::Icon {
+                    icon_name,
+                    icon_pixmap,
+                } => {
                     menu_item.icon_pixmap = icon_pixmap;
 
                     if icon_name.as_ref() != menu_item.icon_name() {
