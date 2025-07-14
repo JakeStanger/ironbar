@@ -11,6 +11,7 @@ use std::collections::HashSet;
 use std::ffi::CStr;
 use std::os::raw::{c_char, c_int};
 use std::ptr;
+use system_tray::item::IconPixmap;
 
 /// Gets the GTK icon theme search paths by calling the FFI function.
 /// Conveniently returns the result as a `HashSet`.
@@ -45,10 +46,10 @@ pub fn get_image(
     icon_theme: &IconTheme,
 ) -> Result<Image> {
     if !prefer_icons && item.icon_pixmap.is_some() {
-        get_image_from_pixmap(item, size)
+        get_image_from_pixmap(item.icon_pixmap.as_deref(), size)
     } else {
         get_image_from_icon_name(item, size, icon_theme)
-            .or_else(|_| get_image_from_pixmap(item, size))
+            .or_else(|_| get_image_from_pixmap(item.icon_pixmap.as_deref(), size))
     }
 }
 
@@ -81,12 +82,10 @@ fn get_image_from_icon_name(item: &TrayMenu, size: u32, icon_theme: &IconTheme) 
 /// which has 8 bits per sample and a bit stride of `4*width`.
 /// The Pixbuf expects RGBA32 format, so some channel shuffling
 /// is required.
-fn get_image_from_pixmap(item: &TrayMenu, size: u32) -> Result<Image> {
+fn get_image_from_pixmap(item: Option<&[IconPixmap]>, size: u32) -> Result<Image> {
     const BITS_PER_SAMPLE: i32 = 8;
 
     let pixmap = item
-        .icon_pixmap
-        .as_ref()
         .and_then(|pixmap| pixmap.first())
         .ok_or_else(|| Report::msg("Failed to get pixmap from tray icon"))?;
 
