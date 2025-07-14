@@ -2,7 +2,7 @@ use super::Ipc;
 use crate::ipc::{Command, Response};
 use color_eyre::Result;
 use color_eyre::{Help, Report};
-use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::net::UnixStream;
 
 impl Ipc {
@@ -16,18 +16,20 @@ impl Ipc {
                 .suggestion("Is Ironbar running?")),
         }?;
 
-        let write_buffer = serde_json::to_vec(&command)?;
+        let mut write_buffer = serde_json::to_vec(&command)?;
 
         if debug {
             eprintln!("REQUEST JSON: {}", serde_json::to_string(&command)?);
         }
 
+        write_buffer.push(b'\n');
         stream.write_all(&write_buffer).await?;
 
-        let mut read_buffer = vec![0; 1024];
-        let bytes = stream.read(&mut read_buffer).await?;
+        let mut read_buffer = String::new();
+        let mut reader = BufReader::new(stream);
+        let bytes = reader.read_line(&mut read_buffer).await?;
 
-        let response = serde_json::from_slice(&read_buffer[..bytes])?;
+        let response = serde_json::from_str(&read_buffer[..bytes])?;
         Ok(response)
     }
 }

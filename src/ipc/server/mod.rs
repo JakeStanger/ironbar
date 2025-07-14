@@ -8,10 +8,10 @@ use std::rc::Rc;
 use color_eyre::{Report, Result};
 use gtk::Application;
 use gtk::prelude::*;
-use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::net::{UnixListener, UnixStream};
 use tokio::sync::mpsc::{self, Receiver, Sender};
-use tracing::{debug, error, info, warn};
+use tracing::{debug, error, info, trace, warn};
 
 use super::Ipc;
 use crate::channels::{AsyncSenderExt, MpscReceiverExt};
@@ -52,11 +52,13 @@ impl Ipc {
             loop {
                 match listener.accept().await {
                     Ok((stream, _addr)) => {
+                        debug!("handling incoming connection");
                         if let Err(err) =
                             Self::handle_connection(stream, &cmd_tx, &mut res_rx).await
                         {
                             error!("{err:?}");
                         }
+                        debug!("done");
                     }
                     Err(err) => {
                         error!("{err:?}");
@@ -80,10 +82,16 @@ impl Ipc {
         cmd_tx: &Sender<Command>,
         res_rx: &mut Receiver<Response>,
     ) -> Result<()> {
-        let (mut stream_read, mut stream_write) = stream.split();
+        trace!("awaiting readable state");
+        stream.readable().await?;
 
-        let mut read_buffer = vec![0; 1024];
-        let bytes = stream_read.read(&mut read_buffer).await?;
+        let mut read_buffer = Vec::with_capacity(1024);
+
+        let mut reader = BufReader::new(&mut stream);
+
+        trace!("reading bytes");
+        let bytes = reader.read_until(b'\n', &mut read_buffer).await?;
+        debug!("read {} bytes", bytes);
 
         // FIXME: Error on invalid command
         let command = serde_json::from_slice::<Command>(&read_buffer[..bytes])?;
@@ -95,10 +103,18 @@ impl Ipc {
             .recv()
             .await
             .unwrap_or(Response::Err { message: None });
-        let res = serde_json::to_vec(&res)?;
 
-        stream_write.write_all(&res).await?;
-        stream_write.shutdown().await?;
+        let mut res = serde_json::to_vec(&res)?;
+        res.push(b'\n');
+
+        trace!("awaiting writable state");
+        stream.writable().await?;
+
+        debug!("writing {} bytes", res.len());
+        stream.write_all(&res).await?;
+
+        trace!("bytes written, shutting down stream");
+        stream.shutdown().await?;
 
         Ok(())
     }
