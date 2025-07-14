@@ -1,7 +1,8 @@
-use crate::script::{OutputStream, Script};
 #[cfg(feature = "ipc")]
 use crate::Ironbar;
-use crate::{arc_mut, glib_recv_mpsc, lock, spawn, try_send};
+use crate::channels::{AsyncSenderExt, Dependency, MpscReceiverExt};
+use crate::script::{OutputStream, Script};
+use crate::{arc_mut, lock, spawn};
 use tokio::sync::mpsc;
 
 /// A segment of a dynamic string,
@@ -22,12 +23,14 @@ enum DynamicStringSegment {
 ///
 /// ```rs
 /// dynamic_string(&text, move |string| {
-///     label.set_markup(&string);
+///     label.set_label_escaped(&string);
 /// });
 /// ```
-pub fn dynamic_string<F>(input: &str, mut f: F)
+pub fn dynamic_string<D, F>(input: &str, deps: D, f: F)
 where
-    F: FnMut(String) + 'static,
+    D: Dependency,
+    D::Target: Clone + 'static,
+    F: FnMut(&D::Target, String) + 'static,
 {
     let (tokens, is_static) = parse_input(input);
 
@@ -55,7 +58,7 @@ where
                                 let _: String = std::mem::replace(&mut label_parts[i], out);
 
                                 let string = label_parts.join("");
-                                try_send!(tx, string);
+                                tx.send_spawn(string);
                             }
                         })
                         .await;
@@ -71,7 +74,7 @@ where
 
                 spawn(async move {
                     let variable_manager = Ironbar::variable_manager();
-                    let mut rx = crate::write_lock!(variable_manager).subscribe(name);
+                    let mut rx = variable_manager.subscribe(name);
 
                     while let Ok(value) = rx.recv().await {
                         if let Some(value) = value {
@@ -80,7 +83,7 @@ where
                             let _: String = std::mem::replace(&mut label_parts[i], value);
 
                             let string = label_parts.join("");
-                            try_send!(tx, string);
+                            tx.send_spawn(string);
                         }
                     }
                 });
@@ -88,12 +91,12 @@ where
         }
     }
 
-    glib_recv_mpsc!(rx , val => f(val));
+    rx.recv_glib(deps, f);
 
     // initialize
     if is_static {
         let label_parts = lock!(label_parts).join("");
-        try_send!(tx, label_parts);
+        tx.send_spawn(label_parts);
     }
 }
 

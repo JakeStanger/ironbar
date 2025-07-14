@@ -1,5 +1,5 @@
 use super::manager::ToplevelManagerState;
-use crate::{lock, Ironbar};
+use crate::{Ironbar, lock};
 use std::collections::HashSet;
 use std::sync::{Arc, Mutex};
 use tracing::trace;
@@ -32,6 +32,11 @@ impl ToplevelHandle {
     pub fn focus(&self, seat: &WlSeat) {
         trace!("Activating handle");
         self.handle.activate(seat);
+    }
+
+    pub fn minimize(&self) {
+        trace!("Minimizing handle");
+        self.handle.set_minimized();
     }
 }
 
@@ -146,7 +151,7 @@ where
                     ToplevelHandle {
                         handle: handle.clone(),
                     },
-                )
+                );
             }
             Event::Done if !lock!(data.inner).closed => {
                 {

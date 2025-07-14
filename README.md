@@ -48,10 +48,10 @@ Ironbar is designed to support anything from a lightweight bar to a full desktop
 
 ## Features
 
-- First-class support for Sway and Hyprland
+- First-class support for Sway and Hyprland, and partial support for Niri
 - Fully themeable with hot-loaded CSS
 - Popups to show rich content
-- Ability to create custom widgets, run scripts and embed dynamic content
+- Ability to create custom widgets, run scripts and embed dynamic content (including via Lua)
 - Easy to configure anything from a single bar across all monitors, to multiple different unique bars per monitor 
 - Support for multiple config languages
 
@@ -119,8 +119,35 @@ A flake is included with the repo which can be used with Home Manager.
           # And configure
           programs.ironbar = {
             enable = true;
-            config = {};
-            style = "";
+            systemd = true;
+            config = {
+              # An example: 
+              monitors = {
+                DP-1 = {
+                  anchor_to_edges = true;
+                  position = "top";
+                  height = 16;
+                  start = [
+                    { type = "clock"; }
+                  ];
+                  end = [
+                    { 
+                      type = "tray";
+                      icon_size = 16;
+                    }
+                  ];
+                };
+              };
+            };
+            style = /* css */ ''
+              /* An example */
+              * {
+                font-family: Noto Sans Nerd Font, sans-serif;
+                font-size: 16px;
+                border: none;
+                border-radius: 0;
+              }
+            '';
             package = inputs.ironbar;
             features = ["feature" "another_feature"];
           };

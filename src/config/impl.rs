@@ -37,26 +37,24 @@ impl<'de> Deserialize<'de> for MonitorConfig {
 
 pub fn deserialize_layer<'de, D>(deserializer: D) -> Result<gtk_layer_shell::Layer, D::Error>
 where
-    D: serde::Deserializer<'de>,
+    D: Deserializer<'de>,
 {
     use gtk_layer_shell::Layer;
 
     let value = Option::<String>::deserialize(deserializer)?;
-    value
-        .map(|v| match v.as_str() {
-            "background" => Ok(Layer::Background),
-            "bottom" => Ok(Layer::Bottom),
-            "top" => Ok(Layer::Top),
-            "overlay" => Ok(Layer::Overlay),
-            _ => Err(serde::de::Error::custom("invalid value for orientation")),
-        })
-        .unwrap_or(Ok(Layer::Top))
+    value.map_or(Ok(Layer::Top), |v| match v.as_str() {
+        "background" => Ok(Layer::Background),
+        "bottom" => Ok(Layer::Bottom),
+        "top" => Ok(Layer::Top),
+        "overlay" => Ok(Layer::Overlay),
+        _ => Err(serde::de::Error::custom("invalid value for orientation")),
+    })
 }
 
 #[cfg(feature = "schema")]
-pub fn schema_layer(gen: &mut schemars::gen::SchemaGenerator) -> schemars::schema::Schema {
+pub fn schema_layer(generator: &mut schemars::r#gen::SchemaGenerator) -> schemars::schema::Schema {
     use schemars::JsonSchema;
-    let mut schema: schemars::schema::SchemaObject = <String>::json_schema(gen).into();
+    let mut schema: schemars::schema::SchemaObject = <String>::json_schema(generator).into();
     schema.enum_values = Some(vec![
         "background".into(),
         "bottom".into(),
@@ -79,7 +77,7 @@ impl BarPosition {
 
     /// Gets the angle that label text should be displayed at
     /// based on this position.
-    pub const fn get_angle(self) -> f64 {
+    pub const fn angle(self) -> f64 {
         match self {
             Self::Top | Self::Bottom => 0.0,
             Self::Left => 90.0,

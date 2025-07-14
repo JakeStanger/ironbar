@@ -1,13 +1,14 @@
 use gtk::prelude::*;
-use gtk::{Button, Label, Orientation};
+use gtk::{Button, Label};
 use serde::Deserialize;
 
-use crate::config::ModuleOrientation;
-use crate::dynamic_value::dynamic_string;
-use crate::modules::PopupButton;
-use crate::{build, try_send};
-
 use super::{CustomWidget, CustomWidgetContext, ExecEvent, WidgetConfig};
+use crate::build;
+use crate::channels::AsyncSenderExt;
+use crate::config::LayoutConfig;
+use crate::dynamic_value::dynamic_string;
+use crate::gtk_helpers::IronbarLabelExt;
+use crate::modules::PopupButton;
 
 #[derive(Debug, Deserialize, Clone)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
@@ -37,13 +38,9 @@ pub struct ButtonWidget {
     /// **Default**: `null`
     on_click: Option<String>,
 
-    /// Orientation of the button.
-    ///
-    /// **Valid options**: `horizontal`, `vertical`, `h`, `v`
-    /// <br />
-    /// **Default**: `horizontal`
-    #[serde(default)]
-    orientation: ModuleOrientation,
+    /// See [layout options](module-level-options#layout)
+    #[serde(default, flatten)]
+    layout: LayoutConfig,
 
     /// Modules and widgets to add to this box.
     ///
@@ -59,7 +56,7 @@ impl CustomWidget for ButtonWidget {
         context.popup_buttons.borrow_mut().push(button.clone());
 
         if let Some(widgets) = self.widgets {
-            let container = gtk::Box::new(Orientation::Horizontal, 0);
+            let container = gtk::Box::new(self.layout.orientation(context.info), 0);
 
             for widget in widgets {
                 widget.widget.add_to(&container, &context, widget.common);
@@ -70,12 +67,14 @@ impl CustomWidget for ButtonWidget {
             let label = Label::new(None);
             label.set_use_markup(true);
 
-            label.set_angle(self.orientation.to_angle());
+            if !context.is_popup {
+                label.set_angle(self.layout.angle(context.info));
+            }
 
             button.add(&label);
 
-            dynamic_string(&text, move |string| {
-                label.set_markup(&string);
+            dynamic_string(&text, (), move |(), string| {
+                label.set_label_escaped(&string);
             });
         }
 
@@ -83,14 +82,11 @@ impl CustomWidget for ButtonWidget {
             let tx = context.tx.clone();
 
             button.connect_clicked(move |button| {
-                try_send!(
-                    tx,
-                    ExecEvent {
-                        cmd: exec.clone(),
-                        args: None,
-                        id: button.try_popup_id().unwrap_or(usize::MAX), // may not be a popup button
-                    }
-                );
+                tx.send_spawn(ExecEvent {
+                    cmd: exec.clone(),
+                    args: None,
+                    id: button.try_popup_id().unwrap_or(usize::MAX), // may not be a popup button
+                });
             });
         }
 

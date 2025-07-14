@@ -1,0 +1,87 @@
+[[start]]
+type = "menu"
+
+[[start.center]]
+type = "xdg_entry"
+label = "Accessories"
+icon = "accessories"
+categories = [
+    "Accessibility",
+    "Core",
+    "Legacy",
+    "Utility",
+]
+
+[[start.center]]
+type = "xdg_entry"
+label = "Development"
+icon = "applications-development"
+categories = ["Development"]
+
+[[start.center]]
+type = "xdg_entry"
+label = "Education"
+icon = "applications-education"
+categories = ["Education"]
+
+[[start.center]]
+type = "xdg_entry"
+label = "Games"
+icon = "applications-games"
+categories = ["Games"]
+
+[[start.center]]
+type = "xdg_entry"
+label = "Graphics"
+icon = "applications-graphics"
+categories = ["Graphics"]
+
+[[start.center]]
+type = "xdg_entry"
+label = "Multimedia"
+icon = "applications-multimedia"
+categories = [
+    "Audio",
+    "Video",
+    "AudioVideo",
+]
+
+[[start.center]]
+type = "xdg_entry"
+label = "Network"
+icon = "applications-internet"
+categories = ["Network"]
+
+[[start.center]]
+type = "xdg_entry"
+label = "Office"
+icon = "applications-office"
+categories = ["Office"]
+
+[[start.center]]
+type = "xdg_entry"
+label = "Science"
+icon = "applications-science"
+categories = ["Science"]
+
+[[start.center]]
+type = "xdg_entry"
+label = "System"
+icon = "applications-system"
+categories = [
+    "Emulator",
+    "System",
+]
+
+[[start.center]]
+type = "xdg_other"
+
+[[start.center]]
+type = "xdg_entry"
+label = "Settings"
+icon = "preferences-system"
+categories = [
+    "Settings",
+    "Screensaver",
+]
+

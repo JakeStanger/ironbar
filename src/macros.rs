@@ -35,13 +35,14 @@ macro_rules! module_impl {
 /// send_async!(tx, "my message");
 /// ```
 #[macro_export]
+#[deprecated(since = "0.17.0", note = "Use `AsyncSenderExt::send_expect` instead")]
 macro_rules! send_async {
     ($tx:expr, $msg:expr) => {
         $tx.send($msg).await.expect($crate::error::ERR_CHANNEL_SEND)
     };
 }
 
-/// Sends a message on an synchronous `Sender` using `send()`
+/// Sends a message on a synchronous `Sender` using `send()`
 /// Panics if the message cannot be sent.
 ///
 /// # Usage:
@@ -50,13 +51,14 @@ macro_rules! send_async {
 /// send!(tx, "my message");
 /// ```
 #[macro_export]
+#[deprecated(since = "0.17.0", note = "Use `SyncSenderExt::send_expect` instead")]
 macro_rules! send {
     ($tx:expr, $msg:expr) => {
         $tx.send($msg).expect($crate::error::ERR_CHANNEL_SEND)
     };
 }
 
-/// Sends a message on an synchronous `Sender` using `try_send()`
+/// Sends a message on a synchronous `Sender` using `try_send()`
 /// Panics if the message cannot be sent.
 ///
 /// # Usage:
@@ -65,9 +67,31 @@ macro_rules! send {
 /// try_send!(tx, "my message");
 /// ```
 #[macro_export]
+#[deprecated(since = "0.17.0", note = "Use `AsyncSenderExt::send_spawn` instead")]
 macro_rules! try_send {
     ($tx:expr, $msg:expr) => {
         $tx.try_send($msg).expect($crate::error::ERR_CHANNEL_SEND)
+    };
+}
+
+/// Sends a message, wrapped inside a `ModuleUpdateEvent::Update` variant,
+/// on an asynchronous `Sender` using `send()`.
+///
+/// This is a convenience wrapper around `send_async`
+/// to avoid needing to write the full enum every time.
+///
+/// Panics if the message cannot be sent.
+///
+/// # Usage:
+///
+/// ```rs
+/// module_update!(tx, "my event");
+/// ```
+#[macro_export]
+#[deprecated(since = "0.17.0", note = "Use `AsyncSenderExt::send_update` instead")]
+macro_rules! module_update {
+    ($tx:expr, $msg:expr) => {
+        send_async!($tx, $crate::modules::ModuleUpdateEvent::Update($msg))
     };
 }
 
@@ -85,7 +109,13 @@ macro_rules! try_send {
 /// glib_recv(rx, msg => println!("{msg}"));
 /// ```
 #[macro_export]
+#[deprecated(
+    since = "0.17.0",
+    note = "Use `BroadcastReceiverExt::recv_glib` instead"
+)]
 macro_rules! glib_recv {
+    ($rx:expr, $func:ident) => { glib_recv!($rx, ev => $func(ev)) };
+
     ($rx:expr, $val:ident => $expr:expr) => {{
         glib::spawn_future_local(async move {
             // re-delcare in case ie `context.subscribe()` is passed directly
@@ -121,7 +151,10 @@ macro_rules! glib_recv {
 /// glib_recv_mpsc(rx, msg => println!("{msg}"));
 /// ```
 #[macro_export]
+#[deprecated(since = "0.17.0", note = "Use `MpscReceiverExt::recv_glib` instead")]
 macro_rules! glib_recv_mpsc {
+    ($rx:expr, $func:ident) => { glib_recv_mpsc!($rx, ev => $func(ev)) };
+
     ($rx:expr, $val:ident => $expr:expr) => {{
         glib::spawn_future_local(async move {
             // re-delcare in case ie `context.subscribe()` is passed directly

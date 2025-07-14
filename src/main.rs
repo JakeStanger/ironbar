@@ -7,36 +7,36 @@ use std::path::PathBuf;
 use std::process::exit;
 use std::rc::Rc;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
-#[cfg(feature = "ipc")]
-use std::sync::RwLock;
-use std::sync::{mpsc, Arc, Mutex, OnceLock};
+use std::sync::{Arc, OnceLock, mpsc};
 
 use cfg_if::cfg_if;
 #[cfg(feature = "cli")]
 use clap::Parser;
-use color_eyre::eyre::Result;
 use color_eyre::Report;
+use color_eyre::eyre::Result;
 use dirs::config_dir;
-use glib::PropertySet;
+use gtk::Application;
 use gtk::gdk::Display;
 use gtk::prelude::*;
-use gtk::Application;
 use smithay_client_toolkit::output::OutputInfo;
 use tokio::runtime::Runtime;
-use tokio::task::{block_in_place, JoinHandle};
+use tokio::task::{JoinHandle, block_in_place};
 use tracing::{debug, error, info, warn};
 use universal_config::ConfigLoader;
 
-use crate::bar::{create_bar, Bar};
-use crate::clients::wayland::OutputEventType;
+use crate::bar::{Bar, create_bar};
+use crate::channels::SyncSenderExt;
 use crate::clients::Clients;
+use crate::clients::wayland::OutputEventType;
 use crate::config::{Config, MonitorConfig};
+use crate::desktop_file::DesktopFiles;
 use crate::error::ExitCode;
 #[cfg(feature = "ipc")]
-use crate::ironvar::VariableManager;
+use crate::ironvar::{VariableManager, WritableNamespace};
 use crate::style::load_css;
 
 mod bar;
+mod channels;
 #[cfg(feature = "cli")]
 mod cli;
 mod clients;
@@ -79,14 +79,17 @@ fn run_with_args() {
     #[cfg(feature = "schema")]
     if args.print_schema {
         let schema = schemars::schema_for!(Config);
-        println!("{}", serde_json::to_string_pretty(&schema).unwrap());
+        println!(
+            "{}",
+            serde_json::to_string_pretty(&schema).expect("to be serializable")
+        );
         return;
     }
 
     match args.command {
         Some(command) => {
             if args.debug {
-                eprintln!("REQUEST: {command:?}")
+                eprintln!("REQUEST: {command:?}");
             }
 
             let rt = create_runtime();
@@ -95,13 +98,16 @@ fn run_with_args() {
                 match ipc.send(command, args.debug).await {
                     Ok(res) => {
                         if args.debug {
-                            eprintln!("RESPONSE: {res:?}")
+                            eprintln!("RESPONSE: {res:?}");
                         }
 
-                        cli::handle_response(res, args.format.unwrap_or_default())
+                        cli::handle_response(res, args.format.unwrap_or_default());
                     }
-                    Err(err) => error!("{err:?}"),
-                };
+                    Err(err) => {
+                        error!("{err:#}");
+                        exit(ExitCode::IpcResponseError as i32)
+                    }
+                }
             });
         }
         None => start_ironbar(),
@@ -114,17 +120,26 @@ pub struct Ironbar {
     clients: Rc<RefCell<Clients>>,
     config: Rc<RefCell<Config>>,
     config_dir: PathBuf,
+
+    desktop_files: DesktopFiles,
+    image_provider: image::Provider,
 }
 
 impl Ironbar {
     fn new() -> Self {
-        let (config, config_dir) = load_config();
+        let (mut config, config_dir) = load_config();
+
+        let desktop_files = DesktopFiles::new();
+        let image_provider =
+            image::Provider::new(desktop_files.clone(), &mut config.icon_overrides);
 
         Self {
             bars: Rc::new(RefCell::new(vec![])),
             clients: Rc::new(RefCell::new(Clients::new())),
             config: Rc::new(RefCell::new(config)),
             config_dir,
+            desktop_files,
+            image_provider,
         }
     }
 
@@ -153,7 +168,7 @@ impl Ironbar {
                 return;
             }
 
-            running.set(true);
+            running.store(true, Ordering::Relaxed);
 
             cfg_if! {
                 if #[cfg(feature = "ipc")] {
@@ -177,7 +192,7 @@ impl Ironbar {
             );
 
             if style_path.exists() {
-                load_css(style_path);
+                load_css(style_path, app.clone());
             }
 
             let (tx, rx) = mpsc::channel();
@@ -199,16 +214,20 @@ impl Ironbar {
                 .expect("Error setting Ctrl-C handler");
 
             let hold = app.hold();
-            send!(activate_tx, hold);
+            activate_tx.send_expect(hold);
         });
 
         {
-            let instance = instance2;
+            let instance = instance2.clone();
             let app = app.clone();
 
             glib::spawn_future_local(async move {
                 let _hold = activate_rx.recv().expect("to receive activation signal");
                 debug!("Received activation signal, initialising bars");
+
+                instance
+                    .image_provider
+                    .set_icon_theme(instance.config.borrow().icon_theme.as_deref());
 
                 while let Ok(event) = rx_outputs.recv().await {
                     match event.event_type {
@@ -258,24 +277,35 @@ impl Ironbar {
     /// Gets the `Ironvar` manager singleton.
     #[cfg(feature = "ipc")]
     #[must_use]
-    pub fn variable_manager() -> Arc<RwLock<VariableManager>> {
-        static VARIABLE_MANAGER: OnceLock<Arc<RwLock<VariableManager>>> = OnceLock::new();
+    pub fn variable_manager() -> Arc<VariableManager> {
+        static VARIABLE_MANAGER: OnceLock<Arc<VariableManager>> = OnceLock::new();
         VARIABLE_MANAGER
-            .get_or_init(|| arc_rw!(VariableManager::new()))
+            .get_or_init(|| Arc::new(VariableManager::new()))
             .clone()
     }
 
-    /// Gets a clone of a bar by its unique name.
+    #[must_use]
+    pub fn desktop_files(&self) -> DesktopFiles {
+        self.desktop_files.clone()
+    }
+
+    #[must_use]
+    pub fn image_provider(&self) -> image::Provider {
+        self.image_provider.clone()
+    }
+
+    /// Gets clones of bars by their name.
     ///
-    /// Since the bar contains mostly GTK objects,
+    /// Since the bars contain mostly GTK objects,
     /// the clone is cheap enough to not worry about.
     #[must_use]
-    pub fn bar_by_name(&self, name: &str) -> Option<Bar> {
+    pub fn bars_by_name(&self, name: &str) -> Vec<Bar> {
         self.bars
             .borrow()
             .iter()
-            .find(|&bar| bar.name() == name)
+            .filter(|&bar| bar.name() == name)
             .cloned()
+            .collect()
     }
 
     /// Re-reads the config file from disk and replaces the active config.
@@ -330,7 +360,7 @@ fn load_config() -> (Config, PathBuf) {
     if let Some(ironvars) = config.ironvar_defaults.take() {
         let variable_manager = Ironbar::variable_manager();
         for (k, v) in ironvars {
-            if write_lock!(variable_manager).set(k.clone(), v).is_err() {
+            if variable_manager.set(&k, v).is_err() {
                 warn!("Ignoring invalid ironvar: '{k}'");
             }
         }
@@ -357,36 +387,20 @@ fn load_output_bars(
     app: &Application,
     output: &OutputInfo,
 ) -> Result<Vec<Bar>> {
-    // Hack to track monitor positions due to new GTK3/wlroots bug:
-    // https://github.com/swaywm/sway/issues/8164
-    // This relies on Wayland always tracking monitors in the same order as GDK.
-    // We also need this static to ensure hot-reloading continues to work as best we can.
-    static INDEX_MAP: OnceLock<Mutex<Vec<String>>> = OnceLock::new();
+    let output_size = output.logical_size.unwrap_or_default();
 
     let Some(monitor_name) = &output.name else {
         return Err(Report::msg("Output missing monitor name"));
     };
 
-    let map = INDEX_MAP.get_or_init(|| Mutex::new(vec![]));
-
-    let index = lock!(map).iter().position(|n| n == monitor_name);
-    let index = match index {
-        Some(index) => index,
-        None => {
-            lock!(map).push(monitor_name.clone());
-            lock!(map).len() - 1
-        }
-    };
-
     let config = ironbar.config.borrow();
+
     let display = get_display();
 
-    // let pos = output.logical_position.unwrap_or_default();
-    // let monitor = display
-    //     .monitor_at_point(pos.0, pos.1)
-    //     .expect("monitor to exist");
-
-    let monitor = display.monitor(index as i32).expect("monitor to exist");
+    let pos = output.logical_position.unwrap_or_default();
+    let monitor = display
+        .monitor_at_point(pos.0, pos.1)
+        .expect("monitor to exist");
 
     let show_default_bar =
         config.bar.start.is_some() || config.bar.center.is_some() || config.bar.end.is_some();
@@ -401,6 +415,7 @@ fn load_output_bars(
                 app,
                 &monitor,
                 monitor_name.to_string(),
+                output_size,
                 config.clone(),
                 ironbar.clone(),
             )?]
@@ -412,6 +427,7 @@ fn load_output_bars(
                     app,
                     &monitor,
                     monitor_name.to_string(),
+                    output_size,
                     config.clone(),
                     ironbar.clone(),
                 )
@@ -421,6 +437,7 @@ fn load_output_bars(
             app,
             &monitor,
             monitor_name.to_string(),
+            output_size,
             config.bar.clone(),
             ironbar.clone(),
         )?],
@@ -458,7 +475,7 @@ where
 /// Blocks on a `Future` until it resolves.
 ///
 /// This is not an `async` operation
-/// so can be used outside of an async function.
+/// so can be used outside an async function.
 ///
 /// Use sparingly, as this risks blocking the UI thread!
 /// Prefer async functions wherever possible.

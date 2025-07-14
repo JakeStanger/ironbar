@@ -4,6 +4,7 @@
 - [Configuration guide](configuration-guide)
   - [Images](images)
 - [Styling guide](styling-guide)
+- [GTK 4 Port](gtk4)
 
 # Dynamic content
 
@@ -24,13 +25,16 @@
 
 # Modules
 
+- [Bindmode](bindmode)
 - [Cairo](cairo)
 - [Clipboard](clipboard)
 - [Clock](clock)
 - [Custom](custom)
 - [Focused](focused)
+- [Keyboard](keyboard)
 - [Label](label)
 - [Launcher](launcher)
+- [Menu](menu)
 - [Music](music)
 - [Network Manager](network-manager)
 - [Notifications](notifications)

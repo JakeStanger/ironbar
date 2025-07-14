@@ -47,6 +47,8 @@ A container to place nested widgets inside.
 |---------------|------------------------------------------------------------|----------------|-------------------------------------------------------------------|
 | `orientation` | `'horizontal'` or `'vertical'` (shorthand: `'h'` or `'v'`) | `'horizontal'` | Whether child widgets should be horizontally or vertically added. |
 | `widgets`     | `(Module or Widget)[]`                                     | `[]`           | List of modules/widgets to add to this box.                       |
+| `halign`      | `'start'` or `'center'` or `'end'` or `'fill'`             | `'fill'`       | The horizontal alignment of the box within its parent container.   |
+| `valign`      | `'start'` or `'center'` or `'end'` or `'fill'`             | `'fill'`       | The vertical alignment of the box within its parent container.     |
 
 #### Label
 
@@ -54,10 +56,16 @@ A text label. Pango markup is supported.
 
 > Type `label`
 
-| Name    | Type                                            | Default | Description                                                         |
-|---------|-------------------------------------------------|---------|---------------------------------------------------------------------|
-| `label` | [Dynamic String](dynamic-values#dynamic-string) | `null`  | Widget text label. Pango markup and embedded scripts are supported. |
-| `orientation` | `'horizontal'` or `'vertical'` (shorthand: `'h'` or `'v'`) | `'horizontal'` | Orientation of the label.                                                                                                      |
+| Name                  | Type                                                       | Default        | Description                                                                                                                                           |
+|-----------------------|------------------------------------------------------------|----------------|-------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `label`               | [Dynamic String](dynamic-values#dynamic-string)            | `null`         | Widget text label. Pango markup and embedded scripts are supported.                                                                                   |
+| `orientation`         | `'horizontal'` or `'vertical'` (shorthand: `'h'` or `'v'`) | `'horizontal'` | Orientation of the label text.                                                                                                                        |
+| `justify`             | `'left'`, `'right'`, `'center'`, or `'fill'`               | `'left'`       | Justification (alignment) of the label text.                                                                                                          |
+| `truncate`            | `'start'` or `'middle'` or `'end'` or `off` or `Map`       | `off`          | The location of the ellipses and where to truncate text from. Leave null to avoid truncating. Use the long-hand `Map` version if specifying a length. |
+| `truncate.mode`       | `'start'` or `'middle'` or `'end'` or `off`                | `off`          | The location of the ellipses and where to truncate text from. Leave null to avoid truncating.                                                         |
+| `truncate.length`     | `integer`                                                  | `null`         | The fixed width (in chars) of the widget. Leave blank to let GTK automatically handle.                                                                |
+| `truncate.max_length` | `integer`                                                  | `null`         | The maximum number of characters before truncating. Leave blank to let GTK automatically handle.                                                      |
+
 
 #### Button
 
@@ -65,12 +73,13 @@ A clickable button, which can run a command when clicked.
 
 > Type `button`
 
-| Name       | Type                                            | Default | Description                                                                                      |
-|------------|-------------------------------------------------|---------|--------------------------------------------------------------------------------------------------|
-| `label`    | [Dynamic String](dynamic-values#dynamic-string) | `null`  | Widget text label. Pango markup and embedded scripts are supported. Ignored if `widgets` is set. |
-| `widgets`  | `(Module or Widget)[]`                          | `[]`    | List of modules/widgets to add to this button.                                                   |
-| `on_click` | `string [command]`                              | `null`  | Command to execute. More on this [below](#commands).                                             |
-| `orientation` | `'horizontal'` or `'vertical'` (shorthand: `'h'` or `'v'`) | `'horizontal'` | Orientation of the button.                                                                                                      |
+| Name          | Type                                                       | Default        | Description                                                                                      |
+|---------------|------------------------------------------------------------|----------------|--------------------------------------------------------------------------------------------------|
+| `label`       | [Dynamic String](dynamic-values#dynamic-string)            | `null`         | Widget text label. Pango markup and embedded scripts are supported. Ignored if `widgets` is set. |
+| `widgets`     | `(Module or Widget)[]`                                     | `[]`           | List of modules/widgets to add to this button.                                                   |
+| `on_click`    | `string [command]`                                         | `null`         | Command to execute. More on this [below](#commands).                                             |
+| `orientation` | `'horizontal'` or `'vertical'` (shorthand: `'h'` or `'v'`) | `'horizontal'` | Orientation of the label text.                                                                   |
+| `justify`     | `'left'`, `'right'`, `'center'`, or `'fill'`               | `'left'`       | Justification (alignment) of the label text.                                                     |
 
 #### Image
 

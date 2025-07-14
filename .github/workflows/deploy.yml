@@ -41,6 +41,7 @@ jobs:
   publish-crate:
     name: 'Publish Crate'
     runs-on: ubuntu-latest
+    container: ghcr.io/jakestanger/ironbar-build:master
 
     steps:
       - uses: actions/checkout@v3
@@ -49,9 +50,6 @@ jobs:
         with:
           toolchain: stable
           override: true
-
-      - name: Install build deps
-        run: ./.github/scripts/ubuntu_setup.sh
 
       - name: Publish crate
         uses: katyo/publish-crates@v1
@@ -62,6 +60,7 @@ jobs:
   publish-schema:
     name: 'Publish Schema'
     runs-on: ubuntu-latest
+    container: ghcr.io/jakestanger/ironbar-build:master
 
     steps:
       - uses: actions/checkout@v3
@@ -69,11 +68,11 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         name: Cache dependencies
 
-      - name: Install build deps
-        run: ./.github/scripts/ubuntu_setup.sh
+      - name: Ensure target folder
+        run: mkdir -p target
 
       - name: Build schema
-        run: cargo build --features schema -- --print-schema > target/schema-${{ github.ref_name }}.json
+        run: cargo run --features schema -- --print-schema > target/schema-${{ github.ref_name }}.json
 
       - name: Copy file via SSH
         uses: appleboy/scp-action@v0.1.7

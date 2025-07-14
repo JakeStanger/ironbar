@@ -1,21 +1,22 @@
 use color_eyre::Result;
 use futures_lite::stream::StreamExt;
-use gtk::{prelude::*, Button};
+use gtk::{Button, prelude::*};
 use gtk::{Label, Orientation};
 use serde::Deserialize;
-use tokio::sync::{broadcast, mpsc};
-use upower_dbus::BatteryState;
+use std::fmt::Write;
+use tokio::sync::mpsc;
 use zbus;
 use zbus::fdo::PropertiesProxy;
 
-use crate::config::CommonConfig;
-use crate::gtk_helpers::IronbarGtkExt;
-use crate::image::ImageProvider;
+use crate::channels::{AsyncSenderExt, BroadcastReceiverExt};
+use crate::clients::upower::BatteryState;
+use crate::config::{CommonConfig, LayoutConfig};
+use crate::gtk_helpers::{IronbarGtkExt, IronbarLabelExt};
 use crate::modules::PopupButton;
 use crate::modules::{
     Module, ModuleInfo, ModuleParts, ModulePopup, ModuleUpdateEvent, WidgetContext,
 };
-use crate::{glib_recv, module_impl, send_async, spawn, try_send};
+use crate::{module_impl, spawn};
 
 const DAY: i64 = 24 * 60 * 60;
 const HOUR: i64 = 60 * 60;
@@ -36,6 +37,11 @@ pub struct UpowerModule {
     /// **Default**: `24`
     #[serde(default = "default_icon_size")]
     icon_size: i32,
+
+    // -- Common --
+    /// See [layout options](module-level-options#layout)
+    #[serde(default, flatten)]
+    layout: LayoutConfig,
 
     /// See [common options](module-level-options#common-options).
     #[serde(flatten)]
@@ -59,7 +65,7 @@ pub struct UpowerProperties {
     time_to_empty: i64,
 }
 
-impl Module<gtk::Button> for UpowerModule {
+impl Module<Button> for UpowerModule {
     type SendMessage = UpowerProperties;
     type ReceiveMessage = ();
 
@@ -73,7 +79,7 @@ impl Module<gtk::Button> for UpowerModule {
     ) -> Result<()> {
         let tx = context.tx.clone();
 
-        let display_proxy = context.client::<PropertiesProxy>();
+        let display_proxy = context.try_client::<PropertiesProxy>()?;
 
         spawn(async move {
             let mut prop_changed_stream = display_proxy.receive_properties_changed().await?;
@@ -84,23 +90,23 @@ impl Module<gtk::Button> for UpowerModule {
 
             let properties = display_proxy.get_all(device_interface_name.clone()).await?;
 
-            let percentage = *properties["Percentage"]
+            let percentage = properties["Percentage"]
                 .downcast_ref::<f64>()
                 .expect("expected percentage: f64 in HashMap of all properties");
             let icon_name = properties["IconName"]
-                .downcast_ref::<str>()
+                .downcast_ref::<&str>()
                 .expect("expected IconName: str in HashMap of all properties")
                 .to_string();
             let state = u32_to_battery_state(
-                *properties["State"]
+                properties["State"]
                     .downcast_ref::<u32>()
                     .expect("expected State: u32 in HashMap of all properties"),
             )
             .unwrap_or(BatteryState::Unknown);
-            let time_to_full = *properties["TimeToFull"]
+            let time_to_full = properties["TimeToFull"]
                 .downcast_ref::<i64>()
                 .expect("expected TimeToFull: i64 in HashMap of all properties");
-            let time_to_empty = *properties["TimeToEmpty"]
+            let time_to_empty = properties["TimeToEmpty"]
                 .downcast_ref::<i64>()
                 .expect("expected TimeToEmpty: i64 in HashMap of all properties");
             let mut properties = UpowerProperties {
@@ -111,7 +117,7 @@ impl Module<gtk::Button> for UpowerModule {
                 time_to_empty,
             };
 
-            send_async!(tx, ModuleUpdateEvent::Update(properties.clone()));
+            tx.send_update(properties.clone()).await;
 
             while let Some(signal) = prop_changed_stream.next().await {
                 let args = signal.args().expect("Invalid signal arguments");
@@ -128,7 +134,7 @@ impl Module<gtk::Button> for UpowerModule {
                         }
                         "IconName" => {
                             properties.icon_name = changed_value
-                                .downcast_ref::<str>()
+                                .downcast_ref::<&str>()
                                 .expect("expected IconName to be str")
                                 .to_string();
                         }
@@ -151,7 +157,7 @@ impl Module<gtk::Button> for UpowerModule {
                     }
                 }
 
-                send_async!(tx, ModuleUpdateEvent::Update(properties.clone()));
+                tx.send_update(properties.clone()).await;
             }
 
             Result::<()>::Ok(())
@@ -165,17 +171,19 @@ impl Module<gtk::Button> for UpowerModule {
         context: WidgetContext<Self::SendMessage, Self::ReceiveMessage>,
         info: &ModuleInfo,
     ) -> Result<ModuleParts<Button>> {
-        let icon_theme = info.icon_theme.clone();
         let icon = gtk::Image::new();
         icon.add_class("icon");
 
         let label = Label::builder()
             .label(&self.format)
             .use_markup(true)
+            .angle(self.layout.angle(info))
+            .justify(self.layout.justify.into())
             .build();
+
         label.add_class("label");
 
-        let container = gtk::Box::new(Orientation::Horizontal, 5);
+        let container = gtk::Box::new(self.layout.orientation(info), 5);
         container.add_class("contents");
 
         let button = Button::new();
@@ -187,37 +195,48 @@ impl Module<gtk::Button> for UpowerModule {
 
         let tx = context.tx.clone();
         button.connect_clicked(move |button| {
-            try_send!(tx, ModuleUpdateEvent::TogglePopup(button.popup_id()));
+            tx.send_spawn(ModuleUpdateEvent::TogglePopup(button.popup_id()));
         });
 
         let format = self.format.clone();
 
         let rx = context.subscribe();
-        glib_recv!(rx, properties => {
+        let provider = context.ironbar.image_provider();
+        rx.recv_glib_async((), move |(), properties| {
             let state = properties.state;
-            let is_charging = state == BatteryState::Charging || state == BatteryState::PendingCharge;
+
+            let is_charging =
+                state == BatteryState::Charging || state == BatteryState::PendingCharge;
+
             let time_remaining = if is_charging {
                 seconds_to_string(properties.time_to_full)
-            }
-            else {
+            } else {
                 seconds_to_string(properties.time_to_empty)
-            };
-            let format = format.replace("{percentage}", &properties.percentage.to_string())
+            }
+            .unwrap_or_default();
+
+            let format = format
+                .replace("{percentage}", &properties.percentage.round().to_string())
                 .replace("{time_remaining}", &time_remaining)
                 .replace("{state}", battery_state_to_string(state));
 
             let mut icon_name = String::from("icon:");
             icon_name.push_str(&properties.icon_name);
 
-            ImageProvider::parse(&icon_name, &icon_theme, false, self.icon_size)
-                    .map(|provider| provider.load_into_image(icon.clone()));
+            let provider = provider.clone();
+            let icon = icon.clone();
 
-            label.set_markup(format.as_ref());
+            label.set_label_escaped(&format);
+
+            async move {
+                provider
+                    .load_into_image_silent(&icon_name, self.icon_size, false, &icon)
+                    .await;
+            }
         });
 
-        let rx = context.subscribe();
         let popup = self
-            .into_popup(context.controller_tx.clone(), rx, context, info)
+            .into_popup(context, info)
             .into_popup_parts(vec![&button]);
 
         Ok(ModuleParts::new(button, popup))
@@ -225,9 +244,7 @@ impl Module<gtk::Button> for UpowerModule {
 
     fn into_popup(
         self,
-        _tx: mpsc::Sender<Self::ReceiveMessage>,
-        rx: broadcast::Receiver<Self::SendMessage>,
-        _context: WidgetContext<Self::SendMessage, Self::ReceiveMessage>,
+        context: WidgetContext<Self::SendMessage, Self::ReceiveMessage>,
         _info: &ModuleInfo,
     ) -> Option<gtk::Box>
     where
@@ -237,17 +254,17 @@ impl Module<gtk::Button> for UpowerModule {
             .orientation(Orientation::Horizontal)
             .build();
 
-        let label = Label::new(None);
+        let label = Label::builder().use_markup(true).build();
         label.add_class("upower-details");
         container.add(&label);
 
-        glib_recv!(rx, properties => {
+        context.subscribe().recv_glib((), move |(), properties| {
             let state = properties.state;
             let format = match state {
                 BatteryState::Charging | BatteryState::PendingCharge => {
                     let ttf = properties.time_to_full;
                     if ttf > 0 {
-                        format!("Full in {}", seconds_to_string(ttf))
+                        format!("Full in {}", seconds_to_string(ttf).unwrap_or_default())
                     } else {
                         String::new()
                     }
@@ -255,7 +272,7 @@ impl Module<gtk::Button> for UpowerModule {
                 BatteryState::Discharging | BatteryState::PendingDischarge => {
                     let tte = properties.time_to_empty;
                     if tte > 0 {
-                        format!("Empty in {}", seconds_to_string(tte))
+                        format!("Empty in {}", seconds_to_string(tte).unwrap_or_default())
                     } else {
                         String::new()
                     }
@@ -263,7 +280,7 @@ impl Module<gtk::Button> for UpowerModule {
                 _ => String::new(),
             };
 
-            label.set_markup(&format);
+            label.set_label_escaped(&format);
         });
 
         container.show_all();
@@ -272,21 +289,22 @@ impl Module<gtk::Button> for UpowerModule {
     }
 }
 
-fn seconds_to_string(seconds: i64) -> String {
+fn seconds_to_string(seconds: i64) -> Result<String> {
     let mut time_string = String::new();
     let days = seconds / (DAY);
     if days > 0 {
-        time_string += &format!("{days}d");
+        write!(time_string, "{days}d")?;
     }
     let hours = (seconds % DAY) / HOUR;
     if hours > 0 {
-        time_string += &format!(" {hours}h");
+        write!(time_string, " {hours}h")?;
     }
     let minutes = (seconds % HOUR) / MINUTE;
     if minutes > 0 {
-        time_string += &format!(" {minutes}m");
+        write!(time_string, " {minutes}m")?;
     }
-    time_string.trim_start().to_string()
+
+    Ok(time_string.trim_start().to_string())
 }
 
 const fn u32_to_battery_state(number: u32) -> Result<BatteryState, u32> {

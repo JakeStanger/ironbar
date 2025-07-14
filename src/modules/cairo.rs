@@ -1,14 +1,15 @@
+use crate::channels::{AsyncSenderExt, BroadcastReceiverExt};
 use crate::config::CommonConfig;
-use crate::modules::{Module, ModuleInfo, ModuleParts, ModuleUpdateEvent, WidgetContext};
-use crate::{glib_recv, module_impl, spawn, try_send};
+use crate::modules::{Module, ModuleInfo, ModuleParts, WidgetContext};
+use crate::{module_impl, spawn};
 use cairo::{Format, ImageSurface};
-use glib::translate::IntoGlibPtr;
 use glib::Propagation;
-use gtk::prelude::*;
+use glib::translate::ToGlibPtr;
 use gtk::DrawingArea;
+use gtk::prelude::*;
 use mlua::{Error, Function, LightUserData};
 use notify::event::ModifyKind;
-use notify::{recommended_watcher, Event, EventKind, RecursiveMode, Watcher};
+use notify::{Event, EventKind, RecursiveMode, Watcher, recommended_watcher};
 use serde::Deserialize;
 use std::fs;
 use std::path::PathBuf;
@@ -74,7 +75,7 @@ impl Module<gtk::Box> for CairoModule {
     where
         <Self as Module<gtk::Box>>::SendMessage: Clone,
     {
-        let path = self.path.to_path_buf();
+        let path = self.path.clone();
 
         let tx = context.tx.clone();
         spawn(async move {
@@ -87,7 +88,7 @@ impl Module<gtk::Box> for CairoModule {
                         debug!("{event:?}");
 
                         if event.paths.first().is_some_and(|p| p == &path) {
-                            try_send!(tx, ModuleUpdateEvent::Update(()));
+                            tx.send_update_spawn(());
                         }
                     }
                     Err(e) => error!("Error occurred when watching stylesheet: {:?}", e),
@@ -146,33 +147,35 @@ impl Module<gtk::Box> for CairoModule {
 
             let path = self.path.clone();
 
-            area.connect_draw(move |_, cr| {
-                let function: Function = lua
-                    .load(include_str!("../../lua/draw.lua"))
-                    .eval()
-                    .expect("to be valid");
+            let function: Function = lua
+                .load(include_str!("../../lua/draw.lua"))
+                .eval()
+                .expect("to be valid");
 
+            area.connect_draw(move |_, cr| {
                 if let Err(err) = cr.set_source_surface(&surface, 0.0, 0.0) {
                     error!("{err}");
                     return Propagation::Stop;
                 }
 
-                let ptr = unsafe { cr.clone().into_glib_ptr().cast() };
+                let ptr = cr.to_glib_full();
 
                 // mlua needs a valid return type, even if we don't return anything
-
                 if let Err(err) =
-                    function.call::<_, Option<bool>>((id.as_str(), LightUserData(ptr)))
+                    function.call::<Option<bool>>((id.as_str(), LightUserData(ptr.cast())))
                 {
-                    match err {
-                        Error::RuntimeError(message) => {
-                            let message = message.split_once("]:").expect("to exist").1;
-                            error!("[lua runtime error] {}:{message}", path.display())
-                        }
-                        _ => error!("{err}"),
+                    if let Error::RuntimeError(message) = err {
+                        let message = message.split_once("]:").expect("to exist").1;
+                        error!("[lua runtime error] {}:{message}", path.display());
+                    } else {
+                        error!("{err}");
                     }
 
                     return Propagation::Stop;
+                }
+
+                unsafe {
+                    cairo::ffi::cairo_destroy(ptr);
                 }
 
                 Propagation::Proceed
@@ -189,22 +192,20 @@ impl Module<gtk::Box> for CairoModule {
             }
         });
 
-        glib_recv!(context.subscribe(), _ev => {
+        context.subscribe().recv_glib((), move |(), _ev| {
             let res = fs::read_to_string(&self.path)
                 .map(|s| s.replace("function draw", format!("function __draw_{id}").as_str()));
 
             match res {
-                Ok(script) => {
-                    match lua.load(&script).exec() {
-                        Ok(_) => {},
-                        Err(Error::SyntaxError { message, ..}) => {
-                            let message = message.split_once("]:").expect("to exist").1;
-                            error!("[lua syntax error] {}:{message}", self.path.display())
-                        },
-                        Err(err) => error!("lua error: {err:?}")
+                Ok(script) => match lua.load(&script).exec() {
+                    Ok(()) => {}
+                    Err(Error::SyntaxError { message, .. }) => {
+                        let message = message.split_once("]:").expect("to exist").1;
+                        error!("[lua syntax error] {}:{message}", self.path.display());
                     }
+                    Err(err) => error!("lua error: {err:?}"),
                 },
-                Err(err) => error!("{err:?}")
+                Err(err) => error!("{err:?}"),
             }
         });
 

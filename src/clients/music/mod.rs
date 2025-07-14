@@ -70,13 +70,17 @@ pub trait MusicClient: Debug + Send + Sync {
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub enum ClientType {
+    #[cfg(feature = "music+mpd")]
     Mpd { host: String, music_dir: PathBuf },
+    #[cfg(feature = "music+mpris")]
     Mpris,
 }
 
 pub fn create_client(client_type: ClientType) -> Arc<dyn MusicClient> {
     match client_type {
+        #[cfg(feature = "music+mpd")]
         ClientType::Mpd { host, music_dir } => Arc::new(mpd::Client::new(host, music_dir)),
+        #[cfg(feature = "music+mpris")]
         ClientType::Mpris => Arc::new(mpris::Client::new()),
     }
 }

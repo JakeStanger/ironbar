@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 pub enum Response {
     Ok,
     OkValue { value: String },
+    Multi { values: Vec<String> },
     Err { message: Option<String> },
 }
 

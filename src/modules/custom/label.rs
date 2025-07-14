@@ -1,12 +1,12 @@
-use gtk::prelude::*;
 use gtk::Label;
+use gtk::prelude::*;
 use serde::Deserialize;
 
-use crate::build;
-use crate::config::ModuleOrientation;
-use crate::dynamic_value::dynamic_string;
-
 use super::{CustomWidget, CustomWidgetContext};
+use crate::build;
+use crate::config::{LayoutConfig, TruncateMode};
+use crate::dynamic_value::dynamic_string;
+use crate::gtk_helpers::IronbarLabelExt;
 
 #[derive(Debug, Deserialize, Clone)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
@@ -28,31 +28,36 @@ pub struct LabelWidget {
     /// **Required**
     label: String,
 
-    /// Orientation of the label.
-    /// Setting to vertical will rotate text 90 degrees.
+    /// See [layout options](module-level-options#layout)
+    #[serde(default, flatten)]
+    layout: LayoutConfig,
+
+    /// See [truncate options](module-level-options#truncate-mode).
     ///
-    /// **Valid options**: `horizontal`, `vertical`, `h`, `v`
-    /// <br />
-    /// **Default**: `horizontal`
-    #[serde(default)]
-    orientation: ModuleOrientation,
+    /// **Default**: `null`
+    truncate: Option<TruncateMode>,
 }
 
 impl CustomWidget for LabelWidget {
     type Widget = Label;
 
-    fn into_widget(self, _context: CustomWidgetContext) -> Self::Widget {
+    fn into_widget(self, context: CustomWidgetContext) -> Self::Widget {
         let label = build!(self, Self::Widget);
 
-        label.set_angle(self.orientation.to_angle());
+        if !context.is_popup {
+            label.set_angle(self.layout.angle(context.info));
+        }
+
+        label.set_justify(self.layout.justify.into());
         label.set_use_markup(true);
 
-        {
-            let label = label.clone();
-            dynamic_string(&self.label, move |string| {
-                label.set_markup(&string);
-            });
+        if let Some(truncate) = self.truncate {
+            label.truncate(truncate);
         }
+
+        dynamic_string(&self.label, &label, move |label, string| {
+            label.set_label_escaped(&string);
+        });
 
         label
     }

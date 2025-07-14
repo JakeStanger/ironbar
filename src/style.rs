@@ -1,10 +1,11 @@
-use crate::{glib_recv_mpsc, spawn, try_send};
+use crate::channels::{AsyncSenderExt, MpscReceiverExt};
+use crate::spawn;
 use color_eyre::{Help, Report};
 use gtk::ffi::GTK_STYLE_PROVIDER_PRIORITY_USER;
-use gtk::prelude::CssProviderExt;
-use gtk::{gdk, gio, CssProvider, StyleContext};
+use gtk::prelude::*;
+use gtk::{Application, CssProvider, StyleContext, gdk, gio};
 use notify::event::ModifyKind;
-use notify::{recommended_watcher, Event, EventKind, RecursiveMode, Result, Watcher};
+use notify::{Event, EventKind, RecursiveMode, Result, Watcher, recommended_watcher};
 use std::env;
 use std::path::PathBuf;
 use std::time::Duration;
@@ -17,7 +18,7 @@ use tracing::{debug, error, info};
 ///
 /// Installs a file watcher and reloads CSS when
 /// write changes are detected on the file.
-pub fn load_css(style_path: PathBuf) {
+pub fn load_css(style_path: PathBuf, application: Application) {
     // file watcher requires absolute path
     let style_path = if style_path.is_absolute() {
         style_path
@@ -34,7 +35,7 @@ pub fn load_css(style_path: PathBuf) {
                     .suggestion("Check the CSS file for errors")
                     .suggestion("GTK CSS uses a subset of the full CSS spec and many properties are not available. Ensure you are not using any unsupported property.")
                 )
-    };
+    }
 
     let screen = gdk::Screen::default().expect("Failed to get default GTK screen");
     StyleContext::add_provider_for_screen(
@@ -51,7 +52,7 @@ pub fn load_css(style_path: PathBuf) {
             Ok(event) if matches!(event.kind, EventKind::Modify(ModifyKind::Data(_))) => {
                 debug!("{event:?}");
                 if event.paths.first().is_some_and(|p| p == &style_path2) {
-                    try_send!(tx, style_path2.clone());
+                    tx.send_spawn(style_path2.clone());
                 }
             }
             Err(e) => error!("Error occurred when watching stylesheet: {:?}", e),
@@ -72,7 +73,7 @@ pub fn load_css(style_path: PathBuf) {
         }
     });
 
-    glib_recv_mpsc!(rx, path => {
+    rx.recv_glib((), move |(), path| {
         info!("Reloading CSS");
         if let Err(err) = provider.load_from_file(&gio::File::for_path(path)) {
             error!("{:?}", Report::new(err)
@@ -80,6 +81,10 @@ pub fn load_css(style_path: PathBuf) {
                 .suggestion("Check the CSS file for errors")
                 .suggestion("GTK CSS uses a subset of the full CSS spec and many properties are not available. Ensure you are not using any unsupported property.")
             );
+        } else {
+            for win in application.windows() {
+                win.queue_draw();
+            }
         }
     });
 }

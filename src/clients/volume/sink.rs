@@ -1,13 +1,14 @@
-use super::{percent_to_volume, volume_to_percent, ArcMutVec, Client, ConnectionState, Event};
-use crate::{lock, send};
+use super::{ArcMutVec, Client, ConnectionState, Event, percent_to_volume, volume_to_percent};
+use crate::channels::SyncSenderExt;
+use crate::lock;
 use libpulse_binding::callbacks::ListResult;
+use libpulse_binding::context::Context;
 use libpulse_binding::context::introspect::SinkInfo;
 use libpulse_binding::context::subscribe::Operation;
-use libpulse_binding::context::Context;
 use libpulse_binding::def::SinkState;
-use std::sync::{mpsc, Arc, Mutex};
+use std::sync::{Arc, Mutex, mpsc};
 use tokio::sync::broadcast;
-use tracing::{debug, error};
+use tracing::{debug, error, instrument, trace};
 
 #[derive(Debug, Clone)]
 pub struct Sink {
@@ -41,16 +42,19 @@ impl From<&SinkInfo<'_>> for Sink {
 }
 
 impl Client {
+    #[instrument(level = "trace")]
     pub fn sinks(&self) -> Arc<Mutex<Vec<Sink>>> {
         self.data.sinks.clone()
     }
 
+    #[instrument(level = "trace")]
     pub fn set_default_sink(&self, name: &str) {
         if let ConnectionState::Connected { context, .. } = &*lock!(self.connection) {
             lock!(context).set_default_sink(name, |_| {});
         }
     }
 
+    #[instrument(level = "trace")]
     pub fn set_sink_volume(&self, name: &str, volume_percent: f64) {
         if let ConnectionState::Connected { introspector, .. } = &mut *lock!(self.connection) {
             let (tx, rx) = mpsc::channel();
@@ -59,7 +63,7 @@ impl Client {
                 let ListResult::Item(info) = info else {
                     return;
                 };
-                send!(tx, info.volume);
+                tx.send_expect(info.volume);
             });
 
             let new_volume = percent_to_volume(volume_percent);
@@ -73,6 +77,7 @@ impl Client {
         }
     }
 
+    #[instrument(level = "trace")]
     pub fn set_sink_muted(&self, name: &str, muted: bool) {
         if let ConnectionState::Connected { introspector, .. } = &mut *lock!(self.connection) {
             introspector.set_sink_mute_by_name(name, muted, None);
@@ -122,8 +127,10 @@ pub fn add(info: ListResult<&SinkInfo>, sinks: &ArcMutVec<Sink>, tx: &broadcast:
         return;
     };
 
+    trace!("adding {info:?}");
+
     lock!(sinks).push(info.into());
-    send!(tx, Event::AddSink(info.into()));
+    tx.send_expect(Event::AddSink(info.into()));
 }
 
 fn update(
@@ -135,6 +142,8 @@ fn update(
     let ListResult::Item(info) = info else {
         return;
     };
+
+    trace!("updating {info:?}");
 
     {
         let mut sinks = lock!(sinks);
@@ -162,14 +171,16 @@ fn update(
         }
     }
 
-    send!(tx, Event::UpdateSink(sink));
+    tx.send_expect(Event::UpdateSink(sink));
 }
 
 fn remove(index: u32, sinks: &ArcMutVec<Sink>, tx: &broadcast::Sender<Event>) {
+    trace!("removing {index}");
+
     let mut sinks = lock!(sinks);
 
     if let Some(pos) = sinks.iter().position(|s| s.index == index) {
         let info = sinks.remove(pos);
-        send!(tx, Event::RemoveSink(info.name));
+        tx.send_expect(Event::RemoveSink(info.name));
     }
 }

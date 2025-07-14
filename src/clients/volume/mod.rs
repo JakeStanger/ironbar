@@ -1,7 +1,7 @@
 mod sink;
 mod sink_input;
 
-use crate::{arc_mut, lock, register_client, send, spawn_blocking, APP_ID};
+use crate::{APP_ID, arc_mut, lock, register_client, spawn_blocking};
 use libpulse_binding::callbacks::ListResult;
 use libpulse_binding::context::introspect::{Introspector, ServerInfo};
 use libpulse_binding::context::subscribe::{Facility, InterestMaskSet, Operation};
@@ -12,8 +12,9 @@ use libpulse_binding::volume::{ChannelVolumes, Volume};
 use std::fmt::{Debug, Formatter};
 use std::sync::{Arc, Mutex};
 use tokio::sync::broadcast;
-use tracing::{debug, error, info, warn};
+use tracing::{debug, error, info, trace, warn};
 
+use crate::channels::SyncSenderExt;
 pub use sink::Sink;
 pub use sink_input::SinkInput;
 
@@ -230,6 +231,8 @@ fn on_event(
         return;
     };
 
+    trace!("server event: {facility:?}, op: {op:?}, i: {i}");
+
     match facility {
         Facility::Server => on_server_event(context, &data.sinks, &data.default_sink_name, tx),
         Facility::Sink => sink::on_event(context, &data.sinks, &data.default_sink_name, tx, op, i),
@@ -269,7 +272,7 @@ fn set_default_sink(
             {
                 sink.active = true;
                 debug!("Set sink active: {}", sink.name);
-                send!(tx, Event::UpdateSink(sink.clone()));
+                tx.send_expect(Event::UpdateSink(sink.clone()));
             } else {
                 warn!("Couldn't find sink: {}", default_sink_name);
             }

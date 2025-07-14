@@ -1,7 +1,8 @@
-use crate::script::Script;
-use crate::{glib_recv_mpsc, spawn, try_send};
 #[cfg(feature = "ipc")]
-use crate::{send_async, Ironbar};
+use crate::Ironbar;
+use crate::channels::{AsyncSenderExt, Dependency, MpscReceiverExt};
+use crate::script::Script;
+use crate::spawn;
 use cfg_if::cfg_if;
 use serde::Deserialize;
 use tokio::sync::mpsc;
@@ -18,9 +19,11 @@ pub enum DynamicBool {
 }
 
 impl DynamicBool {
-    pub fn subscribe<F>(self, mut f: F)
+    pub fn subscribe<D, F>(self, deps: D, f: F)
     where
-        F: FnMut(bool) + 'static,
+        D: Dependency,
+        D::Target: Clone + 'static,
+        F: FnMut(&D::Target, bool) + 'static,
     {
         let value = match self {
             Self::Unknown(input) => {
@@ -42,14 +45,14 @@ impl DynamicBool {
 
         let (tx, rx) = mpsc::channel(32);
 
-        glib_recv_mpsc!(rx, val => f(val));
+        rx.recv_glib(deps, f);
 
         spawn(async move {
             match value {
                 DynamicBool::Script(script) => {
                     script
                         .run(None, |_, success| {
-                            try_send!(tx, success);
+                            tx.send_spawn(success);
                         })
                         .await;
                 }
@@ -58,11 +61,11 @@ impl DynamicBool {
                     let variable_manager = Ironbar::variable_manager();
 
                     let variable_name = variable[1..].into(); // remove hash
-                    let mut rx = crate::write_lock!(variable_manager).subscribe(variable_name);
+                    let mut rx = variable_manager.subscribe(variable_name);
 
                     while let Ok(value) = rx.recv().await {
                         let has_value = value.is_some_and(|s| is_truthy(&s));
-                        send_async!(tx, has_value);
+                        tx.send_expect(has_value).await;
                     }
                 }
                 DynamicBool::Unknown(_) => unreachable!(),

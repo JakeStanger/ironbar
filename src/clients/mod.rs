@@ -1,21 +1,33 @@
-use crate::{await_sync, Ironbar};
+use crate::{Ironbar, await_sync};
 use color_eyre::Result;
+use std::collections::HashMap;
 use std::path::Path;
 use std::rc::Rc;
 use std::sync::Arc;
 
 #[cfg(feature = "clipboard")]
 pub mod clipboard;
-#[cfg(feature = "workspaces")]
+#[cfg(any(
+    feature = "bindmode",
+    feature = "hyprland",
+    feature = "keyboard",
+    feature = "workspaces",
+))]
 pub mod compositor;
+#[cfg(feature = "keyboard")]
+pub mod libinput;
 #[cfg(feature = "cairo")]
 pub mod lua;
 #[cfg(feature = "music")]
 pub mod music;
 #[cfg(feature = "network_manager")]
 pub mod networkmanager;
+#[cfg(feature = "sway")]
+pub mod sway;
 #[cfg(feature = "notifications")]
 pub mod swaync;
+#[cfg(feature = "sys_info")]
+pub mod sysinfo;
 #[cfg(feature = "tray")]
 pub mod tray;
 #[cfg(feature = "upower")]
@@ -31,16 +43,28 @@ pub struct Clients {
     wayland: Option<Arc<wayland::Client>>,
     #[cfg(feature = "workspaces")]
     workspaces: Option<Arc<dyn compositor::WorkspaceClient>>,
+    #[cfg(feature = "sway")]
+    sway: Option<Arc<sway::Client>>,
+    #[cfg(feature = "hyprland")]
+    hyprland: Option<Arc<compositor::hyprland::Client>>,
+    #[cfg(feature = "bindmode")]
+    bindmode: Option<Arc<dyn compositor::BindModeClient>>,
     #[cfg(feature = "clipboard")]
     clipboard: Option<Arc<clipboard::Client>>,
+    #[cfg(feature = "keyboard")]
+    libinput: HashMap<Box<str>, Arc<libinput::Client>>,
+    #[cfg(feature = "keyboard")]
+    keyboard_layout: Option<Arc<dyn compositor::KeyboardLayoutClient>>,
     #[cfg(feature = "cairo")]
     lua: Option<Rc<lua::LuaEngine>>,
     #[cfg(feature = "music")]
-    music: std::collections::HashMap<music::ClientType, Arc<dyn music::MusicClient>>,
+    music: HashMap<music::ClientType, Arc<dyn music::MusicClient>>,
     #[cfg(feature = "network_manager")]
     network_manager: Option<Arc<networkmanager::Client>>,
     #[cfg(feature = "notifications")]
     notifications: Option<Arc<swaync::Client>>,
+    #[cfg(feature = "sys_info")]
+    sys_info: Option<Arc<sysinfo::Client>>,
     #[cfg(feature = "tray")]
     tray: Option<Arc<tray::Client>>,
     #[cfg(feature = "upower")]
@@ -73,16 +97,66 @@ impl Clients {
 
     #[cfg(feature = "workspaces")]
     pub fn workspaces(&mut self) -> ClientResult<dyn compositor::WorkspaceClient> {
-        let client = match &self.workspaces {
-            Some(workspaces) => workspaces.clone(),
-            None => {
-                let client = compositor::Compositor::create_workspace_client()?;
-                self.workspaces.replace(client.clone());
-                client
-            }
+        let client = if let Some(workspaces) = &self.workspaces {
+            workspaces.clone()
+        } else {
+            let client = compositor::Compositor::create_workspace_client(self)?;
+            self.workspaces.replace(client.clone());
+            client
         };
 
         Ok(client)
+    }
+
+    #[cfg(feature = "keyboard")]
+    pub fn keyboard_layout(&mut self) -> ClientResult<dyn compositor::KeyboardLayoutClient> {
+        let client = if let Some(keyboard_layout) = &self.keyboard_layout {
+            keyboard_layout.clone()
+        } else {
+            let client = compositor::Compositor::create_keyboard_layout_client(self)?;
+            self.keyboard_layout.replace(client.clone());
+            client
+        };
+
+        Ok(client)
+    }
+
+    #[cfg(feature = "bindmode")]
+    pub fn bindmode(&mut self) -> ClientResult<dyn compositor::BindModeClient> {
+        let client = if let Some(client) = &self.bindmode {
+            client.clone()
+        } else {
+            let client = compositor::Compositor::create_bindmode_client(self)?;
+            self.bindmode.replace(client.clone());
+            client
+        };
+
+        Ok(client)
+    }
+
+    #[cfg(feature = "sway")]
+    pub fn sway(&mut self) -> ClientResult<sway::Client> {
+        let client = if let Some(client) = &self.sway {
+            client.clone()
+        } else {
+            let client = await_sync(async { sway::Client::new().await })?;
+            let client = Arc::new(client);
+            self.sway.replace(client.clone());
+            client
+        };
+
+        Ok(client)
+    }
+
+    #[cfg(feature = "hyprland")]
+    pub fn hyprland(&mut self) -> Arc<compositor::hyprland::Client> {
+        if let Some(client) = &self.hyprland {
+            client.clone()
+        } else {
+            let client = Arc::new(compositor::hyprland::Client::new());
+            self.hyprland.replace(client.clone());
+            client
+        }
     }
 
     #[cfg(feature = "cairo")]
@@ -90,6 +164,17 @@ impl Clients {
         self.lua
             .get_or_insert_with(|| Rc::new(lua::LuaEngine::new(config_dir)))
             .clone()
+    }
+
+    #[cfg(feature = "keyboard")]
+    pub fn libinput(&mut self, seat: &str) -> Arc<libinput::Client> {
+        if let Some(client) = self.libinput.get(seat) {
+            client.clone()
+        } else {
+            let client = libinput::Client::init(seat.to_string());
+            self.libinput.insert(seat.into(), client.clone());
+            client
+        }
     }
 
     #[cfg(feature = "music")]
@@ -102,55 +187,68 @@ impl Clients {
 
     #[cfg(feature = "network_manager")]
     pub fn network_manager(&mut self) -> ClientResult<networkmanager::Client> {
-        match &self.network_manager {
-            Some(client) => Ok(client.clone()),
-            None => {
-                let client = networkmanager::create_client()?;
-                self.network_manager = Some(client.clone());
-                Ok(client)
-            }
+        if let Some(client) = &self.network_manager {
+            Ok(client.clone())
+        } else {
+            let client = await_sync(async move { networkmanager::create_client().await })?;
+            self.network_manager = Some(client.clone());
+            Ok(client)
         }
     }
 
     #[cfg(feature = "notifications")]
     pub fn notifications(&mut self) -> ClientResult<swaync::Client> {
-        let client = match &self.notifications {
-            Some(client) => client.clone(),
-            None => {
-                let client = await_sync(async { swaync::Client::new().await })?;
-                let client = Arc::new(client);
-                self.notifications.replace(client.clone());
-                client
-            }
+        let client = if let Some(client) = &self.notifications {
+            client.clone()
+        } else {
+            let client = await_sync(async { swaync::Client::new().await })?;
+            let client = Arc::new(client);
+            self.notifications.replace(client.clone());
+            client
         };
 
         Ok(client)
     }
 
+    #[cfg(feature = "sys_info")]
+    pub fn sys_info(&mut self) -> Arc<sysinfo::Client> {
+        self.sys_info
+            .get_or_insert_with(|| {
+                let client = Arc::new(sysinfo::Client::new());
+
+                #[cfg(feature = "ipc")]
+                Ironbar::variable_manager().register_namespace("sysinfo", client.clone());
+
+                client
+            })
+            .clone()
+    }
+
     #[cfg(feature = "tray")]
     pub fn tray(&mut self) -> ClientResult<tray::Client> {
-        let client = match &self.tray {
-            Some(client) => client.clone(),
-            None => {
-                let service_name = format!("{}-{}", env!("CARGO_CRATE_NAME"), Ironbar::unique_id());
-
-                let client = await_sync(async { tray::Client::new(&service_name).await })?;
-                let client = Arc::new(client);
-                self.tray.replace(client.clone());
-                client
-            }
+        let client = if let Some(client) = &self.tray {
+            client.clone()
+        } else {
+            let client = await_sync(async { tray::Client::new().await })?;
+            let client = Arc::new(client);
+            self.tray.replace(client.clone());
+            client
         };
 
         Ok(client)
     }
 
     #[cfg(feature = "upower")]
-    pub fn upower(&mut self) -> Arc<zbus::fdo::PropertiesProxy<'static>> {
-        self.upower
-            .get_or_insert_with(|| {
-                crate::await_sync(async { upower::create_display_proxy().await })
-            })
-            .clone()
+    pub fn upower(&mut self) -> ClientResult<zbus::fdo::PropertiesProxy<'static>> {
+        let client = if let Some(client) = &self.upower {
+            client.clone()
+        } else {
+            let client = await_sync(async { upower::create_display_proxy().await })?;
+            self.upower.replace(client.clone());
+            client
+        };
+
+        Ok(client)
     }
 
     #[cfg(feature = "volume")]

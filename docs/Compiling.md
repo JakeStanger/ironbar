@@ -22,8 +22,12 @@ You also need rust; only the latest stable version is supported.
 pacman -S gtk3 gtk-layer-shell
 # for http support
 pacman -S openssl
+# for tray support
+pacman -S libdbusmenu-gtk3
 # for volume support
 pacman -S libpulse
+# for keyboard support
+pacman -S libinput
 # for lua/cairo support
 pacman -S luajit lua51-lgi
 ```
@@ -34,8 +38,12 @@ pacman -S luajit lua51-lgi
 apt install build-essential libgtk-3-dev libgtk-layer-shell-dev
 # for http support
 apt install libssl-dev
+# for tray support
+apt install libdbusmenu-gtk3-dev
 # for volume support
 apt install libpulse-dev
+# for keyboard support
+apt install libinput-dev
 # for lua/cairo support
 apt install luajit-dev lua-lgi
 ```
@@ -46,8 +54,12 @@ apt install luajit-dev lua-lgi
 dnf install gtk3-devel gtk-layer-shell-devel
 # for http support
 dnf install openssl-devel
+# for tray support
+dnf install libdbusmenu-gtk3-devel
 # for volume support
 dnf install pulseaudio-libs-devel
+# for keyboard support
+dnf install libinput-devel
 # for lua/cairo support
 dnf install luajit-devel lua-lgi
 ```
@@ -88,7 +100,13 @@ cargo build --release --no-default-features \
 | cairo               | Enables the `cairo` module                                                        |
 | clipboard           | Enables the `clipboard` module.                                                   |
 | clock               | Enables the `clock` module.                                                       |
+| custom              | Enables the `custom` module.                                                      |
 | focused             | Enables the `focused` module.                                                     |
+| keyboard            | Enables the `keyboard` module without keyboard layout support.                    |
+| keyboard+all        | Enables the `keyboard` module with keyboard layout support for all compositors.   |
+| keyboard+sway       | Enables the `keyboard` module with keyboard layout support for Sway.              |
+| keyboard+hyprland   | Enables the `keyboard` module with keyboard layout support for Hyprland.          |
+| label               | Enables the `label` module.                                                       |
 | launcher            | Enables the `launcher` module.                                                    |
 | music+all           | Enables the `music` module with support for all player types.                     |
 | music+mpris         | Enables the `music` module with MPRIS support.                                    |
@@ -96,15 +114,37 @@ cargo build --release --no-default-features \
 | network_manager     | Enables the `network_manager` module.                                             |
 | notifications       | Enables the `notiications` module.                                                |
 | sys_info            | Enables the `sys_info` module.                                                    |
+| script              | Enables the `script` module.                                                      |
 | tray                | Enables the `tray` module.                                                        |
 | upower              | Enables the `upower` module.                                                      |
 | volume              | Enables the `volume` module.                                                      |
 | workspaces+all      | Enables the `workspaces` module with support for all compositors.                 |
 | workspaces+sway     | Enables the `workspaces` module with support for Sway.                            |
 | workspaces+hyprland | Enables the `workspaces` module with support for Hyprland.                        |
+| workspaces+niri     | Enables the `workspaces` module with support for Niri.                            |
 | **Other**           |                                                                                   |
 | schema              | Enables JSON schema support and the CLI `--print-schema` flag.                    |
 
+## Shell completions
+
+Compiling Ironbar will produce shell completions for bash, zsh and fish; these can be found in `target/completions`.
+
+You can install these as follows:
+
+Bash: 
+```shell
+install -Dm644 completions/ironbar.bash /usr/share/bash-completion/completions/ironbar
+```
+
+Zsh:
+```shell
+install -Dm644 completions/_ironbar /usr/share/zsh/site-functions/_ironbar
+```
+
+Fish:
+```shell
+install -Dm644 completions/ironbar.fish /usr/share/fish/vendor_completions.d/ironbar.fish
+```
 
 ## Speeding up compiling
 

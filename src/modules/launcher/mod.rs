@@ -1,22 +1,28 @@
 mod item;
 mod open_state;
+mod pagination;
 
 use self::item::{AppearanceOptions, Item, ItemButton, Window};
 use self::open_state::OpenState;
 use super::{Module, ModuleInfo, ModuleParts, ModulePopup, ModuleUpdateEvent, WidgetContext};
+use crate::channels::{AsyncSenderExt, BroadcastReceiverExt};
 use crate::clients::wayland::{self, ToplevelEvent};
-use crate::config::CommonConfig;
-use crate::desktop_file::find_desktop_file;
-use crate::{arc_mut, glib_recv, lock, module_impl, send_async, spawn, try_send, write_lock};
-use color_eyre::{Help, Report};
+use crate::config::{
+    CommonConfig, EllipsizeMode, LayoutConfig, TruncateMode, default_launch_command,
+};
+use crate::desktop_file::open_program;
+use crate::gtk_helpers::{IronbarGtkExt, IronbarLabelExt};
+use crate::modules::launcher::item::ImageTextButton;
+use crate::modules::launcher::pagination::{IconContext, Pagination};
+use crate::{arc_mut, lock, module_impl, spawn, write_lock};
+use color_eyre::Report;
 use gtk::prelude::*;
 use gtk::{Button, Orientation};
 use indexmap::IndexMap;
 use serde::Deserialize;
-use std::process::{Command, Stdio};
 use std::sync::Arc;
-use tokio::sync::{broadcast, mpsc};
-use tracing::{debug, error, trace};
+use tokio::sync::mpsc;
+use tracing::{debug, error, trace, warn};
 
 #[derive(Debug, Deserialize, Clone)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
@@ -54,13 +60,118 @@ pub struct LauncherModule {
     #[serde(default = "crate::config::default_false")]
     reversed: bool,
 
+    /// Whether to minimize a window if it is focused when clicked.
+    ///
+    /// **Default**: `true`
+    #[serde(default = "crate::config::default_true")]
+    minimize_focused: bool,
+
+    /// The number of items to show on a page.
+    ///
+    /// When the number of items reaches the page size,
+    /// pagination controls appear at the start of the widget
+    /// which can be used to move forward/back through the list of items.
+    ///
+    /// If there are too many to fit, the overflow will be truncated
+    /// by the next widget.
+    ///
+    /// **Default**: `1000`.
+    #[serde(default = "default_page_size")]
+    page_size: usize,
+
+    /// Module UI icons (separate from app icons shown for items).
+    ///
+    /// See [icons](#icons).
+    #[serde(default)]
+    icons: Icons,
+
+    /// Size in pixels to render pagination icons at (image icons only).
+    ///
+    /// **Default**: `16`
+    #[serde(default = "default_icon_size_pagination")]
+    pagination_icon_size: i32,
+
+    // -- common --
+    /// Truncate application names on the bar if they get too long.
+    /// See [truncate options](module-level-options#truncate-mode).
+    ///
+    /// **Default**: `Auto (end)`
+    #[serde(default)]
+    truncate: TruncateMode,
+
+    /// Truncate application names in popups if they get too long.
+    /// See [truncate options](module-level-options#truncate-mode).
+    ///
+    /// **Default**: `{ mode = "middle" max_length = 25 }`
+    #[serde(default = "default_truncate_popup")]
+    truncate_popup: TruncateMode,
+
+    /// See [layout options](module-level-options#layout)
+    #[serde(default, flatten)]
+    layout: LayoutConfig,
+
+    /// Command used to launch applications.
+    ///
+    /// **Default**: `gtk-launch`
+    #[serde(default = "default_launch_command")]
+    launch_command: String,
+
     /// See [common options](module-level-options#common-options).
     #[serde(flatten)]
     pub common: Option<CommonConfig>,
 }
 
+#[derive(Debug, Deserialize, Clone)]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+struct Icons {
+    /// Icon to show for page back button.
+    ///
+    /// **Default**: `󰅁`
+    #[serde(default = "default_icon_page_back")]
+    page_back: String,
+
+    /// Icon to show for page back button.
+    ///
+    /// **Default**: `>`
+    #[serde(default = "default_icon_page_forward")]
+    page_forward: String,
+}
+
+impl Default for Icons {
+    fn default() -> Self {
+        Self {
+            page_back: default_icon_page_back(),
+            page_forward: default_icon_page_forward(),
+        }
+    }
+}
+
 const fn default_icon_size() -> i32 {
     32
+}
+
+const fn default_icon_size_pagination() -> i32 {
+    default_icon_size() / 2
+}
+
+const fn default_page_size() -> usize {
+    1000
+}
+
+fn default_icon_page_back() -> String {
+    String::from("󰅁")
+}
+
+fn default_icon_page_forward() -> String {
+    String::from("󰅂")
+}
+
+const fn default_truncate_popup() -> TruncateMode {
+    TruncateMode::Length {
+        mode: EllipsizeMode::Middle,
+        length: None,
+        max_length: Some(25),
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -86,6 +197,7 @@ pub enum ItemEvent {
     FocusItem(String),
     FocusWindow(usize),
     OpenItem(String),
+    MinimizeItem(String),
 }
 
 enum ItemOrWindow {
@@ -126,7 +238,6 @@ impl Module<gtk::Box> for LauncherModule {
             });
 
         let items = arc_mut!(items);
-
         let items2 = Arc::clone(&items);
 
         let tx = context.tx.clone();
@@ -143,24 +254,26 @@ impl Module<gtk::Box> for LauncherModule {
             for info in handles {
                 let mut items = lock!(items);
                 let item = items.get_mut(&info.app_id);
-                match item {
-                    Some(item) => {
-                        item.merge_toplevel(info.clone());
-                    }
-                    None => {
-                        items.insert(info.app_id.clone(), Item::from(info.clone()));
-                    }
+                if let Some(item) = item {
+                    item.merge_toplevel(info.clone());
+                } else {
+                    let item = Item::from(info.clone());
+                    items.insert(info.app_id.clone(), item);
                 }
             }
 
             {
-                let items = lock!(items);
-                let items = items.iter();
-                for (_, item) in items {
-                    try_send!(
-                        tx,
-                        ModuleUpdateEvent::Update(LauncherUpdate::AddItem(item.clone()))
-                    );
+                let items = {
+                    let items = lock!(items);
+
+                    items
+                        .iter()
+                        .map(|(_, item)| item.clone())
+                        .collect::<Vec<_>>() // need to collect to be able to drop lock
+                };
+
+                for item in items {
+                    tx.send_update(LauncherUpdate::AddItem(item)).await;
                 }
             }
 
@@ -179,7 +292,6 @@ impl Module<gtk::Box> for LauncherModule {
                             match item {
                                 None => {
                                     let item: Item = info.into();
-
                                     items.insert(app_id.clone(), item.clone());
 
                                     ItemOrWindow::Item(item)
@@ -256,7 +368,7 @@ impl Module<gtk::Box> for LauncherModule {
                                 .await?;
                             }
                             None => {}
-                        };
+                        }
                     }
                 }
             }
@@ -265,36 +377,29 @@ impl Module<gtk::Box> for LauncherModule {
         });
 
         // listen to ui events
+        let minimize_focused = self.minimize_focused;
         let wl = context.client::<wayland::Client>();
+
+        let desktop_files = context.ironbar.desktop_files();
+        let launch_command_str: String = self.launch_command.clone();
+
         spawn(async move {
             while let Some(event) = rx.recv().await {
                 if let ItemEvent::OpenItem(app_id) = event {
-                    find_desktop_file(&app_id).map_or_else(
-                        || error!("Could not find desktop file for {}", app_id),
-                        |file| {
-                            if let Err(err) = Command::new("gtk-launch")
-                                .arg(
-                                    file.file_name()
-                                        .expect("File segment missing from path to desktop file"),
-                                )
-                                .stdout(Stdio::null())
-                                .stderr(Stdio::null())
-                                .spawn()
-                            {
-                                error!(
-                                    "{:?}",
-                                    Report::new(err)
-                                        .wrap_err("Failed to run gtk-launch command.")
-                                        .suggestion("Perhaps the desktop file is invalid?")
-                                );
-                            }
-                        },
-                    );
+                    match desktop_files.find(&app_id).await {
+                        Ok(Some(file)) => {
+                            open_program(&file.file_name, &launch_command_str);
+                        }
+                        Ok(None) => warn!("Could not find applications file for {}", app_id),
+                        Err(err) => error!("Failed to find parse file for {}: {}", app_id, err),
+                    }
                 } else {
-                    send_async!(tx, ModuleUpdateEvent::ClosePopup);
+                    tx.send_expect(ModuleUpdateEvent::ClosePopup).await;
+
+                    let minimize_window = matches!(event, ItemEvent::MinimizeItem(_));
 
                     let id = match event {
-                        ItemEvent::FocusItem(app_id) => {
+                        ItemEvent::FocusItem(app_id) | ItemEvent::MinimizeItem(app_id) => {
                             lock!(items).get(&app_id).and_then(|item| {
                                 item.windows
                                     .iter()
@@ -313,7 +418,11 @@ impl Module<gtk::Box> for LauncherModule {
                             .find_map(|(_, item)| item.windows.get(&id))
                         {
                             debug!("Focusing window {id}: {}", window.name);
-                            wl.toplevel_focus(window.id);
+                            if minimize_window && minimize_focused {
+                                wl.toplevel_minimize(window.id);
+                            } else {
+                                wl.toplevel_focus(window.id);
+                            }
                         }
                     }
                 }
@@ -328,20 +437,32 @@ impl Module<gtk::Box> for LauncherModule {
         context: WidgetContext<Self::SendMessage, Self::ReceiveMessage>,
         info: &ModuleInfo,
     ) -> crate::Result<ModuleParts<gtk::Box>> {
-        let icon_theme = info.icon_theme;
+        let container = gtk::Box::new(self.layout.orientation(info), 0);
+        let page_size = self.page_size;
 
-        let container = gtk::Box::new(info.bar_position.orientation(), 0);
+        let image_provider = context.ironbar.image_provider();
+
+        let pagination = Pagination::new(
+            &container,
+            self.page_size,
+            self.layout.orientation(info),
+            &IconContext {
+                back: &self.icons.page_back,
+                fwd: &self.icons.page_forward,
+                size: self.pagination_icon_size,
+            },
+            &image_provider,
+        );
 
         {
-            let container = container.clone();
-            let icon_theme = icon_theme.clone();
-
-            let controller_tx = context.controller_tx.clone();
-
             let appearance_options = AppearanceOptions {
                 show_names: self.show_names,
                 show_icons: self.show_icons,
                 icon_size: self.icon_size,
+                truncate: self.truncate,
+                orientation: self.layout.orientation(info),
+                angle: self.layout.angle(info),
+                justify: self.layout.justify.into(),
             };
 
             let show_names = self.show_names;
@@ -349,93 +470,117 @@ impl Module<gtk::Box> for LauncherModule {
 
             let mut buttons = IndexMap::<String, ItemButton>::new();
 
-            let tx = context.tx.clone();
             let rx = context.subscribe();
-            glib_recv!(rx, event => {
-                match event {
-                    LauncherUpdate::AddItem(item) => {
-                        debug!("Adding item with id '{}' to the bar: {item:?}", item.app_id);
 
-                        if let Some(button) = buttons.get(&item.app_id) {
-                            button.set_open(true);
-                            button.set_focused(item.open_state.is_focused());
-                        } else {
-                            let button = ItemButton::new(
-                                &item,
-                                appearance_options,
-                                &icon_theme,
-                                bar_position,
-                                &tx,
-                                &controller_tx,
-                            );
+            rx.recv_glib(
+                (&container, &context.controller_tx, &context.tx),
+                move |(container, controller_tx, tx), event: LauncherUpdate| {
+                    // all widgets show by default
+                    // so check if pagination should be shown
+                    // to ensure correct state on init.
+                    if buttons.len() <= page_size {
+                        pagination.hide();
+                    }
 
-                            if self.reversed {
-                                container.pack_end(&button.button, false, false, 0);
+                    match event {
+                        LauncherUpdate::AddItem(item) => {
+                            debug!("Adding item with id '{}' to the bar: {item:?}", item.app_id);
+
+                            if let Some(button) = buttons.get(&item.app_id) {
+                                button.set_open(true);
+                                button.set_focused(item.open_state.is_focused());
                             } else {
-                                container.add(&button.button);
-                            }
+                                let button = ItemButton::new(
+                                    &item,
+                                    appearance_options,
+                                    image_provider.clone(),
+                                    bar_position,
+                                    tx,
+                                    controller_tx,
+                                );
 
-                            buttons.insert(item.app_id, button);
-                        }
-                    }
-                    LauncherUpdate::AddWindow(app_id, win) => {
-                        if let Some(button) = buttons.get(&app_id) {
-                            button.set_open(true);
-                            button.set_focused(win.open_state.is_focused());
-
-                            write_lock!(button.menu_state).num_windows += 1;
-                        }
-                    }
-                    LauncherUpdate::RemoveItem(app_id) => {
-                        debug!("Removing item with id {}", app_id);
-
-                        if let Some(button) = buttons.get(&app_id) {
-                            if button.persistent {
-                                button.set_open(false);
-                                if button.show_names {
-                                    button.button.set_label(&app_id);
+                                if self.reversed {
+                                    container.pack_end(&*button.button, false, false, 0);
+                                } else {
+                                    container.add(&*button.button);
                                 }
-                            } else {
-                                container.remove(&button.button);
-                                buttons.shift_remove(&app_id);
+
+                                if buttons.len() + 1 >= pagination.offset() + page_size {
+                                    button.button.set_visible(false);
+                                    pagination.set_sensitive_fwd(true);
+                                }
+
+                                if buttons.len() + 1 > page_size {
+                                    pagination.show_all();
+                                }
+
+                                buttons.insert(item.app_id, button);
                             }
                         }
-                    }
-                    LauncherUpdate::RemoveWindow(app_id, win_id) => {
-                        debug!("Removing window {win_id} with id {app_id}");
-
-                        if let Some(button) = buttons.get(&app_id) {
-                            button.set_focused(false);
-
-                            let mut menu_state = write_lock!(button.menu_state);
-                            menu_state.num_windows -= 1;
-                        }
-                    }
-                    LauncherUpdate::Focus(app_id, focus) => {
-                        debug!("Changing focus to {} on item with id {}", focus, app_id);
-
-                        if let Some(button) = buttons.get(&app_id) {
-                            button.set_focused(focus);
-                        }
-                    }
-                    LauncherUpdate::Title(app_id, _, name) => {
-                        debug!("Updating title for item with id {}: {:?}", app_id, name);
-
-                        if show_names {
+                        LauncherUpdate::AddWindow(app_id, win) => {
                             if let Some(button) = buttons.get(&app_id) {
-                                button.button.set_label(&name);
+                                button.set_open(true);
+                                button.set_focused(win.open_state.is_focused());
+
+                                write_lock!(button.menu_state).num_windows += 1;
                             }
                         }
+                        LauncherUpdate::RemoveItem(app_id) => {
+                            debug!("Removing item with id {}", app_id);
+
+                            if let Some(button) = buttons.get(&app_id) {
+                                if button.persistent {
+                                    button.set_open(false);
+                                    if button.show_names {
+                                        button.button.label.set_label(&app_id);
+                                    }
+                                } else {
+                                    container.remove(&button.button.button);
+                                    buttons.shift_remove(&app_id);
+                                }
+                            }
+
+                            if buttons.len() < pagination.offset() + page_size {
+                                pagination.set_sensitive_fwd(false);
+                            }
+
+                            if buttons.len() <= page_size {
+                                pagination.hide();
+                            }
+                        }
+                        LauncherUpdate::RemoveWindow(app_id, win_id) => {
+                            debug!("Removing window {win_id} with id {app_id}");
+
+                            if let Some(button) = buttons.get(&app_id) {
+                                button.set_focused(false);
+
+                                let mut menu_state = write_lock!(button.menu_state);
+                                menu_state.num_windows -= 1;
+                            }
+                        }
+                        LauncherUpdate::Focus(app_id, focus) => {
+                            debug!("Changing focus to {} on item with id {}", focus, app_id);
+
+                            if let Some(button) = buttons.get(&app_id) {
+                                button.set_focused(focus);
+                            }
+                        }
+                        LauncherUpdate::Title(app_id, _, name) => {
+                            debug!("Updating title for item with id {}: {:?}", app_id, name);
+
+                            if show_names {
+                                if let Some(button) = buttons.get(&app_id) {
+                                    button.button.label.set_label(&name);
+                                }
+                            }
+                        }
+                        LauncherUpdate::Hover(_) => {}
                     }
-                    LauncherUpdate::Hover(_) => {}
-                };
-            });
+                },
+            );
         }
 
-        let rx = context.subscribe();
-        let popup = self
-            .into_popup(context.controller_tx.clone(), rx, context, info)
-            .into_popup_parts(vec![]); // since item buttons are dynamic, they pass their geometry directly
+        let popup = self.into_popup(context, info).into_popup_parts(vec![]); // since item buttons are dynamic, they pass their geometry directly
 
         Ok(ModuleParts {
             widget: container,
@@ -445,9 +590,7 @@ impl Module<gtk::Box> for LauncherModule {
 
     fn into_popup(
         self,
-        controller_tx: mpsc::Sender<Self::ReceiveMessage>,
-        rx: broadcast::Receiver<Self::SendMessage>,
-        _context: WidgetContext<Self::SendMessage, Self::ReceiveMessage>,
+        context: WidgetContext<Self::SendMessage, Self::ReceiveMessage>,
         _info: &ModuleInfo,
     ) -> Option<gtk::Box> {
         const MAX_WIDTH: i32 = 250;
@@ -459,11 +602,11 @@ impl Module<gtk::Box> for LauncherModule {
         placeholder.set_width_request(MAX_WIDTH);
         container.add(&placeholder);
 
-        let mut buttons = IndexMap::<String, IndexMap<usize, Button>>::new();
+        let mut buttons = IndexMap::<String, IndexMap<usize, ImageTextButton>>::new();
 
-        {
-            let container = container.clone();
-            glib_recv!(rx, event => {
+        context
+            .subscribe()
+            .recv_glib(&container, move |container, event| {
                 match event {
                     LauncherUpdate::AddItem(item) => {
                         let app_id = item.app_id.clone();
@@ -473,15 +616,16 @@ impl Module<gtk::Box> for LauncherModule {
                             .windows
                             .into_iter()
                             .map(|(_, win)| {
-                                let button = Button::builder()
-                                    .label(clamp(&win.name))
-                                    .height_request(40)
-                                    .build();
+                                // TODO: Currently has a useless image
+                                let button = ImageTextButton::new(Orientation::Horizontal);
+                                button.set_height_request(40);
+                                button.label.set_label(&win.name);
+                                button.label.truncate(self.truncate_popup);
 
                                 {
-                                    let tx = controller_tx.clone();
+                                    let tx = context.controller_tx.clone();
                                     button.connect_clicked(move |_| {
-                                        try_send!(tx, ItemEvent::FocusWindow(win.id));
+                                        tx.send_spawn(ItemEvent::FocusWindow(win.id));
                                     });
                                 }
 
@@ -498,15 +642,16 @@ impl Module<gtk::Box> for LauncherModule {
                         );
 
                         if let Some(buttons) = buttons.get_mut(&app_id) {
-                            let button = Button::builder()
-                                .height_request(40)
-                                .label(clamp(&win.name))
-                                .build();
+                            // TODO: Currently has a useless image
+                            let button = ImageTextButton::new(Orientation::Horizontal);
+                            button.set_height_request(40);
+                            button.label.set_label(&win.name);
+                            button.label.truncate(self.truncate_popup);
 
                             {
-                                let tx = controller_tx.clone();
+                                let tx = context.controller_tx.clone();
                                 button.connect_clicked(move |_button| {
-                                    try_send!(tx, ItemEvent::FocusWindow(win.id));
+                                    tx.send_spawn(ItemEvent::FocusWindow(win.id));
                                 });
                             }
 
@@ -527,7 +672,7 @@ impl Module<gtk::Box> for LauncherModule {
 
                         if let Some(buttons) = buttons.get_mut(&app_id) {
                             if let Some(button) = buttons.get(&win_id) {
-                                button.set_label(&title);
+                                button.label.set_label(&title);
                             }
                         }
                     }
@@ -540,8 +685,8 @@ impl Module<gtk::Box> for LauncherModule {
                         // add app's buttons
                         if let Some(buttons) = buttons.get(&app_id) {
                             for (_, button) in buttons {
-                                button.style_context().add_class("popup-item");
-                                container.add(button);
+                                button.add_class("popup-item");
+                                container.add(&button.button);
                             }
 
                             container.show_all();
@@ -551,26 +696,7 @@ impl Module<gtk::Box> for LauncherModule {
                     _ => {}
                 }
             });
-        }
 
         Some(container)
-    }
-}
-
-/// Clamps a string at 24 characters.
-///
-/// This is a hacky number derived from
-/// "what fits inside the 250px popup"
-/// and probably won't hold up with wide fonts.
-///
-/// TODO: Migrate this to truncate system
-///
-fn clamp(str: &str) -> String {
-    const MAX_CHARS: usize = 24;
-
-    if str.len() > MAX_CHARS {
-        str.chars().take(MAX_CHARS - 3).collect::<String>() + "..."
-    } else {
-        str.to_string()
     }
 }

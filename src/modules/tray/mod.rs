@@ -1,22 +1,21 @@
-mod diff;
 mod icon;
 mod interface;
 
+use crate::channels::{AsyncSenderExt, BroadcastReceiverExt};
 use crate::clients::tray;
-use crate::config::CommonConfig;
-use crate::modules::tray::diff::get_diffs;
-use crate::modules::{Module, ModuleInfo, ModuleParts, ModuleUpdateEvent, WidgetContext};
-use crate::{glib_recv, lock, module_impl, send_async, spawn};
+use crate::config::{CommonConfig, ModuleOrientation};
+use crate::modules::{Module, ModuleInfo, ModuleParts, WidgetContext};
+use crate::{lock, module_impl, spawn};
 use color_eyre::{Report, Result};
-use gtk::{prelude::*, PackDirection};
-use gtk::{IconTheme, MenuBar};
+use gtk::prelude::*;
+use gtk::{IconTheme, Orientation};
 use interface::TrayMenu;
 use serde::Deserialize;
 use std::collections::HashMap;
 use system_tray::client::Event;
 use system_tray::client::{ActivateRequest, UpdateEvent};
 use tokio::sync::mpsc;
-use tracing::{debug, error, warn};
+use tracing::{debug, error, trace, warn};
 
 #[derive(Debug, Deserialize, Clone)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
@@ -34,14 +33,13 @@ pub struct TrayModule {
     #[serde(default = "default_icon_size")]
     icon_size: u32,
 
-    /// Direction to display the tray items.
+    /// The direction in which to pack tray icons.
     ///
-    /// **Valid options**: `top_to_bottom`, `bottom_to_top`, `left_to_right`, `right_to_left`
+    /// **Valid options**: `horizontal`, `vertical`
     /// <br>
-    /// **Default**: `left_to_right` if bar is horizontal, `top_to_bottom` if bar is vertical
-    #[serde(default, deserialize_with = "deserialize_pack_direction")]
-    #[cfg_attr(feature = "schema", schemars(schema_with = "schema_pack_direction"))]
-    direction: Option<PackDirection>,
+    /// **Default**: `horizontal` for horizontal bars, `vertical` for vertical bars
+    #[serde(default)]
+    direction: Option<ModuleOrientation>,
 
     /// See [common options](module-level-options#common-options).
     #[serde(flatten)]
@@ -52,36 +50,7 @@ const fn default_icon_size() -> u32 {
     16
 }
 
-fn deserialize_pack_direction<'de, D>(deserializer: D) -> Result<Option<PackDirection>, D::Error>
-where
-    D: serde::Deserializer<'de>,
-{
-    let value = Option::<String>::deserialize(deserializer)?;
-    value
-        .map(|v| match v.as_str() {
-            "left_to_right" => Ok(PackDirection::Ltr),
-            "right_to_left" => Ok(PackDirection::Rtl),
-            "top_to_bottom" => Ok(PackDirection::Ttb),
-            "bottom_to_top" => Ok(PackDirection::Btt),
-            _ => Err(serde::de::Error::custom("invalid value for direction")),
-        })
-        .transpose()
-}
-
-#[cfg(feature = "schema")]
-fn schema_pack_direction(gen: &mut schemars::gen::SchemaGenerator) -> schemars::schema::Schema {
-    use schemars::JsonSchema;
-    let mut schema: schemars::schema::SchemaObject = <String>::json_schema(gen).into();
-    schema.enum_values = Some(vec![
-        "top_to_bottom".into(),
-        "bottom_to_top".into(),
-        "left_to_right".into(),
-        "right_to_left".into(),
-    ]);
-    schema.into()
-}
-
-impl Module<MenuBar> for TrayModule {
+impl Module<gtk::Box> for TrayModule {
     type SendMessage = Event;
     type ReceiveMessage = ActivateRequest;
 
@@ -98,33 +67,33 @@ impl Module<MenuBar> for TrayModule {
         let client = context.try_client::<tray::Client>()?;
         let mut tray_rx = client.subscribe();
 
-        let initial_items = lock!(client.items()).clone();
+        let initial_items = {
+            let items = client.items();
+            lock!(items).clone()
+        };
 
         // listen to tray updates
         spawn(async move {
             for (key, (item, menu)) in initial_items {
-                send_async!(
-                    tx,
-                    ModuleUpdateEvent::Update(Event::Add(key.clone(), item.into()))
-                );
+                tx.send_update(Event::Add(key.clone(), item.into())).await;
 
                 if let Some(menu) = menu.clone() {
-                    send_async!(
-                        tx,
-                        ModuleUpdateEvent::Update(Event::Update(key, UpdateEvent::Menu(menu)))
-                    );
+                    tx.send_update(Event::Update(key, UpdateEvent::Menu(menu)))
+                        .await;
                 }
             }
 
             while let Ok(message) = tray_rx.recv().await {
-                send_async!(tx, ModuleUpdateEvent::Update(message));
+                tx.send_update(message).await;
             }
         });
 
         // send tray commands
         spawn(async move {
             while let Some(cmd) = rx.recv().await {
-                client.activate(cmd).await?;
+                if let Err(err) = client.activate(cmd).await {
+                    error!("{err:?}");
+                }
             }
 
             Ok::<_, Report>(())
@@ -137,30 +106,33 @@ impl Module<MenuBar> for TrayModule {
         self,
         context: WidgetContext<Self::SendMessage, Self::ReceiveMessage>,
         info: &ModuleInfo,
-    ) -> Result<ModuleParts<MenuBar>> {
-        let container = MenuBar::new();
+    ) -> Result<ModuleParts<gtk::Box>> {
+        let orientation = self
+            .direction
+            .map_or(info.bar_position.orientation(), Orientation::from);
 
-        let direction = self.direction.unwrap_or(
-            if info.bar_position.orientation() == gtk::Orientation::Vertical {
-                PackDirection::Ttb
-            } else {
-                PackDirection::Ltr
-            },
-        );
+        // We use a `Box` here instead of the (supposedly correct) `MenuBar`
+        // as the latter has issues on Sway with menus focus-stealing from the bar.
+        //
+        // Each widget is wrapped in an EventBox, copying what Waybar does here.
+        let container = gtk::Box::new(orientation, 10);
 
-        container.set_pack_direction(direction);
-        container.set_child_pack_direction(direction);
+        let mut menus = HashMap::new();
+        let icon_theme = context.ironbar.image_provider().icon_theme();
 
-        {
-            let container = container.clone();
-            let mut menus = HashMap::new();
-            let icon_theme = info.icon_theme.clone();
-
-            // listen for UI updates
-            glib_recv!(context.subscribe(), update =>
-                on_update(update, &container, &mut menus, &icon_theme, self.icon_size, self.prefer_theme_icons, &context.controller_tx)
-            );
-        };
+        // listen for UI updates
+        context
+            .subscribe()
+            .recv_glib(&container, move |container, update| {
+                on_update(
+                    update,
+                    container,
+                    &mut menus,
+                    &icon_theme,
+                    self.icon_size,
+                    self.prefer_theme_icons,
+                );
+            });
 
         Ok(ModuleParts {
             widget: container,
@@ -173,32 +145,32 @@ impl Module<MenuBar> for TrayModule {
 /// getting the diff since the previous update and applying it to the menu.
 fn on_update(
     update: Event,
-    container: &MenuBar,
+    container: &gtk::Box,
     menus: &mut HashMap<Box<str>, TrayMenu>,
     icon_theme: &IconTheme,
     icon_size: u32,
     prefer_icons: bool,
-    tx: &mpsc::Sender<ActivateRequest>,
 ) {
     match update {
         Event::Add(address, item) => {
             debug!("Received new tray item at '{address}': {item:?}");
 
-            let mut menu_item = TrayMenu::new(tx.clone(), address.clone(), *item);
-            container.add(&menu_item.widget);
+            let mut menu_item = TrayMenu::new(&address, *item);
+            container.pack_start(&menu_item.event_box, true, true, 0);
 
-            if let Ok(image) = icon::get_image(&menu_item, icon_theme, icon_size, prefer_icons) {
+            if let Ok(image) = icon::get_image(&menu_item, icon_size, prefer_icons, icon_theme) {
                 menu_item.set_image(&image);
             } else {
                 let label = menu_item.title.clone().unwrap_or(address.clone());
                 menu_item.set_label(&label);
-            };
+            }
 
-            menu_item.widget.show();
+            menu_item.event_box.show();
             menus.insert(address.into(), menu_item);
         }
         Event::Update(address, update) => {
-            debug!("Received tray update for '{address}': {update:?}");
+            debug!("Received tray update for '{address}'");
+            trace!("Tray update for '{address}: {update:?}'");
 
             let Some(menu_item) = menus.get_mut(address.as_str()) else {
                 error!("Attempted to update menu at '{address}' but could not find it");
@@ -211,13 +183,12 @@ fn on_update(
                 }
                 UpdateEvent::Icon(icon) => {
                     if icon.as_ref() != menu_item.icon_name() {
-                        match icon::get_image(menu_item, icon_theme, icon_size, prefer_icons) {
+                        menu_item.set_icon_name(icon);
+                        match icon::get_image(menu_item, icon_size, prefer_icons, icon_theme) {
                             Ok(image) => menu_item.set_image(&image),
                             Err(_) => menu_item.show_label(),
-                        };
+                        }
                     }
-
-                    menu_item.set_icon_name(icon);
                 }
                 UpdateEvent::OverlayIcon(_icon) => {
                     warn!("received unimplemented NewOverlayIcon event");
@@ -230,25 +201,22 @@ fn on_update(
                         label_widget.set_label(&title.unwrap_or_default());
                     }
                 }
-                // UpdateEvent::Tooltip(_tooltip) => {
-                //     warn!("received unimplemented NewAttentionIcon event");
-                // }
-                UpdateEvent::Menu(menu) => {
-                    debug!("received new menu for '{}'", address);
-
-                    let diffs = get_diffs(menu_item.state(), &menu.submenus);
-
-                    menu_item.apply_diffs(diffs);
-                    menu_item.set_state(menu.submenus);
+                UpdateEvent::Tooltip(tooltip) => {
+                    menu_item.set_tooltip(tooltip);
                 }
+                UpdateEvent::MenuConnect(menu) => {
+                    let menu = system_tray::gtk_menu::Menu::new(&address, &menu);
+                    menu_item.set_menu_widget(menu);
+                }
+                UpdateEvent::Menu(_) | UpdateEvent::MenuDiff(_) => {}
             }
         }
         Event::Remove(address) => {
             debug!("Removing tray item at '{address}'");
 
             if let Some(menu) = menus.get(address.as_str()) {
-                container.remove(&menu.widget);
+                container.remove(&menu.event_box);
             }
         }
-    };
+    }
 }

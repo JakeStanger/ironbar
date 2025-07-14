@@ -1,4 +1,3 @@
-$schema: https://f.jstanger.dev/github/ironbar/schema.json
 anchor_to_edges: true
 position: bottom
 icon_theme: Paper
@@ -44,12 +43,11 @@ end:
     disks: 300
     networks: 3
   format:
-  -  {cpu_percent}% | {temp_c:k10temp-Tccd1}°C
-  -  {memory_used} / {memory_total} GB ({memory_percent}%)
-  - '| {swap_used} / {swap_total} GB ({swap_percent}%)'
-  - 󰋊 {disk_used:/} / {disk_total:/} GB ({disk_percent:/}%)
-  - 󰓢 {net_down:enp39s0} / {net_up:enp39s0} Mbps
-  - 󰖡 {load_average:1} | {load_average:5} | {load_average:15}
+  -  {cpu_percent}% | {cpu_frequency} GHz | {temp_c@CPUTIN}°C
+  -  {memory_used} / {memory_total} GB ({memory_available} | {memory_percent2}%) | {swap_used} / {swap_total} GB ({swap_free} | {swap_percent}%)
+  - 󰋊 {disk_used#T@/:.1} / {disk_total#T@/:.1} TB ({disk_percent@/}%) | {disk_read} / {disk_write} MB/s
+  - 󰓢 {net_down@enp39s0} / {net_up@enp39s0} Mbps
+  - 󰖡 {load_average1} | {load_average5} | {load_average15}
   - 󰥔 {uptime}
 - type: volume
   format: '{icon} {percentage}%'

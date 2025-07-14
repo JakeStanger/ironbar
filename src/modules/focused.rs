@@ -1,12 +1,13 @@
+use crate::channels::{AsyncSenderExt, BroadcastReceiverExt};
 use crate::clients::wayland::{self, ToplevelEvent};
-use crate::config::{CommonConfig, TruncateMode};
+use crate::config::{CommonConfig, LayoutConfig, TruncateMode};
 use crate::gtk_helpers::IronbarGtkExt;
-use crate::image::ImageProvider;
-use crate::modules::{Module, ModuleInfo, ModuleParts, ModuleUpdateEvent, WidgetContext};
-use crate::{glib_recv, module_impl, send_async, spawn, try_send};
+use crate::gtk_helpers::IronbarLabelExt;
+use crate::modules::{Module, ModuleInfo, ModuleParts, WidgetContext};
+use crate::{module_impl, spawn};
 use color_eyre::Result;
-use gtk::prelude::*;
 use gtk::Label;
+use gtk::prelude::*;
 use serde::Deserialize;
 use tokio::sync::mpsc;
 use tracing::debug;
@@ -37,6 +38,10 @@ pub struct FocusedModule {
     /// **Default**: `null`
     truncate: Option<TruncateMode>,
 
+    /// See [layout options](module-level-options#layout)
+    #[serde(default, flatten)]
+    layout: LayoutConfig,
+
     /// See [common options](module-level-options#common-options).
     #[serde(flatten)]
     pub common: Option<CommonConfig>,
@@ -49,6 +54,7 @@ impl Default for FocusedModule {
             show_title: crate::config::default_true(),
             icon_size: default_icon_size(),
             truncate: None,
+            layout: LayoutConfig::default(),
             common: Some(CommonConfig::default()),
         }
     }
@@ -84,11 +90,9 @@ impl Module<gtk::Box> for FocusedModule {
             if let Some(focused) = focused {
                 current = Some(focused.id);
 
-                try_send!(
-                    tx,
-                    ModuleUpdateEvent::Update(Some((focused.title.clone(), focused.app_id)))
-                );
-            };
+                tx.send_update(Some((focused.title.clone(), focused.app_id)))
+                    .await;
+            }
 
             while let Ok(event) = wlrx.recv().await {
                 match event {
@@ -98,24 +102,19 @@ impl Module<gtk::Box> for FocusedModule {
 
                             current = Some(info.id);
 
-                            send_async!(
-                                tx,
-                                ModuleUpdateEvent::Update(Some((
-                                    info.title.clone(),
-                                    info.app_id.clone()
-                                )))
-                            );
+                            tx.send_update(Some((info.title.clone(), info.app_id)))
+                                .await;
                         } else if info.id == current.unwrap_or_default() {
                             debug!("Clearing focus");
                             current = None;
-                            send_async!(tx, ModuleUpdateEvent::Update(None));
+                            tx.send_update(None).await;
                         }
                     }
                     ToplevelEvent::Remove(info) => {
                         if info.focused {
                             debug!("Clearing focus");
                             current = None;
-                            send_async!(tx, ModuleUpdateEvent::Update(None));
+                            tx.send_update(None).await;
                         }
                     }
                     ToplevelEvent::New(_) => {}
@@ -131,9 +130,7 @@ impl Module<gtk::Box> for FocusedModule {
         context: WidgetContext<Self::SendMessage, Self::ReceiveMessage>,
         info: &ModuleInfo,
     ) -> Result<ModuleParts<gtk::Box>> {
-        let icon_theme = info.icon_theme;
-
-        let container = gtk::Box::new(info.bar_position.orientation(), 5);
+        let container = gtk::Box::new(self.layout.orientation(info), 5);
 
         let icon = gtk::Image::new();
         if self.show_icon {
@@ -141,35 +138,47 @@ impl Module<gtk::Box> for FocusedModule {
             container.add(&icon);
         }
 
-        let label = Label::new(None);
+        let label = Label::builder()
+            .angle(self.layout.angle(info))
+            .justify(self.layout.justify.into())
+            .build();
+
         label.add_class("label");
 
         if let Some(truncate) = self.truncate {
-            truncate.truncate_label(&label);
+            label.truncate(truncate);
         }
 
         container.add(&label);
 
         {
-            let icon_theme = icon_theme.clone();
-            glib_recv!(context.subscribe(), data => {
-                if let Some((name, id)) = data {
-                    if self.show_icon {
-                        match ImageProvider::parse(&id, &icon_theme, true, self.icon_size)
-                            .map(|image| image.load_into_image(icon.clone()))
-                        {
-                            Some(Ok(())) => icon.show(),
-                            _ => icon.hide(),
-                        }
-                    }
+            let image_provider = context.ironbar.image_provider();
 
-                    if self.show_title {
-                        label.show();
-                        label.set_label(&name);
+            context.subscribe().recv_glib_async((), move |(), data| {
+                let icon = icon.clone();
+                let label = label.clone();
+                let image_provider = image_provider.clone();
+
+                async move {
+                    if let Some((name, id)) = data {
+                        if self.show_icon {
+                            match image_provider
+                                .load_into_image(&id, self.icon_size, true, &icon)
+                                .await
+                            {
+                                Ok(true) => icon.show(),
+                                _ => icon.hide(),
+                            }
+                        }
+
+                        if self.show_title {
+                            label.show();
+                            label.set_label(&name);
+                        }
+                    } else {
+                        icon.hide();
+                        label.hide();
                     }
-                } else {
-                    icon.hide();
-                    label.hide();
                 }
             });
         }

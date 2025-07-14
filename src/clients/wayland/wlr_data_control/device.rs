@@ -6,7 +6,7 @@ use crate::error::ERR_WAYLAND_DATA;
 use crate::lock;
 use std::sync::{Arc, Mutex};
 use tracing::warn;
-use wayland_client::{event_created_child, Connection, Dispatch, Proxy, QueueHandle};
+use wayland_client::{Connection, Dispatch, Proxy, QueueHandle, event_created_child};
 use wayland_protocols_wlr::data_control::v1::client::{
     zwlr_data_control_device_v1::{Event, ZwlrDataControlDeviceV1},
     zwlr_data_control_offer_v1::ZwlrDataControlOfferV1,
@@ -37,7 +37,9 @@ pub trait DataControlDeviceDataExt: Send + Sync {
 
     fn selection_mime_types(&self) -> Vec<String> {
         let inner = self.data_control_device_data();
-        lock!(lock!(inner.inner).selection_offer)
+        let offer = &lock!(inner.inner).selection_offer;
+
+        lock!(offer)
             .as_ref()
             .map(|offer| {
                 let data = offer
@@ -51,14 +53,14 @@ pub trait DataControlDeviceDataExt: Send + Sync {
     /// Get the active selection offer if it exists.
     fn selection_offer(&self) -> Option<SelectionOffer> {
         let inner = self.data_control_device_data();
-        lock!(lock!(inner.inner).selection_offer)
-            .as_ref()
-            .and_then(|offer| {
-                let data = offer
-                    .data::<Self::DataControlOfferInner>()
-                    .expect(ERR_WAYLAND_DATA);
-                data.as_selection_offer()
-            })
+        let offer = &lock!(inner.inner).selection_offer;
+
+        lock!(offer).as_ref().and_then(|offer| {
+            let data = offer
+                .data::<Self::DataControlOfferInner>()
+                .expect(ERR_WAYLAND_DATA);
+            data.as_selection_offer()
+        })
     }
 }
 
@@ -159,7 +161,9 @@ where
                 }
             }
             Event::Finished => {
-                warn!("Data control offer is no longer valid, but has not been dropped by client. This could cause clipboard issues.");
+                warn!(
+                    "Data control offer is no longer valid, but has not been dropped by client. This could cause clipboard issues."
+                );
             }
             _ => {}
         }
