@@ -1,3 +1,4 @@
+use crate::config::default_launch_command;
 use crate::config::{CommonConfig, TruncateMode};
 use crate::modules::menu::{MenuEntry, XdgSection};
 use indexmap::IndexMap;
@@ -123,6 +124,12 @@ pub struct MenuModule {
     /// See [common options](module-level-options#common-options).
     #[serde(flatten)]
     pub common: Option<CommonConfig>,
+
+    /// Command used to launch applications.
+    ///
+    /// **Default**: `gtk-launch`
+    #[serde(default = "default_launch_command")]
+    pub launch_command: String,
 }
 
 impl Default for MenuModule {
@@ -139,6 +146,7 @@ impl Default for MenuModule {
             label_icon: None,
             label_icon_size: default_menu_popup_icon_size(),
             common: Some(CommonConfig::default()),
+            launch_command: default_launch_command(),
         }
     }
 }

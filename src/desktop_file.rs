@@ -1,12 +1,14 @@
 use crate::spawn;
-use color_eyre::Result;
+use color_eyre::{Help, Report, Result};
 use std::collections::HashMap;
 use std::env;
 use std::path::{Path, PathBuf};
+use std::process::Stdio;
 use std::sync::Arc;
 use tokio::io::{AsyncBufReadExt, BufReader};
+use tokio::process::Command;
 use tokio::sync::Mutex;
-use tracing::debug;
+use tracing::{debug, error};
 use walkdir::{DirEntry, WalkDir};
 
 #[derive(Debug, Clone)]
@@ -321,6 +323,29 @@ fn files(dir: &Path) -> Vec<PathBuf> {
         .map(DirEntry::into_path)
         .filter(|file| file.is_file() && file.extension().unwrap_or_default() == "desktop")
         .collect()
+}
+
+/// Starts a `.desktop` file with the provided formatted command.
+pub async fn open_program(file_name: &str, launch_command: &str) {
+    let expanded = launch_command.replace("{app_name}", file_name);
+    let launch_command_parts: Vec<&str> = expanded.split_whitespace().collect();
+
+    debug!("running {launch_command_parts:?}");
+    if let Err(err) = Command::new(launch_command_parts[0])
+        .args(&launch_command_parts[1..])
+        .stdin(Stdio::null())
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .kill_on_drop(true)
+        .spawn()
+    {
+        error!(
+            "{:?}",
+            Report::new(err)
+                .wrap_err("Failed to run launch command.")
+                .suggestion("Perhaps the desktop file is invalid or orphaned?")
+        );
+    }
 }
 
 #[cfg(test)]

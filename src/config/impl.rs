@@ -52,16 +52,11 @@ where
 }
 
 #[cfg(feature = "schema")]
-pub fn schema_layer(generator: &mut schemars::r#gen::SchemaGenerator) -> schemars::schema::Schema {
-    use schemars::JsonSchema;
-    let mut schema: schemars::schema::SchemaObject = <String>::json_schema(generator).into();
-    schema.enum_values = Some(vec![
-        "background".into(),
-        "bottom".into(),
-        "top".into(),
-        "overlay".into(),
-    ]);
-    schema.into()
+pub fn schema_layer(_generator: &mut schemars::SchemaGenerator) -> schemars::Schema {
+    schemars::json_schema!({
+        "type": "string",
+        "enum": ["background", "bottom", "top", "overlay"],
+    })
 }
 
 impl BarPosition {

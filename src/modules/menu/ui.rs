@@ -1,14 +1,13 @@
 use super::MenuEntry;
 use crate::channels::AsyncSenderExt;
 use crate::config::TruncateMode;
+use crate::desktop_file::open_program;
 use crate::gtk_helpers::{IronbarGtkExt, IronbarLabelExt};
 use crate::modules::ModuleUpdateEvent;
 use crate::script::Script;
 use crate::{image, spawn};
-use color_eyre::{Help, Report};
 use gtk::prelude::*;
 use gtk::{Align, Button, Label, Orientation};
-use std::process::{Command, Stdio};
 use tokio::sync::mpsc;
 use tracing::{debug, error};
 
@@ -17,6 +16,7 @@ pub fn make_entry<R>(
     tx: mpsc::Sender<ModuleUpdateEvent<R>>,
     image_provider: &image::Provider,
     truncate_mode: TruncateMode,
+    launch_command_str: &str,
 ) -> (Button, Option<gtk::Box>)
 where
     R: Send + Clone + 'static,
@@ -96,22 +96,17 @@ where
                 {
                     let sub_menu = sub_menu.clone();
                     let file_name = sub_entry.file_name.clone();
+                    let command = launch_command_str.to_string();
                     let tx = tx.clone();
 
                     button.connect_clicked(move |_button| {
-                        if let Err(err) = Command::new("gtk-launch")
-                            .arg(&file_name)
-                            .stdout(Stdio::null())
-                            .stderr(Stdio::null())
-                            .spawn()
-                        {
-                            error!(
-                                "{:?}",
-                                Report::new(err)
-                                    .wrap_err("Failed to run gtk-launch command.")
-                                    .suggestion("Perhaps the applications file is invalid?")
-                            );
-                        }
+                        // TODO: this needs refactoring to call open from the controller
+                        let file_name = file_name.clone();
+                        let command = command.clone();
+
+                        glib::spawn_future_local(async move {
+                            open_program(&file_name, &command).await
+                        });
 
                         sub_menu.hide();
                         tx.send_spawn(ModuleUpdateEvent::ClosePopup);

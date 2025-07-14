@@ -216,7 +216,7 @@ impl Module<Button> for UpowerModule {
             .unwrap_or_default();
 
             let format = format
-                .replace("{percentage}", &properties.percentage.to_string())
+                .replace("{percentage}", &properties.percentage.round().to_string())
                 .replace("{time_remaining}", &time_remaining)
                 .replace("{state}", battery_state_to_string(state));
 
