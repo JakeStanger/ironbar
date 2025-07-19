@@ -239,6 +239,7 @@ impl DesktopFiles {
     /// Checks file contents for an exact or partial match of the provided input.
     async fn find_by_file_contents(&self, app_id: &str) -> Result<Option<DesktopFile>> {
         let mut files = self.files.lock().await;
+        let app_id_lower = app_id.to_lowercase();
 
         // first pass - check name for exact match
         for (_, file_ref) in files.iter_mut() {
@@ -254,7 +255,7 @@ impl DesktopFiles {
         for (_, file_ref) in files.iter_mut() {
             let file = file_ref.get().await?;
             if let Some(name) = &file.name {
-                if name.to_lowercase().contains(app_id) {
+                if name.to_lowercase().contains(&app_id_lower) {
                     return Ok(Some(file));
                 }
             }
@@ -265,19 +266,19 @@ impl DesktopFiles {
             let file = file_ref.get().await?;
 
             if let Some(name) = &file.exec {
-                if name.to_lowercase().contains(app_id) {
+                if name.to_lowercase().contains(&app_id_lower) {
                     return Ok(Some(file));
                 }
             }
 
             if let Some(name) = &file.startup_wm_class {
-                if name.to_lowercase().contains(app_id) {
+                if name.to_lowercase().contains(&app_id_lower) {
                     return Ok(Some(file));
                 }
             }
 
             if let Some(name) = &file.icon {
-                if name.to_lowercase().contains(app_id) {
+                if name.to_lowercase().contains(&app_id_lower) {
                     return Ok(Some(file));
                 }
             }
