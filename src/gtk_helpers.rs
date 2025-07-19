@@ -2,7 +2,7 @@ use crate::config::TruncateMode;
 use glib::{IsA, markup_escape_text};
 use gtk::pango::EllipsizeMode;
 use gtk::prelude::*;
-use gtk::{Label, Orientation, Widget};
+use gtk::{Label, Orientation, ScrolledWindow, Widget};
 
 /// Represents a widget's size
 /// and location relative to the bar's start edge.
@@ -115,4 +115,51 @@ impl IronbarLabelExt for Label {
             self.set_max_width_chars(length);
         }
     }
+}
+
+fn pixel_width(label: &gtk::Label, text: &str) -> i32 {
+    let layout = label.create_pango_layout(Some(text));
+    let (w, _) = layout.size(); // in Pango units (1/1024 px)
+    w / gtk::pango::SCALE // back to integer pixels
+}
+
+pub fn create_marquee_widget(
+    label: &Label,
+    text: &str,
+    max_len: Option<i32>,
+) -> ScrolledWindow {
+    let scrolled =
+        ScrolledWindow::builder().vscrollbar_policy(gtk::PolicyType::Never);
+
+    // To ensure the container is wide enough for the non-scrolling part of the text,
+    // but not the full text, we calculate width based on a substring.
+    let scrolled = if let Some(max_length) = max_len {
+        let sample_string = text.chars().take(max_length as usize).collect::<String>();
+        let width = pixel_width(label, &sample_string);
+        scrolled.min_content_width(width)
+    } else {
+        scrolled
+    }
+    .build();
+
+    let sep = "    ";
+    label.set_label(&format!("{}{}{}", &text, sep, &text));
+
+    let reset_at = pixel_width(label, &format!("{}{}", &text, sep)) as f64;
+
+    let label_hadjustment = scrolled.hadjustment();
+
+    scrolled.add_tick_callback(move |_, _| {
+        let v = label_hadjustment.value() + 0.5;
+        if v >= reset_at {
+            label_hadjustment.set_value(v - reset_at);
+        } else {
+            label_hadjustment.set_value(v);
+        }
+
+        glib::ControlFlow::Continue
+    });
+
+    scrolled.add(label);
+    scrolled
 }

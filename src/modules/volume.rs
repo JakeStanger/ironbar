@@ -1,12 +1,11 @@
 use crate::channels::{AsyncSenderExt, BroadcastReceiverExt};
 use crate::clients::volume::{self, Event};
 use crate::config::{CommonConfig, LayoutConfig, TruncateMode};
-use crate::gtk_helpers::{IronbarGtkExt, IronbarLabelExt};
+use crate::gtk_helpers::{self, IronbarGtkExt, IronbarLabelExt};
 use crate::modules::{
     Module, ModuleInfo, ModuleParts, ModulePopup, ModuleUpdateEvent, PopupButton, WidgetContext,
 };
 use crate::{lock, module_impl, spawn};
-use glib::ControlFlow::Continue;
 use glib::Propagation;
 use gtk::pango::EllipsizeMode;
 use gtk::prelude::*;
@@ -14,7 +13,6 @@ use gtk::{Button, CellRendererText, ComboBoxText, Label, Orientation, Scale, Tog
 use serde::Deserialize;
 use std::collections::HashMap;
 use tokio::sync::mpsc;
-use tracing::debug;
 use tracing::trace;
 
 #[derive(Debug, Clone, Deserialize)]
@@ -434,31 +432,12 @@ impl Module<Button> for VolumeModule {
                                 };
 
                             if should_scroll {
-                                let label_container = gtk::Box::new(Orientation::Horizontal, 4);
-
-                                let scrolled = gtk::ScrolledWindow::builder()
-                                    .vscrollbar_policy(gtk::PolicyType::Never);
-
-                                // To ensure the container is wide enough for the non-scrolling part of the text,
-                                // but not the full text, we calculate width based on a substring.
-                                let scrolled = if let Some(max_length) = self.scrolling_max_length {
-                                    let sample_string = info
-                                        .name
-                                        .chars()
-                                        .take(max_length as usize)
-                                        .collect::<String>();
-                                    let width = pixel_width(&label, &sample_string);
-                                    scrolled.min_content_width(width)
-                                } else {
-                                    scrolled
-                                }
-                                .build();
-
-                                scrolled.add(&label);
-                                label_container.add(&scrolled);
-                                item_container.add(&label_container);
-
-                                setup_marquee(&label, &scrolled);
+                                let scrolled = gtk_helpers::create_marquee_widget(
+                                    &label,
+                                    &info.name,
+                                    self.scrolling_max_length,
+                                );
+                                item_container.add(&scrolled);
                             } else {
                                 item_container.add(&label);
                             }
@@ -543,31 +522,4 @@ struct InputUi {
     label: Label,
     slider: Scale,
     btn_mute: ToggleButton,
-}
-
-fn pixel_width(label: &gtk::Label, text: &str) -> i32 {
-    let layout = label.create_pango_layout(Some(text));
-    let (w, _) = layout.size(); // in Pango units (1/1024 px)
-    w / gtk::pango::SCALE // back to integer pixels
-}
-
-fn setup_marquee(label: &Label, scrolled_window: &gtk::ScrolledWindow) {
-    let sep = "    ";
-    let text = label.text();
-    label.set_label(&format!("{}{}{}", &text, sep, &text));
-
-    let reset_at = pixel_width(label, &format!("{}{}", &text, sep)) as f64;
-
-    let label_hadjustment = scrolled_window.hadjustment();
-
-    scrolled_window.add_tick_callback(move |_, _| {
-        let v = label_hadjustment.value() + 0.5;
-        if v >= reset_at {
-            label_hadjustment.set_value(v - reset_at);
-        } else {
-            label_hadjustment.set_value(v);
-        }
-
-        glib::ControlFlow::Continue
-    });
 }
