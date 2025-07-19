@@ -13,8 +13,10 @@ use crate::clients::compositor::{self, KeyboardLayoutUpdate};
 use crate::clients::libinput::{Event, Key, KeyEvent};
 use crate::config::{CommonConfig, LayoutConfig};
 use crate::gtk_helpers::IronbarGtkExt;
-use crate::image::{IconButton, IconLabel};
+use crate::gtk_helpers::IronbarLabelExt;
+use crate::image::IconLabel;
 use crate::{module_impl, spawn};
+use gtk::{Button, Label};
 
 #[derive(Debug, Deserialize, Clone)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
@@ -272,7 +274,12 @@ impl Module<gtk::Box> for KeyboardModule {
         scroll.label().set_angle(self.layout.angle(info));
         scroll.label().set_justify(self.layout.justify.into());
 
-        let layout_button = IconButton::new("", self.icon_size, image_provider);
+        let layout_button = Button::new();
+        let layout_button_label = Label::builder()
+            .use_markup(true)
+            .justify(self.layout.justify.into())
+            .build();
+        layout_button.add(&layout_button_label);
 
         if self.show_caps {
             caps.add_class("key");
@@ -294,7 +301,7 @@ impl Module<gtk::Box> for KeyboardModule {
 
         if self.show_layout {
             layout_button.add_class("layout");
-            container.add(&*layout_button);
+            container.add(&layout_button);
         }
 
         {
@@ -339,7 +346,7 @@ impl Module<gtk::Box> for KeyboardModule {
                 }
                 KeyboardUpdate::Layout(KeyboardLayoutUpdate(language)) => {
                     let text = icons.layout_map.get(&language).unwrap_or(&language);
-                    layout_button.set_label(text);
+                    layout_button_label.set_label_escaped(text);
                 }
             });
         Ok(ModuleParts::new(container, None))
