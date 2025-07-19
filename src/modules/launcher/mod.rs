@@ -222,6 +222,17 @@ impl Module<gtk::Box> for LauncherModule {
         context: &WidgetContext<Self::SendMessage, Self::ReceiveMessage>,
         mut rx: mpsc::Receiver<Self::ReceiveMessage>,
     ) -> crate::Result<()> {
+        macro_rules! get_key_with_fallback {
+            ($items:expr, $wm_app_ids:expr, $key:expr) => {{
+                let key_str = $key.to_string();
+                if !$items.contains_key($key) {
+                    $wm_app_ids.get($key).cloned().unwrap_or(key_str)
+                } else {
+                    key_str
+                }
+            }};
+        }
+
         let items = self
             .favorites
             .as_ref()
@@ -244,8 +255,24 @@ impl Module<gtk::Box> for LauncherModule {
         let tx2 = context.tx.clone();
 
         let wl = context.client::<wayland::Client>();
+        let desktop_files = context.ironbar.desktop_files();
         spawn(async move {
             let items = items2;
+            let mut wm_app_ids = IndexMap::<String, String>::new();
+            // Collect app_ids to avoid holding the lock across await
+            let app_ids: Vec<String> = {
+                let items = lock!(items);
+                items.keys().cloned().collect()
+            };
+            for app_id in app_ids {
+                if let Some(file) = desktop_files.find(&app_id).await.ok().flatten() {
+                    if let Some(wm_class) = file.startup_wm_class {
+                        wm_app_ids.insert(wm_class.to_string(), app_id.clone());
+                    }
+                }
+            }
+            let wm_app_ids = arc_mut!(wm_app_ids);
+
             let tx = tx2;
 
             let mut wlrx = wl.subscribe_toplevels();
@@ -253,12 +280,12 @@ impl Module<gtk::Box> for LauncherModule {
 
             for info in handles {
                 let mut items = lock!(items);
-                let item = items.get_mut(&info.app_id);
-                if let Some(item) = item {
+                let app_id = get_key_with_fallback!(items, lock!(wm_app_ids), &info.app_id);
+                if let Some(item) = items.get_mut(&app_id) {
                     item.merge_toplevel(info.clone());
                 } else {
                     let item = Item::from(info.clone());
-                    items.insert(info.app_id.clone(), item);
+                    items.insert(app_id.clone(), item);
                 }
             }
 
@@ -284,12 +311,12 @@ impl Module<gtk::Box> for LauncherModule {
 
                 match event {
                     ToplevelEvent::New(info) => {
-                        let app_id = info.app_id.clone();
+                        let app_id =
+                            get_key_with_fallback!(lock!(items), lock!(wm_app_ids), &info.app_id);
 
                         let new_item = {
                             let mut items = lock!(items);
-                            let item = items.get_mut(&info.app_id);
-                            match item {
+                            match items.get_mut(&app_id) {
                                 None => {
                                     let item: Item = info.into();
                                     items.insert(app_id.clone(), item.clone());
@@ -313,9 +340,11 @@ impl Module<gtk::Box> for LauncherModule {
                         }?;
                     }
                     ToplevelEvent::Update(info) => {
+                        let app_id =
+                            get_key_with_fallback!(lock!(items), lock!(wm_app_ids), &info.app_id);
                         // check if open, as updates can be sent as program closes
                         // if it's a focused favourite closing, it otherwise incorrectly re-focuses.
-                        let is_open = if let Some(item) = lock!(items).get_mut(&info.app_id) {
+                        let is_open = if let Some(item) = lock!(items).get_mut(&app_id) {
                             item.set_window_focused(info.id, info.focused);
                             item.set_window_name(info.id, info.title.clone());
 
@@ -325,27 +354,28 @@ impl Module<gtk::Box> for LauncherModule {
                         };
 
                         send_update(LauncherUpdate::Focus(
-                            info.app_id.clone(),
+                            app_id.clone(),
                             is_open && info.focused,
                         ))
                         .await?;
                         send_update(LauncherUpdate::Title(
-                            info.app_id.clone(),
+                            app_id.clone(),
                             info.id,
                             info.title.clone(),
                         ))
                         .await?;
                     }
                     ToplevelEvent::Remove(info) => {
+                        let app_id =
+                            get_key_with_fallback!(lock!(items), lock!(wm_app_ids), &info.app_id);
                         let remove_item = {
                             let mut items = lock!(items);
-                            let item = items.get_mut(&info.app_id);
-                            match item {
+                            match items.get_mut(&app_id) {
                                 Some(item) => {
                                     item.unmerge_toplevel(&info);
 
                                     if item.windows.is_empty() {
-                                        items.shift_remove(&info.app_id);
+                                        items.shift_remove(&app_id);
                                         Some(ItemOrWindowId::Item)
                                     } else {
                                         Some(ItemOrWindowId::Window)
@@ -357,15 +387,11 @@ impl Module<gtk::Box> for LauncherModule {
 
                         match remove_item {
                             Some(ItemOrWindowId::Item) => {
-                                send_update(LauncherUpdate::RemoveItem(info.app_id.clone()))
-                                    .await?;
+                                send_update(LauncherUpdate::RemoveItem(app_id.clone())).await?;
                             }
                             Some(ItemOrWindowId::Window) => {
-                                send_update(LauncherUpdate::RemoveWindow(
-                                    info.app_id.clone(),
-                                    info.id,
-                                ))
-                                .await?;
+                                send_update(LauncherUpdate::RemoveWindow(app_id.clone(), info.id))
+                                    .await?;
                             }
                             None => {}
                         }
