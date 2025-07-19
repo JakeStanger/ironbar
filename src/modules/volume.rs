@@ -46,6 +46,19 @@ pub struct VolumeModule {
     /// **Default**: `null`
     pub(crate) truncate: Option<TruncateMode>,
 
+    /// Whether to enable scrolling on long program names.
+    /// This may not be supported by all modules.
+    ///
+    /// **Default**: `false`
+    #[serde(default)]
+    scrolling: bool,
+
+    /// The maximum length of a title before it starts scrolling.
+    ///
+    /// **Default**: `null`
+    #[serde(default)]
+    scrolling_max_length: Option<i32>,
+
     /// See [layout options](module-level-options#layout)
     #[serde(default, flatten)]
     layout: LayoutConfig,
@@ -410,48 +423,32 @@ impl Module<Button> for VolumeModule {
                         let label = Label::new(Some(&info.name));
                         label.add_class("title");
 
-                        // TODO: address conflict between truncation and marquee
                         if let Some(truncate) = self.truncate {
                             label.truncate(truncate);
-                        };
+                            item_container.add(&label);
+                        } else {
+                            let should_scroll = self.scrolling
+                                && match self.scrolling_max_length {
+                                    Some(max) => info.name.len() >= max as usize,
+                                    None => true,
+                                };
 
-                        let label_container = gtk::Box::new(Orientation::Horizontal, 4);
+                            if should_scroll {
+                                let label_container = gtk::Box::new(Orientation::Horizontal, 4);
 
-                        let scrolled = gtk::ScrolledWindow::builder()
-                            .min_content_width(250) // TODO: replace with scroll.max_length when configuration is added
-                            .vscrollbar_policy(gtk::PolicyType::Never)
-                            .build();
+                                let scrolled = gtk::ScrolledWindow::builder()
+                                    .min_content_width(250) // TODO: replace with scroll.max_length when configuration is added
+                                    .vscrollbar_policy(gtk::PolicyType::Never)
+                                    .build();
 
-                        scrolled.add(&label);
-                        label_container.add(&scrolled);
+                                scrolled.add(&label);
+                                label_container.add(&scrolled);
+                                item_container.add(&label_container);
 
-                        // TODO: refactor into src/gtk_helpers.rs
-                        // Set up marquee/scrolling effect
-                        {
-                            let sep = "    ";
-                            label.set_label(&format!("{}{}{}", &info.name, sep, &info.name)); // Add spacing between repeats
-
-                            fn pixel_width(label: &gtk::Label, text: &str) -> i32 {
-                                let layout = label.create_pango_layout(Some(text));
-                                let (w, _) = layout.size(); // in Pango units (1/1024 px)
-                                w / gtk::pango::SCALE // back to integer pixels
+                                setup_marquee(&label, &scrolled);
+                            } else {
+                                item_container.add(&label);
                             }
-
-                            let reset_at =
-                                pixel_width(&label, &format!("{}{}", &info.name, sep)) as f64;
-
-                            let label_hadjustment = scrolled.hadjustment();
-
-                            scrolled.add_tick_callback(move |_, _| {
-                                let v = label_hadjustment.value() + 0.5;
-                                if v >= reset_at {
-                                    label_hadjustment.set_value(v - reset_at);
-                                } else {
-                                    label_hadjustment.set_value(v);
-                                }
-
-                                Continue
-                            });
                         }
 
                         let slider = Scale::builder().sensitive(info.can_set_volume).build();
@@ -488,7 +485,6 @@ impl Module<Button> for VolumeModule {
                             });
                         }
 
-                        item_container.add(&label_container);
                         item_container.add(&slider);
                         item_container.add(&btn_mute);
                         item_container.show_all();
@@ -534,4 +530,31 @@ struct InputUi {
     label: Label,
     slider: Scale,
     btn_mute: ToggleButton,
+}
+
+fn setup_marquee(label: &Label, scrolled_window: &gtk::ScrolledWindow) {
+    let sep = "    ";
+    let text = label.text();
+    label.set_label(&format!("{}{}{}", &text, sep, &text));
+
+    fn pixel_width(label: &gtk::Label, text: &str) -> i32 {
+        let layout = label.create_pango_layout(Some(text));
+        let (w, _) = layout.size(); // in Pango units (1/1024 px)
+        w / gtk::pango::SCALE // back to integer pixels
+    }
+
+    let reset_at = pixel_width(label, &format!("{}{}", &text, sep)) as f64;
+
+    let label_hadjustment = scrolled_window.hadjustment();
+
+    scrolled_window.add_tick_callback(move |_, _| {
+        let v = label_hadjustment.value() + 0.5;
+        if v >= reset_at {
+            label_hadjustment.set_value(v - reset_at);
+        } else {
+            label_hadjustment.set_value(v);
+        }
+
+        glib::ControlFlow::Continue
+    });
 }
