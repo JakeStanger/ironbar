@@ -437,9 +437,22 @@ impl Module<Button> for VolumeModule {
                                 let label_container = gtk::Box::new(Orientation::Horizontal, 4);
 
                                 let scrolled = gtk::ScrolledWindow::builder()
-                                    .min_content_width(250) // TODO: replace with scroll.max_length when configuration is added
-                                    .vscrollbar_policy(gtk::PolicyType::Never)
-                                    .build();
+                                    .vscrollbar_policy(gtk::PolicyType::Never);
+
+                                // To ensure the container is wide enough for the non-scrolling part of the text,
+                                // but not the full text, we calculate width based on a substring.
+                                let scrolled = if let Some(max_length) = self.scrolling_max_length {
+                                    let sample_string = info
+                                        .name
+                                        .chars()
+                                        .take(max_length as usize)
+                                        .collect::<String>();
+                                    let width = pixel_width(&label, &sample_string);
+                                    scrolled.min_content_width(width)
+                                } else {
+                                    scrolled
+                                }
+                                .build();
 
                                 scrolled.add(&label);
                                 label_container.add(&scrolled);
@@ -532,16 +545,16 @@ struct InputUi {
     btn_mute: ToggleButton,
 }
 
+fn pixel_width(label: &gtk::Label, text: &str) -> i32 {
+    let layout = label.create_pango_layout(Some(text));
+    let (w, _) = layout.size(); // in Pango units (1/1024 px)
+    w / gtk::pango::SCALE // back to integer pixels
+}
+
 fn setup_marquee(label: &Label, scrolled_window: &gtk::ScrolledWindow) {
     let sep = "    ";
     let text = label.text();
     label.set_label(&format!("{}{}{}", &text, sep, &text));
-
-    fn pixel_width(label: &gtk::Label, text: &str) -> i32 {
-        let layout = label.create_pango_layout(Some(text));
-        let (w, _) = layout.size(); // in Pango units (1/1024 px)
-        w / gtk::pango::SCALE // back to integer pixels
-    }
 
     let reset_at = pixel_width(label, &format!("{}{}", &text, sep)) as f64;
 
