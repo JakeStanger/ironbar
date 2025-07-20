@@ -1,4 +1,4 @@
-use glib::{Bytes, Propagation, SignalHandlerId};
+use glib::{Bytes, Propagation, SignalHandlerId, Variant, VariantTy};
 use gtk::gdk::Gravity;
 use gtk::gdk_pixbuf::Pixbuf;
 use gtk::gio::{
@@ -9,6 +9,7 @@ use gtk::{Box as GtkBox, Orientation, prelude::*};
 use gtk::{Button, EventController, Image, Label, MenuButton, PopoverMenu};
 use system_tray::client::ActivateRequest;
 use system_tray::item::{IconPixmap, StatusNotifierItem, Tooltip};
+use system_tray::menu::ToggleState;
 use tokio::sync::mpsc;
 use tracing::{debug, error, info, trace, warn};
 
@@ -203,7 +204,7 @@ impl TrayMenu {
         let address = self.address.clone();
         if let Some(path) = self.path.clone() {
             action.connect_activate(move |_, _| {
-                info!("activated {},{}, {} {:?} ", address, path, id, lab);
+                trace!("activated {},{}, {} {:?} ", address, path, id, lab);
                 let c = channel.clone();
                 let a = address.clone();
                 let p = path.clone();
@@ -223,6 +224,49 @@ impl TrayMenu {
         format!("base.{}", &action_name)
     }
 
+    pub fn connect_toggle_item(
+        &mut self,
+        sub: &system_tray::menu::MenuItem,
+        action_group: &mut SimpleActionGroup,
+        value: bool,
+    ) -> String {
+        let action_name = format!("action_{}", sub.id);
+        let channel = self.activated_channel.clone();
+        let id = sub.id;
+        let lab = sub.label.clone();
+        let action = SimpleAction::new_stateful(&action_name, None, &value.to_variant());
+        action.set_state(&value.to_variant());
+        let address = self.address.clone();
+        if let Some(path) = self.path.clone() {
+            action.connect_change_state(move |ac, _| {
+                trace!("activated {},{}, {} {:?} ", address, path, id, lab);
+                let c = channel.clone();
+                let a = address.clone();
+                let p = path.clone();
+                spawn(async move {
+                    c.send(ActivateRequest::MenuItem {
+                        address: a,
+                        menu_path: p,
+                        submenu_id: id,
+                    })
+                    .await;
+                });
+            });
+            action.connect_change_state(move |ac, _| {
+                let state = ac.state();
+                if let Some(st) = state {
+                    ac.set_state(&(!st.get::<bool>().unwrap_or(false)).to_variant());
+                } else {
+                    ac.set_state(&true.to_variant());
+                }
+            });
+        } else {
+            warn!("Cannoct connect menu action missing dbus path");
+        }
+        action_group.add_action(&action);
+        format!("base.{}", &action_name)
+    }
+
     fn to_menu(
         &mut self,
         items: &Vec<system_tray::menu::MenuItem>,
@@ -230,8 +274,8 @@ impl TrayMenu {
     ) -> Menu {
         use gtk::gio::{MenuItem, MenuModel};
         use system_tray::menu::{MenuType, ToggleType};
-
-        let val = Menu::new();
+        let mut section_container: Option<Menu> = None;
+        let mut val = Menu::new();
         for sub in items.iter() {
             match sub.menu_type {
                 MenuType::Standard => {
@@ -241,15 +285,21 @@ impl TrayMenu {
                         let submenu: MenuModel = self.to_menu(&sub.submenu, action_group).into();
                         MenuItem::new_submenu(label, &submenu)
                     } else {
-                        //menu.m
                         match sub.toggle_type {
                             ToggleType::Radio => {
-                                // TOOD: hadle the flag with the action
-                                MenuItem::new(label, None)
+                                debug!("new radio item {:?}", label);
+                                let action = self.connect_item(sub, action_group);
+                                MenuItem::new(label, Some(action.as_str()))
                             }
                             ToggleType::Checkmark => {
-                                // TOOD: hadle the flag with the action
-                                MenuItem::new(label, None)
+                                let value = match sub.toggle_state {
+                                    ToggleState::On => true,
+                                    ToggleState::Off => false,
+                                    ToggleState::Indeterminate => false,
+                                };
+                                debug!("new check item {:?} value {}", label, value);
+                                let action = self.connect_toggle_item(sub, action_group, value);
+                                MenuItem::new(label, Some(action.as_str()))
                             }
                             ToggleType::CannotBeToggled => {
                                 debug!("new item {:?}", label);
@@ -261,9 +311,26 @@ impl TrayMenu {
                     debug!("inserting {}", sub.id);
                     val.insert_item(sub.id, &item);
                 }
-                MenuType::Separator => {}
+                MenuType::Separator => {
+                    let label = sub.label.as_ref().map(String::as_str);
+                    section_container = if let Some(sc) = section_container {
+                        sc.insert_item(sub.id, &MenuItem::new_section(label, &val));
+                        Some(sc)
+                    } else {
+                        let sc = Menu::new();
+                        sc.insert_item(sub.id, &MenuItem::new_section(label, &val));
+                        Some(sc)
+                    };
+                    val = Menu::new();
+                }
             }
         }
-        val
+
+        if let Some(sc) = section_container {
+            sc.insert_item(0, &MenuItem::new_section(None, &val));
+            sc
+        } else {
+            val
+        }
     }
 }
