@@ -2,7 +2,7 @@ use glib::{Bytes, Propagation, SignalHandlerId, Variant, VariantTy};
 use gtk::gdk::Gravity;
 use gtk::gdk_pixbuf::Pixbuf;
 use gtk::gio::{
-    Action, ActionEntry, Cancellable, MemoryInputStream, Menu, MenuItem, SimpleAction,
+    Action, ActionEntry, Cancellable, Icon, MemoryInputStream, Menu, MenuItem, SimpleAction,
     SimpleActionGroup,
 };
 use gtk::{Box as GtkBox, Orientation, prelude::*};
@@ -193,7 +193,6 @@ impl TrayMenu {
     pub fn connect_item(
         &mut self,
         sub: &system_tray::menu::MenuItem,
-
         action_group: &mut SimpleActionGroup,
     ) -> String {
         let action_name = format!("action_{}", sub.id);
@@ -224,7 +223,7 @@ impl TrayMenu {
         format!("base.{}", &action_name)
     }
 
-    pub fn connect_toggle_item(
+    pub fn connect_checkmark_item(
         &mut self,
         sub: &system_tray::menu::MenuItem,
         action_group: &mut SimpleActionGroup,
@@ -267,6 +266,46 @@ impl TrayMenu {
         format!("base.{}", &action_name)
     }
 
+    pub fn connect_radio_item(
+        &mut self,
+        sub: &system_tray::menu::MenuItem,
+        action_group: &mut SimpleActionGroup,
+        radio_group: &str,
+        value: &str,
+        selected: bool,
+    ) -> String {
+        let action_name = format!("action_radio_{}", radio_group);
+        let channel = self.activated_channel.clone();
+        let id = sub.id;
+        let lab = sub.label.clone();
+        let action =
+            SimpleAction::new_stateful(&action_name, Some(VariantTy::STRING), &value.to_variant());
+        if selected {
+            action.set_state(&value.to_variant());
+        }
+        let address = self.address.clone();
+        if let Some(path) = self.path.clone() {
+            action.connect_change_state(move |ac, _| {
+                trace!("activated {},{}, {} {:?} ", address, path, id, lab);
+                let c = channel.clone();
+                let a = address.clone();
+                let p = path.clone();
+                spawn(async move {
+                    c.send(ActivateRequest::MenuItem {
+                        address: a,
+                        menu_path: p,
+                        submenu_id: id,
+                    })
+                    .await;
+                });
+            });
+        } else {
+            warn!("Cannoct connect menu action missing dbus path");
+        }
+        action_group.add_action(&action);
+        format!("base.{}", &action_name)
+    }
+
     fn to_menu(
         &mut self,
         items: &Vec<system_tray::menu::MenuItem>,
@@ -275,43 +314,85 @@ impl TrayMenu {
         use gtk::gio::{MenuItem, MenuModel};
         use system_tray::menu::{MenuType, ToggleType};
         let mut section_container: Option<Menu> = None;
+        // As current implementation it identifies radio groups based on the
+        // item of type radio coming one after the other,
+        // if there is a gap than a new radio group is started,
+        // for handling multiple radio groups it use a sequential one of each group used as key for the action
+        let mut radio_group_sequential = 0;
+        let mut radio_group = None;
         let mut val = Menu::new();
         for sub in items.iter() {
+            if !sub.visible {
+                continue;
+            }
             match sub.menu_type {
                 MenuType::Standard => {
                     let label = sub.label.as_ref().map(String::as_str);
                     debug!("has children: '{:?}'", sub.children_display);
                     let item = if sub.children_display == Some("submenu".to_owned()) {
+                        radio_group = None;
                         let submenu: MenuModel = self.to_menu(&sub.submenu, action_group).into();
                         MenuItem::new_submenu(label, &submenu)
                     } else {
-                        match sub.toggle_type {
-                            ToggleType::Radio => {
-                                debug!("new radio item {:?}", label);
-                                let action = self.connect_item(sub, action_group);
-                                MenuItem::new(label, Some(action.as_str()))
+                        let action = if sub.enabled {
+                            match sub.toggle_type {
+                                ToggleType::Radio => {
+                                    let value = match sub.toggle_state {
+                                        ToggleState::On => true,
+                                        ToggleState::Off => false,
+                                        ToggleState::Indeterminate => false,
+                                    };
+                                    let target = format!("{}", sub.id);
+                                    let rg = if let Some(rg) = radio_group {
+                                        rg
+                                    } else {
+                                        radio_group_sequential += 1;
+                                        let id = format!("{}", radio_group_sequential);
+                                        self.connect_radio_item(
+                                            sub,
+                                            action_group,
+                                            &id,
+                                            &target,
+                                            value,
+                                        )
+                                    };
+                                    debug!("radio item {:?}", label);
+                                    radio_group = Some(rg.clone());
+                                    format!("{}::{}", rg, target)
+                                }
+                                ToggleType::Checkmark => {
+                                    radio_group = None;
+                                    let value = match sub.toggle_state {
+                                        ToggleState::On => true,
+                                        ToggleState::Off => false,
+                                        ToggleState::Indeterminate => false,
+                                    };
+                                    debug!("check item {:?} value {}", label, value);
+                                    self.connect_checkmark_item(sub, action_group, value)
+                                }
+                                ToggleType::CannotBeToggled => {
+                                    radio_group = None;
+                                    debug!("item {:?}", label);
+                                    self.connect_item(sub, action_group)
+                                }
                             }
-                            ToggleType::Checkmark => {
-                                let value = match sub.toggle_state {
-                                    ToggleState::On => true,
-                                    ToggleState::Off => false,
-                                    ToggleState::Indeterminate => false,
-                                };
-                                debug!("new check item {:?} value {}", label, value);
-                                let action = self.connect_toggle_item(sub, action_group, value);
-                                MenuItem::new(label, Some(action.as_str()))
-                            }
-                            ToggleType::CannotBeToggled => {
-                                debug!("new item {:?}", label);
-                                let action = self.connect_item(sub, action_group);
-                                MenuItem::new(label, Some(action.as_str()))
-                            }
-                        }
+                        } else {
+                            debug!("disabled item {:?}", label);
+                            format!("action_{}", sub.id)
+                        };
+
+                        MenuItem::new(label, Some(action.as_str()))
                     };
                     debug!("inserting {}", sub.id);
+                    if let Some(icon) = &sub.icon_name {
+                        if let Ok(ic) = Icon::for_string(icon) {
+                            item.set_icon(&ic);
+                        }
+                    }
                     val.insert_item(sub.id, &item);
                 }
                 MenuType::Separator => {
+                    radio_group = None;
                     let label = sub.label.as_ref().map(String::as_str);
                     section_container = if let Some(sc) = section_container {
                         sc.insert_item(sub.id, &MenuItem::new_section(label, &val));
