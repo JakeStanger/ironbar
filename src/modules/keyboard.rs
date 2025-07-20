@@ -342,7 +342,7 @@ impl Module<gtk::Box> for KeyboardModule {
                         .iter()
                         .find_map(|(pattern, display_text)| {
                             let is_match = if pattern.ends_with("*") {
-                                language.starts_with(&pattern[..pattern.len()-1])
+                                language.starts_with(&pattern[..pattern.len() - 1])
                             } else {
                                 pattern == &language
                             };
