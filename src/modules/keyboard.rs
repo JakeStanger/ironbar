@@ -1,8 +1,7 @@
-use std::collections::HashMap;
-
 use color_eyre::Result;
 use color_eyre::eyre::Report;
 use gtk::prelude::*;
+use indexmap::IndexMap;
 use serde::Deserialize;
 use tokio::sync::mpsc;
 use tracing::{debug, trace};
@@ -129,7 +128,7 @@ struct Icons {
     /// }
     /// ```
     #[serde(default)]
-    layout_map: HashMap<String, String>,
+    layout_map: IndexMap<String, String>,
 }
 
 impl Default for Icons {
@@ -141,7 +140,7 @@ impl Default for Icons {
             num_off: String::new(),
             scroll_on: default_icon_scroll(),
             scroll_off: String::new(),
-            layout_map: HashMap::new(),
+            layout_map: IndexMap::new(),
         }
     }
 }
@@ -338,7 +337,19 @@ impl Module<gtk::Box> for KeyboardModule {
                     }
                 }
                 KeyboardUpdate::Layout(KeyboardLayoutUpdate(language)) => {
-                    let text = icons.layout_map.get(&language).unwrap_or(&language);
+                    let text = icons
+                        .layout_map
+                        .iter()
+                        .find_map(|(pattern, display_text)| {
+                            let is_match = if pattern.ends_with("*") {
+                                language.starts_with(&pattern[..pattern.len() - 1])
+                            } else {
+                                pattern == &language
+                            };
+
+                            is_match.then(|| display_text)
+                        })
+                        .unwrap_or(&language);
                     layout_button.set_label(text);
                 }
             });
