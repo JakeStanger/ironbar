@@ -5,7 +5,10 @@ use gtk::gio::{
     Action, ActionEntry, Cancellable, Icon, MemoryInputStream, Menu, MenuItem, SimpleAction,
     SimpleActionGroup,
 };
-use gtk::{Box as GtkBox, Orientation, prelude::*};
+use gtk::{
+    Box as GtkBox, Orientation, Shortcut, ShortcutAction, ShortcutController, ShortcutTrigger,
+    prelude::*,
+};
 use gtk::{Button, EventController, Image, Label, MenuButton, PopoverMenu};
 use system_tray::client::ActivateRequest;
 use system_tray::item::{IconPixmap, StatusNotifierItem, Tooltip};
@@ -24,6 +27,7 @@ pub(crate) struct TrayMenu {
     image_widget: Option<Image>,
     label_widget: Option<Label>,
     action_group: Option<SimpleActionGroup>,
+    shortcut: Option<ShortcutController>,
     activated_channel: mpsc::Sender<ActivateRequest>,
     path: Option<String>,
     address: String,
@@ -98,6 +102,7 @@ impl TrayMenu {
             image_widget: None,
             label_widget: None,
             action_group: None,
+            shortcut: None,
             activated_channel,
             title: item.title,
             icon_name: item.icon_name,
@@ -185,9 +190,17 @@ impl TrayMenu {
         debug!("set menu");
         use gtk::gio::MenuModel;
         let mut action_group = SimpleActionGroup::new();
-        let model: MenuModel = self.to_menu(&tray_menu.submenus, &mut action_group).into();
+        let mut shortcut_controller = ShortcutController::new();
+        let model: MenuModel = self
+            .to_menu(
+                &tray_menu.submenus,
+                &mut action_group,
+                &mut shortcut_controller,
+            )
+            .into();
         self.popover.set_menu_model(Some(&model));
         self.widget.insert_action_group("base", Some(&action_group));
+        self.widget.add_controller(shortcut_controller);
     }
 
     pub fn connect_item(
@@ -305,11 +318,32 @@ impl TrayMenu {
         action_group.add_action(&action);
         format!("base.{}", &action_name)
     }
+    pub fn connect_shortcut(
+        &mut self,
+        sub: &system_tray::menu::MenuItem,
+        shortcut_controller: &mut ShortcutController,
+    ) {
+        if let Some(scs) = &sub.shortcut {
+            // TODO: test this formatting for parsing
+            let sc = scs
+                .iter()
+                .map(|e| e.join("+"))
+                .collect::<Vec<_>>()
+                .join("|");
+            debug!("shourtcut '{}' for menu id: {}", sc, sub.id);
+            let shortcut = Shortcut::new(
+                ShortcutTrigger::parse_string(&sc),
+                ShortcutAction::parse_string("activate"),
+            );
+            shortcut_controller.add_shortcut(shortcut);
+        }
+    }
 
     fn to_menu(
         &mut self,
         items: &Vec<system_tray::menu::MenuItem>,
         action_group: &mut SimpleActionGroup,
+        shortcut_controller: &mut ShortcutController,
     ) -> Menu {
         use gtk::gio::{MenuItem, MenuModel};
         use system_tray::menu::{MenuType, ToggleType};
@@ -325,13 +359,16 @@ impl TrayMenu {
             if !sub.visible {
                 continue;
             }
+            self.connect_shortcut(sub, shortcut_controller);
             match sub.menu_type {
                 MenuType::Standard => {
                     let label = sub.label.as_ref().map(String::as_str);
                     debug!("has children: '{:?}'", sub.children_display);
                     let item = if sub.children_display == Some("submenu".to_owned()) {
                         radio_group = None;
-                        let submenu: MenuModel = self.to_menu(&sub.submenu, action_group).into();
+                        let submenu: MenuModel = self
+                            .to_menu(&sub.submenu, action_group, shortcut_controller)
+                            .into();
                         MenuItem::new_submenu(label, &submenu)
                     } else {
                         let action = if sub.enabled {
