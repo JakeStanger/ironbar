@@ -117,30 +117,24 @@ impl IronbarLabelExt for Label {
     }
 }
 
-fn pixel_width(label: &gtk::Label, text: &str) -> i32 {
-    let layout = label.create_pango_layout(Some(text));
+// Calculate pixel width of a string given the label it's displayed in
+fn pixel_width(label: &gtk::Label, sring: &str) -> i32 {
+    let layout = label.create_pango_layout(Some(sring));
     let (w, _) = layout.size(); // in Pango units (1/1024 px)
     w / gtk::pango::SCALE // back to integer pixels
 }
 
-pub fn create_marquee_widget(
-    label: &Label,
-    text: &str,
-    max_len: Option<i32>,
-) -> ScrolledWindow {
-    let scrolled =
-        ScrolledWindow::builder().vscrollbar_policy(gtk::PolicyType::Never);
+pub fn create_marquee_widget(label: &Label, text: &str, max_len: Option<i32>) -> ScrolledWindow {
+    let scrolled = ScrolledWindow::builder().vscrollbar_policy(gtk::PolicyType::Never);
 
-    // To ensure the container is wide enough for the non-scrolling part of the text,
-    // but not the full text, we calculate width based on a substring.
+    // Set `min_content_width` to equal the calculated pixel width of `scrolling_max_length` characters
     let scrolled = if let Some(max_length) = max_len {
         let sample_string = text.chars().take(max_length as usize).collect::<String>();
         let width = pixel_width(label, &sample_string);
-        scrolled.min_content_width(width)
+        scrolled.min_content_width(width).build()
     } else {
-        scrolled
-    }
-    .build();
+        scrolled.build()
+    };
 
     let sep = "    ";
     label.set_label(&format!("{}{}{}", &text, sep, &text));

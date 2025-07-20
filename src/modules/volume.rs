@@ -424,23 +424,15 @@ impl Module<Button> for VolumeModule {
                         if let Some(truncate) = self.truncate {
                             label.truncate(truncate);
                             item_container.add(&label);
+                        } else if self.scrolling {
+                            let scrolled = gtk_helpers::create_marquee_widget(
+                                &label,
+                                &info.name,
+                                self.scrolling_max_length,
+                            );
+                            item_container.add(&scrolled);
                         } else {
-                            let should_scroll = self.scrolling
-                                && match self.scrolling_max_length {
-                                    Some(max) => info.name.len() >= max as usize,
-                                    None => true,
-                                };
-
-                            if should_scroll {
-                                let scrolled = gtk_helpers::create_marquee_widget(
-                                    &label,
-                                    &info.name,
-                                    self.scrolling_max_length,
-                                );
-                                item_container.add(&scrolled);
-                            } else {
-                                item_container.add(&label);
-                            }
+                            item_container.add(&label);
                         }
 
                         let slider = Scale::builder().sensitive(info.can_set_volume).build();
