@@ -332,7 +332,7 @@ pub async fn open_program(file_name: &str, launch_command: &str) {
     let launch_command_parts: Vec<&str> = expanded.split_whitespace().collect();
 
     debug!("running {launch_command_parts:?}");
-    if let Err(err) = Command::new(launch_command_parts[0])
+    let exit_status = match Command::new(launch_command_parts[0])
         .args(&launch_command_parts[1..])
         .stdin(Stdio::null())
         .stdout(Stdio::null())
@@ -340,12 +340,24 @@ pub async fn open_program(file_name: &str, launch_command: &str) {
         .kill_on_drop(true)
         .spawn()
     {
-        error!(
-            "{:?}",
-            Report::new(err)
-                .wrap_err("Failed to run launch command.")
-                .suggestion("Perhaps the desktop file is invalid or orphaned?")
-        );
+        Ok(mut child) => Some(child.wait().await),
+        Err(err) => {
+            error!(
+                "{:?}",
+                Report::new(err)
+                    .wrap_err("Failed to run launch command.")
+                    .suggestion("Perhaps the desktop file is invalid or orphaned?")
+            );
+            None
+        }
+    };
+
+    match exit_status {
+        Some(Ok(exit_status)) if !exit_status.success() => {
+            error!("received non-success exit status running {launch_command_parts:?}")
+        }
+        Some(Err(err)) => error!("{err:?}"),
+        _ => {}
     }
 }
 
