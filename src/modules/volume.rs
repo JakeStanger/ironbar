@@ -57,6 +57,12 @@ pub struct VolumeModule {
     #[serde(default)]
     scrolling_max_length: Option<i32>,
 
+    /// Whether to pause scrolling on hover.
+    ///
+    /// **Default**: `false`
+    #[serde(default)]
+    scrolling_pause_on_hover: bool,
+
     /// See [layout options](module-level-options#layout)
     #[serde(default, flatten)]
     layout: LayoutConfig,
@@ -429,6 +435,7 @@ impl Module<Button> for VolumeModule {
                                 &label,
                                 &info.name,
                                 self.scrolling_max_length,
+                                self.scrolling_pause_on_hover,
                             );
                             item_container.add(&scrolled);
                         } else {

@@ -124,7 +124,12 @@ fn pixel_width(label: &gtk::Label, string: &str) -> i32 {
     w / gtk::pango::SCALE // back to integer pixels
 }
 
-pub fn create_marquee_widget(label: &Label, text: &str, max_len: Option<i32>) -> ScrolledWindow {
+pub fn create_marquee_widget(
+    label: &Label,
+    text: &str,
+    max_len: Option<i32>,
+    pause_on_hover: bool,
+) -> ScrolledWindow {
     let scrolled = ScrolledWindow::builder()
         .vscrollbar_policy(gtk::PolicyType::Never)
         .build();
@@ -147,12 +152,15 @@ pub fn create_marquee_widget(label: &Label, text: &str, max_len: Option<i32>) ->
 
     // Use a RefCell to hold the tick_id to allow mutation from the closure
     let tick_id = std::rc::Rc::new(std::cell::RefCell::new(None::<TickCallbackId>));
+    let is_hovered = std::rc::Rc::new(std::cell::RefCell::new(false));
 
+    let tick_id_clone = tick_id.clone();
+    let is_hovered_clone = is_hovered.clone();
     scrolled.connect_size_allocate(move |scrolled, _| {
         let allocated_width = scrolled.allocation().width();
         let original_text_width = pixel_width(&label, &text);
 
-        let is_scrolling = tick_id.borrow().is_some();
+        let is_scrolling = tick_id_clone.borrow().is_some();
 
         if original_text_width > allocated_width {
             // Needs to scroll
@@ -162,29 +170,45 @@ pub fn create_marquee_widget(label: &Label, text: &str, max_len: Option<i32>) ->
 
                 let reset_at = pixel_width(&label, &format!("{}{}", &text, &sep)) as f64;
 
+                let is_hovered_clone_tick = is_hovered_clone.clone();
                 let id = scrolled.add_tick_callback(move |widget, _| {
-                    let hadjustment = widget.hadjustment();
-                    let v = hadjustment.value() + 0.5;
-                    if v >= reset_at {
-                        hadjustment.set_value(v - reset_at);
-                    } else {
-                        hadjustment.set_value(v);
+                    if !*is_hovered_clone_tick.borrow() {
+                        let hadjustment = widget.hadjustment();
+                        let v = hadjustment.value() + 0.5;
+                        if v >= reset_at {
+                            hadjustment.set_value(v - reset_at);
+                        } else {
+                            hadjustment.set_value(v);
+                        }
                     }
                     glib::ControlFlow::Continue
                 });
 
-                *tick_id.borrow_mut() = Some(id);
+                *tick_id_clone.borrow_mut() = Some(id);
             }
         } else {
             // No need to scroll
             if is_scrolling {
-                if let Some(id) = tick_id.borrow_mut().take() {
+                if let Some(id) = tick_id_clone.borrow_mut().take() {
                     id.remove();
                 }
                 label.set_label(&text);
             }
         }
     });
+
+    if pause_on_hover {
+        let is_hovered_enter = is_hovered.clone();
+        scrolled.connect_enter_notify_event(move |_, _| {
+            *is_hovered_enter.borrow_mut() = true;
+            glib::Propagation::Stop
+        });
+
+        scrolled.connect_leave_notify_event(move |_, _| {
+            *is_hovered.borrow_mut() = false;
+            glib::Propagation::Stop
+        });
+    }
 
     scrolled
 }
