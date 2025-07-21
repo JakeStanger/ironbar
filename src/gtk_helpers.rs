@@ -149,6 +149,10 @@ pub fn create_marquee_widget(
         .vscrollbar_policy(gtk::PolicyType::Never)
         .build();
 
+    if let Some(hbar) = scrolled.hscrollbar() {
+        hbar.hide();
+    }
+
     // Set `min-width` to the pixel width of the text, but not wider than `max_length` (as calculated)
     if let Some(max_length) = max_length {
         let sample_string = text.chars().take(max_length as usize).collect::<String>();
