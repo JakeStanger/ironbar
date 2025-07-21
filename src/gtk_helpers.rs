@@ -1,4 +1,4 @@
-use crate::config::TruncateMode;
+use crate::config::{MarqueeMode, TruncateMode};
 use glib::{IsA, markup_escape_text};
 use gtk::pango::EllipsizeMode;
 use gtk::prelude::*;
@@ -127,15 +127,20 @@ fn pixel_width(label: &gtk::Label, string: &str) -> i32 {
 pub fn create_marquee_widget(
     label: &Label,
     text: &str,
-    max_len: Option<i32>,
-    pause_on_hover: bool,
-    pause_on_hover_invert: bool,
+    marquee_mode: MarqueeMode,
 ) -> ScrolledWindow {
+    let MarqueeMode {
+        max_length,
+        pause_on_hover,
+        pause_on_hover_invert,
+        ..
+    } = marquee_mode;
+
     let scrolled = ScrolledWindow::builder()
         .vscrollbar_policy(gtk::PolicyType::Never)
         .build();
 
-    if let Some(max_length) = max_len {
+    if let Some(max_length) = max_length {
         let sample_string = text.chars().take(max_length as usize).collect::<String>();
         let width = pixel_width(label, &sample_string);
         scrolled.set_min_content_width(width);

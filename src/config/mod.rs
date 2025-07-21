@@ -1,6 +1,7 @@
 mod common;
 mod r#impl;
 mod layout;
+mod marquee;
 mod truncate;
 
 #[cfg(feature = "bindmode")]
@@ -52,6 +53,7 @@ use std::collections::HashMap;
 
 pub use self::common::{CommonConfig, ModuleJustification, ModuleOrientation, TransitionType};
 pub use self::layout::LayoutConfig;
+pub use self::marquee::MarqueeMode;
 pub use self::truncate::{EllipsizeMode, TruncateMode};
 
 #[derive(Debug, Deserialize, Clone)]

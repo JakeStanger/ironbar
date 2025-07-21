@@ -1,6 +1,6 @@
 use crate::channels::{AsyncSenderExt, BroadcastReceiverExt};
 use crate::clients::volume::{self, Event};
-use crate::config::{CommonConfig, LayoutConfig, TruncateMode};
+use crate::config::{CommonConfig, LayoutConfig, MarqueeMode, TruncateMode};
 use crate::gtk_helpers::{self, IronbarGtkExt, IronbarLabelExt};
 use crate::modules::{
     Module, ModuleInfo, ModuleParts, ModulePopup, ModuleUpdateEvent, PopupButton, WidgetContext,
@@ -44,32 +44,11 @@ pub struct VolumeModule {
     /// **Default**: `null`
     pub(crate) truncate: Option<TruncateMode>,
 
-    /// Whether to enable scrolling on long program names.
-    /// This may not be supported by all modules.
-    ///
-    /// **Default**: `false`
-    #[serde(default)]
-    scrolling: bool,
-
-    /// The maximum length of a title before it starts scrolling.
+    /// See [marquee options](module-level-options#marquee-mode).
     ///
     /// **Default**: `null`
     #[serde(default)]
-    scrolling_max_length: Option<i32>,
-
-    /// Whether to pause scrolling on hover.
-    ///
-    /// **Default**: `false`
-    #[serde(default)]
-    scrolling_pause_on_hover: bool,
-
-    /// Whether to invert the pause on hover behavior.
-    /// When true, scrolling will only occur on hover.
-    /// This takes priority over `scrolling_pause_on_hover`.
-    ///
-    /// **Default**: `false`
-    #[serde(default)]
-    scrolling_pause_on_hover_invert: bool,
+    pub(crate) marquee: Option<MarqueeMode>,
 
     /// See [layout options](module-level-options#layout)
     #[serde(default, flatten)]
@@ -438,15 +417,14 @@ impl Module<Button> for VolumeModule {
                         if let Some(truncate) = self.truncate {
                             label.truncate(truncate);
                             item_container.add(&label);
-                        } else if self.scrolling {
-                            let scrolled = gtk_helpers::create_marquee_widget(
-                                &label,
-                                &info.name,
-                                self.scrolling_max_length,
-                                self.scrolling_pause_on_hover,
-                                self.scrolling_pause_on_hover_invert,
-                            );
-                            item_container.add(&scrolled);
+                        } else if let Some(marquee) = self.marquee {
+                            if marquee.enable {
+                                let scrolled =
+                                    gtk_helpers::create_marquee_widget(&label, &info.name, marquee);
+                                item_container.add(&scrolled);
+                            } else {
+                                item_container.add(&label);
+                            }
                         } else {
                             item_container.add(&label);
                         }
