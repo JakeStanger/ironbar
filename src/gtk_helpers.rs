@@ -2,7 +2,7 @@ use crate::config::TruncateMode;
 use glib::{IsA, markup_escape_text};
 use gtk::pango::EllipsizeMode;
 use gtk::prelude::*;
-use gtk::{Label, Orientation, ScrolledWindow, Widget};
+use gtk::{Label, Orientation, ScrolledWindow, TickCallbackId, Widget};
 
 /// Represents a widget's size
 /// and location relative to the bar's start edge.
@@ -118,42 +118,73 @@ impl IronbarLabelExt for Label {
 }
 
 // Calculate pixel width of a string given the label it's displayed in
-fn pixel_width(label: &gtk::Label, sring: &str) -> i32 {
-    let layout = label.create_pango_layout(Some(sring));
+fn pixel_width(label: &gtk::Label, string: &str) -> i32 {
+    let layout = label.create_pango_layout(Some(string));
     let (w, _) = layout.size(); // in Pango units (1/1024 px)
     w / gtk::pango::SCALE // back to integer pixels
 }
 
 pub fn create_marquee_widget(label: &Label, text: &str, max_len: Option<i32>) -> ScrolledWindow {
-    let scrolled = ScrolledWindow::builder().vscrollbar_policy(gtk::PolicyType::Never);
+    let scrolled = ScrolledWindow::builder()
+        .vscrollbar_policy(gtk::PolicyType::Never)
+        .build();
 
-    // Set `min_content_width` to equal the calculated pixel width of `scrolling_max_length` characters
-    let scrolled = if let Some(max_length) = max_len {
+    if let Some(max_length) = max_len {
         let sample_string = text.chars().take(max_length as usize).collect::<String>();
         let width = pixel_width(label, &sample_string);
-        scrolled.min_content_width(width).build()
-    } else {
-        scrolled.build()
-    };
-
-    let sep = "    ";
-    label.set_label(&format!("{}{}{}", &text, sep, &text));
-
-    let reset_at = pixel_width(label, &format!("{}{}", &text, sep)) as f64;
-
-    let label_hadjustment = scrolled.hadjustment();
-
-    scrolled.add_tick_callback(move |_, _| {
-        let v = label_hadjustment.value() + 0.5;
-        if v >= reset_at {
-            label_hadjustment.set_value(v - reset_at);
-        } else {
-            label_hadjustment.set_value(v);
-        }
-
-        glib::ControlFlow::Continue
-    });
+        scrolled.set_min_content_width(width);
+    }
 
     scrolled.add(label);
+
+    // Set initial state.
+    // The size_allocate signal will handle the rest.
+    label.set_label(text);
+
+    let label = label.clone();
+    let text = text.to_string();
+    let sep = "    ".to_string();
+
+    // Use a RefCell to hold the tick_id to allow mutation from the closure
+    let tick_id = std::rc::Rc::new(std::cell::RefCell::new(None::<TickCallbackId>));
+
+    scrolled.connect_size_allocate(move |scrolled, _| {
+        let allocated_width = scrolled.allocation().width();
+        let original_text_width = pixel_width(&label, &text);
+
+        let is_scrolling = tick_id.borrow().is_some();
+
+        if original_text_width > allocated_width {
+            // Needs to scroll
+            if !is_scrolling {
+                let duplicated_text = format!("{}{}{}", &text, &sep, &text);
+                label.set_label(&duplicated_text);
+
+                let reset_at = pixel_width(&label, &format!("{}{}", &text, &sep)) as f64;
+
+                let id = scrolled.add_tick_callback(move |widget, _| {
+                    let hadjustment = widget.hadjustment();
+                    let v = hadjustment.value() + 0.5;
+                    if v >= reset_at {
+                        hadjustment.set_value(v - reset_at);
+                    } else {
+                        hadjustment.set_value(v);
+                    }
+                    glib::ControlFlow::Continue
+                });
+
+                *tick_id.borrow_mut() = Some(id);
+            }
+        } else {
+            // No need to scroll
+            if is_scrolling {
+                if let Some(id) = tick_id.borrow_mut().take() {
+                    id.remove();
+                }
+                label.set_label(&text);
+            }
+        }
+    });
+
     scrolled
 }
