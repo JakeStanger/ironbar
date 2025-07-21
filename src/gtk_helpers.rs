@@ -150,10 +150,12 @@ pub fn create_marquee_widget(
     let label = label.clone();
     let text = text.to_string();
     let sep = "    ".to_string();
+    let ease_pause = std::time::Duration::from_secs(5);
 
     // Use a RefCell to hold the tick_id to allow mutation from the closure
     let tick_id = std::rc::Rc::new(std::cell::RefCell::new(None::<TickCallbackId>));
     let is_hovered = std::rc::Rc::new(std::cell::RefCell::new(false));
+    let pause_started_at = std::rc::Rc::new(std::cell::RefCell::new(None::<std::time::Instant>));
 
     let tick_id_clone = tick_id.clone();
     let is_hovered_clone = is_hovered.clone();
@@ -172,7 +174,23 @@ pub fn create_marquee_widget(
                 let reset_at = pixel_width(&label, &format!("{}{}", &text, &sep)) as f64;
 
                 let is_hovered_clone_tick = is_hovered_clone.clone();
+                let pause_started_at_clone = pause_started_at.clone();
                 let id = scrolled.add_tick_callback(move |widget, _| {
+                    let is_paused = if let Some(start_time) = *pause_started_at_clone.borrow() {
+                        start_time.elapsed() <= ease_pause
+                    } else {
+                        false
+                    };
+
+                    if is_paused {
+                        return glib::ControlFlow::Continue;
+                    }
+
+                    // check if we need to resume
+                    if pause_started_at_clone.borrow().is_some() {
+                        *pause_started_at_clone.borrow_mut() = None;
+                    }
+
                     let should_scroll = if pause_on_hover_invert {
                         *is_hovered_clone_tick.borrow()
                     } else if pause_on_hover {
@@ -186,6 +204,7 @@ pub fn create_marquee_widget(
                         let v = hadjustment.value() + 0.5;
                         if v >= reset_at {
                             hadjustment.set_value(v - reset_at);
+                            *pause_started_at_clone.borrow_mut() = Some(std::time::Instant::now());
                         } else {
                             hadjustment.set_value(v);
                         }
