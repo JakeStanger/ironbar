@@ -1,8 +1,13 @@
 use crate::config::{MarqueeMode, TruncateMode};
+use glib::ControlFlow;
+use glib::Propagation;
 use glib::{IsA, markup_escape_text};
 use gtk::pango::EllipsizeMode;
 use gtk::prelude::*;
 use gtk::{Label, Orientation, ScrolledWindow, TickCallbackId, Widget};
+use std::cell::RefCell;
+use std::rc::Rc;
+use std::time::{Duration, Instant};
 
 /// Represents a widget's size
 /// and location relative to the bar's start edge.
@@ -129,6 +134,10 @@ pub fn create_marquee_widget(
     text: &str,
     marquee_mode: MarqueeMode,
 ) -> ScrolledWindow {
+    // Constants
+    let sep = "    ".to_string();
+    let ease_pause = Duration::from_secs(5);
+
     let MarqueeMode {
         max_length,
         pause_on_hover,
@@ -140,6 +149,7 @@ pub fn create_marquee_widget(
         .vscrollbar_policy(gtk::PolicyType::Never)
         .build();
 
+    // Set `min-width` to the pixel width of the text, but not wider than `max_length` (as calculated)
     if let Some(max_length) = max_length {
         let sample_string = text.chars().take(max_length as usize).collect::<String>();
         let width = pixel_width(label, &sample_string);
@@ -154,13 +164,10 @@ pub fn create_marquee_widget(
 
     let label = label.clone();
     let text = text.to_string();
-    let sep = "    ".to_string();
-    let ease_pause = std::time::Duration::from_secs(5);
 
-    // Use a RefCell to hold the tick_id to allow mutation from the closure
-    let tick_id = std::rc::Rc::new(std::cell::RefCell::new(None::<TickCallbackId>));
-    let is_hovered = std::rc::Rc::new(std::cell::RefCell::new(false));
-    let pause_started_at = std::rc::Rc::new(std::cell::RefCell::new(None::<std::time::Instant>));
+    let tick_id = Rc::new(RefCell::new(None::<TickCallbackId>));
+    let is_hovered = Rc::new(RefCell::new(false));
+    let pause_started_at = Rc::new(RefCell::new(None::<Instant>));
 
     let tick_id_clone = tick_id.clone();
     let is_hovered_clone = is_hovered.clone();
@@ -170,6 +177,8 @@ pub fn create_marquee_widget(
 
         let is_scrolling = tick_id_clone.borrow().is_some();
 
+        // Widgets can get resized, which would throw off the calculations for scrolling, and whether it has to be done at all.
+        // Account for this by comparing original text's pixel width and new widget's allocated width.
         if original_text_width > allocated_width {
             // Needs to scroll
             if !is_scrolling {
@@ -188,7 +197,7 @@ pub fn create_marquee_widget(
                     };
 
                     if is_paused {
-                        return glib::ControlFlow::Continue;
+                        return ControlFlow::Continue;
                     }
 
                     // check if we need to resume
@@ -209,12 +218,12 @@ pub fn create_marquee_widget(
                         let v = hadjustment.value() + 0.5;
                         if v >= reset_at {
                             hadjustment.set_value(v - reset_at);
-                            *pause_started_at_clone.borrow_mut() = Some(std::time::Instant::now());
+                            *pause_started_at_clone.borrow_mut() = Some(Instant::now());
                         } else {
                             hadjustment.set_value(v);
                         }
                     }
-                    glib::ControlFlow::Continue
+                    ControlFlow::Continue
                 });
 
                 *tick_id_clone.borrow_mut() = Some(id);
@@ -234,12 +243,12 @@ pub fn create_marquee_widget(
         let is_hovered_enter = is_hovered.clone();
         scrolled.connect_enter_notify_event(move |_, _| {
             *is_hovered_enter.borrow_mut() = true;
-            glib::Propagation::Stop
+            Propagation::Stop
         });
 
         scrolled.connect_leave_notify_event(move |_, _| {
             *is_hovered.borrow_mut() = false;
-            glib::Propagation::Stop
+            Propagation::Stop
         });
     }
 
