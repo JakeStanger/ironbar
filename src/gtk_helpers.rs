@@ -129,6 +129,7 @@ pub fn create_marquee_widget(
     text: &str,
     max_len: Option<i32>,
     pause_on_hover: bool,
+    pause_on_hover_invert: bool,
 ) -> ScrolledWindow {
     let scrolled = ScrolledWindow::builder()
         .vscrollbar_policy(gtk::PolicyType::Never)
@@ -172,7 +173,15 @@ pub fn create_marquee_widget(
 
                 let is_hovered_clone_tick = is_hovered_clone.clone();
                 let id = scrolled.add_tick_callback(move |widget, _| {
-                    if !*is_hovered_clone_tick.borrow() {
+                    let should_scroll = if pause_on_hover_invert {
+                        *is_hovered_clone_tick.borrow()
+                    } else if pause_on_hover {
+                        !*is_hovered_clone_tick.borrow()
+                    } else {
+                        true
+                    };
+
+                    if should_scroll {
                         let hadjustment = widget.hadjustment();
                         let v = hadjustment.value() + 0.5;
                         if v >= reset_at {
@@ -197,7 +206,7 @@ pub fn create_marquee_widget(
         }
     });
 
-    if pause_on_hover {
+    if pause_on_hover || pause_on_hover_invert {
         let is_hovered_enter = is_hovered.clone();
         scrolled.connect_enter_notify_event(move |_, _| {
             *is_hovered_enter.borrow_mut() = true;

@@ -63,6 +63,14 @@ pub struct VolumeModule {
     #[serde(default)]
     scrolling_pause_on_hover: bool,
 
+    /// Whether to invert the pause on hover behavior.
+    /// When true, scrolling will only occur on hover.
+    /// This takes priority over `scrolling_pause_on_hover`.
+    ///
+    /// **Default**: `false`
+    #[serde(default)]
+    scrolling_pause_on_hover_invert: bool,
+
     /// See [layout options](module-level-options#layout)
     #[serde(default, flatten)]
     layout: LayoutConfig,
@@ -436,6 +444,7 @@ impl Module<Button> for VolumeModule {
                                 &info.name,
                                 self.scrolling_max_length,
                                 self.scrolling_pause_on_hover,
+                                self.scrolling_pause_on_hover_invert,
                             );
                             item_container.add(&scrolled);
                         } else {
