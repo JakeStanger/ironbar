@@ -336,10 +336,7 @@ impl CommonConfig {
                 let revealer = revealer.clone();
                 let container = container.clone();
 
-                show_if.subscribe((revealer, &container), |(revealer, container), success| {
-                    if success {
-                        container.show();
-                    }
+                show_if.subscribe(&revealer, |revealer, success| {
                     revealer.set_reveal_child(success);
                 });
             }

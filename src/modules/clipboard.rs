@@ -8,7 +8,7 @@ use crate::image::IconButton;
 use crate::modules::{
     Module, ModuleInfo, ModuleParts, ModulePopup, ModuleUpdateEvent, PopupButton, WidgetContext,
 };
-use crate::{Ironbar, glib_recv, module_impl, spawn, try_send};
+use crate::{Ironbar, module_impl, spawn};
 use glib::Propagation;
 use gtk::gdk::BUTTON_PRIMARY;
 use gtk::gdk_pixbuf::Pixbuf;
@@ -196,7 +196,7 @@ impl Module<Button> for ClipboardModule {
 
                         let button = match item.value.as_ref() {
                             ClipboardValue::Text(value) => {
-                                let button = RadioButton::from_widget(hidden_option);
+                                let button = CheckButton::builder().group(hidden_option).build();
                                 let label = Label::new(Some(value));
                                 button.set_child(Some(&label));
 
@@ -221,7 +221,8 @@ impl Module<Button> for ClipboardModule {
                                     Ok(pixbuf) => {
                                         let image = Image::from_pixbuf(Some(&pixbuf));
 
-                                        let button = RadioButton::from_widget(hidden_option);
+                                        let button =
+                                            CheckButton::builder().group(hidden_option).build();
                                         button.set_child(Some(&image));
                                         button.style_context().add_class("image");
 
@@ -243,7 +244,7 @@ impl Module<Button> for ClipboardModule {
                         // button.set_above_child(true);
 
                         {
-                            let tx = tx.clone();
+                            let tx = context.controller_tx.clone();
                             let button2 = button.clone();
                             let event_handler =
                                 GestureClick::builder().button(BUTTON_PRIMARY).build();

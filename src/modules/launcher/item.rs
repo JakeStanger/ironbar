@@ -215,10 +215,6 @@ impl ItemButton {
             let button2 = button.clone();
 
             event_controller.connect_pressed(move |_, _, _, _| {
-                println!("consume my entire ass");
-            });
-
-            event_controller.connect_released(move |_, _, _, _| {
                 println!("focus");
                 // lazy check :| TODO: Improve this
                 let style_context = button2.style_context();
@@ -230,7 +226,7 @@ impl ItemButton {
                     } else {
                         tx.send_spawn(ItemEvent::FocusItem(app_id.clone()));
                     }
-                } else if event.button() == BUTTON_MIDDLE {
+                } else {
                     tx.send_spawn(ItemEvent::OpenItem(app_id.clone()));
                 }
             });
@@ -245,7 +241,7 @@ impl ItemButton {
             let event_controller = GestureClick::new();
             event_controller.set_button(BUTTON_MIDDLE);
             event_controller.connect_released(move |_, _, _, _| {
-                try_send!(tx, ItemEvent::OpenItem(app_id.clone()));
+                tx.send_spawn(ItemEvent::OpenItem(app_id.clone()));
             });
 
             button.add_controller(event_controller);

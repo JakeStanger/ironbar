@@ -4,6 +4,7 @@ mod interface;
 use crate::channels::{AsyncSenderExt, BroadcastReceiverExt};
 use crate::clients::tray;
 use crate::config::{CommonConfig, ModuleOrientation};
+use crate::image::Provider;
 use crate::modules::{Module, ModuleInfo, ModuleParts, WidgetContext};
 use crate::{lock, module_impl, spawn};
 use color_eyre::{Report, Result};
@@ -120,22 +121,27 @@ impl Module<gtk::Box> for TrayModule {
         // Each widget is wrapped in an EventBox, copying what Waybar does here.
         let container = gtk::Box::new(orientation, 10);
 
-        let mut menus = HashMap::new();
-        let icon_theme = context.ironbar.image_provider().icon_theme();
+        {
+            let container = container.clone();
+            let mut menus = HashMap::new();
+            let image_provider = context.ironbar.image_provider();
 
-        // listen for UI updates
-        context
-            .subscribe()
-            .recv_glib(&container, move |container, update| {
-                on_update(
-                    update,
-                    container,
-                    &mut menus,
-                    &icon_theme,
-                    self.icon_size,
-                    self.prefer_theme_icons,
-                );
-            });
+            let activated_channel = context.controller_tx.clone();
+            // listen for UI updates
+            context
+                .subscribe()
+                .recv_glib(&container, move |container, update| {
+                    on_update(
+                        update,
+                        &container,
+                        &mut menus,
+                        &image_provider,
+                        self.icon_size,
+                        self.prefer_theme_icons,
+                        activated_channel.clone(),
+                    )
+                });
+        }
 
         Ok(ModuleParts {
             widget: container,
@@ -150,7 +156,7 @@ fn on_update(
     update: Event,
     container: &gtk::Box,
     menus: &mut HashMap<Box<str>, TrayMenu>,
-    icon_theme: &IconTheme,
+    image_provider: &Provider,
     icon_size: u32,
     prefer_icons: bool,
     activated_channel: mpsc::Sender<ActivateRequest>,
@@ -164,16 +170,16 @@ fn on_update(
             let x: Option<&gtk::Widget> = None;
             container.insert_child_after(&menu_item.widget, x);
 
-            if let Ok(image) = icon::get_image(&menu_item, icon_size, prefer_icons, icon_theme) {
+            menu_item.set_icon_name(menu_item.icon_name.clone());
+            if let Ok(image) = icon::get_image(&menu_item, icon_size, prefer_icons, image_provider)
+            {
                 menu_item.set_image(&image);
             } else {
                 let label = menu_item.title.clone().unwrap_or(address.clone());
                 menu_item.set_label(&label);
             }
 
-            //menu_item.widget.show();
             menus.insert(address.into(), menu_item);
-            //container.show();
         }
         Event::Update(address, update) => {
             debug!("Received tray update for '{address}'");
@@ -196,7 +202,7 @@ fn on_update(
 
                     if icon_name.as_ref() != menu_item.icon_name() {
                         menu_item.set_icon_name(icon_name);
-                        match icon::get_image(menu_item, icon_size, prefer_icons, icon_theme) {
+                        match icon::get_image(menu_item, icon_size, prefer_icons, image_provider) {
                             Ok(image) => menu_item.set_image(&image),
                             Err(e) => {
                                 trace!("error loading icon {e}");

@@ -10,12 +10,12 @@ use gtk::{Application, Button, IconTheme, Orientation, Revealer, Widget};
 use tokio::sync::{broadcast, mpsc};
 use tracing::debug;
 
+use crate::Ironbar;
 use crate::channels::{MpscReceiverExt, SyncSenderExt};
 use crate::clients::{ClientResult, ProvidesClient, ProvidesFallibleClient};
 use crate::config::{BarPosition, CommonConfig, TransitionType};
 use crate::gtk_helpers::{IronbarGtkExt, WidgetGeometry};
 use crate::popup::{ButtonFinder, Popup};
-use crate::{Ironbar, glib_recv_mpsc, send};
 
 #[cfg(feature = "bindmode")]
 pub mod bindmode;
@@ -434,13 +434,6 @@ impl ModuleFactory for BarModuleFactory {
                 popup.hide();
                 popup.show(id, button_id);
             }
-            #[cfg(feature = "launcher")]
-            ModuleUpdateEvent::OpenPopupAt(geometry) if !disable_popup => {
-                debug!("Opening popup for {} [#{}]", name, id);
-
-                popup.hide();
-                popup.show_at(id, geometry);
-            }
             ModuleUpdateEvent::ClosePopup if !disable_popup => {
                 debug!("Closing popup for {} [#{}]", name, id);
                 popup.hide();
@@ -510,13 +503,6 @@ impl ModuleFactory for PopupModuleFactory {
                 );
                 popup.hide();
                 popup.show(id, button_id);
-            }
-            #[cfg(feature = "launcher")]
-            ModuleUpdateEvent::OpenPopupAt(geometry) if !disable_popup => {
-                debug!("Opening popup for {} [#{}]", name, id);
-
-                popup.hide();
-                popup.show_at(id, geometry);
             }
             ModuleUpdateEvent::ClosePopup if !disable_popup => {
                 debug!("Closing popup for {} [#{}]", name, id);

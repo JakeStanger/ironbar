@@ -405,6 +405,7 @@ impl Module<Button> for MusicModule {
         {
             let drag_lock = drag_lock.clone();
             let scale = progress.clone();
+            let tx = context.controller_tx.clone();
             event_handler.connect_released(move |_, _, _, _| {
                 let value = scale.value();
                 tx.send_spawn(PlayerCommand::Seek(Duration::from_secs_f64(value)));
@@ -515,7 +516,6 @@ impl Module<Button> for MusicModule {
 
                         progress.set_value(elapsed.as_secs_f64());
                         progress.set_range(0.0, duration.as_secs_f64());
-                        progress_box.show_all();
                     } else {
                         progress_box.hide();
                     }

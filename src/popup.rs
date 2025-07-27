@@ -7,7 +7,7 @@ use crate::clients::wayland::{OutputEvent, OutputEventType};
 use crate::config::BarPosition;
 use crate::gtk_helpers::{IronbarGtkExt, WidgetGeometry};
 use crate::modules::{ModuleInfo, ModulePopupParts, PopupButton};
-use crate::{Ironbar, glib_recv, rc_mut};
+use crate::{Ironbar, rc_mut};
 use glib::ffi::gpointer;
 use glib::translate::ToGlibPtr;
 use glib::{Object, Propagation, clone};
