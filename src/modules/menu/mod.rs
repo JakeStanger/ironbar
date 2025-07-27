@@ -116,8 +116,7 @@ impl Module<Button> for MenuModule {
             let image_provider = context.ironbar.image_provider();
 
             let gtk_image = gtk::Image::new();
-            button.set_image(Some(&gtk_image));
-            button.set_always_show_image(true);
+            button.set_child(Some(&gtk_image));
 
             let label_icon = label_icon.clone();
 
@@ -190,12 +189,11 @@ impl Module<Button> for MenuModule {
                 .hscrollbar_policy(gtk::PolicyType::Never)
                 .build();
 
-            scrolled.add(&main_menu);
-            container.add(&scrolled);
+            scrolled.set_child(Some(&main_menu));
+            container.append(&scrolled);
         } else {
-            container.add(&main_menu);
+            container.append(&main_menu);
         }
-        container.show_all();
 
         let mut start_entries = parse_config(self.start, &mut sections_by_cat);
         let mut center_entries = parse_config(self.center, &mut sections_by_cat);
@@ -253,8 +251,8 @@ impl Module<Button> for MenuModule {
                     }
                 }
 
-                main_menu.foreach(|child| {
-                    main_menu.remove(child);
+                main_menu.children().for_each(|child| {
+                    main_menu.remove(&child);
                 });
 
                 macro_rules! add_entries {
@@ -294,28 +292,28 @@ impl Module<Button> for MenuModule {
                 add_entries!(&center_entries, &center_section);
                 add_entries!(&end_entries, &end_section);
 
-                main_menu.add(start_section);
-                main_menu.add(center_section);
-                main_menu.add(end_section);
+                main_menu.append(start_section);
+                main_menu.append(center_section);
+                main_menu.append(end_section);
             },
         );
 
         {
             let container = container.clone();
-            context.popup.window.connect_hide(move |_| {
-                start_section.foreach(|child| {
+            context.popup.popover.connect_hide(move |_| {
+                start_section.children().for_each(|child| {
                     child.remove_class("open");
                 });
 
-                center_section.foreach(|child| {
+                center_section.children().for_each(|child| {
                     child.remove_class("open");
                 });
 
-                end_section.foreach(|child| {
+                end_section.children().for_each(|child| {
                     child.remove_class("open");
                 });
 
-                container.children().iter().skip(1).for_each(|sub_menu| {
+                container.children().skip(1).for_each(|sub_menu| {
                     sub_menu.hide();
                 });
             });

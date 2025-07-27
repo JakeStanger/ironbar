@@ -297,13 +297,13 @@ impl Module<Button> for MusicModule {
             artist_label.label().truncate(truncate);
         }
 
-        title_label.add_class("title");
-        album_label.add_class("album");
-        artist_label.add_class("artist");
+        title_label.label().add_class("title");
+        album_label.label().add_class("album");
+        artist_label.label().add_class("artist");
 
-        info_box.append(&title_label.container);
-        info_box.append(&album_label.container);
-        info_box.append(&artist_label.container);
+        info_box.append(&*title_label);
+        info_box.append(&*album_label);
+        info_box.append(&*artist_label);
 
         let controls_box = gtk::Box::new(Orientation::Horizontal, 0);
         controls_box.add_class("controls");
@@ -405,6 +405,7 @@ impl Module<Button> for MusicModule {
         {
             let drag_lock = drag_lock.clone();
             let scale = progress.clone();
+            let tx = context.controller_tx.clone();
             event_handler.connect_released(move |_, _, _, _| {
                 let value = scale.value();
                 tx.send_spawn(PlayerCommand::Seek(Duration::from_secs_f64(value)));
@@ -515,7 +516,6 @@ impl Module<Button> for MusicModule {
 
                         progress.set_value(elapsed.as_secs_f64());
                         progress.set_range(0.0, duration.as_secs_f64());
-                        progress_box.show_all();
                     } else {
                         progress_box.hide();
                     }
@@ -532,11 +532,8 @@ fn update_popup_metadata_label(text: Option<String>, label: &IconPrefixedLabel) 
     match text {
         Some(value) => {
             label.label().set_label_escaped(&value);
-            label.show_all();
         }
-        None => {
-            label.hide();
-        }
+        None => {}
     }
 }
 
@@ -565,34 +562,4 @@ fn get_token_value(song: &Track, token: &str) -> String {
         _ => Some(token.to_string()),
     }
     .unwrap_or_default()
-}
-
-#[derive(Clone, Debug)]
-struct IconPrefixedLabel {
-    label: Label,
-    container: gtk::Box,
-}
-
-impl IconPrefixedLabel {
-    fn new(icon_input: &str, label: Option<&str>, image_provider: &image::Provider) -> Self {
-        let container = gtk::Box::new(Orientation::Horizontal, 5);
-
-        let icon = IconLabel::new(icon_input, 24, image_provider);
-
-        let mut builder = Label::builder().use_markup(true);
-
-        if let Some(label) = label {
-            builder = builder.label(label);
-        }
-
-        let label = builder.build();
-
-        icon.add_class("icon-box");
-        label.add_class("label");
-
-        container.append(&*icon);
-        container.append(&label);
-
-        Self { label, container }
-    }
 }

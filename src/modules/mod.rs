@@ -10,12 +10,12 @@ use gtk::{Application, Button, IconTheme, Orientation, Revealer, Widget};
 use tokio::sync::{broadcast, mpsc};
 use tracing::debug;
 
+use crate::Ironbar;
 use crate::channels::{MpscReceiverExt, SyncSenderExt};
 use crate::clients::{ClientResult, ProvidesClient, ProvidesFallibleClient};
 use crate::config::{BarPosition, CommonConfig, TransitionType};
 use crate::gtk_helpers::{IronbarGtkExt, WidgetGeometry};
 use crate::popup::{ButtonFinder, Popup};
-use crate::{Ironbar, glib_recv_mpsc, send};
 
 #[cfg(feature = "battery")]
 pub mod battery;
@@ -185,7 +185,7 @@ impl<W: IsA<Widget>> ModuleParts<W> {
     }
 }
 
-// #[derive(Clone)]
+#[derive(Clone)]
 pub struct ModulePopupParts {
     /// The popup container, with all its contents
     pub container: gtk::Box,
@@ -193,7 +193,7 @@ pub struct ModulePopupParts {
     /// For most modules, this will only be a single button.
     pub buttons: Vec<Button>,
 
-    pub button_finder: Option<Box<ButtonFinder>>,
+    pub button_finder: Option<Arc<ButtonFinder>>,
 }
 
 impl Debug for ModulePopupParts {
@@ -230,7 +230,7 @@ impl ModulePopup for Option<gtk::Box> {
         self.map(|container| ModulePopupParts {
             container,
             buttons: vec![],
-            button_finder: Some(finder),
+            button_finder: Some(finder.into()),
         })
     }
 }
@@ -356,9 +356,7 @@ pub trait ModuleFactory {
         module_parts.widget.add_class("widget");
         module_parts.widget.add_class(module_name);
 
-        module_parts.setup_identifiers(&common);
-
-        if let Some(popup_content) = module_parts.popup {
+        if let Some(popup_content) = module_parts.popup.clone() {
             popup_content
                 .container
                 .style_context()
@@ -369,6 +367,8 @@ pub trait ModuleFactory {
         }
 
         self.setup_receiver(tx, ui_rx, module_name, id, common.disable_popup);
+
+        module_parts.setup_identifiers(&common);
 
         let revealer = add_events(
             &module_parts.widget,
@@ -444,13 +444,6 @@ impl ModuleFactory for BarModuleFactory {
                 popup.hide();
                 popup.show(id, button_id);
             }
-            #[cfg(feature = "launcher")]
-            ModuleUpdateEvent::OpenPopupAt(geometry) if !disable_popup => {
-                debug!("Opening popup for {} [#{}]", name, id);
-
-                popup.hide();
-                popup.show_at(id, geometry);
-            }
             ModuleUpdateEvent::ClosePopup if !disable_popup => {
                 debug!("Closing popup for {} [#{}]", name, id);
                 popup.hide();
@@ -520,13 +513,6 @@ impl ModuleFactory for PopupModuleFactory {
                 );
                 popup.hide();
                 popup.show(id, button_id);
-            }
-            #[cfg(feature = "launcher")]
-            ModuleUpdateEvent::OpenPopupAt(geometry) if !disable_popup => {
-                debug!("Opening popup for {} [#{}]", name, id);
-
-                popup.hide();
-                popup.show_at(id, geometry);
             }
             ModuleUpdateEvent::ClosePopup if !disable_popup => {
                 debug!("Closing popup for {} [#{}]", name, id);

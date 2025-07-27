@@ -289,29 +289,11 @@ impl CommonConfig {
         let scroll_up_script = self.on_scroll_up.map(Script::new_polling);
         let scroll_down_script = self.on_scroll_down.map(Script::new_polling);
 
-        let scroll_speed = self.smooth_scroll_speed.unwrap_or(1.0);
-        let curr_scroll = Cell::new(0.0);
-        const REQUIRED_DELTA: f64 = 10.0;
-
         event_controller.connect_scroll(move |_, _dx, dy| {
-            let script = match event.direction() {
-                ScrollDirection::Up => scroll_up_script.as_ref(),
-                ScrollDirection::Down => scroll_down_script.as_ref(),
-                ScrollDirection::Smooth => {
-                    let delta = event.scroll_deltas().unwrap_or_default().1 * scroll_speed;
-                    curr_scroll.set(curr_scroll.get() + delta);
-
-                    if curr_scroll.get() >= REQUIRED_DELTA {
-                        curr_scroll.set(curr_scroll.get() - REQUIRED_DELTA);
-                        scroll_down_script.as_ref()
-                    } else if curr_scroll.get() <= -REQUIRED_DELTA {
-                        curr_scroll.set(curr_scroll.get() + REQUIRED_DELTA);
-                        scroll_up_script.as_ref()
-                    } else {
-                        None
-                    }
-                }
-                _ => None,
+            let script = if dy > 0.0 {
+                scroll_down_script.as_ref()
+            } else {
+                scroll_up_script.as_ref()
             };
 
             if let Some(script) = script {
@@ -361,10 +343,7 @@ impl CommonConfig {
                 let revealer = revealer.clone();
                 let container = container.clone();
 
-                show_if.subscribe((revealer, &container), |(revealer, container), success| {
-                    if success {
-                        container.show();
-                    }
+                show_if.subscribe(&revealer, |revealer, success| {
                     revealer.set_reveal_child(success);
                 });
             }

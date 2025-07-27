@@ -9,16 +9,14 @@ use super::{
 };
 use crate::channels::{AsyncSenderExt, BroadcastReceiverExt};
 use crate::clients::wayland::{self, ToplevelEvent};
-use crate::desktop_file::open_program;
 use crate::config::{
     CommonConfig, EllipsizeMode, LayoutConfig, TruncateMode, default_launch_command,
 };
+use crate::desktop_file::open_program;
 use crate::gtk_helpers::{IronbarGtkExt, IronbarLabelExt};
 use crate::modules::launcher::item::ImageTextButton;
 use crate::modules::launcher::pagination::{IconContext, Pagination};
-use crate::{
-    arc_mut, glib_recv, lock, module_impl, rc_mut, send_async, spawn, try_send, write_lock,
-};
+use crate::{arc_mut, lock, module_impl, rc_mut, spawn, write_lock};
 use color_eyre::{Help, Report};
 use gtk::prelude::*;
 use gtk::{Button, Orientation};
@@ -523,9 +521,15 @@ impl Module<gtk::Box> for LauncherModule {
                                 );
 
                                 if self.reversed {
-                                    container.prepend(button.button.deref());
+                                    container.prepend(&button.button.button);
                                 } else {
-                                    container.append(button.button.deref());
+                                    container.append(&button.button.button);
+                                }
+
+                                if self.reversed {
+                                    container.prepend(&button.button.button);
+                                } else {
+                                    container.append(&button.button.button);
                                 }
 
                                 if buttons.borrow().len() + 1 >= pagination.offset() + page_size {
@@ -601,7 +605,15 @@ impl Module<gtk::Box> for LauncherModule {
             );
         }
 
-        let popup = self.into_popup(context, info).into_popup_parts(vec![]); // since item buttons are dynamic, they pass their geometry directly
+        let popup = self
+            .into_popup(context, info)
+            .into_popup_parts_with_finder(Box::new(move |id| {
+                buttons
+                    .borrow()
+                    .values()
+                    .find(|b| b.button.button.popup_id() == id)
+                    .map(|b| b.button.button.clone())
+            }));
 
         Ok(ModuleParts {
             widget: container,
@@ -709,8 +721,6 @@ impl Module<gtk::Box> for LauncherModule {
                                 button.add_class("popup-item");
                                 container.append(&button.button);
                             }
-
-                            container.show();
                             container.set_width_request(MAX_WIDTH);
                         }
                     }

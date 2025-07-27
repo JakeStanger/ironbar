@@ -1,3 +1,4 @@
+use crate::spawn;
 use glib::{Bytes, Propagation, SignalHandlerId, Variant, VariantTy};
 use gtk::gdk::Gravity;
 use gtk::gdk_pixbuf::Pixbuf;
@@ -15,8 +16,6 @@ use system_tray::item::{IconPixmap, StatusNotifierItem, Tooltip};
 use system_tray::menu::ToggleState;
 use tokio::sync::mpsc;
 use tracing::{debug, error, info, trace, warn};
-
-use crate::{send_async, spawn};
 
 /// Main tray icon to show on the bar
 pub(crate) struct TrayMenu {

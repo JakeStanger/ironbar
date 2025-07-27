@@ -8,7 +8,7 @@ use std::path::PathBuf;
 use std::process::exit;
 use std::rc::Rc;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
-use std::sync::{Arc, OnceLock, mpsc};
+use std::sync::{Arc, Mutex, OnceLock, mpsc};
 
 use cfg_if::cfg_if;
 #[cfg(feature = "cli")]
@@ -388,6 +388,12 @@ fn load_output_bars(
     app: &Application,
     output: &OutputInfo,
 ) -> Result<Vec<Bar>> {
+    // Hack to track monitor positions due to new GTK3/wlroots bug:
+    // https://github.com/swaywm/sway/issues/8164
+    // This relies on Wayland always tracking monitors in the same order as GDK.
+    // We also need this static to ensure hot-reloading continues to work as best we can.
+    static INDEX_MAP: OnceLock<Mutex<Vec<String>>> = OnceLock::new();
+
     let output_size = output.logical_size.unwrap_or_default();
 
     let Some(monitor_name) = &output.name else {
@@ -397,6 +403,16 @@ fn load_output_bars(
     let config = ironbar.config.borrow();
 
     let display = get_display();
+
+    let map = INDEX_MAP.get_or_init(|| Mutex::new(vec![]));
+
+    let index = lock!(map).iter().position(|n| n == monitor_name);
+    let index = if let Some(index) = index {
+        index
+    } else {
+        lock!(map).push(monitor_name.clone());
+        lock!(map).len() - 1
+    };
 
     // let pos = output.logical_position.unwrap_or_default();
     // let monitor = display

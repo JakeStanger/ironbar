@@ -379,7 +379,7 @@ impl Module<Button> for VolumeModule {
                 if let Some(sink) = selector.active_id() {
                     // GTK will send values outside min/max range
                     let val = scale.value().clamp(0.0, self.max_volume);
-                    try_send!(tx, Update::SinkVolume(sink.into(), val));
+                    tx.send_spawn(Update::SinkVolume(sink.into(), val));
                 }
             });
             slider.add_controller(event_controller);
@@ -480,7 +480,6 @@ impl Module<Button> for VolumeModule {
                                 // GTK will send values outside min/max range
                                 let val = scale.value().clamp(0.0, self.max_volume);
                                 tx.send_spawn(Update::InputVolume(index, val));
-
                             });
                         }
 

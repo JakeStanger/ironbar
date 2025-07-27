@@ -30,14 +30,7 @@ pub fn load_css(style_path: PathBuf, application: Application) {
     provider.load_from_file(&gio::File::for_path(&style_path));
     debug!("Loaded css from '{}'", style_path.display());
 
-    match provider.load_from_file(&gio::File::for_path(&style_path)) {
-        Ok(()) => debug!("Loaded css from '{}'", style_path.display()),
-        Err(err) => error!("{:?}", Report::new(err)
-                    .wrap_err("Failed to load CSS")
-                    .suggestion("Check the CSS file for errors")
-                    .suggestion("GTK CSS uses a subset of the full CSS spec and many properties are not available. Ensure you are not using any unsupported property.")
-                )
-    }
+    provider.load_from_file(&gio::File::for_path(&style_path));
 
     // GTK4 deprecates style contexts and loading custom styles
     // When GTK5 comes around, this will be gone for good.

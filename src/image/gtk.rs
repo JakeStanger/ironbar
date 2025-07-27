@@ -241,8 +241,8 @@ impl IconPrefixedLabel {
         icon.add_class("icon-box");
         label.add_class("label");
 
-        container.add(&*icon);
-        container.add(&label);
+        container.append(&*icon);
+        container.append(&label);
 
         Self { label, container }
     }

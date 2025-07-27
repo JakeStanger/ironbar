@@ -180,7 +180,7 @@ impl Module<Button> for BatteryModule {
         let button = Button::new();
         button.add_class("button");
 
-        container.append(&icon);
+        container.append(&*icon);
         container.append(&label);
         button.set_child(Some(&container));
 

@@ -1,13 +1,13 @@
 use std::cell::RefCell;
 use std::collections::HashMap;
-use std::rc::Rc;
+use std::{rc::Rc, sync::Arc};
 
 use crate::channels::BroadcastReceiverExt;
 use crate::clients::wayland::{OutputEvent, OutputEventType};
 use crate::config::BarPosition;
 use crate::gtk_helpers::{IronbarGtkExt, WidgetGeometry};
 use crate::modules::{ModuleInfo, ModulePopupParts, PopupButton};
-use crate::{Ironbar, glib_recv, rc_mut};
+use crate::{Ironbar, rc_mut};
 use glib::ffi::gpointer;
 use glib::translate::ToGlibPtr;
 use glib::{Object, Propagation, clone};
@@ -40,7 +40,7 @@ pub type ButtonFinder = dyn Fn(usize) -> Option<Button> + 'static;
 pub struct Popup {
     pub popover: Popover,
     pub container_cache: Rc<RefCell<HashMap<usize, PopupCacheValue>>>,
-    pub button_finder_cache: Rc<RefCell<HashMap<usize, Box<ButtonFinder>>>>,
+    pub button_finder_cache: Rc<RefCell<HashMap<usize, Arc<ButtonFinder>>>>,
     pub button_cache: Rc<RefCell<Vec<Button>>>,
     pos: BarPosition,
     current_widget: Rc<RefCell<Option<CurrentWidgetInfo>>>,
@@ -122,8 +122,6 @@ impl Popup {
         let cache = self.container_cache.clone();
         let button_cache = self.button_cache.clone();
 
-        let output_size = self.output_size.clone();
-
         self.button_cache
             .borrow_mut()
             .append(&mut content.buttons.clone());
@@ -138,7 +136,7 @@ impl Popup {
         if let Some(button_finder) = content.button_finder {
             self.button_finder_cache
                 .borrow_mut()
-                .insert(key, Box::new(button_finder));
+                .insert(key, button_finder);
         };
     }
 
@@ -150,7 +148,7 @@ impl Popup {
     pub fn register_button_finder(&self, key: usize, finder: Box<ButtonFinder>) {
         self.button_finder_cache
             .borrow_mut()
-            .insert(key, Box::new(finder));
+            .insert(key, finder.into());
     }
 
     pub fn unregister_button(&self, button: &Button) {

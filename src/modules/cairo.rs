@@ -1,7 +1,7 @@
 use crate::channels::{AsyncSenderExt, BroadcastReceiverExt};
 use crate::config::CommonConfig;
 use crate::modules::{Module, ModuleInfo, ModuleParts, WidgetContext};
-use crate::{glib_recv, module_impl, spawn, try_send};
+use crate::{module_impl, spawn};
 use cairo::{Format, ImageSurface};
 use glib::Propagation;
 use glib::translate::ToGlibPtr;
