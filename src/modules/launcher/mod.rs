@@ -244,21 +244,43 @@ impl Module<gtk::Box> for LauncherModule {
         let tx2 = context.tx.clone();
 
         let wl = context.client::<wayland::Client>();
+        let desktop_files = context.ironbar.desktop_files();
         spawn(async move {
             let items = items2;
             let tx = tx2;
+
+            // Build app_id mapping once at startup
+            let mut app_id_map = IndexMap::<String, String>::new();
+            {
+                let favorites: Vec<_> = lock!(items).keys().cloned().collect();
+                for fav in favorites {
+                    if let Ok(Some(file)) = desktop_files.find(&fav).await {
+                        if let Some(wm_class) = file.startup_wm_class {
+                            app_id_map.insert(wm_class, fav);
+                        }
+                    }
+                }
+            }
+
+            let resolve_app_id = |app_id: &str| {
+                app_id_map
+                    .get(app_id)
+                    .cloned()
+                    .unwrap_or_else(|| app_id.to_string())
+            };
 
             let mut wlrx = wl.subscribe_toplevels();
             let handles = wl.toplevel_info_all();
 
             for info in handles {
                 let mut items = lock!(items);
-                let item = items.get_mut(&info.app_id);
-                if let Some(item) = item {
+                let app_id = resolve_app_id(&info.app_id);
+                if let Some(item) = items.get_mut(&app_id) {
                     item.merge_toplevel(info.clone());
                 } else {
-                    let item = Item::from(info.clone());
-                    items.insert(info.app_id.clone(), item);
+                    let mut item = Item::from(info.clone());
+                    item.app_id = app_id.clone();
+                    items.insert(app_id, item);
                 }
             }
 
@@ -284,14 +306,14 @@ impl Module<gtk::Box> for LauncherModule {
 
                 match event {
                     ToplevelEvent::New(info) => {
-                        let app_id = info.app_id.clone();
+                        let app_id = resolve_app_id(&info.app_id);
 
                         let new_item = {
                             let mut items = lock!(items);
-                            let item = items.get_mut(&info.app_id);
-                            match item {
+                            match items.get_mut(&app_id) {
                                 None => {
-                                    let item: Item = info.into();
+                                    let mut item: Item = info.into();
+                                    item.app_id = app_id.clone();
                                     items.insert(app_id.clone(), item.clone());
 
                                     ItemOrWindow::Item(item)
@@ -313,9 +335,10 @@ impl Module<gtk::Box> for LauncherModule {
                         }?;
                     }
                     ToplevelEvent::Update(info) => {
+                        let app_id = resolve_app_id(&info.app_id);
                         // check if open, as updates can be sent as program closes
                         // if it's a focused favourite closing, it otherwise incorrectly re-focuses.
-                        let is_open = if let Some(item) = lock!(items).get_mut(&info.app_id) {
+                        let is_open = if let Some(item) = lock!(items).get_mut(&app_id) {
                             item.set_window_focused(info.id, info.focused);
                             item.set_window_name(info.id, info.title.clone());
 
@@ -325,27 +348,27 @@ impl Module<gtk::Box> for LauncherModule {
                         };
 
                         send_update(LauncherUpdate::Focus(
-                            info.app_id.clone(),
+                            app_id.clone(),
                             is_open && info.focused,
                         ))
                         .await?;
                         send_update(LauncherUpdate::Title(
-                            info.app_id.clone(),
+                            app_id.clone(),
                             info.id,
                             info.title.clone(),
                         ))
                         .await?;
                     }
                     ToplevelEvent::Remove(info) => {
+                        let app_id = resolve_app_id(&info.app_id);
                         let remove_item = {
                             let mut items = lock!(items);
-                            let item = items.get_mut(&info.app_id);
-                            match item {
+                            match items.get_mut(&app_id) {
                                 Some(item) => {
                                     item.unmerge_toplevel(&info);
 
                                     if item.windows.is_empty() {
-                                        items.shift_remove(&info.app_id);
+                                        items.shift_remove(&app_id);
                                         Some(ItemOrWindowId::Item)
                                     } else {
                                         Some(ItemOrWindowId::Window)
@@ -357,15 +380,11 @@ impl Module<gtk::Box> for LauncherModule {
 
                         match remove_item {
                             Some(ItemOrWindowId::Item) => {
-                                send_update(LauncherUpdate::RemoveItem(info.app_id.clone()))
-                                    .await?;
+                                send_update(LauncherUpdate::RemoveItem(app_id.clone())).await?;
                             }
                             Some(ItemOrWindowId::Window) => {
-                                send_update(LauncherUpdate::RemoveWindow(
-                                    info.app_id.clone(),
-                                    info.id,
-                                ))
-                                .await?;
+                                send_update(LauncherUpdate::RemoveWindow(app_id.clone(), info.id))
+                                    .await?;
                             }
                             None => {}
                         }
