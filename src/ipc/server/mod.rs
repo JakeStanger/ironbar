@@ -147,8 +147,8 @@ impl Ipc {
 
                 ironbar.reload_config();
 
-                for output in outputs {
-                    match crate::load_output_bars(ironbar, application, &output) {
+                for (idx, output ) in outputs.iter().enumerate() {
+                    match crate::load_output_bars(ironbar, application, output, idx as i32) {
                         Ok(mut bars) => ironbar.bars.borrow_mut().append(&mut bars),
                         Err(err) => error!("{err:?}"),
                     }

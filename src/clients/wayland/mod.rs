@@ -24,7 +24,7 @@ use tokio::sync::{broadcast, mpsc};
 use tracing::{debug, error, trace};
 use wayland_client::globals::registry_queue_init;
 use wayland_client::{Connection, QueueHandle};
-pub use wl_output::{OutputEvent, OutputEventType};
+pub use wl_output::{OutputEvent, OutputEventType, list::get as output_list_get};
 
 cfg_if! {
     if #[cfg(any(feature = "focused", feature = "launcher"))] {
