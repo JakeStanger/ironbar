@@ -16,4 +16,4 @@ mod provider;
     feature = "workspaces",
 ))]
 pub use self::gtk::*;
-pub use provider::{Provider, create_and_load_surface};
+pub use provider::Provider;
