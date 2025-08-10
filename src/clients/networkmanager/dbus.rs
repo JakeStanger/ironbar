@@ -1,71 +1,71 @@
 use color_eyre::Result;
-use zbus::dbus_proxy;
+use zbus::proxy;
 use zbus::zvariant::{ObjectPath, OwnedValue, Str};
 
-#[dbus_proxy(
+#[proxy(
     default_service = "org.freedesktop.NetworkManager",
     interface = "org.freedesktop.NetworkManager",
     default_path = "/org/freedesktop/NetworkManager"
 )]
-trait Dbus {
-    #[dbus_proxy(property)]
+pub(super) trait Dbus {
+    #[zbus(property)]
     fn active_connections(&self) -> Result<Vec<ObjectPath>>;
 
-    #[dbus_proxy(property)]
+    #[zbus(property)]
     fn devices(&self) -> Result<Vec<ObjectPath>>;
 
-    // #[dbus_proxy(property)]
+    // #[zbus(property)]
     // fn networking_enabled(&self) -> Result<bool>;
 
-    // #[dbus_proxy(property)]
+    // #[zbus(property)]
     // fn primary_connection(&self) -> Result<ObjectPath>;
 
-    // #[dbus_proxy(property)]
+    // #[zbus(property)]
     // fn primary_connection_type(&self) -> Result<Str>;
 
-    // #[dbus_proxy(property)]
+    // #[zbus(property)]
     // fn wireless_enabled(&self) -> Result<bool>;
 }
 
-#[dbus_proxy(
+#[proxy(
     default_service = "org.freedesktop.NetworkManager",
     interface = "org.freedesktop.NetworkManager.Connection.Active"
 )]
-trait ActiveConnectionDbus {
-    // #[dbus_proxy(property)]
+pub(super) trait ActiveConnectionDbus {
+    // #[zbus(property)]
     // fn connection(&self) -> Result<ObjectPath>;
 
-    // #[dbus_proxy(property)]
+    // #[zbus(property)]
     // fn default(&self) -> Result<bool>;
 
-    // #[dbus_proxy(property)]
+    // #[zbus(property)]
     // fn default6(&self) -> Result<bool>;
 
-    #[dbus_proxy(property)]
+    #[zbus(property)]
     fn devices(&self) -> Result<Vec<ObjectPath>>;
 
-    // #[dbus_proxy(property)]
+    // #[zbus(property)]
     // fn id(&self) -> Result<Str>;
 
-    #[dbus_proxy(property)]
+    #[zbus(property)]
     fn type_(&self) -> Result<Str>;
 
-    // #[dbus_proxy(property)]
+    // #[zbus(property)]
     // fn uuid(&self) -> Result<Str>;
 }
 
-#[dbus_proxy(
+#[proxy(
     default_service = "org.freedesktop.NetworkManager",
     interface = "org.freedesktop.NetworkManager.Device"
 )]
-trait DeviceDbus {
-    // #[dbus_proxy(property)]
+pub(super) trait DeviceDbus {
+    // #[zbus(property)]
     // fn active_connection(&self) -> Result<ObjectPath>;
 
-    #[dbus_proxy(property)]
+    #[zbus(property)]
     fn device_type(&self) -> Result<DeviceType>;
 
-    #[dbus_proxy(property)]
+    #[zbus(property)]
     fn state(&self) -> Result<DeviceState>;
 }
 

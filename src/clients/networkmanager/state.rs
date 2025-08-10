@@ -1,9 +1,9 @@
 use color_eyre::Result;
 
-use crate::clients::networkmanager::dbus::{
-    ActiveConnectionDbusProxyBlocking, DeviceDbusProxyBlocking, DeviceState, DeviceType,
-};
 use crate::clients::networkmanager::PathMap;
+use crate::clients::networkmanager::dbus::{
+    ActiveConnectionDbusProxy, DeviceDbusProxy, DeviceState, DeviceType,
+};
 
 #[derive(Clone, Debug)]
 pub struct State {
@@ -56,16 +56,16 @@ pub struct VpnConnectedState {
     pub name: String,
 }
 
-pub(super) fn determine_wired_state(
-    devices: &PathMap<DeviceDbusProxyBlocking>,
+pub(super) async fn determine_wired_state(
+    devices: &PathMap<'_, DeviceDbusProxy<'_>>,
 ) -> Result<WiredState> {
     let mut present = false;
     let mut connected = false;
 
     for device in devices.values() {
-        if device.device_type()? == DeviceType::Ethernet {
+        if device.device_type().await? == DeviceType::Ethernet {
             present = true;
-            if device.state()?.is_enabled() {
+            if device.state().await?.is_enabled() {
                 connected = true;
                 break;
             }
@@ -81,19 +81,19 @@ pub(super) fn determine_wired_state(
     }
 }
 
-pub(super) fn determine_wifi_state(
-    devices: &PathMap<DeviceDbusProxyBlocking>,
+pub(super) async fn determine_wifi_state(
+    devices: &PathMap<'_, DeviceDbusProxy<'_>>,
 ) -> Result<WifiState> {
     let mut present = false;
     let mut enabled = false;
     let mut connected = false;
 
     for device in devices.values() {
-        if device.device_type()? == DeviceType::Wifi {
+        if device.device_type().await? == DeviceType::Wifi {
             present = true;
-            if device.state()?.is_enabled() {
+            if device.state().await?.is_enabled() {
                 enabled = true;
-                if device.state()? == DeviceState::Activated {
+                if device.state().await? == DeviceState::Activated {
                     connected = true;
                     break;
                 }
@@ -115,19 +115,19 @@ pub(super) fn determine_wifi_state(
     }
 }
 
-pub(super) fn determine_cellular_state(
-    devices: &PathMap<DeviceDbusProxyBlocking>,
+pub(super) async fn determine_cellular_state(
+    devices: &PathMap<'_, DeviceDbusProxy<'_>>,
 ) -> Result<CellularState> {
     let mut present = false;
     let mut enabled = false;
     let mut connected = false;
 
     for device in devices.values() {
-        if device.device_type()? == DeviceType::Modem {
+        if device.device_type().await? == DeviceType::Modem {
             present = true;
-            if device.state()?.is_enabled() {
+            if device.state().await?.is_enabled() {
                 enabled = true;
-                if device.state()? == DeviceState::Activated {
+                if device.state().await? == DeviceState::Activated {
                     connected = true;
                     break;
                 }
@@ -146,11 +146,11 @@ pub(super) fn determine_cellular_state(
     }
 }
 
-pub(super) fn determine_vpn_state(
-    active_connections: &PathMap<ActiveConnectionDbusProxyBlocking>,
+pub(super) async fn determine_vpn_state(
+    active_connections: &PathMap<'_, ActiveConnectionDbusProxy<'_>>,
 ) -> Result<VpnState> {
     for connection in active_connections.values() {
-        match connection.type_()?.as_str() {
+        match connection.type_().await?.as_str() {
             "vpn" | "wireguard" => {
                 return Ok(VpnState::Connected(VpnConnectedState {
                     name: "unknown".into(),
