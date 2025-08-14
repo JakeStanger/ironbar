@@ -1,9 +1,11 @@
-use color_eyre::Result;
-
-use crate::clients::networkmanager::PathMap;
 use crate::clients::networkmanager::dbus::{
     ActiveConnectionDbusProxy, DeviceDbusProxy, DeviceState, DeviceType,
 };
+use color_eyre::Result;
+use std::collections::HashMap;
+use zbus::zvariant::ObjectPath;
+
+type PathMap<'l, ValueType> = HashMap<ObjectPath<'l>, ValueType>;
 
 #[derive(Clone, Debug)]
 pub struct State {

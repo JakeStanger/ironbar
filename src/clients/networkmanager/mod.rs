@@ -1,226 +1,130 @@
-use std::collections::HashMap;
-use std::sync::{Arc, RwLock};
-
 use color_eyre::Result;
+use color_eyre::eyre::Error;
 use futures_lite::StreamExt;
-use futures_signals::signal::{Mutable, MutableSignalCloned};
-use tracing::error;
+use std::collections::HashSet;
+use std::sync::Arc;
+use std::time::Duration;
+use tokio::join;
+use tokio::sync::{RwLock, broadcast};
+use tokio::time::sleep;
+use tokio_stream::StreamMap;
 use zbus::Connection;
+use zbus::proxy::PropertyStream;
 use zbus::zvariant::ObjectPath;
 
-use crate::clients::networkmanager::dbus::{ActiveConnectionDbusProxy, DbusProxy, DeviceDbusProxy};
-use crate::clients::networkmanager::state::{
-    CellularState, State, VpnState, WifiState, WiredState, determine_cellular_state,
-    determine_vpn_state, determine_wifi_state, determine_wired_state,
-};
-use crate::{
-    read_lock, register_fallible_client, spawn_blocking, spawn_blocking_result, write_lock,
-};
+use crate::clients::networkmanager::dbus::{DbusProxy, Device, DeviceDbusProxy, DeviceState};
+use crate::clients::networkmanager::event::Event;
+use crate::{register_fallible_client, spawn};
 
 mod dbus;
-pub mod state;
-
-type PathMap<'l, ValueType> = HashMap<ObjectPath<'l>, ValueType>;
+pub mod event;
 
 #[derive(Debug)]
-pub struct Client(Arc<ClientInner<'static>>);
-
-#[derive(Debug)]
-struct ClientInner<'l> {
-    state: Mutable<State>,
-    root_object: &'l DbusProxy<'l>,
-    active_connections: RwLock<PathMap<'l, ActiveConnectionDbusProxy<'l>>>,
-    devices: RwLock<PathMap<'l, DeviceDbusProxy<'l>>>,
-    dbus_connection: Connection,
+pub struct Client {
+    tx: broadcast::Sender<Event>,
 }
 
 impl Client {
     async fn new() -> Result<Client> {
-        let state = Mutable::new(State {
-            wired: WiredState::Unknown,
-            wifi: WifiState::Unknown,
-            cellular: CellularState::Unknown,
-            vpn: VpnState::Unknown,
-        });
-        let dbus_connection = Connection::system().await?;
-        let root_object = {
-            let root_object = DbusProxy::new(&dbus_connection).await?;
-            // Workaround for the fact that zbus (unnecessarily) requires a static lifetime here
-            Box::leak(Box::new(root_object))
-        };
-
-        Ok(Client(Arc::new(ClientInner {
-            state,
-            root_object,
-            active_connections: RwLock::new(HashMap::new()),
-            devices: RwLock::new(HashMap::new()),
-            dbus_connection,
-        })))
+        let (tx, _) = broadcast::channel(64);
+        Ok(Client { tx })
     }
 
     async fn run(&self) -> Result<()> {
-        // TODO: Reimplement DBus watching without these write-only macros
+        let dbus_connection = Connection::system().await?;
+        let root_object = DbusProxy::new(&dbus_connection).await?;
 
-        let mut active_connections_stream = self.0.root_object.receive_active_connections_changed().await;
-        while let Some(change) = active_connections_stream.next().await {
+        let device_state_changes =
+            RwLock::new(StreamMap::<Device, PropertyStream<DeviceState>>::new());
 
-        }
+        let _ = join!(
+            // Handles the addition and removal of device objects
+            async {
+                let mut devices_changes = root_object.receive_devices_changed().await;
+                while let Some(change) = devices_changes.next().await {
+                    println!("here?");
 
-        // ActiveConnectionDbusProxy::builder(&self.0.dbus_connection)
+                    let devices = HashSet::from_iter(
+                        device_state_changes
+                            .read()
+                            .await
+                            .keys()
+                            .map(|device| &device.object_path)
+                            .cloned(),
+                    );
 
-        // macro_rules! update_state_for_device_change {
-        //     ($client:ident) => {
-        //         $client.state.set(State {
-        //             wired: determine_wired_state(&read_lock!($client.devices)).await?,
-        //             wifi: determine_wifi_state(&read_lock!($client.devices)).await?,
-        //             cellular: determine_cellular_state(&read_lock!($client.devices)).await?,
-        //             vpn: $client.state.get_cloned().vpn,
-        //         });
-        //     };
-        // }
-        //
-        // macro_rules! initialise_path_map {
-        //     (
-        //         $client:expr,
-        //         $path_map:ident,
-        //         $proxy_type:ident
-        //         $(, |$new_path:ident| $property_watcher:expr)*
-        //     ) => {
-        //         let new_paths = $client.root_object.$path_map().await?;
-        //         let mut path_map = HashMap::new();
-        //         for new_path in new_paths {
-        //             let new_proxy = $proxy_type::builder(&$client.dbus_connection)
-        //                 .path(new_path.clone())?
-        //                 .build().await?;
-        //             path_map.insert(new_path.clone(), new_proxy);
-        //             $({
-        //                 let $new_path = &new_path;
-        //                 $property_watcher;
-        //             })*
-        //         }
-        //         *write_lock!($client.$path_map) = path_map;
-        //     };
-        // }
-        //
-        // macro_rules! spawn_path_list_watcher {
-        //     (
-        //         $client:expr,
-        //         $property:ident,
-        //         $property_changes:ident,
-        //         $proxy_type:ident,
-        //         |$state_client:ident| $state_update:expr
-        //         $(, |$property_client:ident, $new_path:ident| $property_watcher:expr)*
-        //     ) => {
-        //         let client = $client.clone();
-        //
-        //         let changes = client.root_object.$property_changes();
-        //         for _ in changes {
-        //             let mut new_path_map = HashMap::new();
-        //             {
-        //                 let new_paths = client.root_object.$property()?;
-        //                 let path_map = read_lock!(client.$property);
-        //                 for new_path in new_paths {
-        //                     if path_map.contains_key(&new_path) {
-        //                         let proxy = path_map
-        //                             .get(&new_path)
-        //                             .expect("Should contain the key, guarded by runtime check");
-        //                         new_path_map.insert(new_path, proxy.to_owned());
-        //                     } else {
-        //                         let new_proxy = $proxy_type::builder(&client.dbus_connection)
-        //                             .path(new_path.clone())?
-        //                             .build()?;
-        //                         new_path_map.insert(new_path.clone(), new_proxy);
-        //                         $({
-        //                             let $property_client = &client;
-        //                             let $new_path = &new_path;
-        //                             $property_watcher;
-        //                         })*
-        //                     }
-        //                 }
-        //             }
-        //             *write_lock!(client.$property) = new_path_map;
-        //             let $state_client = &client;
-        //             $state_update;
-        //         }
-        //     }
-        // }
-        //
-        // macro_rules! spawn_property_watcher {
-        //     (
-        //         $client:expr,
-        //         $path:expr,
-        //         $property_changes:ident,
-        //         $containing_list:ident,
-        //         |$inner_client:ident| $state_update:expr
-        //     ) => {
-        //         let client = $client.clone();
-        //         let path = $path.clone();
-        //
-        //         let changes = read_lock!(client.$containing_list)
-        //             .get(&path)
-        //             .expect("Should contain the key upon watcher start")
-        //             .$property_changes().await;
-        //         for _ in changes {
-        //             if !read_lock!(client.$containing_list).contains_key(&path) {
-        //                 break;
-        //             }
-        //             let $inner_client = &client;
-        //             $state_update;
-        //         }
-        //     };
-        // }
-        //
-        // initialise_path_map!(self.0, active_connections, ActiveConnectionDbusProxy);
-        // initialise_path_map!(self.0, devices, DeviceDbusProxy, |path| {
-        //     spawn_property_watcher!(self.0, path, receive_state_changed, devices, |client| {
-        //         update_state_for_device_change!(client);
-        //     });
-        // });
-        // self.0.state.set(State {
-        //     wired: determine_wired_state(&read_lock!(self.0.devices))?,
-        //     wifi: determine_wifi_state(&read_lock!(self.0.devices))?,
-        //     cellular: determine_cellular_state(&read_lock!(self.0.devices))?,
-        //     vpn: determine_vpn_state(&read_lock!(self.0.active_connections))?,
-        // });
-        //
-        // spawn_path_list_watcher!(
-        //     self.0,
-        //     active_connections,
-        //     receive_active_connections_changed,
-        //     ActiveConnectionDbusProxy,
-        //     |client| {
-        //         client.state.set(State {
-        //             wired: client.state.get_cloned().wired,
-        //             wifi: client.state.get_cloned().wifi,
-        //             cellular: client.state.get_cloned().cellular,
-        //             vpn: determine_vpn_state(&read_lock!(client.active_connections))?,
-        //         });
-        //     }
-        // );
-        // spawn_path_list_watcher!(
-        //     self.0,
-        //     devices,
-        //     receive_devices_changed,
-        //     DeviceDbusProxy,
-        //     |client| {
-        //         update_state_for_device_change!(client);
-        //     },
-        //     |client, path| {
-        //         spawn_property_watcher!(client, path, receive_state_changed, devices, |client| {
-        //             update_state_for_device_change!(client);
-        //         });
-        //     }
-        // );
+                    // The new list of devices from dbus, not to be confused with the added devices below
+                    let new_devices_vec = change.get().await?;
+                    let new_devices = HashSet::<ObjectPath>::from_iter(new_devices_vec);
+                    println!("Existing devices: {:?}", devices);
+                    println!("New devices: {:?}", new_devices);
+
+                    let added_devices = new_devices.difference(&devices);
+                    println!("Added devices: {:?}", added_devices);
+                    for added_device in added_devices {
+                        let device_proxy =
+                            DeviceDbusProxy::new(&dbus_connection, added_device).await?;
+                        let device_type = device_proxy.device_type().await?;
+                        let device_state_stream = device_proxy.receive_state_changed().await;
+                        device_state_changes.write().await.insert(
+                            Device {
+                                object_path: added_device.clone(),
+                                type_: device_type.clone(), // TODO: Remove clone when removing println below
+                            },
+                            device_state_stream,
+                        );
+                        println!("Device added: {} type {:?}", added_device, device_type);
+                    }
+
+                    let removed_devices = devices.difference(&new_devices);
+                    println!("Removed devices: {:?}", removed_devices);
+                    for removed_device in removed_devices {
+                        let device_proxy =
+                            DeviceDbusProxy::new(&dbus_connection, removed_device).await?;
+                        let device_type = device_proxy.device_type().await?;
+                        device_state_changes.write().await.remove(&Device {
+                            object_path: removed_device.clone(),
+                            type_: device_type.clone(), // TODO: Remove clone when removing println below
+                        });
+                        println!("Device removed: {} type {:?}", removed_device, device_type);
+                    }
+                }
+                Ok::<(), Error>(())
+            },
+            // Handles changes to device properties
+            async {
+                sleep(Duration::from_secs(5)).await;
+
+                /*
+                Okay so this causes a deadlock, and we should rewrite all of this with spawn() anyway cause join!() is not multithreaded apparently.
+                In order to not leak memory we could have closures for objects that don't exist anymore check this manually and return.
+                */
+                while let Some((device, property)) = device_state_changes.write().await.next().await
+                {
+                    let property = property.get().await?;
+                    println!(
+                        "Device state changed: {} to {:?}",
+                        device.object_path, property
+                    );
+                }
+
+                println!("Prop loop ended");
+
+                Ok::<(), Error>(())
+            },
+        );
 
         Ok(())
     }
 
-    pub fn subscribe(&self) -> MutableSignalCloned<State> {
-        self.0.state.signal_cloned()
+    pub fn subscribe(&self) -> broadcast::Receiver<Event> {
+        self.tx.subscribe()
     }
 }
 
 pub async fn create_client() -> Result<Arc<Client>> {
+    // TODO: Use spawn here after all, otherwise we block on creation
+
     let client = Arc::new(Client::new().await?);
     client.run().await?;
     Ok(client)

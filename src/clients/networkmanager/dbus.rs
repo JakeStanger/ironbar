@@ -9,10 +9,10 @@ use zbus::zvariant::{ObjectPath, OwnedValue, Str};
 )]
 pub(super) trait Dbus {
     #[zbus(property)]
-    fn active_connections(&self) -> Result<Vec<ObjectPath>>;
+    fn active_connections(&self) -> Result<Vec<ObjectPath<'_>>>;
 
     #[zbus(property)]
-    fn devices(&self) -> Result<Vec<ObjectPath>>;
+    fn devices(&self) -> Result<Vec<ObjectPath<'_>>>;
 
     // #[zbus(property)]
     // fn networking_enabled(&self) -> Result<bool>;
@@ -42,13 +42,13 @@ pub(super) trait ActiveConnectionDbus {
     // fn default6(&self) -> Result<bool>;
 
     #[zbus(property)]
-    fn devices(&self) -> Result<Vec<ObjectPath>>;
+    fn devices(&self) -> Result<Vec<ObjectPath<'_>>>;
 
     // #[zbus(property)]
     // fn id(&self) -> Result<Str>;
 
     #[zbus(property)]
-    fn type_(&self) -> Result<Str>;
+    fn type_(&self) -> Result<Str<'_>>;
 
     // #[zbus(property)]
     // fn uuid(&self) -> Result<Str>;
@@ -69,7 +69,7 @@ pub(super) trait DeviceDbus {
     fn state(&self) -> Result<DeviceState>;
 }
 
-#[derive(Clone, Debug, OwnedValue, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, OwnedValue, PartialEq)]
 #[repr(u32)]
 pub(super) enum DeviceType {
     Unknown = 0,
@@ -130,4 +130,10 @@ impl DeviceState {
             DeviceState::Unknown | DeviceState::Unmanaged | DeviceState::Unavailable,
         )
     }
+}
+
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+pub(super) struct Device<'l> {
+    pub object_path: ObjectPath<'l>,
+    pub type_: DeviceType,
 }

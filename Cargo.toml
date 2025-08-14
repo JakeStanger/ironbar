@@ -84,7 +84,7 @@ music = ["dep:regex"]
 "music+mpris" = ["music", "mpris"]
 "music+mpd" = ["music", "mpd-utils"]
 
-network_manager = ["futures-lite", "futures-signals", "zbus"]
+network_manager = ["futures-lite", "futures-signals", "tokio-stream", "zbus"]
 
 notifications = ["zbus"]
 
@@ -172,6 +172,7 @@ regex = { version = "1.11.1", default-features = false, features = [
 
 # network_manager
 futures-signals = { version = "0.3.34", optional = true }
+tokio-stream = { version = "0.1.17", optional = true }
 
 # sys_info
 sysinfo = { version = "0.35.2", optional = true }
