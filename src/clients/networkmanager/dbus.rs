@@ -12,46 +12,10 @@ pub(super) trait Dbus {
     fn active_connections(&self) -> Result<Vec<ObjectPath<'_>>>;
 
     #[zbus(property)]
-    fn devices(&self) -> Result<Vec<ObjectPath<'_>>>;
-
-    // #[zbus(property)]
-    // fn networking_enabled(&self) -> Result<bool>;
-
-    // #[zbus(property)]
-    // fn primary_connection(&self) -> Result<ObjectPath>;
-
-    // #[zbus(property)]
-    // fn primary_connection_type(&self) -> Result<Str>;
-
-    // #[zbus(property)]
-    // fn wireless_enabled(&self) -> Result<bool>;
-}
-
-#[proxy(
-    default_service = "org.freedesktop.NetworkManager",
-    interface = "org.freedesktop.NetworkManager.Connection.Active"
-)]
-pub(super) trait ActiveConnectionDbus {
-    // #[zbus(property)]
-    // fn connection(&self) -> Result<ObjectPath>;
-
-    // #[zbus(property)]
-    // fn default(&self) -> Result<bool>;
-
-    // #[zbus(property)]
-    // fn default6(&self) -> Result<bool>;
+    fn all_devices(&self) -> Result<Vec<ObjectPath<'_>>>;
 
     #[zbus(property)]
     fn devices(&self) -> Result<Vec<ObjectPath<'_>>>;
-
-    // #[zbus(property)]
-    // fn id(&self) -> Result<Str>;
-
-    #[zbus(property)]
-    fn type_(&self) -> Result<Str<'_>>;
-
-    // #[zbus(property)]
-    // fn uuid(&self) -> Result<Str>;
 }
 
 #[proxy(
@@ -59,19 +23,20 @@ pub(super) trait ActiveConnectionDbus {
     interface = "org.freedesktop.NetworkManager.Device"
 )]
 pub(super) trait DeviceDbus {
-    // #[zbus(property)]
-    // fn active_connection(&self) -> Result<ObjectPath>;
-
     #[zbus(property)]
     fn device_type(&self) -> Result<DeviceType>;
+
+    #[zbus(property)]
+    fn interface(&self) -> Result<Str<'_>>;
 
     #[zbus(property)]
     fn state(&self) -> Result<DeviceState>;
 }
 
+// For reference: https://gitlab.freedesktop.org/NetworkManager/NetworkManager/-/blob/e1a7d5ac062f4f23ce3a6b33c62e856056161ad8/src/libnm-core-public/nm-dbus-interface.h#L212-L253
 #[derive(Clone, Debug, Eq, Hash, OwnedValue, PartialEq)]
 #[repr(u32)]
-pub(super) enum DeviceType {
+pub enum DeviceType {
     Unknown = 0,
     Ethernet = 1,
     Wifi = 2,
@@ -105,9 +70,10 @@ pub(super) enum DeviceType {
     Hsr = 33,
 }
 
+// For reference: https://gitlab.freedesktop.org/NetworkManager/NetworkManager/-/blob/e1a7d5ac062f4f23ce3a6b33c62e856056161ad8/src/libnm-core-public/nm-dbus-interface.h#L501-L538
 #[derive(Clone, Debug, OwnedValue, PartialEq)]
 #[repr(u32)]
-pub(super) enum DeviceState {
+pub enum DeviceState {
     Unknown = 0,
     Unmanaged = 10,
     Unavailable = 20,
@@ -121,19 +87,4 @@ pub(super) enum DeviceState {
     Activated = 100,
     Deactivating = 110,
     Failed = 120,
-}
-
-impl DeviceState {
-    pub(super) fn is_enabled(&self) -> bool {
-        !matches!(
-            self,
-            DeviceState::Unknown | DeviceState::Unmanaged | DeviceState::Unavailable,
-        )
-    }
-}
-
-#[derive(Clone, Debug, Eq, Hash, PartialEq)]
-pub(super) struct Device<'l> {
-    pub object_path: ObjectPath<'l>,
-    pub type_: DeviceType,
 }

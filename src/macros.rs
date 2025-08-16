@@ -255,14 +255,3 @@ macro_rules! rc_mut {
         std::rc::Rc::new(std::cell::RefCell::new($val))
     };
 }
-
-#[macro_export]
-macro_rules! spawn_blocking_result {
-    ($body:block) => {
-        spawn_blocking(move || {
-            if let Err(error) = (|| -> Result<()> { $body })() {
-                error!("Error in fallible spawned closure: {}", error);
-            }
-        });
-    };
-}

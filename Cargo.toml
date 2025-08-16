@@ -8,6 +8,9 @@ repository = "https://github.com/jakestanger/ironbar"
 categories = ["gui"]
 keywords = ["gtk", "bar", "wayland", "wlroots", "gtk-layer-shell"]
 
+[profile.release]
+lto = true
+
 [features]
 default = [
     "bindmode+all",
