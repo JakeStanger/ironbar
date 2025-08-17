@@ -43,8 +43,9 @@ impl Module<gtk::Box> for NetworkManagerModule {
         let client = context.try_client::<Client>()?;
         // Should we be using context.tx with ModuleUpdateEvent::Update instead?
         let tx = context.update_tx.clone();
+        // Must be done here synchronously to avoid race condition
+        let mut client_rx = client.subscribe();
         spawn(async move {
-            let mut client_rx = client.subscribe();
             while let Result::Ok(event) = client_rx.recv().await {
                 tx.send(event)?;
             }
@@ -62,10 +63,11 @@ impl Module<gtk::Box> for NetworkManagerModule {
     ) -> Result<ModuleParts<gtk::Box>> {
         let container = gtk::Box::new(Orientation::Horizontal, 0);
 
-        // TODO: Check if passing the widget context in its entirety here is possible
-        // We cannot use recv_glib_async() here because the lifetimes don't work out
+        // Must be done here synchronously to avoid race condition
+        let rx = context.subscribe();
+        // We cannot use recv_glib_async here because the lifetimes don't work out
         spawn_future_local(handle_update_events(
-            context.subscribe(),
+            rx,
             container.clone(),
             self.icon_size,
             context.ironbar.image_provider(),
@@ -84,13 +86,8 @@ async fn handle_update_events(
     let mut icons = HashMap::<String, Image>::new();
 
     while let Result::Ok(event) = rx.recv().await {
-        println!("NM UI event: {:?}", event);
-
         match event {
-            Event::DeviceAdded { interface, r#type } => {
-                if !is_supported_device_type(&r#type) {
-                    continue;
-                }
+            Event::DeviceAdded { interface, .. } => {
                 let icon = Image::new();
                 icon.add_class("icon");
                 container.add(&icon);
@@ -101,9 +98,6 @@ async fn handle_update_events(
                 r#type,
                 state,
             } => {
-                if !is_supported_device_type(&r#type) {
-                    continue;
-                }
                 let icon = icons
                     .get(&interface)
                     .expect("the icon for the interface to be present");
@@ -122,13 +116,6 @@ async fn handle_update_events(
             }
         };
     }
-}
-
-fn is_supported_device_type(r#type: &DeviceType) -> bool {
-    matches!(
-        r#type,
-        DeviceType::Ethernet | DeviceType::Wifi | DeviceType::Tun | DeviceType::Wireguard
-    )
 }
 
 fn get_icon_for_device_state(r#type: &DeviceType, state: &DeviceState) -> Option<&'static str> {
@@ -169,6 +156,6 @@ fn get_icon_for_device_state(r#type: &DeviceType, state: &DeviceState) -> Option
             DeviceState::Activated => Some("icon:network-vpn-symbolic"),
             _ => None,
         },
-        _ => panic!("Device type should be a supported one"),
+        _ => None,
     }
 }

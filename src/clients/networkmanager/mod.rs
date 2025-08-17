@@ -33,7 +33,6 @@ impl Client {
             let dbus_connection = Connection::system().await?;
             let root = DbusProxy::new(&dbus_connection).await?;
 
-            // All device types get added to this, but not all types emit events
             let mut devices = HashSet::new();
 
             let mut devices_changes = root.receive_all_devices_changed().await;
