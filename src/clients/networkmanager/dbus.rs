@@ -9,13 +9,7 @@ use zbus::zvariant::{ObjectPath, OwnedValue, Str};
 )]
 pub(super) trait Dbus {
     #[zbus(property)]
-    fn active_connections(&self) -> Result<Vec<ObjectPath<'_>>>;
-
-    #[zbus(property)]
     fn all_devices(&self) -> Result<Vec<ObjectPath<'_>>>;
-
-    #[zbus(property)]
-    fn devices(&self) -> Result<Vec<ObjectPath<'_>>>;
 }
 
 #[proxy(

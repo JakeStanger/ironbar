@@ -101,6 +101,7 @@ async fn handle_update_events(
                 let icon = icons
                     .get(&interface)
                     .expect("the icon for the interface to be present");
+                // TODO: Make this configurable at runtime
                 let icon_name = get_icon_for_device_state(&r#type, &state);
                 match icon_name {
                     Some(icon_name) => {

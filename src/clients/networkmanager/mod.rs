@@ -7,6 +7,7 @@ use tokio::sync::broadcast;
 use zbus::Connection;
 use zbus::zvariant::{ObjectPath, Str};
 
+use crate::clients::ClientResult;
 use crate::clients::networkmanager::dbus::{DbusProxy, DeviceDbusProxy};
 use crate::clients::networkmanager::event::Event;
 use crate::{register_fallible_client, spawn};
@@ -20,14 +21,12 @@ pub struct Client {
 }
 
 impl Client {
-    async fn new() -> Result<Client> {
+    fn new() -> Result<Client> {
         let (tx, _) = broadcast::channel(64);
         Ok(Client { tx })
     }
 
-    async fn run(&self) -> Result<()> {
-        // TODO: Use glib::clone!()
-
+    fn run(&self) -> Result<()> {
         let tx = self.tx.clone();
         spawn(async move {
             let dbus_connection = Connection::system().await?;
@@ -58,14 +57,13 @@ impl Client {
     }
 
     pub fn subscribe(&self) -> broadcast::Receiver<Event> {
-        // Maybe we should pass a direct receiver so that the UI module also gets the events from before it was started
         self.tx.subscribe()
     }
 }
 
-pub async fn create_client() -> Result<Arc<Client>> {
-    let client = Arc::new(Client::new().await?);
-    client.run().await?;
+pub fn create_client() -> ClientResult<Client> {
+    let client = Arc::new(Client::new()?);
+    client.run()?;
     Ok(client)
 }
 
@@ -74,10 +72,8 @@ async fn watch_device(device_path: ObjectPath<'_>, tx: broadcast::Sender<Event>)
     let device = DeviceDbusProxy::new(&dbus_connection, device_path.to_owned()).await?;
 
     let interface = device.interface().await?;
-    let device_type = device.device_type().await?;
     tx.send(Event::DeviceAdded {
         interface: interface.to_string(),
-        r#type: device_type,
     })?;
 
     spawn(watch_device_state(

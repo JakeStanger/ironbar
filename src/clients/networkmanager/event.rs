@@ -4,7 +4,6 @@ use crate::clients::networkmanager::dbus::{DeviceState, DeviceType};
 pub enum Event {
     DeviceAdded {
         interface: String,
-        r#type: DeviceType,
     },
     DeviceStateChanged {
         interface: String,
