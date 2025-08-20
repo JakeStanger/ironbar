@@ -1,25 +1,35 @@
 mod common;
 mod r#impl;
+mod layout;
 mod truncate;
 
+#[cfg(feature = "bindmode")]
+use crate::modules::bindmode::Bindmode;
 #[cfg(feature = "cairo")]
 use crate::modules::cairo::CairoModule;
 #[cfg(feature = "clipboard")]
 use crate::modules::clipboard::ClipboardModule;
 #[cfg(feature = "clock")]
 use crate::modules::clock::ClockModule;
+#[cfg(feature = "custom")]
 use crate::modules::custom::CustomModule;
 #[cfg(feature = "focused")]
 use crate::modules::focused::FocusedModule;
+#[cfg(feature = "keyboard")]
+use crate::modules::keyboard::KeyboardModule;
+#[cfg(feature = "label")]
 use crate::modules::label::LabelModule;
 #[cfg(feature = "launcher")]
 use crate::modules::launcher::LauncherModule;
+#[cfg(feature = "menu")]
+use crate::modules::menu::MenuModule;
 #[cfg(feature = "music")]
 use crate::modules::music::MusicModule;
 #[cfg(feature = "network_manager")]
 use crate::modules::networkmanager::NetworkManagerModule;
 #[cfg(feature = "notifications")]
 use crate::modules::notifications::NotificationsModule;
+#[cfg(feature = "script")]
 use crate::modules::script::ScriptModule;
 #[cfg(feature = "sys_info")]
 use crate::modules::sysinfo::SysInfoModule;
@@ -35,37 +45,46 @@ use crate::modules::workspaces::WorkspacesModule;
 use crate::modules::{AnyModuleFactory, ModuleFactory, ModuleInfo};
 use cfg_if::cfg_if;
 use color_eyre::Result;
+#[cfg(feature = "schema")]
+use schemars::JsonSchema;
 use serde::Deserialize;
 use std::collections::HashMap;
 
-#[cfg(feature = "schema")]
-use schemars::JsonSchema;
-
-pub use self::common::{CommonConfig, ModuleOrientation, TransitionType};
-pub use self::truncate::TruncateMode;
+pub use self::common::{CommonConfig, ModuleJustification, ModuleOrientation, TransitionType};
+pub use self::layout::LayoutConfig;
+pub use self::truncate::{EllipsizeMode, TruncateMode};
 
 #[derive(Debug, Deserialize, Clone)]
 #[serde(tag = "type", rename_all = "snake_case")]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub enum ModuleConfig {
+    #[cfg(feature = "bindmode")]
+    Bindmode(Box<Bindmode>),
     #[cfg(feature = "cairo")]
     Cairo(Box<CairoModule>),
     #[cfg(feature = "clipboard")]
     Clipboard(Box<ClipboardModule>),
     #[cfg(feature = "clock")]
     Clock(Box<ClockModule>),
+    #[cfg(feature = "custom")]
     Custom(Box<CustomModule>),
     #[cfg(feature = "focused")]
     Focused(Box<FocusedModule>),
+    #[cfg(feature = "keyboard")]
+    Keyboard(Box<KeyboardModule>),
+    #[cfg(feature = "label")]
     Label(Box<LabelModule>),
     #[cfg(feature = "launcher")]
     Launcher(Box<LauncherModule>),
+    #[cfg(feature = "menu")]
+    Menu(Box<MenuModule>),
     #[cfg(feature = "music")]
     Music(Box<MusicModule>),
     #[cfg(feature = "network_manager")]
     NetworkManager(Box<NetworkManagerModule>),
     #[cfg(feature = "notifications")]
     Notifications(Box<NotificationsModule>),
+    #[cfg(feature = "script")]
     Script(Box<ScriptModule>),
     #[cfg(feature = "sys_info")]
     SysInfo(Box<SysInfoModule>),
@@ -93,24 +112,33 @@ impl ModuleConfig {
         }
 
         match self {
+            #[cfg(feature = "bindmode")]
+            Self::Bindmode(module) => create!(module),
             #[cfg(feature = "cairo")]
             Self::Cairo(module) => create!(module),
             #[cfg(feature = "clipboard")]
             Self::Clipboard(module) => create!(module),
             #[cfg(feature = "clock")]
             Self::Clock(module) => create!(module),
+            #[cfg(feature = "custom")]
             Self::Custom(module) => create!(module),
             #[cfg(feature = "focused")]
             Self::Focused(module) => create!(module),
+            #[cfg(feature = "keyboard")]
+            Self::Keyboard(module) => create!(module),
+            #[cfg(feature = "label")]
             Self::Label(module) => create!(module),
             #[cfg(feature = "launcher")]
             Self::Launcher(module) => create!(module),
+            #[cfg(feature = "menu")]
+            Self::Menu(module) => create!(module),
             #[cfg(feature = "music")]
             Self::Music(module) => create!(module),
             #[cfg(feature = "network_manager")]
             Self::NetworkManager(module) => create!(module),
             #[cfg(feature = "notifications")]
             Self::Notifications(module) => create!(module),
+            #[cfg(feature = "script")]
             Self::Script(module) => create!(module),
             #[cfg(feature = "sys_info")]
             Self::SysInfo(module) => create!(module),
@@ -123,6 +151,53 @@ impl ModuleConfig {
             #[cfg(feature = "workspaces")]
             Self::Workspaces(module) => create!(module),
         }
+    }
+
+    pub fn name(&self) -> String {
+        match self {
+            #[cfg(feature = "bindmode")]
+            ModuleConfig::Bindmode(_) => "Bindmode",
+            #[cfg(feature = "cairo")]
+            ModuleConfig::Cairo(_) => "Cario",
+            #[cfg(feature = "clipboard")]
+            ModuleConfig::Clipboard(_) => "Clipboard",
+            #[cfg(feature = "clock")]
+            ModuleConfig::Clock(_) => "Clock",
+            #[cfg(feature = "custom")]
+            ModuleConfig::Custom(_) => "Custom",
+            #[cfg(feature = "focused")]
+            ModuleConfig::Focused(_) => "Focused",
+            #[cfg(feature = "keyboard")]
+            ModuleConfig::Keyboard(_) => "Keyboard",
+            #[cfg(feature = "label")]
+            ModuleConfig::Label(_) => "Label",
+            #[cfg(feature = "launcher")]
+            ModuleConfig::Launcher(_) => "Launcher",
+            #[cfg(feature = "menu")]
+            ModuleConfig::Menu(_) => "Menu",
+            #[cfg(feature = "music")]
+            ModuleConfig::Music(_) => "Music",
+            #[cfg(feature = "network_manager")]
+            ModuleConfig::NetworkManager(_) => "NetworkManager",
+            #[cfg(feature = "notifications")]
+            ModuleConfig::Notifications(_) => "Notifications",
+            #[cfg(feature = "script")]
+            ModuleConfig::Script(_) => "Script",
+            #[cfg(feature = "sys_info")]
+            ModuleConfig::SysInfo(_) => "SysInfo",
+            #[cfg(feature = "tray")]
+            ModuleConfig::Tray(_) => "Tray",
+            #[cfg(feature = "upower")]
+            ModuleConfig::Upower(_) => "UPower",
+            #[cfg(feature = "volume")]
+            ModuleConfig::Volume(_) => "Volume",
+            #[cfg(feature = "workspaces")]
+            ModuleConfig::Workspaces(_) => "Workspaces",
+            // in case no modules are compiled
+            #[allow(unreachable_patterns)]
+            _ => "",
+        }
+        .to_string()
     }
 }
 
@@ -272,12 +347,6 @@ pub struct BarConfig {
     #[serde(default)]
     pub autohide: Option<u64>,
 
-    /// The name of the GTK icon theme to use.
-    /// Leave unset to use the default Adwaita theme.
-    ///
-    /// **Default**: `null`
-    pub icon_theme: Option<String>,
-
     /// An array of modules to append to the start of the bar.
     /// Depending on the orientation, this is either the top of the left edge.
     ///
@@ -325,10 +394,12 @@ impl Default for BarConfig {
             height: default_bar_height(),
             start_hidden: None,
             autohide: None,
-            icon_theme: None,
+            #[cfg(feature = "label")]
             start: Some(vec![ModuleConfig::Label(
                 LabelModule::new("ℹ️ Using default config".to_string()).into(),
             )]),
+            #[cfg(not(feature = "label"))]
+            start: None,
             center,
             end,
             anchor_to_edges: default_true(),
@@ -376,6 +447,19 @@ pub struct Config {
     ///
     /// Providing this option overrides the single, global `bar` option.
     pub monitors: Option<HashMap<String, MonitorConfig>>,
+
+    /// The name of the GTK icon theme to use.
+    /// Leave unset to use the default Adwaita theme.
+    ///
+    /// **Default**: `null`
+    pub icon_theme: Option<String>,
+
+    /// Map of app IDs (or classes) to icon names,
+    /// overriding the app's default icon.
+    ///
+    /// **Default**: `{}`
+    #[serde(default)]
+    pub icon_overrides: HashMap<String, String>,
 }
 
 const fn default_layer() -> gtk_layer_shell::Layer {
@@ -396,4 +480,8 @@ pub const fn default_false() -> bool {
 
 pub const fn default_true() -> bool {
     true
+}
+
+pub fn default_launch_command() -> String {
+    String::from("gtk-launch {app_name}")
 }

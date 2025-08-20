@@ -5,26 +5,27 @@ mod label;
 mod progress;
 mod slider;
 
+use self::r#box::BoxWidget;
 use self::image::ImageWidget;
 use self::label::LabelWidget;
-use self::r#box::BoxWidget;
 use self::slider::SliderWidget;
+use crate::channels::AsyncSenderExt;
 use crate::config::{CommonConfig, ModuleConfig};
 use crate::modules::custom::button::ButtonWidget;
 use crate::modules::custom::progress::ProgressWidget;
 use crate::modules::{
-    wrap_widget, AnyModuleFactory, BarModuleFactory, Module, ModuleInfo, ModuleParts, ModulePopup,
-    ModuleUpdateEvent, PopupButton, PopupModuleFactory, WidgetContext,
+    AnyModuleFactory, BarModuleFactory, Module, ModuleInfo, ModuleParts, ModulePopup,
+    ModuleUpdateEvent, PopupButton, PopupModuleFactory, WidgetContext, wrap_widget,
 };
 use crate::script::Script;
-use crate::{module_impl, send_async, spawn};
+use crate::{module_impl, spawn};
 use color_eyre::Result;
 use gtk::prelude::*;
-use gtk::{Button, IconTheme, Orientation};
+use gtk::{Button, Orientation};
 use serde::Deserialize;
 use std::cell::RefCell;
 use std::rc::Rc;
-use tokio::sync::{broadcast, mpsc};
+use tokio::sync::mpsc;
 use tracing::{debug, error};
 
 #[derive(Debug, Deserialize, Clone)]
@@ -91,9 +92,10 @@ struct CustomWidgetContext<'a> {
     info: &'a ModuleInfo<'a>,
     tx: &'a mpsc::Sender<ExecEvent>,
     bar_orientation: Orientation,
-    icon_theme: &'a IconTheme,
+    is_popup: bool,
     popup_buttons: Rc<RefCell<Vec<Button>>>,
     module_factory: AnyModuleFactory,
+    image_provider: crate::image::Provider,
 }
 
 trait CustomWidget {
@@ -132,7 +134,7 @@ pub fn set_length<W: WidgetExt>(widget: &W, length: i32, bar_orientation: Orient
         Orientation::Horizontal => widget.set_width_request(length),
         Orientation::Vertical => widget.set_height_request(length),
         _ => {}
-    };
+    }
 }
 
 impl WidgetOrModule {
@@ -202,16 +204,14 @@ impl Module<gtk::Box> for CustomModule {
                     debug!("executing command: '{}'", script.cmd);
 
                     let args = event.args.unwrap_or_default();
-
-                    if let Err(err) = script.get_output(Some(&args)).await {
-                        error!("{err:?}");
-                    }
+                    script.run_as_oneshot(Some(&args));
                 } else if event.cmd == "popup:toggle" {
-                    send_async!(tx, ModuleUpdateEvent::TogglePopup(event.id));
+                    tx.send_expect(ModuleUpdateEvent::TogglePopup(event.id))
+                        .await;
                 } else if event.cmd == "popup:open" {
-                    send_async!(tx, ModuleUpdateEvent::OpenPopup(event.id));
+                    tx.send_expect(ModuleUpdateEvent::OpenPopup(event.id)).await;
                 } else if event.cmd == "popup:close" {
-                    send_async!(tx, ModuleUpdateEvent::ClosePopup);
+                    tx.send_expect(ModuleUpdateEvent::ClosePopup).await;
                 } else {
                     error!("Received invalid command: '{}'", event.cmd);
                 }
@@ -235,10 +235,11 @@ impl Module<gtk::Box> for CustomModule {
             info,
             tx: &context.controller_tx,
             bar_orientation: orientation,
-            icon_theme: info.icon_theme,
+            is_popup: false,
             popup_buttons: popup_buttons.clone(),
             module_factory: BarModuleFactory::new(context.ironbar.clone(), context.popup.clone())
                 .into(),
+            image_provider: context.ironbar.image_provider(),
         };
 
         self.bar.clone().into_iter().for_each(|widget| {
@@ -257,12 +258,7 @@ impl Module<gtk::Box> for CustomModule {
             .map_or(usize::MAX, PopupButton::popup_id);
 
         let popup = self
-            .into_popup(
-                context.controller_tx.clone(),
-                context.subscribe(),
-                context,
-                info,
-            )
+            .into_popup(context, info)
             .into_popup_parts_owned(popup_buttons.take());
 
         Ok(ModuleParts {
@@ -273,8 +269,6 @@ impl Module<gtk::Box> for CustomModule {
 
     fn into_popup(
         self,
-        tx: mpsc::Sender<Self::ReceiveMessage>,
-        _rx: broadcast::Receiver<Self::SendMessage>,
         context: WidgetContext<Self::SendMessage, Self::ReceiveMessage>,
         info: &ModuleInfo,
     ) -> Option<gtk::Box>
@@ -286,10 +280,11 @@ impl Module<gtk::Box> for CustomModule {
         if let Some(popup) = self.popup {
             let custom_context = CustomWidgetContext {
                 info,
-                tx: &tx,
-                bar_orientation: info.bar_position.orientation(),
-                icon_theme: info.icon_theme,
+                tx: &context.controller_tx,
+                bar_orientation: Orientation::Horizontal,
+                is_popup: true,
                 popup_buttons: Rc::new(RefCell::new(vec![])),
+                image_provider: context.ironbar.image_provider(),
                 module_factory: PopupModuleFactory::new(
                     context.ironbar,
                     context.popup,

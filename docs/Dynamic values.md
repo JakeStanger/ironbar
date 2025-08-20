@@ -25,7 +25,7 @@ Dynamic booleans can use a single source of either a script or variable to contr
 
 For scripts, you can just write these directly with no notation. 
 Only polling scripts are supported. 
-The script exit code is used, where `0` is `true` and any other code is `false.
+The script exit code is used, where `0` is `true` and any other code is `false`.
 
 For variables, use the standard `#name` notation. 
 An empty string, `0` and `false` are treated as false. 

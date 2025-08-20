@@ -1,12 +1,11 @@
 use super::manager::DataControlDeviceManagerState;
 use crate::lock;
-use nix::fcntl::OFlag;
-use nix::unistd::pipe2;
+use rustix::pipe::{PipeFlags, pipe_with};
 use smithay_client_toolkit::data_device_manager::data_offer::DataOfferError;
-use smithay_client_toolkit::data_device_manager::ReadPipe;
 use std::ops::DerefMut;
 use std::os::fd::AsFd;
 use std::sync::{Arc, Mutex};
+use tokio::net::unix::pipe::Receiver;
 use tracing::trace;
 use wayland_client::{Connection, Dispatch, Proxy, QueueHandle};
 use wayland_protocols_wlr::data_control::v1::client::zwlr_data_control_offer_v1::{
@@ -36,8 +35,8 @@ impl PartialEq for SelectionOffer {
 }
 
 impl SelectionOffer {
-    pub fn receive(&self, mime_type: String) -> Result<ReadPipe, DataOfferError> {
-        unsafe { receive(&self.data_offer, mime_type) }.map_err(DataOfferError::Io)
+    pub fn receive(&self, mime_type: String) -> Result<Receiver, DataOfferError> {
+        receive(&self.data_offer, mime_type).map_err(DataOfferError::Io)
     }
 }
 
@@ -169,14 +168,11 @@ where
 ///
 /// Fails if too many file descriptors were already open and a pipe
 /// could not be created.
-pub unsafe fn receive(
-    offer: &ZwlrDataControlOfferV1,
-    mime_type: String,
-) -> std::io::Result<ReadPipe> {
+pub fn receive(offer: &ZwlrDataControlOfferV1, mime_type: String) -> std::io::Result<Receiver> {
     // create a pipe
-    let (readfd, writefd) = pipe2(OFlag::O_CLOEXEC)?;
+    let (readfd, writefd) = pipe_with(PipeFlags::CLOEXEC)?;
 
     offer.receive(mime_type, writefd.as_fd());
 
-    Ok(ReadPipe::from(readfd))
+    Receiver::from_owned_fd(readfd)
 }

@@ -1,9 +1,9 @@
-use crate::dynamic_value::{dynamic_string, DynamicBool};
+use crate::dynamic_value::{DynamicBool, dynamic_string};
 use crate::script::{Script, ScriptInput};
 use glib::Propagation;
 use gtk::gdk::ScrollDirection;
 use gtk::prelude::*;
-use gtk::{EventBox, Orientation, Revealer, RevealerTransitionType};
+use gtk::{EventBox, Justification, Orientation, Revealer, RevealerTransitionType};
 use serde::Deserialize;
 use tracing::trace;
 
@@ -198,6 +198,28 @@ impl From<ModuleOrientation> for Orientation {
     }
 }
 
+#[derive(Debug, Default, Deserialize, Clone, Copy)]
+#[serde(rename_all = "snake_case")]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+pub enum ModuleJustification {
+    #[default]
+    Left,
+    Right,
+    Center,
+    Fill,
+}
+
+impl From<ModuleJustification> for Justification {
+    fn from(o: ModuleJustification) -> Self {
+        match o {
+            ModuleJustification::Left => Self::Left,
+            ModuleJustification::Right => Self::Right,
+            ModuleJustification::Center => Self::Center,
+            ModuleJustification::Fill => Self::Fill,
+        }
+    }
+}
+
 impl TransitionType {
     pub const fn to_revealer_transition_type(
         &self,
@@ -246,6 +268,13 @@ impl CommonConfig {
             let script = match event.direction() {
                 ScrollDirection::Up => scroll_up_script.as_ref(),
                 ScrollDirection::Down => scroll_down_script.as_ref(),
+                ScrollDirection::Smooth => {
+                    if event.scroll_deltas().unwrap_or_default().1 > 0.0 {
+                        scroll_down_script.as_ref()
+                    } else {
+                        scroll_up_script.as_ref()
+                    }
+                }
                 _ => None,
             };
 
@@ -272,8 +301,7 @@ impl CommonConfig {
         install_oneshot!(self.on_mouse_exit, connect_leave_notify_event);
 
         if let Some(tooltip) = self.tooltip {
-            let container = container.clone();
-            dynamic_string(&tooltip, move |string| {
+            dynamic_string(&tooltip, container, move |container, string| {
                 container.set_tooltip_text(Some(&string));
             });
         }
@@ -285,19 +313,15 @@ impl CommonConfig {
                 container.show_all();
             },
             |show_if| {
+                // need to keep clone here for the notify callback
                 let container = container.clone();
 
-                {
-                    let revealer = revealer.clone();
-                    let container = container.clone();
-
-                    show_if.subscribe(move |success| {
-                        if success {
-                            container.show_all();
-                        }
-                        revealer.set_reveal_child(success);
-                    });
-                }
+                show_if.subscribe((revealer, &container), |(revealer, container), success| {
+                    if success {
+                        container.show_all();
+                    }
+                    revealer.set_reveal_child(success);
+                });
 
                 revealer.connect_child_revealed_notify(move |revealer| {
                     if !revealer.reveals_child() {

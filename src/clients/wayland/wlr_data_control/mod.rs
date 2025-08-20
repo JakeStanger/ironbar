@@ -4,35 +4,35 @@ pub mod offer;
 pub mod source;
 
 use self::device::{DataControlDeviceDataExt, DataControlDeviceHandler};
-use self::offer::{DataControlDeviceOffer, DataControlOfferHandler, SelectionOffer};
+use self::offer::{DataControlDeviceOffer, DataControlOfferHandler};
 use self::source::DataControlSourceHandler;
 use super::{Client, Environment, Event, Request, Response};
-use crate::{lock, try_send, Ironbar};
+use crate::channels::AsyncSenderExt;
+use crate::{Ironbar, lock, spawn};
+use color_eyre::Result;
 use device::DataControlDevice;
 use glib::Bytes;
-use nix::fcntl::{fcntl, F_GETPIPE_SZ, F_SETPIPE_SZ};
-use nix::sys::epoll::{Epoll, EpollCreateFlags, EpollEvent, EpollFlags, EpollTimeout};
+use rustix::buffer::spare_capacity;
+use rustix::event::epoll;
+use rustix::event::epoll::CreateFlags;
+use rustix::fs::Timespec;
+use rustix::pipe::{fcntl_getpipe_size, fcntl_setpipe_size};
 use smithay_client_toolkit::data_device_manager::WritePipe;
-use smithay_client_toolkit::reexports::calloop::{PostAction, RegistrationToken};
 use std::cmp::min;
 use std::fmt::{Debug, Formatter};
 use std::fs::File;
-use std::io::{ErrorKind, Read, Write};
-use std::os::fd::{AsRawFd, OwnedFd, RawFd};
+use std::io::Write;
+use std::os::fd::{AsFd, BorrowedFd, OwnedFd};
 use std::sync::Arc;
+use std::time::Duration;
 use std::{fs, io};
+use tokio::io::AsyncReadExt;
 use tokio::sync::broadcast;
 use tracing::{debug, error, trace};
 use wayland_client::{Connection, QueueHandle};
 use wayland_protocols_wlr::data_control::v1::client::zwlr_data_control_source_v1::ZwlrDataControlSourceV1;
 
 const INTERNAL_MIME_TYPE: &str = "x-ironbar-internal";
-
-#[derive(Debug)]
-pub struct SelectionOfferItem {
-    offer: SelectionOffer,
-    token: Option<RegistrationToken>,
-}
 
 /// Represents a value which can be read/written
 /// to/from the system clipboard and surrounding metadata.
@@ -148,6 +148,11 @@ impl Environment {
     pub fn copy_to_clipboard(&mut self, item: ClipboardItem) {
         debug!("Copying item to clipboard: {item:?}");
 
+        let Some(data_control_device_manager) = &self.data_control_device_manager_state else {
+            error!("data_control_device_manager not available, cannot copy");
+            return;
+        };
+
         let seat = self.default_seat();
         let Some(device) = self
             .data_control_devices
@@ -157,9 +162,8 @@ impl Environment {
             return;
         };
 
-        let source = self
-            .data_control_device_manager_state
-            .create_copy_paste_source(&self.queue_handle, [INTERNAL_MIME_TYPE, &item.mime_type]);
+        let source = data_control_device_manager
+            .create_copy_paste_source(&self.queue_handle, [&item.mime_type, INTERNAL_MIME_TYPE]);
 
         source.set_selection(&device.device);
         self.copy_paste_sources.push(source);
@@ -168,22 +172,20 @@ impl Environment {
     }
 
     /// Reads an offer file handle into a new `ClipboardItem`.
-    fn read_file(mime_type: &MimeType, file: &mut File) -> io::Result<ClipboardItem> {
+    async fn read_file(
+        mime_type: &MimeType,
+        file: &mut tokio::net::unix::pipe::Receiver,
+    ) -> io::Result<ClipboardItem> {
+        let mut buf = vec![];
+        file.read_to_end(&mut buf).await?;
+
         let value = match mime_type.category {
             MimeTypeCategory::Text => {
-                let mut txt = String::new();
-                file.read_to_string(&mut txt)?;
-
+                let txt = String::from_utf8_lossy(&buf).to_string();
                 ClipboardValue::Text(txt)
             }
             MimeTypeCategory::Image => {
-                let mut bytes = vec![];
-                file.read_to_end(&mut bytes)?;
-
-                debug!("Read bytes: {}", bytes.len());
-
-                let bytes = Bytes::from(&bytes);
-
+                let bytes = Bytes::from(&buf);
                 ClipboardValue::Image(bytes)
             }
         };
@@ -214,68 +216,33 @@ impl DataControlDeviceHandler for Environment {
         }
 
         if let Some(offer) = data_device.selection_offer() {
-            self.selection_offers
-                .push(SelectionOfferItem { offer, token: None });
-
-            let cur_offer = self
-                .selection_offers
-                .last_mut()
-                .expect("Failed to get current offer");
-
             // clear prev
             let Some(mime_type) = MimeType::parse_multiple(&mime_types) else {
                 lock!(self.clipboard).take();
                 // send an event so the clipboard module is aware it's changed
-                try_send!(
-                    self.event_tx,
-                    Event::Clipboard(ClipboardItem {
-                        id: usize::MAX,
-                        mime_type: String::new().into(),
-                        value: Arc::new(ClipboardValue::Other)
-                    })
-                );
+                self.event_tx.send_spawn(Event::Clipboard(ClipboardItem {
+                    id: usize::MAX,
+                    mime_type: String::new().into(),
+                    value: Arc::new(ClipboardValue::Other),
+                }));
+
                 return;
             };
 
             debug!("Receiving mime type: {}", mime_type.value);
-
-            if let Ok(read_pipe) = cur_offer.offer.receive(mime_type.value.clone()) {
-                let offer_clone = cur_offer.offer.clone();
-
+            if let Ok(mut read_pipe) = offer.receive(mime_type.value.clone()) {
                 let tx = self.event_tx.clone();
                 let clipboard = self.clipboard.clone();
 
-                let token =
-                    self.loop_handle
-                        .insert_source(read_pipe, move |(), file, state| unsafe {
-                            let item = state
-                                .selection_offers
-                                .iter()
-                                .position(|o| o.offer == offer_clone)
-                                .map(|p| state.selection_offers.remove(p))
-                                .expect("Failed to find selection offer item");
-
-                            match Self::read_file(&mime_type, file.get_mut()) {
-                                Ok(item) => {
-                                    lock!(clipboard).replace(item.clone());
-                                    try_send!(tx, Event::Clipboard(item));
-                                }
-                                Err(err) => error!("{err:?}"),
-                            }
-
-                            state
-                                .loop_handle
-                                .remove(item.token.expect("Missing item token"));
-
-                            PostAction::Remove
-                        });
-
-                match token {
-                    Ok(token) => {
-                        cur_offer.token.replace(token);
+                spawn(async move {
+                    match Self::read_file(&mime_type, &mut read_pipe).await {
+                        Ok(item) => {
+                            lock!(clipboard).replace(item.clone());
+                            tx.send_spawn(Event::Clipboard(item));
+                        }
+                        Err(err) => error!("{err:?}"),
                     }
-                    Err(err) => error!("Failed to insert read pipe event: {err:?}"),
-                }
+                });
             }
         }
     }
@@ -313,7 +280,7 @@ impl DataControlSourceHandler for Environment {
         source: &ZwlrDataControlSourceV1,
         mime: String,
         write_pipe: WritePipe,
-    ) {
+    ) -> Result<()> {
         debug!("Handler received source send request event ({mime})");
 
         if let Some(item) = lock!(self.clipboard).clone() {
@@ -330,32 +297,34 @@ impl DataControlSourceHandler for Environment {
                     ClipboardValue::Image(bytes) => bytes.as_ref(),
                     ClipboardValue::Other => panic!(
                         "{:?}",
-                        io::Error::new(ErrorKind::Other, "Attempted to copy unsupported mime type")
+                        io::Error::other("Attempted to copy unsupported mime type")
                     ),
                 };
 
-                let pipe_size = set_pipe_size(fd.as_raw_fd(), bytes.len())
-                    .expect("Failed to increase pipe size");
+                let pipe_size =
+                    set_pipe_size(fd.as_fd(), bytes.len()).expect("Failed to increase pipe size");
                 let mut file = File::from(fd.try_clone().expect("to be able to clone"));
 
                 debug!("Writing {} bytes", bytes.len());
 
-                let mut events = (0..16).map(|_| EpollEvent::empty()).collect::<Vec<_>>();
-                let epoll_event = EpollEvent::new(EpollFlags::EPOLLOUT, 0);
+                let epoll = epoll::create(CreateFlags::CLOEXEC)?;
+                epoll::add(
+                    &epoll,
+                    fd,
+                    epoll::EventData::new_u64(0),
+                    epoll::EventFlags::OUT,
+                )?;
 
-                let epoll_fd =
-                    Epoll::new(EpollCreateFlags::empty()).expect("to get valid file descriptor");
-                epoll_fd
-                    .add(fd, epoll_event)
-                    .expect("to send valid epoll operation");
+                let mut events = Vec::with_capacity(16);
 
-                let timeout = EpollTimeout::from(100u16);
                 while !bytes.is_empty() {
-                    let chunk = &bytes[..min(pipe_size as usize, bytes.len())];
+                    let chunk = &bytes[..min(pipe_size, bytes.len())];
 
-                    epoll_fd
-                        .wait(&mut events, timeout)
-                        .expect("Failed to wait to epoll");
+                    epoll::wait(
+                        &epoll,
+                        spare_capacity(&mut events),
+                        Some(&Timespec::try_from(Duration::from_millis(100))?),
+                    )?;
 
                     match file.write(chunk) {
                         Ok(written) => {
@@ -371,9 +340,11 @@ impl DataControlSourceHandler for Environment {
 
                 debug!("Done writing");
             } else {
-                error!("Failed to find source");
+                error!("Failed to find source (mime: '{mime}')");
             }
         }
+
+        Ok(())
     }
 
     fn cancelled(
@@ -398,7 +369,7 @@ impl DataControlSourceHandler for Environment {
 /// it will be clamped at this.
 ///
 /// Returns the new size if succeeded.
-fn set_pipe_size(fd: RawFd, size: usize) -> io::Result<i32> {
+fn set_pipe_size(fd: BorrowedFd, size: usize) -> io::Result<usize> {
     // clamp size at kernel max
     let max_pipe_size = fs::read_to_string("/proc/sys/fs/pipe-max-size")
         .expect("Failed to find pipe-max-size virtual kernel file")
@@ -408,23 +379,24 @@ fn set_pipe_size(fd: RawFd, size: usize) -> io::Result<i32> {
 
     let size = min(size, max_pipe_size);
 
-    let curr_size = fcntl(fd, F_GETPIPE_SZ)? as usize;
+    let curr_size = fcntl_getpipe_size(fd)?;
 
     trace!("Current pipe size: {curr_size}");
 
     let new_size = if size > curr_size {
         trace!("Requesting pipe size increase to (at least): {size}");
 
-        let res = fcntl(fd, F_SETPIPE_SZ(size as i32))?;
+        fcntl_setpipe_size(fd, size)?;
+        let res = fcntl_getpipe_size(fd)?;
         trace!("New pipe size: {res}");
 
-        if res < size as i32 {
+        if res < size {
             return Err(io::Error::last_os_error());
         }
 
         res
     } else {
-        size as i32
+        size
     };
 
     Ok(new_size)

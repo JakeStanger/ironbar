@@ -2,17 +2,18 @@ mod macros;
 mod wl_output;
 mod wl_seat;
 
-use crate::error::{ExitCode, ERR_CHANNEL_RECV};
-use crate::{arc_mut, lock, register_client, send, spawn, spawn_blocking};
+use crate::error::{ERR_CHANNEL_RECV, ExitCode};
+use crate::{arc_mut, lock, register_client, spawn, spawn_blocking};
 use std::process::exit;
 use std::sync::{Arc, Mutex};
 
+use crate::channels::SyncSenderExt;
 use calloop_channel::Event::Msg;
 use cfg_if::cfg_if;
-use color_eyre::Report;
+use color_eyre::{Help, Report};
 use smithay_client_toolkit::output::OutputState;
+use smithay_client_toolkit::reexports::calloop::EventLoop;
 use smithay_client_toolkit::reexports::calloop::channel as calloop_channel;
-use smithay_client_toolkit::reexports::calloop::{EventLoop, LoopHandle};
 use smithay_client_toolkit::reexports::calloop_wayland_source::WaylandSource;
 use smithay_client_toolkit::registry::{ProvidesRegistryState, RegistryState};
 use smithay_client_toolkit::seat::SeatState;
@@ -43,7 +44,6 @@ cfg_if! {
         use self::wlr_data_control::device::DataControlDevice;
         use self::wlr_data_control::manager::DataControlDeviceManagerState;
         use self::wlr_data_control::source::CopyPasteSource;
-        use self::wlr_data_control::SelectionOfferItem;
         use wayland_client::protocol::wl_seat::WlSeat;
 
         pub use wlr_data_control::{ClipboardItem, ClipboardValue};
@@ -76,6 +76,8 @@ pub enum Request {
     ToplevelInfoAll,
     #[cfg(feature = "launcher")]
     ToplevelFocus(usize),
+    #[cfg(feature = "launcher")]
+    ToplevelMinimize(usize),
 
     #[cfg(feature = "clipboard")]
     CopyToClipboard(ClipboardItem),
@@ -150,12 +152,12 @@ impl Client {
             spawn(async move {
                 while let Some(event) = event_rx.recv().await {
                     match event {
-                        Event::Output(event) => send!(output_tx, event),
+                        Event::Output(event) => output_tx.send_expect(event),
                         #[cfg(any(feature = "focused", feature = "launcher"))]
-                        Event::Toplevel(event) => send!(toplevel_tx, event),
+                        Event::Toplevel(event) => toplevel_tx.send_expect(event),
                         #[cfg(feature = "clipboard")]
-                        Event::Clipboard(item) => send!(clipboard_tx, item),
-                    };
+                        Event::Clipboard(item) => clipboard_tx.send_expect(item),
+                    }
                 }
             });
         }
@@ -175,7 +177,7 @@ impl Client {
     /// Sends a request to the environment event loop,
     /// and returns the response.
     fn send_request(&self, request: Request) -> Response {
-        send!(self.tx, request);
+        self.tx.send_expect(request);
         lock!(self.rx).recv().expect(ERR_CHANNEL_RECV)
     }
 
@@ -193,7 +195,6 @@ pub struct Environment {
     seat_state: SeatState,
 
     queue_handle: QueueHandle<Self>,
-    loop_handle: LoopHandle<'static, Self>,
 
     event_tx: mpsc::Sender<Event>,
     response_tx: std::sync::mpsc::Sender<Response>,
@@ -204,14 +205,12 @@ pub struct Environment {
 
     // -- clipboard --
     #[cfg(feature = "clipboard")]
-    data_control_device_manager_state: DataControlDeviceManagerState,
+    data_control_device_manager_state: Option<DataControlDeviceManagerState>,
 
     #[cfg(feature = "clipboard")]
     data_control_devices: Vec<DataControlDeviceEntry>,
     #[cfg(feature = "clipboard")]
     copy_paste_sources: Vec<CopyPasteSource>,
-    #[cfg(feature = "clipboard")]
-    selection_offers: Vec<SelectionOfferItem>,
 
     // local state
     #[cfg(feature = "clipboard")]
@@ -265,12 +264,30 @@ impl Environment {
         let output_state = OutputState::new(&globals, &qh);
         let seat_state = SeatState::new(&globals, &qh);
         #[cfg(any(feature = "focused", feature = "launcher"))]
-        ToplevelManagerState::bind(&globals, &qh)
-            .expect("to bind to wlr_foreign_toplevel_manager global");
+        if let Err(err) = ToplevelManagerState::bind(&globals, &qh) {
+            error!("{:?}",
+                Report::new(err)
+                    .wrap_err("Failed to bind to wlr_foreign_toplevel_manager global")
+                    .note("This is likely a due to the current compositor not supporting the required protocol")
+                    .note("launcher and focused modules will not work")
+            );
+        }
 
         #[cfg(feature = "clipboard")]
-        let data_control_device_manager_state = DataControlDeviceManagerState::bind(&globals, &qh)
-            .expect("to bind to wlr_data_control_device_manager global");
+        let data_control_device_manager_state = match DataControlDeviceManagerState::bind(
+            &globals, &qh,
+        ) {
+            Ok(state) => Some(state),
+            Err(err) => {
+                error!("{:?}",
+                    Report::new(err)
+                        .wrap_err("Failed to bind to wlr_data_control_device global")
+                        .note("This is likely a due to the current compositor not supporting the required protocol")
+                        .note("clipboard module will not work")
+                    );
+                None
+            }
+        };
 
         let mut env = Self {
             registry_state,
@@ -279,7 +296,6 @@ impl Environment {
             #[cfg(feature = "clipboard")]
             data_control_device_manager_state,
             queue_handle: qh,
-            loop_handle: loop_handle.clone(),
             event_tx,
             response_tx,
             #[cfg(any(feature = "focused", feature = "launcher"))]
@@ -289,8 +305,6 @@ impl Environment {
             data_control_devices: vec![],
             #[cfg(feature = "clipboard")]
             copy_paste_sources: vec![],
-            #[cfg(feature = "clipboard")]
-            selection_offers: vec![],
             #[cfg(feature = "clipboard")]
             clipboard: arc_mut!(None),
         };
@@ -320,12 +334,12 @@ impl Environment {
         match event {
             Msg(Request::Roundtrip) => {
                 debug!("received roundtrip request");
-                send!(env.response_tx, Response::Ok);
+                env.response_tx.send_expect(Response::Ok);
             }
             #[cfg(feature = "ipc")]
             Msg(Request::OutputInfoAll) => {
                 let infos = env.output_info_all();
-                send!(env.response_tx, Response::OutputInfoAll(infos));
+                env.response_tx.send_expect(Response::OutputInfoAll(infos));
             }
             #[cfg(any(feature = "focused", feature = "launcher"))]
             Msg(Request::ToplevelInfoAll) => {
@@ -334,31 +348,46 @@ impl Environment {
                     .iter()
                     .filter_map(ToplevelHandle::info)
                     .collect();
-                send!(env.response_tx, Response::ToplevelInfoAll(infos));
+
+                env.response_tx
+                    .send_expect(Response::ToplevelInfoAll(infos));
             }
             #[cfg(feature = "launcher")]
             Msg(Request::ToplevelFocus(id)) => {
                 let handle = env
                     .handles
                     .iter()
-                    .find(|handle| handle.info().map_or(false, |info| info.id == id));
+                    .find(|handle| handle.info().is_some_and(|info| info.id == id));
 
                 if let Some(handle) = handle {
                     let seat = env.default_seat();
                     handle.focus(&seat);
                 }
 
-                send!(env.response_tx, Response::Ok);
+                env.response_tx.send_expect(Response::Ok);
+            }
+            #[cfg(feature = "launcher")]
+            Msg(Request::ToplevelMinimize(id)) => {
+                let handle = env
+                    .handles
+                    .iter()
+                    .find(|handle| handle.info().is_some_and(|info| info.id == id));
+
+                if let Some(handle) = handle {
+                    handle.minimize();
+                }
+
+                env.response_tx.send_expect(Response::Ok);
             }
             #[cfg(feature = "clipboard")]
             Msg(Request::CopyToClipboard(item)) => {
                 env.copy_to_clipboard(item);
-                send!(env.response_tx, Response::Ok);
+                env.response_tx.send_expect(Response::Ok);
             }
             #[cfg(feature = "clipboard")]
             Msg(Request::ClipboardItem) => {
                 let item = lock!(env.clipboard).clone();
-                send!(env.response_tx, Response::ClipboardItem(item));
+                env.response_tx.send_expect(Response::ClipboardItem(item));
             }
             calloop_channel::Event::Closed => error!("request channel unexpectedly closed"),
         }

@@ -1,85 +1,66 @@
-use super::{Visibility, Workspace, WorkspaceClient, WorkspaceUpdate};
-use crate::{await_sync, send, spawn};
-use color_eyre::{Report, Result};
-use futures_lite::StreamExt;
-use std::sync::Arc;
-use swayipc_async::{Connection, Event, EventType, Node, WorkspaceChange, WorkspaceEvent};
-use tokio::sync::broadcast::{channel, Receiver, Sender};
-use tokio::sync::Mutex;
-use tracing::{info, trace};
+use super::{Visibility, Workspace};
+use crate::channels::SyncSenderExt;
+use crate::clients::sway::Client;
+use crate::{await_sync, error, spawn};
+use color_eyre::Report;
+use swayipc_async::{InputChange, InputEvent, Node, WorkspaceChange, WorkspaceEvent};
+use tokio::sync::broadcast::{Receiver, channel};
 
-#[derive(Debug)]
-pub struct Client {
-    client: Arc<Mutex<Connection>>,
-    workspace_tx: Sender<WorkspaceUpdate>,
-    _workspace_rx: Receiver<WorkspaceUpdate>,
-}
+#[cfg(feature = "workspaces")]
+use super::WorkspaceUpdate;
 
-impl Client {
-    pub(crate) async fn new() -> Result<Self> {
-        // Avoid using `arc_mut!` here because we need tokio Mutex.
-        let client = Arc::new(Mutex::new(Connection::new().await?));
-        info!("Sway IPC subscription client connected");
+#[cfg(feature = "workspaces+sway")]
+impl super::WorkspaceClient for Client {
+    fn focus(&self, id: i64) {
+        let client = self.connection().clone();
+        spawn(async move {
+            let mut client = client.lock().await;
 
-        let (workspace_tx, workspace_rx) = channel(16);
+            let name = client
+                .get_workspaces()
+                .await?
+                .into_iter()
+                .find(|w| w.id == id)
+                .map(|w| w.name);
 
-        {
-            // create 2nd client as subscription takes ownership
-            let client = Connection::new().await?;
-            let workspace_tx = workspace_tx.clone();
+            let Some(name) = name else {
+                return Err(Report::msg(format!("couldn't find workspace with id {id}")));
+            };
 
-            spawn(async move {
-                let event_types = [EventType::Workspace];
-                let mut events = client.subscribe(event_types).await?;
+            if let Err(e) = client.run_command(format!("workspace {name}")).await {
+                return Err(Report::msg(format!(
+                    "Couldn't focus workspace '{id}': {e:#}"
+                )));
+            }
 
-                while let Some(event) = events.next().await {
-                    trace!("event: {:?}", event);
-                    if let Event::Workspace(event) = event? {
-                        let event = WorkspaceUpdate::from(*event);
-                        if !matches!(event, WorkspaceUpdate::Unknown) {
-                            workspace_tx.send(event)?;
-                        }
-                    };
-                }
-
-                Ok::<(), Report>(())
-            });
-        }
-
-        Ok(Self {
-            client,
-            workspace_tx,
-            _workspace_rx: workspace_rx,
-        })
-    }
-}
-
-impl WorkspaceClient for Client {
-    fn focus(&self, id: String) -> Result<()> {
-        await_sync(async move {
-            let mut client = self.client.lock().await;
-            client.run_command(format!("workspace {id}")).await
-        })?;
-        Ok(())
+            Ok(())
+        });
     }
 
-    fn subscribe_workspace_change(&self) -> Receiver<WorkspaceUpdate> {
-        let rx = self.workspace_tx.subscribe();
+    fn subscribe(&self) -> Receiver<WorkspaceUpdate> {
+        let (tx, rx) = channel(16);
 
-        {
-            let tx = self.workspace_tx.clone();
-            let client = self.client.clone();
+        let client = self.connection().clone();
 
-            await_sync(async {
-                let mut client = client.lock().await;
-                let workspaces = client.get_workspaces().await.expect("to get workspaces");
+        // TODO: this needs refactoring
+        await_sync(async {
+            let mut client = client.lock().await;
+            let workspaces = client.get_workspaces().await.expect("to get workspaces");
 
-                let event =
-                    WorkspaceUpdate::Init(workspaces.into_iter().map(Workspace::from).collect());
+            let event =
+                WorkspaceUpdate::Init(workspaces.into_iter().map(Workspace::from).collect());
 
-                send!(tx, event);
-            });
-        }
+            tx.send_expect(event);
+
+            drop(client);
+
+            self.add_listener::<WorkspaceEvent>(move |event| {
+                let update = WorkspaceUpdate::from(event.clone());
+                tx.send_expect(update);
+            })
+            .await
+            .expect("to add listener");
+        });
 
         rx
     }
@@ -135,6 +116,7 @@ impl From<&swayipc_async::Workspace> for Visibility {
     }
 }
 
+#[cfg(feature = "workspaces")]
 impl From<WorkspaceEvent> for WorkspaceUpdate {
     fn from(event: WorkspaceEvent) -> Self {
         match event.change {
@@ -151,7 +133,136 @@ impl From<WorkspaceEvent> for WorkspaceUpdate {
             WorkspaceChange::Move => {
                 Self::Move(event.current.expect("Missing current workspace").into())
             }
+            WorkspaceChange::Rename => {
+                if let Some(node) = event.current {
+                    Self::Rename {
+                        id: node.id,
+                        name: node.name.unwrap_or_default(),
+                    }
+                } else {
+                    Self::Unknown
+                }
+            }
+            WorkspaceChange::Urgent => {
+                if let Some(node) = event.current {
+                    Self::Urgent {
+                        id: node.id,
+                        urgent: node.urgent,
+                    }
+                } else {
+                    Self::Unknown
+                }
+            }
             _ => Self::Unknown,
         }
+    }
+}
+
+#[cfg(feature = "keyboard+sway")]
+use super::{KeyboardLayoutClient, KeyboardLayoutUpdate};
+
+#[cfg(feature = "keyboard+sway")]
+impl KeyboardLayoutClient for Client {
+    fn set_next_active(&self) {
+        let client = self.connection().clone();
+        spawn(async move {
+            let mut client = client.lock().await;
+
+            let inputs = client.get_inputs().await.expect("to get inputs");
+
+            if let Some(keyboard) = inputs
+                .into_iter()
+                .find(|i| i.xkb_active_layout_name.is_some())
+            {
+                if let Err(e) = client
+                    .run_command(format!(
+                        "input {} xkb_switch_layout next",
+                        keyboard.identifier
+                    ))
+                    .await
+                {
+                    error!("Failed to switch keyboard layout due to Sway error: {e}");
+                }
+            } else {
+                error!("Failed to get keyboard identifier from Sway");
+            }
+        });
+    }
+
+    fn subscribe(&self) -> Receiver<KeyboardLayoutUpdate> {
+        let (tx, rx) = channel(16);
+
+        let client = self.connection().clone();
+
+        await_sync(async {
+            let mut client = client.lock().await;
+            let inputs = client.get_inputs().await.expect("to get inputs");
+
+            if let Some(layout) = inputs.into_iter().find_map(|i| i.xkb_active_layout_name) {
+                tx.send_expect(KeyboardLayoutUpdate(layout));
+            } else {
+                error!("Failed to get keyboard layout from Sway!");
+            }
+
+            drop(client);
+
+            self.add_listener::<InputEvent>(move |event| {
+                if let Ok(layout) = KeyboardLayoutUpdate::try_from(event.clone()) {
+                    tx.send_expect(layout);
+                }
+            })
+            .await
+            .expect("to add listener");
+        });
+
+        rx
+    }
+}
+
+#[cfg(feature = "keyboard+sway")]
+impl TryFrom<InputEvent> for KeyboardLayoutUpdate {
+    type Error = ();
+
+    fn try_from(value: InputEvent) -> Result<Self, Self::Error> {
+        match value.change {
+            InputChange::XkbLayout => {
+                if let Some(layout) = value.input.xkb_active_layout_name {
+                    Ok(KeyboardLayoutUpdate(layout))
+                } else {
+                    Err(())
+                }
+            }
+            _ => Err(()),
+        }
+    }
+}
+
+#[cfg(feature = "bindmode+sway")]
+use super::{BindModeClient, BindModeUpdate};
+
+#[cfg(feature = "bindmode+sway")]
+impl BindModeClient for Client {
+    fn subscribe(&self) -> Result<Receiver<BindModeUpdate>, Report> {
+        let (tx, rx) = channel(16);
+        await_sync(async {
+            self.add_listener::<swayipc_async::ModeEvent>(move |mode| {
+                tracing::trace!("mode: {:?}", mode);
+
+                // when no binding is active the bindmode is named "default", but we must display
+                // nothing in this case.
+                let name = if mode.change == "default" {
+                    String::new()
+                } else {
+                    mode.change.clone()
+                };
+
+                tx.send_expect(BindModeUpdate {
+                    name,
+                    pango_markup: mode.pango_markup,
+                });
+            })
+            .await
+        })?;
+        Ok(rx)
     }
 }

@@ -1,7 +1,19 @@
-#[cfg(any(feature = "music", feature = "workspaces", feature = "clipboard"))]
+#[cfg(any(
+    feature = "clipboard",
+    feature = "keyboard",
+    feature = "launcher",
+    feature = "music",
+    feature = "workspaces",
+))]
 mod gtk;
 mod provider;
 
-#[cfg(any(feature = "music", feature = "workspaces"))]
+#[cfg(any(
+    feature = "clipboard",
+    feature = "keyboard",
+    feature = "launcher",
+    feature = "music",
+    feature = "workspaces",
+))]
 pub use self::gtk::*;
-pub use provider::ImageProvider;
+pub use provider::{Provider, create_and_load_surface};

@@ -1,6 +1,7 @@
-use super::{MusicClient, PlayerState, PlayerUpdate, Status, Track, TICK_INTERVAL_MS};
+use super::{MusicClient, PlayerState, PlayerUpdate, Status, TICK_INTERVAL_MS, Track};
+use crate::channels::SyncSenderExt;
 use crate::clients::music::ProgressTick;
-use crate::{arc_mut, lock, send, spawn_blocking};
+use crate::{arc_mut, lock, spawn_blocking};
 use color_eyre::Result;
 use mpris::{DBusError, Event, Metadata, PlaybackStatus, Player, PlayerFinder};
 use std::cmp;
@@ -47,10 +48,14 @@ impl Client {
                         )) if transport_error.name() == Some(NO_ACTIVE_PLAYER)
                             || transport_error.name() == Some(NO_REPLY) =>
                         {
-                            Vec::new()
+                            vec![]
                         }
-                        _ => panic!("Failed to connect to D-Bus"),
+                        _ => {
+                            error!("D-Bus error getting MPRIS players: {e:?}");
+                            vec![]
+                        }
                     });
+
                     // Acquire the lock of current_player before players to avoid deadlock.
                     // There are places where we lock on current_player and players, but we always lock on current_player first.
                     // This is because we almost never need to lock on players without locking on current_player.
@@ -133,7 +138,7 @@ impl Client {
                     let mut players_locked = lock!(players);
                     players_locked.remove(identity);
                     if players_locked.is_empty() {
-                        send!(tx, PlayerUpdate::Update(Box::new(None), Status::default()));
+                        tx.send_expect(PlayerUpdate::Update(Box::new(None), Status::default()));
                     }
                 };
 
@@ -208,7 +213,7 @@ impl Client {
         let track = Track::from(metadata);
 
         let player_update = PlayerUpdate::Update(Box::new(Some(track)), status);
-        send!(tx, player_update);
+        tx.send_expect(player_update);
 
         Ok(())
     }
@@ -238,7 +243,7 @@ impl Client {
                     duration: metadata.length(),
                 });
 
-                send!(tx, update);
+                tx.send_expect(update);
             }
         }
     }
@@ -286,14 +291,22 @@ impl MusicClient for Client {
 
     fn seek(&self, duration: Duration) -> Result<()> {
         if let Some(player) = Self::get_player(self) {
-            let pos = player.get_position().unwrap_or_default();
+            // if possible, use `set_position` instead of `seek` because some players have issues with seeking
+            // see https://github.com/JakeStanger/ironbar/issues/970
+            if let Ok(metadata) = player.get_metadata() {
+                if let Some(track_id) = metadata.track_id() {
+                    player.set_position(track_id, &duration)?;
+                } else {
+                    let pos = player.get_position().unwrap_or_default();
 
-            let duration = duration.as_micros() as i64;
-            let position = pos.as_micros() as i64;
+                    let duration = duration.as_micros() as i64;
+                    let position = pos.as_micros() as i64;
 
-            let seek = cmp::max(duration, 0) - position;
+                    let seek = cmp::max(duration, 0) - position;
 
-            player.seek(seek)?;
+                    player.seek(seek)?;
+                }
+            }
         } else {
             error!("Could not find player");
         }
@@ -315,7 +328,9 @@ impl MusicClient for Client {
                 state: PlayerState::Stopped,
                 volume_percent: None,
             };
-            send!(self.tx, PlayerUpdate::Update(Box::new(None), status));
+
+            self.tx
+                .send_expect(PlayerUpdate::Update(Box::new(None), status));
         }
 
         rx

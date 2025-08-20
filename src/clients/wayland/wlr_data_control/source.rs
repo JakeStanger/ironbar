@@ -1,6 +1,8 @@
 use super::device::DataControlDevice;
 use super::manager::DataControlDeviceManagerState;
+use color_eyre::Result;
 use smithay_client_toolkit::data_device_manager::WritePipe;
+use tracing::error;
 use wayland_client::{Connection, Dispatch, Proxy, QueueHandle};
 use wayland_protocols_wlr::data_control::v1::client::zwlr_data_control_source_v1::{
     Event, ZwlrDataControlSourceV1,
@@ -23,7 +25,7 @@ impl DataControlSourceDataExt for DataControlSourceData {
 ///
 /// The functions defined in this trait are called as `DataSource` events are received from the compositor.
 pub trait DataControlSourceHandler: Sized {
-    /// This may be called multiple times, once for each accepted mime type from the destination, if any.
+    // /// This may be called multiple times, once for each accepted mime type from the destination, if any.
     // fn accept_mime(
     //     &mut self,
     //     conn: &Connection,
@@ -41,7 +43,7 @@ pub trait DataControlSourceHandler: Sized {
         source: &ZwlrDataControlSourceV1,
         mime: String,
         fd: WritePipe,
-    );
+    ) -> Result<()>;
 
     /// The data source is no longer valid
     /// Cleanup & destroy this resource
@@ -68,7 +70,9 @@ where
     ) {
         match event {
             Event::Send { mime_type, fd } => {
-                state.send_request(conn, qh, source, mime_type, fd.into());
+                if let Err(err) = state.send_request(conn, qh, source, mime_type, fd.into()) {
+                    error!("{err:#}");
+                }
             }
             Event::Cancelled => {
                 state.cancelled(conn, qh, source);

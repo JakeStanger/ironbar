@@ -1,14 +1,15 @@
 use super::{
-    MusicClient, PlayerState, PlayerUpdate, ProgressTick, Status, Track, TICK_INTERVAL_MS,
+    MusicClient, PlayerState, PlayerUpdate, ProgressTick, Status, TICK_INTERVAL_MS, Track,
 };
-use crate::{await_sync, send, spawn, Ironbar};
+use crate::channels::SyncSenderExt;
+use crate::{Ironbar, await_sync, spawn};
 use color_eyre::Report;
 use color_eyre::Result;
 use mpd_client::client::{ConnectionEvent, Subsystem};
 use mpd_client::commands::{self, SeekMode};
 use mpd_client::responses::{PlayState, Song};
 use mpd_client::tag::Tag;
-use mpd_utils::{mpd_client, PersistentClient};
+use mpd_utils::{PersistentClient, mpd_client};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::Duration;
@@ -97,7 +98,7 @@ impl Client {
             let status = Status::from(status);
 
             let update = PlayerUpdate::Update(Box::new(track), status);
-            send!(tx, update);
+            tx.send_expect(update);
         }
 
         Ok(())
@@ -113,7 +114,7 @@ impl Client {
                     elapsed: status.elapsed,
                 });
 
-                send!(tx, update);
+                tx.send_expect(update);
             }
         }
     }

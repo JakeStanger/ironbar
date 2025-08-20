@@ -1,11 +1,14 @@
+use crate::channels::{AsyncSenderExt, BroadcastReceiverExt};
 use crate::clients::clipboard::{self, ClipboardEvent};
 use crate::clients::wayland::{ClipboardItem, ClipboardValue};
-use crate::config::{CommonConfig, TruncateMode};
-use crate::image::new_icon_button;
+use crate::config::{CommonConfig, LayoutConfig, TruncateMode};
+use crate::gtk_helpers::IronbarGtkExt;
+use crate::gtk_helpers::IronbarLabelExt;
+use crate::image::IconButton;
 use crate::modules::{
     Module, ModuleInfo, ModuleParts, ModulePopup, ModuleUpdateEvent, PopupButton, WidgetContext,
 };
-use crate::{glib_recv, module_impl, spawn, try_send};
+use crate::{module_impl, spawn};
 use glib::Propagation;
 use gtk::gdk_pixbuf::Pixbuf;
 use gtk::gio::{Cancellable, MemoryInputStream};
@@ -13,7 +16,8 @@ use gtk::prelude::*;
 use gtk::{Button, EventBox, Image, Label, Orientation, RadioButton, Widget};
 use serde::Deserialize;
 use std::collections::HashMap;
-use tokio::sync::{broadcast, mpsc};
+use std::ops::Deref;
+use tokio::sync::mpsc;
 use tracing::{debug, error};
 
 #[derive(Debug, Deserialize, Clone)]
@@ -45,6 +49,10 @@ pub struct ClipboardModule {
     ///
     /// **Default**: `null`
     truncate: Option<TruncateMode>,
+
+    /// See [layout options](module-level-options#layout)
+    #[serde(default, flatten)]
+    layout: LayoutConfig,
 
     /// See [common options](module-level-options#common-options).
     #[serde(flatten)]
@@ -102,18 +110,16 @@ impl Module<Button> for ClipboardModule {
                 match event {
                     ClipboardEvent::Add(item) => {
                         let msg = match item.value.as_ref() {
-                            ClipboardValue::Other => {
-                                ModuleUpdateEvent::Update(ControllerEvent::Deactivate)
-                            }
-                            _ => ModuleUpdateEvent::Update(ControllerEvent::Add(item.id, item)),
+                            ClipboardValue::Other => ControllerEvent::Deactivate,
+                            _ => ControllerEvent::Add(item.id, item),
                         };
-                        try_send!(tx, msg);
+                        tx.send_update_spawn(msg);
                     }
                     ClipboardEvent::Remove(id) => {
-                        try_send!(tx, ModuleUpdateEvent::Update(ControllerEvent::Remove(id)));
+                        tx.send_update_spawn(ControllerEvent::Remove(id));
                     }
                     ClipboardEvent::Activate(id) => {
-                        try_send!(tx, ModuleUpdateEvent::Update(ControllerEvent::Activate(id)));
+                        tx.send_update_spawn(ControllerEvent::Activate(id));
                     }
                 }
             }
@@ -141,27 +147,28 @@ impl Module<Button> for ClipboardModule {
         context: WidgetContext<Self::SendMessage, Self::ReceiveMessage>,
         info: &ModuleInfo,
     ) -> color_eyre::Result<ModuleParts<Button>> {
-        let button = new_icon_button(&self.icon, info.icon_theme, self.icon_size);
-        button.style_context().add_class("btn");
+        let button = IconButton::new(&self.icon, self.icon_size, context.ironbar.image_provider());
+
+        button.label().set_angle(self.layout.angle(info));
+        button.label().set_justify(self.layout.justify.into());
+
+        button.add_class("btn");
 
         let tx = context.tx.clone();
         button.connect_clicked(move |button| {
-            try_send!(tx, ModuleUpdateEvent::TogglePopup(button.popup_id()));
+            tx.send_spawn(ModuleUpdateEvent::TogglePopup(button.popup_id()));
         });
 
-        let rx = context.subscribe();
         let popup = self
-            .into_popup(context.controller_tx.clone(), rx, context, info)
+            .into_popup(context, info)
             .into_popup_parts(vec![&button]);
 
-        Ok(ModuleParts::new(button, popup))
+        Ok(ModuleParts::new(button.deref().clone(), popup))
     }
 
     fn into_popup(
         self,
-        tx: mpsc::Sender<Self::ReceiveMessage>,
-        rx: broadcast::Receiver<Self::SendMessage>,
-        _context: WidgetContext<Self::SendMessage, Self::ReceiveMessage>,
+        context: WidgetContext<Self::SendMessage, Self::ReceiveMessage>,
         _info: &ModuleInfo,
     ) -> Option<gtk::Box>
     where
@@ -177,9 +184,9 @@ impl Module<Button> for ClipboardModule {
 
         let mut items = HashMap::new();
 
-        {
-            let hidden_option = hidden_option.clone();
-            glib_recv!(rx, event => {
+        context
+            .subscribe()
+            .recv_glib(&hidden_option, move |hidden_option, event| {
                 match event {
                     ControllerEvent::Add(id, item) => {
                         debug!("Adding new value with ID {}", id);
@@ -189,13 +196,13 @@ impl Module<Button> for ClipboardModule {
 
                         let button = match item.value.as_ref() {
                             ClipboardValue::Text(value) => {
-                                let button = RadioButton::from_widget(&hidden_option);
+                                let button = RadioButton::from_widget(hidden_option);
 
                                 let label = Label::new(Some(value));
                                 button.add(&label);
 
                                 if let Some(truncate) = self.truncate {
-                                    truncate.truncate_label(&label);
+                                    label.truncate(truncate);
                                 }
 
                                 button.style_context().add_class("text");
@@ -209,16 +216,24 @@ impl Module<Button> for ClipboardModule {
                                     64,
                                     true,
                                     Some(&Cancellable::new()),
-                                )
-                                .expect("Failed to read Pixbuf from stream");
-                                let image = Image::from_pixbuf(Some(&pixbuf));
+                                );
 
-                                let button = RadioButton::from_widget(&hidden_option);
-                                button.set_image(Some(&image));
-                                button.set_always_show_image(true);
-                                button.style_context().add_class("image");
+                                match pixbuf {
+                                    Ok(pixbuf) => {
+                                        let image = Image::from_pixbuf(Some(&pixbuf));
 
-                                button
+                                        let button = RadioButton::from_widget(hidden_option);
+                                        button.set_image(Some(&image));
+                                        button.set_always_show_image(true);
+                                        button.style_context().add_class("image");
+
+                                        button
+                                    }
+                                    Err(err) => {
+                                        error!("{err:?}");
+                                        return;
+                                    }
+                                }
                             }
                             ClipboardValue::Other => unreachable!(),
                         };
@@ -233,7 +248,7 @@ impl Module<Button> for ClipboardModule {
                         button_wrapper.set_above_child(true);
 
                         {
-                            let tx = tx.clone();
+                            let tx = context.controller_tx.clone();
                             button_wrapper.connect_button_press_event(
                                 move |button_wrapper, event| {
                                     // left click
@@ -242,7 +257,7 @@ impl Module<Button> for ClipboardModule {
                                             .expect("Failed to get id from button name");
 
                                         debug!("Copying item with id: {id}");
-                                        try_send!(tx, UIEvent::Copy(id));
+                                        tx.send_spawn(UIEvent::Copy(id));
                                     }
 
                                     Propagation::Stop
@@ -255,7 +270,7 @@ impl Module<Button> for ClipboardModule {
                         remove_button.style_context().add_class("btn-remove");
 
                         {
-                            let tx = tx.clone();
+                            let tx = context.controller_tx.clone();
                             let entries = entries.clone();
                             let row = row.clone();
 
@@ -264,7 +279,7 @@ impl Module<Button> for ClipboardModule {
                                     .expect("Failed to get id from button name");
 
                                 debug!("Removing item with id: {id}");
-                                try_send!(tx, UIEvent::Remove(id));
+                                tx.send_spawn(UIEvent::Remove(id));
 
                                 entries.remove(&row);
                             });
@@ -305,7 +320,6 @@ impl Module<Button> for ClipboardModule {
                     }
                 }
             });
-        }
 
         container.show_all();
         hidden_option.hide();

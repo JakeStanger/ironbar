@@ -1,9 +1,10 @@
-use crate::config::CommonConfig;
-use crate::modules::{Module, ModuleInfo, ModuleParts, ModuleUpdateEvent, WidgetContext};
+use crate::channels::{AsyncSenderExt, BroadcastReceiverExt};
+use crate::config::{CommonConfig, LayoutConfig};
+use crate::gtk_helpers::IronbarLabelExt;
+use crate::modules::{Module, ModuleInfo, ModuleParts, WidgetContext};
 use crate::script::{OutputStream, Script, ScriptMode};
-use crate::{glib_recv, module_impl, spawn, try_send};
+use crate::{module_impl, spawn};
 use color_eyre::{Help, Report, Result};
-use gtk::prelude::*;
 use gtk::Label;
 use serde::Deserialize;
 use tokio::sync::mpsc;
@@ -34,6 +35,11 @@ pub struct ScriptModule {
     /// **Default**: `5000`
     #[serde(default = "default_interval")]
     interval: u64,
+
+    // -- Common --
+    /// See [layout options](module-level-options#layout)
+    #[serde(default, flatten)]
+    layout: LayoutConfig,
 
     /// See [common options](module-level-options#common-options).
     #[serde(flatten)]
@@ -78,7 +84,7 @@ impl Module<Label> for ScriptModule {
         spawn(async move {
             script.run(None, move |out, _| match out {
                OutputStream::Stdout(stdout) => {
-                   try_send!(tx, ModuleUpdateEvent::Update(stdout));
+                   tx.send_update_spawn(stdout);
                },
                OutputStream::Stderr(stderr) => {
                    error!("{:?}", Report::msg(stderr)
@@ -98,13 +104,15 @@ impl Module<Label> for ScriptModule {
         context: WidgetContext<Self::SendMessage, Self::ReceiveMessage>,
         info: &ModuleInfo,
     ) -> Result<ModuleParts<Label>> {
-        let label = Label::builder().use_markup(true).build();
-        label.set_angle(info.bar_position.get_angle());
+        let label = Label::builder()
+            .use_markup(true)
+            .angle(self.layout.angle(info))
+            .justify(self.layout.justify.into())
+            .build();
 
-        {
-            let label = label.clone();
-            glib_recv!(context.subscribe(), s => label.set_markup(s.as_str()));
-        }
+        context
+            .subscribe()
+            .recv_glib(&label, |label, s| label.set_label_escaped(&s));
 
         Ok(ModuleParts {
             widget: label,

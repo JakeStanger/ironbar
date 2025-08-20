@@ -1,9 +1,10 @@
-use crate::config::CommonConfig;
+use crate::channels::{AsyncSenderExt, BroadcastReceiverExt};
+use crate::config::{CommonConfig, LayoutConfig, TruncateMode};
 use crate::dynamic_value::dynamic_string;
-use crate::modules::{Module, ModuleInfo, ModuleParts, ModuleUpdateEvent, WidgetContext};
-use crate::{glib_recv, module_impl, try_send};
+use crate::gtk_helpers::IronbarLabelExt;
+use crate::module_impl;
+use crate::modules::{Module, ModuleInfo, ModuleParts, WidgetContext};
 use color_eyre::Result;
-use gtk::prelude::*;
 use gtk::Label;
 use serde::Deserialize;
 use tokio::sync::mpsc;
@@ -17,6 +18,16 @@ pub struct LabelModule {
     /// **Required**
     label: String,
 
+    // -- Common --
+    /// See [truncate options](module-level-options#truncate-mode).
+    ///
+    /// **Default**: `null`
+    truncate: Option<TruncateMode>,
+
+    /// See [layout options](module-level-options#layout)
+    #[serde(default, flatten)]
+    layout: LayoutConfig,
+
     /// See [common options](module-level-options#common-options).
     #[serde(flatten)]
     pub common: Option<CommonConfig>,
@@ -26,6 +37,8 @@ impl LabelModule {
     pub(crate) fn new(label: String) -> Self {
         Self {
             label,
+            truncate: None,
+            layout: LayoutConfig::default(),
             common: Some(CommonConfig::default()),
         }
     }
@@ -43,9 +56,8 @@ impl Module<Label> for LabelModule {
         context: &WidgetContext<Self::SendMessage, Self::ReceiveMessage>,
         _rx: mpsc::Receiver<Self::ReceiveMessage>,
     ) -> Result<()> {
-        let tx = context.tx.clone();
-        dynamic_string(&self.label, move |string| {
-            try_send!(tx, ModuleUpdateEvent::Update(string));
+        dynamic_string(&self.label, &context.tx, move |tx, string| {
+            tx.send_update_spawn(string);
         });
 
         Ok(())
@@ -54,15 +66,21 @@ impl Module<Label> for LabelModule {
     fn into_widget(
         self,
         context: WidgetContext<Self::SendMessage, Self::ReceiveMessage>,
-        _info: &ModuleInfo,
+        info: &ModuleInfo,
     ) -> Result<ModuleParts<Label>> {
-        let label = Label::new(None);
-        label.set_use_markup(true);
+        let label = Label::builder()
+            .use_markup(true)
+            .angle(self.layout.angle(info))
+            .justify(self.layout.justify.into())
+            .build();
 
-        {
-            let label = label.clone();
-            glib_recv!(context.subscribe(), string => label.set_markup(&string));
+        if let Some(truncate) = self.truncate {
+            label.truncate(truncate);
         }
+
+        context.subscribe().recv_glib(&label, move |label, string| {
+            label.set_label_escaped(&string)
+        });
 
         Ok(ModuleParts {
             widget: label,

@@ -1,6 +1,5 @@
 use crate::error::ExitCode;
-use crate::ipc::commands::Command;
-use crate::ipc::responses::Response;
+use crate::ipc::{Command, Response};
 use clap::{Parser, ValueEnum};
 use serde::{Deserialize, Serialize};
 use std::process::exit;
@@ -46,6 +45,7 @@ pub fn handle_response(response: Response, format: Format) {
         Format::Plain => match response {
             Response::Ok => println!("ok"),
             Response::OkValue { value } => println!("{value}"),
+            Response::Multi { values } => println!("{}", values.join("\n")),
             Response::Err { message } => eprintln!("error\n{}", message.unwrap_or_default()),
         },
         Format::Json => println!(

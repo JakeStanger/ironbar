@@ -1,4 +1,4 @@
-use crate::config::{CommonConfig, TruncateMode};
+use crate::config::{CommonConfig, LayoutConfig, TruncateMode};
 use dirs::{audio_dir, home_dir};
 use serde::Deserialize;
 use std::path::PathBuf;
@@ -74,13 +74,23 @@ impl Default for Icons {
 #[serde(rename_all = "snake_case")]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 pub enum PlayerType {
+    #[cfg(feature = "music+mpd")]
     Mpd,
+    #[cfg(feature = "music+mpris")]
     Mpris,
 }
 
 impl Default for PlayerType {
     fn default() -> Self {
-        Self::Mpris
+        cfg_if::cfg_if! {
+            if #[cfg(feature = "music+mpris")] {
+                Self::Mpris
+            } else if #[cfg(feature = "music+mpd")] {
+                Self::Mpd
+            } else {
+                compile_error!("No player type feature enabled")
+            }
+        }
     }
 }
 
@@ -146,6 +156,25 @@ pub struct MusicModule {
     ///
     /// **Default**: `null`
     pub(crate) truncate: Option<TruncateMode>,
+
+    /// See [truncate options](module-level-options#truncate-mode).
+    ///
+    /// **Default**: `null`
+    pub(crate) truncate_popup_artist: Option<TruncateMode>,
+
+    /// See [truncate options](module-level-options#truncate-mode).
+    ///
+    /// **Default**: `null`
+    pub(crate) truncate_popup_album: Option<TruncateMode>,
+
+    /// See [truncate options](module-level-options#truncate-mode).
+    ///
+    /// **Default**: `null`
+    pub(crate) truncate_popup_title: Option<TruncateMode>,
+
+    /// See [layout options](module-level-options#layout)
+    #[serde(default, flatten)]
+    pub(crate) layout: LayoutConfig,
 
     /// See [common options](module-level-options#common-options).
     #[serde(flatten)]

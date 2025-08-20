@@ -1,20 +1,18 @@
-use color_eyre::Result;
-use futures_lite::StreamExt;
-use futures_signals::signal::SignalExt;
-use gtk::prelude::{ContainerExt, WidgetExt};
-use gtk::{Box as GtkBox, Image, Orientation};
-use serde::Deserialize;
-use tokio::sync::mpsc::Receiver;
-
-use crate::clients::networkmanager::state::{
-    CellularState, State, VpnState, WifiState, WiredState,
-};
 use crate::clients::networkmanager::Client;
+use crate::clients::networkmanager::dbus::{DeviceState, DeviceType};
+use crate::clients::networkmanager::event::Event;
 use crate::config::CommonConfig;
 use crate::gtk_helpers::IronbarGtkExt;
-use crate::image::ImageProvider;
-use crate::modules::{Module, ModuleInfo, ModuleParts, ModuleUpdateEvent, WidgetContext};
-use crate::{glib_recv, module_impl, send_async, spawn};
+use crate::image::Provider;
+use crate::modules::{Module, ModuleInfo, ModuleParts, WidgetContext};
+use crate::{module_impl, spawn};
+use color_eyre::{Result, eyre::Ok};
+use glib::spawn_future_local;
+use gtk::prelude::{ContainerExt, WidgetExt};
+use gtk::{Image, Orientation};
+use serde::Deserialize;
+use std::collections::HashMap;
+use tokio::sync::{broadcast, mpsc};
 
 #[derive(Debug, Deserialize, Clone)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
@@ -30,26 +28,29 @@ const fn default_icon_size() -> i32 {
     24
 }
 
-impl Module<GtkBox> for NetworkManagerModule {
-    type SendMessage = State;
+impl Module<gtk::Box> for NetworkManagerModule {
+    type SendMessage = Event;
     type ReceiveMessage = ();
 
     module_impl!("network_manager");
 
     fn spawn_controller(
         &self,
-        _: &ModuleInfo,
-        context: &WidgetContext<State, ()>,
-        _: Receiver<()>,
+        _info: &ModuleInfo,
+        context: &WidgetContext<Event, ()>,
+        _rx: mpsc::Receiver<()>,
     ) -> Result<()> {
         let client = context.try_client::<Client>()?;
-        let mut client_signal = client.subscribe().to_stream();
-        let widget_transmitter = context.tx.clone();
-
+        // Should we be using context.tx with ModuleUpdateEvent::Update instead?
+        let tx = context.update_tx.clone();
+        // Must be done here synchronously to avoid race condition
+        let mut client_rx = client.subscribe();
         spawn(async move {
-            while let Some(state) = client_signal.next().await {
-                send_async!(widget_transmitter, ModuleUpdateEvent::Update(state));
+            while let Result::Ok(event) = client_rx.recv().await {
+                tx.send(event)?;
             }
+
+            Ok(())
         });
 
         Ok(())
@@ -57,79 +58,105 @@ impl Module<GtkBox> for NetworkManagerModule {
 
     fn into_widget(
         self,
-        context: WidgetContext<State, ()>,
-        info: &ModuleInfo,
-    ) -> Result<ModuleParts<GtkBox>> {
-        let container = GtkBox::new(Orientation::Horizontal, 0);
+        context: WidgetContext<Event, ()>,
+        _info: &ModuleInfo,
+    ) -> Result<ModuleParts<gtk::Box>> {
+        let container = gtk::Box::new(Orientation::Horizontal, 0);
 
-        // Wired icon
-        let wired_icon = Image::new();
-        wired_icon.add_class("icon");
-        wired_icon.add_class("wired-icon");
-        container.add(&wired_icon);
-
-        // Wifi icon
-        let wifi_icon = Image::new();
-        wifi_icon.add_class("icon");
-        wifi_icon.add_class("wifi-icon");
-        container.add(&wifi_icon);
-
-        // Cellular icon
-        let cellular_icon = Image::new();
-        cellular_icon.add_class("icon");
-        cellular_icon.add_class("cellular-icon");
-        container.add(&cellular_icon);
-
-        // VPN icon
-        let vpn_icon = Image::new();
-        vpn_icon.add_class("icon");
-        vpn_icon.add_class("vpn-icon");
-        container.add(&vpn_icon);
-
-        let icon_theme = info.icon_theme.clone();
-        glib_recv!(context.subscribe(), state => {
-            macro_rules! update_icon {
-                (
-                    $icon_var:expr,
-                    $state_type:ident,
-                    {$($state:pat => $icon_name:expr,)+}
-                ) => {
-                    let icon_name = match state.$state_type {
-                        $($state => $icon_name,)+
-                    };
-                    if icon_name.is_empty() {
-                        $icon_var.hide();
-                    } else {
-                        ImageProvider::parse(icon_name, &icon_theme, false, self.icon_size)
-                            .map(|provider| provider.load_into_image($icon_var.clone()));
-                        $icon_var.show();
-                    }
-                };
-            }
-
-            update_icon!(wired_icon, wired, {
-                WiredState::Connected => "icon:network-wired-symbolic",
-                WiredState::Disconnected => "icon:network-wired-disconnected-symbolic",
-                WiredState::NotPresent | WiredState::Unknown => "",
-            });
-            update_icon!(wifi_icon, wifi, {
-                WifiState::Connected(_) => "icon:network-wireless-connected-symbolic",
-                WifiState::Disconnected => "icon:network-wireless-offline-symbolic",
-                WifiState::Disabled => "icon:network-wireless-hardware-disabled-symbolic",
-                WifiState::NotPresent | WifiState::Unknown => "",
-            });
-            update_icon!(cellular_icon, cellular, {
-                CellularState::Connected => "icon:network-cellular-connected-symbolic",
-                CellularState::Disconnected => "icon:network-cellular-offline-symbolic",
-                CellularState::Disabled => "icon:network-cellular-hardware-disabled-symbolic",
-                CellularState::NotPresent | CellularState::Unknown => "",
-            });
-            update_icon!(vpn_icon, vpn, {
-                VpnState::Connected(_) => "icon:network-vpn-symbolic",
-                VpnState::Disconnected | VpnState::Unknown => "",
-            });
-        });
+        // Must be done here synchronously to avoid race condition
+        let rx = context.subscribe();
+        // We cannot use recv_glib_async here because the lifetimes don't work out
+        spawn_future_local(handle_update_events(
+            rx,
+            container.clone(),
+            self.icon_size,
+            context.ironbar.image_provider(),
+        ));
 
         Ok(ModuleParts::new(container, None))
+    }
+}
+
+async fn handle_update_events(
+    mut rx: broadcast::Receiver<Event>,
+    container: gtk::Box,
+    icon_size: i32,
+    image_provider: Provider,
+) {
+    let mut icons = HashMap::<String, Image>::new();
+
+    while let Result::Ok(event) = rx.recv().await {
+        match event {
+            Event::DeviceAdded { interface, .. } => {
+                let icon = Image::new();
+                icon.add_class("icon");
+                container.add(&icon);
+                icons.insert(interface, icon);
+            }
+            Event::DeviceStateChanged {
+                interface,
+                r#type,
+                state,
+            } => {
+                let icon = icons
+                    .get(&interface)
+                    .expect("the icon for the interface to be present");
+                // TODO: Make this configurable at runtime
+                let icon_name = get_icon_for_device_state(&r#type, &state);
+                match icon_name {
+                    Some(icon_name) => {
+                        image_provider
+                            .load_into_image_silent(icon_name, icon_size, false, icon)
+                            .await;
+                        icon.show();
+                    }
+                    None => {
+                        icon.hide();
+                    }
+                }
+            }
+        };
+    }
+}
+
+fn get_icon_for_device_state(r#type: &DeviceType, state: &DeviceState) -> Option<&'static str> {
+    match r#type {
+        DeviceType::Ethernet => match state {
+            DeviceState::Unavailable => Some("icon:network-wired-disconnected-symbolic"),
+            DeviceState::Disconnected => Some("icon:network-wired-disconnected-symbolic"),
+            DeviceState::Prepare => Some("icon:network-wired-disconnected-symbolic"),
+            DeviceState::Config => Some("icon:network-wired-disconnected-symbolic"),
+            DeviceState::NeedAuth => Some("icon:network-wired-disconnected-symbolic"),
+            DeviceState::IpConfig => Some("icon:network-wired-disconnected-symbolic"),
+            DeviceState::IpCheck => Some("icon:network-wired-disconnected-symbolic"),
+            DeviceState::Secondaries => Some("icon:network-wired-disconnected-symbolic"),
+            DeviceState::Activated => Some("icon:network-wired-symbolic"),
+            DeviceState::Deactivating => Some("icon:network-wired-disconnected-symbolic"),
+            DeviceState::Failed => Some("icon:network-wired-disconnected-symbolic"),
+            _ => None,
+        },
+        DeviceType::Wifi => match state {
+            DeviceState::Unavailable => Some("icon:network-wireless-hardware-disabled-symbolic"),
+            DeviceState::Disconnected => Some("icon:network-wireless-offline-symbolic"),
+            DeviceState::Prepare => Some("icon:network-wireless-offline-symbolic"),
+            DeviceState::Config => Some("icon:network-wireless-offline-symbolic"),
+            DeviceState::NeedAuth => Some("icon:network-wireless-offline-symbolic"),
+            DeviceState::IpConfig => Some("icon:network-wireless-offline-symbolic"),
+            DeviceState::IpCheck => Some("icon:network-wireless-offline-symbolic"),
+            DeviceState::Secondaries => Some("icon:network-wireless-offline-symbolic"),
+            DeviceState::Activated => Some("icon:network-wireless-connected-symbolic"),
+            DeviceState::Deactivating => Some("icon:network-wireless-offline-symbolic"),
+            DeviceState::Failed => Some("icon:network-wireless-offline-symbolic"),
+            _ => None,
+        },
+        DeviceType::Tun => match state {
+            DeviceState::Activated => Some("icon:network-vpn-symbolic"),
+            _ => None,
+        },
+        DeviceType::Wireguard => match state {
+            DeviceState::Activated => Some("icon:network-vpn-symbolic"),
+            _ => None,
+        },
+        _ => None,
     }
 }

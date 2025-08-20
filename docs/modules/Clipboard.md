@@ -12,15 +12,15 @@ Supports plain text and images.
 
 > Type: `clipboard`
 
-| Name                  | Type                                        | Default | Description                                                                                                                                           |
-|-----------------------|---------------------------------------------|---------|-------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `icon`                | `string` or [image](images)                 | `󰨸`    | Icon to show on the widget button.                                                                                                                    |
-| `icon_size`           | `integer`                                   | `32`    | Size to render icon at (image icons only).                                                                                                            |
-| `max_items`           | `integer`                                   | `10`    | Maximum number of items to show in the popup.                                                                                                         |
-| `truncate`            | `'start'` or `'middle'` or `'end'` or `Map` | `null`  | The location of the ellipses and where to truncate text from. Leave null to avoid truncating. Use the long-hand `Map` version if specifying a length. |
-| `truncate.mode`       | `'start'` or `'middle'` or `'end'`          | `null`  | The location of the ellipses and where to truncate text from. Leave null to avoid truncating.                                                         |
-| `truncate.length`     | `integer`                                   | `null`  | The fixed width (in chars) of the widget. Leave blank to let GTK automatically handle.                                                                |
-| `truncate.max_length` | `integer`                                   | `null`  | The maximum number of characters before truncating. Leave blank to let GTK automatically handle.                                                      |
+| Name                  | Type                                                 | Default | Description                                                                                                                                           |
+|-----------------------|------------------------------------------------------|---------|-------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `icon`                | `string` or [image](images)                          | `󰨸`    | Icon to show on the widget button.                                                                                                                    |
+| `icon_size`           | `integer`                                            | `32`    | Size to render icon at (image icons only).                                                                                                            |
+| `max_items`           | `integer`                                            | `10`    | Maximum number of items to show in the popup.                                                                                                         |
+| `truncate`            | `'start'` or `'middle'` or `'end'` or `off` or `Map` | `off`   | The location of the ellipses and where to truncate text from. Leave null to avoid truncating. Use the long-hand `Map` version if specifying a length. |
+| `truncate.mode`       | `'start'` or `'middle'` or `'end'` or `off`          | `off`   | The location of the ellipses and where to truncate text from. Leave null to avoid truncating.                                                         |
+| `truncate.length`     | `integer`                                            | `null`  | The fixed width (in chars) of the widget. Leave blank to let GTK automatically handle.                                                                |
+| `truncate.max_length` | `integer`                                            | `null`  | The maximum number of characters before truncating. Leave blank to let GTK automatically handle.                                                      |
 
 <details>
 <summary>JSON</summary>

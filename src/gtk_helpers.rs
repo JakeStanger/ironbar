@@ -1,6 +1,8 @@
-use glib::IsA;
+use crate::config::TruncateMode;
+use glib::{IsA, markup_escape_text};
+use gtk::pango::EllipsizeMode;
 use gtk::prelude::*;
-use gtk::{Orientation, Widget};
+use gtk::{Label, Orientation, Widget};
 
 /// Represents a widget's size
 /// and location relative to the bar's start edge.
@@ -18,6 +20,8 @@ pub struct WidgetGeometry {
 pub trait IronbarGtkExt {
     /// Adds a new CSS class to the widget.
     fn add_class(&self, class: &str);
+    /// Removes a CSS class from the widget
+    fn remove_class(&self, class: &str);
     /// Gets the geometry for the widget
     fn geometry(&self, orientation: Orientation) -> WidgetGeometry;
 
@@ -30,6 +34,10 @@ pub trait IronbarGtkExt {
 impl<W: IsA<Widget>> IronbarGtkExt for W {
     fn add_class(&self, class: &str) {
         self.style_context().add_class(class);
+    }
+
+    fn remove_class(&self, class: &str) {
+        self.style_context().remove_class(class);
     }
 
     fn geometry(&self, orientation: Orientation) -> WidgetGeometry {
@@ -73,5 +81,38 @@ impl<W: IsA<Widget>> IronbarGtkExt for W {
 
     fn set_tag<V: 'static>(&self, key: &str, value: V) {
         unsafe { self.set_data(key, value) }
+    }
+}
+
+pub trait IronbarLabelExt {
+    /// Sets the label value to the provided string.
+    ///
+    /// If the label does not contain markup `span` tags,
+    /// the text is escaped to avoid issues with special characters (ie `&`).
+    /// Otherwise, the text is used verbatim, and it is up to the user to escape.
+    fn set_label_escaped(&self, label: &str);
+
+    fn truncate(&self, mode: TruncateMode);
+}
+
+impl IronbarLabelExt for Label {
+    fn set_label_escaped(&self, label: &str) {
+        if label.contains("<span") {
+            self.set_label(label);
+        } else {
+            self.set_label(&markup_escape_text(label));
+        }
+    }
+
+    fn truncate(&self, mode: TruncateMode) {
+        self.set_ellipsize(<TruncateMode as Into<EllipsizeMode>>::into(mode));
+
+        if let Some(length) = mode.length() {
+            self.set_width_chars(length);
+        }
+
+        if let Some(length) = mode.max_length() {
+            self.set_max_width_chars(length);
+        }
     }
 }

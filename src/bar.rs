@@ -1,16 +1,16 @@
+use crate::Ironbar;
 use crate::config::{BarConfig, BarPosition, MarginConfig, ModuleConfig};
 use crate::modules::{BarModuleFactory, ModuleInfo, ModuleLocation};
 use crate::popup::Popup;
-use crate::Ironbar;
 use color_eyre::Result;
 use glib::Propagation;
 use gtk::gdk::Monitor;
 use gtk::prelude::*;
-use gtk::{Application, ApplicationWindow, IconTheme, Orientation, Window, WindowType};
+use gtk::{Application, ApplicationWindow, Orientation, Window, WindowType};
 use gtk_layer_shell::LayerShell;
 use std::rc::Rc;
 use std::time::Duration;
-use tracing::{debug, info};
+use tracing::{debug, error, info};
 
 #[derive(Debug, Clone)]
 enum Inner {
@@ -22,6 +22,7 @@ enum Inner {
 pub struct Bar {
     name: String,
     monitor_name: String,
+    monitor_size: (i32, i32),
     position: BarPosition,
 
     ironbar: Rc<Ironbar>,
@@ -41,6 +42,7 @@ impl Bar {
     pub fn new(
         app: &Application,
         monitor_name: String,
+        monitor_size: (i32, i32),
         config: BarConfig,
         ironbar: Rc<Ironbar>,
     ) -> Self {
@@ -89,6 +91,7 @@ impl Bar {
         Self {
             name,
             monitor_name,
+            monitor_size,
             position,
             ironbar,
             window,
@@ -146,7 +149,7 @@ impl Bar {
             }
         }
 
-        let load_result = self.load_modules(config, monitor)?;
+        let load_result = self.load_modules(config, monitor, self.monitor_size)?;
 
         self.show(!start_hidden);
 
@@ -243,12 +246,12 @@ impl Bar {
     }
 
     /// Loads the configured modules onto a bar.
-    fn load_modules(&self, config: BarConfig, monitor: &Monitor) -> Result<BarLoadResult> {
-        let icon_theme = IconTheme::new();
-        if let Some(ref theme) = config.icon_theme {
-            icon_theme.set_custom_theme(Some(theme));
-        }
-
+    fn load_modules(
+        &self,
+        config: BarConfig,
+        monitor: &Monitor,
+        output_size: (i32, i32),
+    ) -> Result<BarLoadResult> {
         let app = &self.window.application().expect("to exist");
 
         macro_rules! info {
@@ -259,13 +262,17 @@ impl Bar {
                     monitor,
                     output_name: &self.monitor_name,
                     location: $location,
-                    icon_theme: &icon_theme,
                 }
             };
         }
 
         // popup ignores module location so can bodge this for now
-        let popup = Popup::new(&info!(ModuleLocation::Left), config.popup_gap);
+        let popup = Popup::new(
+            &self.ironbar,
+            &info!(ModuleLocation::Left),
+            output_size,
+            config.popup_gap,
+        );
         let popup = Rc::new(popup);
 
         if let Some(modules) = config.start {
@@ -333,7 +340,7 @@ impl Bar {
 
     /// Sets the window visibility status
     pub fn set_visible(&self, visible: bool) {
-        self.window.set_visible(visible)
+        self.window.set_visible(visible);
     }
 
     pub fn set_exclusive(&self, exclusive: bool) {
@@ -374,7 +381,10 @@ fn add_modules(
     let module_factory = BarModuleFactory::new(ironbar.clone(), popup.clone()).into();
 
     for config in modules {
-        config.create(&module_factory, content, info)?;
+        let name = config.name();
+        if let Err(err) = config.create(&module_factory, content, info) {
+            error!("failed to create module {name}: {:?}", err);
+        }
     }
 
     Ok(())
@@ -384,9 +394,10 @@ pub fn create_bar(
     app: &Application,
     monitor: &Monitor,
     monitor_name: String,
+    monitor_size: (i32, i32),
     config: BarConfig,
     ironbar: Rc<Ironbar>,
 ) -> Result<Bar> {
-    let bar = Bar::new(app, monitor_name, config, ironbar);
+    let bar = Bar::new(app, monitor_name, monitor_size, config, ironbar);
     bar.init(monitor)
 }
