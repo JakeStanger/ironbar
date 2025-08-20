@@ -44,7 +44,7 @@ impl Client {
                     spawn(watch_device(added_device.to_owned(), tx.clone()));
                 }
 
-                let removed_devices = devices.difference(&new_devices);
+                let _removed_devices = devices.difference(&new_devices);
                 // TODO: Cook up some way to notify closures for removed devices to exit
 
                 devices = new_devices;

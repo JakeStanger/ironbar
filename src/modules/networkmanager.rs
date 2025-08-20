@@ -122,38 +122,34 @@ async fn handle_update_events(
 fn get_icon_for_device_state(r#type: &DeviceType, state: &DeviceState) -> Option<&'static str> {
     match r#type {
         DeviceType::Ethernet => match state {
-            DeviceState::Unavailable => Some("icon:network-wired-disconnected-symbolic"),
-            DeviceState::Disconnected => Some("icon:network-wired-disconnected-symbolic"),
-            DeviceState::Prepare => Some("icon:network-wired-disconnected-symbolic"),
-            DeviceState::Config => Some("icon:network-wired-disconnected-symbolic"),
-            DeviceState::NeedAuth => Some("icon:network-wired-disconnected-symbolic"),
-            DeviceState::IpConfig => Some("icon:network-wired-disconnected-symbolic"),
-            DeviceState::IpCheck => Some("icon:network-wired-disconnected-symbolic"),
-            DeviceState::Secondaries => Some("icon:network-wired-disconnected-symbolic"),
+            DeviceState::Unavailable
+            | DeviceState::Disconnected
+            | DeviceState::Prepare
+            | DeviceState::Config
+            | DeviceState::NeedAuth
+            | DeviceState::IpConfig
+            | DeviceState::IpCheck
+            | DeviceState::Secondaries
+            | DeviceState::Deactivating
+            | DeviceState::Failed => Some("icon:network-wired-disconnected-symbolic"),
             DeviceState::Activated => Some("icon:network-wired-symbolic"),
-            DeviceState::Deactivating => Some("icon:network-wired-disconnected-symbolic"),
-            DeviceState::Failed => Some("icon:network-wired-disconnected-symbolic"),
             _ => None,
         },
         DeviceType::Wifi => match state {
             DeviceState::Unavailable => Some("icon:network-wireless-hardware-disabled-symbolic"),
-            DeviceState::Disconnected => Some("icon:network-wireless-offline-symbolic"),
-            DeviceState::Prepare => Some("icon:network-wireless-offline-symbolic"),
-            DeviceState::Config => Some("icon:network-wireless-offline-symbolic"),
-            DeviceState::NeedAuth => Some("icon:network-wireless-offline-symbolic"),
-            DeviceState::IpConfig => Some("icon:network-wireless-offline-symbolic"),
-            DeviceState::IpCheck => Some("icon:network-wireless-offline-symbolic"),
-            DeviceState::Secondaries => Some("icon:network-wireless-offline-symbolic"),
+            DeviceState::Disconnected
+            | DeviceState::Prepare
+            | DeviceState::Config
+            | DeviceState::NeedAuth
+            | DeviceState::IpConfig
+            | DeviceState::IpCheck
+            | DeviceState::Secondaries
+            | DeviceState::Deactivating
+            | DeviceState::Failed => Some("icon:network-wireless-offline-symbolic"),
             DeviceState::Activated => Some("icon:network-wireless-connected-symbolic"),
-            DeviceState::Deactivating => Some("icon:network-wireless-offline-symbolic"),
-            DeviceState::Failed => Some("icon:network-wireless-offline-symbolic"),
             _ => None,
         },
-        DeviceType::Tun => match state {
-            DeviceState::Activated => Some("icon:network-vpn-symbolic"),
-            _ => None,
-        },
-        DeviceType::Wireguard => match state {
+        DeviceType::Tun | DeviceType::Wireguard => match state {
             DeviceState::Activated => Some("icon:network-vpn-symbolic"),
             _ => None,
         },
