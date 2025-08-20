@@ -8,9 +8,6 @@ repository = "https://github.com/jakestanger/ironbar"
 categories = ["gui"]
 keywords = ["gtk", "bar", "wayland", "wlroots", "gtk-layer-shell"]
 
-[profile.release]
-lto = true
-
 [features]
 default = [
     "bindmode+all",
@@ -87,7 +84,7 @@ music = ["dep:regex"]
 "music+mpris" = ["music", "mpris"]
 "music+mpd" = ["music", "mpd-utils"]
 
-network_manager = ["futures-lite", "futures-signals", "tokio-stream", "zbus"]
+network_manager = ["futures-lite", "tokio-stream", "zbus"]
 
 notifications = ["zbus"]
 
@@ -174,7 +171,6 @@ regex = { version = "1.11.1", default-features = false, features = [
 ], optional = true }
 
 # network_manager
-futures-signals = { version = "0.3.34", optional = true }
 tokio-stream = { version = "0.1.17", optional = true }
 
 # sys_info
