@@ -115,7 +115,7 @@ schema = ["dep:schemars"]
 gtk = "0.18.2"
 gtk-layer-shell = "0.8.2"
 glib = "0.18.5"
-tokio = { version = "1.46.1", features = [
+tokio = { version = "1.47.1", features = [
     "macros",
     "rt-multi-thread",
     "time",
@@ -132,13 +132,13 @@ tracing-appender = "0.2.3"
 strip-ansi-escapes = "0.2.0"
 color-eyre = "0.6.5"
 serde = { version = "1.0.219", features = ["derive"] }
-indexmap = "2.10.0"
+indexmap = { version = "2.10.0", features = ["serde"] }
 dirs = "6.0.0"
 walkdir = "2.5.0"
-notify = { version = "8.1.0", default-features = false }
+notify = { version = "8.2.0", default-features = false }
 wayland-client = "0.31.1"
-wayland-protocols-wlr = { version = "0.3.8", features = ["client"] }
-smithay-client-toolkit = { version = "0.18.1", default-features = false, features = [
+wayland-protocols-wlr = { version = "0.3.9", features = ["client"] }
+smithay-client-toolkit = { version = "0.19.2", default-features = false, features = [
     "calloop",
 ] }
 universal-config = { version = "0.5.1", default-features = false }
@@ -146,14 +146,14 @@ ctrlc = "3.4.7"
 cfg-if = "1.0.1"
 
 # cli
-clap = { version = "4.5.40", optional = true, features = ["derive"] }
+clap = { version = "4.5.42", optional = true, features = ["derive"] }
 
 # http
 reqwest = { version = "0.12.22", default-features = false, features = ["default-tls", "http2"], optional = true }
 
 # cairo
 lua-src = { version = "548.1.1", optional = true }
-mlua = { version = "0.10.5", optional = true, features = ["luajit", "send"] }
+mlua = { version = "0.11.1", optional = true, features = ["luajit", "send"] }
 cairo-rs = { version = "0.18.5", optional = true, features = ["png"] }
 
 # clock
@@ -161,7 +161,7 @@ chrono = { version = "0.4.41", optional = true, default-features = false, featur
 
 # keyboard
 colpetto = { version = "0.6.0", features = ["tokio", "tracing"], optional = true }
-evdev-rs = { version = "0.6.1", optional = true }
+evdev-rs = { version = "0.6.2", optional = true }
 
 # music
 mpd-utils = { version = "0.2.1", optional = true }
@@ -174,27 +174,28 @@ regex = { version = "1.11.1", default-features = false, features = [
 tokio-stream = { version = "0.1.17", optional = true }
 
 # sys_info
-sysinfo = { version = "0.35.2", optional = true }
+sysinfo = { version = "0.36.1", optional = true }
 
 # tray
-system-tray = { version = "0.7.0", features = ["dbusmenu-gtk3"], optional = true }
+system-tray = { version = "0.8.1", features = ["dbusmenu-gtk3"], optional = true }
 
 # volume
 libpulse-binding = { version = "2.30.1", optional = true }
 
 # shared
 futures-lite = { version = "2.6.0", optional = true } # network_manager, upower, workspaces, keyboard
-zbus = { version = "5.7.1", default-features = false, features = ["blocking-api", "tokio"], optional = true } # network_manager, notifications, upower
+zbus = { version = "5.9.0", default-features = false, features = ["tokio"], optional = true } # network_manager, notifications, upower
 swayipc-async = { version = "2.1.0", optional = true } # workspaces, keyboard
 hyprland = { version = "0.4.0-beta.2", optional = true } # workspaces, keyboard
-rustix = { version = "1.0.7", default-features = false, features = ["std", "fs", "pipe", "event"], optional = true } # clipboard, input
-serde_json = { version = "1.0.140", optional = true } # ipc, niri
+rustix = { version = "1.0.8", default-features = false, features = ["std", "fs", "pipe", "event"], optional = true } # clipboard, input
+serde_json = { version = "1.0.142", optional = true } # ipc, niri
 
 # schema
-schemars = { version = "0.8.22", optional = true }
+
+schemars = { version = "1.0.4", optional = true, features = ["indexmap2"] }
 
 [build-dependencies]
-clap = { version = "4.5.40", features = ["derive"] }
-clap_complete = "4.5.54"
+clap = { version = "4.5.42", features = ["derive"] }
+clap_complete = "4.5.55"
 serde = { version = "1.0.219", features = ["derive"] }
-serde_json = "1.0.140"
+serde_json = "1.0.142"

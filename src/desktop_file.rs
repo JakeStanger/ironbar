@@ -3,9 +3,10 @@ use color_eyre::{Help, Report, Result};
 use std::collections::HashMap;
 use std::env;
 use std::path::{Path, PathBuf};
-use std::process::{Command, Stdio};
+use std::process::Stdio;
 use std::sync::Arc;
 use tokio::io::{AsyncBufReadExt, BufReader};
+use tokio::process::Command;
 use tokio::sync::Mutex;
 use tracing::{debug, error};
 use walkdir::{DirEntry, WalkDir};
@@ -238,6 +239,7 @@ impl DesktopFiles {
     /// Checks file contents for an exact or partial match of the provided input.
     async fn find_by_file_contents(&self, app_id: &str) -> Result<Option<DesktopFile>> {
         let mut files = self.files.lock().await;
+        let app_id_lower = app_id.to_lowercase();
 
         // first pass - check name for exact match
         for (_, file_ref) in files.iter_mut() {
@@ -253,7 +255,7 @@ impl DesktopFiles {
         for (_, file_ref) in files.iter_mut() {
             let file = file_ref.get().await?;
             if let Some(name) = &file.name {
-                if name.to_lowercase().contains(app_id) {
+                if name.to_lowercase().contains(&app_id_lower) {
                     return Ok(Some(file));
                 }
             }
@@ -264,19 +266,19 @@ impl DesktopFiles {
             let file = file_ref.get().await?;
 
             if let Some(name) = &file.exec {
-                if name.to_lowercase().contains(app_id) {
+                if name.to_lowercase().contains(&app_id_lower) {
                     return Ok(Some(file));
                 }
             }
 
             if let Some(name) = &file.startup_wm_class {
-                if name.to_lowercase().contains(app_id) {
+                if name.to_lowercase().contains(&app_id_lower) {
                     return Ok(Some(file));
                 }
             }
 
             if let Some(name) = &file.icon {
-                if name.to_lowercase().contains(app_id) {
+                if name.to_lowercase().contains(&app_id_lower) {
                     return Ok(Some(file));
                 }
             }
@@ -325,21 +327,37 @@ fn files(dir: &Path) -> Vec<PathBuf> {
 }
 
 /// Starts a `.desktop` file with the provided formatted command.
-pub fn open_program(file_name: &str, str: &str) {
-    let expanded = str.replace("{app_name}", file_name);
+pub async fn open_program(file_name: &str, launch_command: &str) {
+    let expanded = launch_command.replace("{app_name}", file_name);
     let launch_command_parts: Vec<&str> = expanded.split_whitespace().collect();
-    if let Err(err) = Command::new(&launch_command_parts[0])
+
+    debug!("running {launch_command_parts:?}");
+    let exit_status = match Command::new(launch_command_parts[0])
         .args(&launch_command_parts[1..])
+        .stdin(Stdio::null())
         .stdout(Stdio::null())
         .stderr(Stdio::null())
+        .kill_on_drop(true)
         .spawn()
     {
-        error!(
-            "{:?}",
-            Report::new(err)
-                .wrap_err("Failed to run launch command.")
-                .suggestion("Perhaps the applications file is invalid?")
-        );
+        Ok(mut child) => Some(child.wait().await),
+        Err(err) => {
+            error!(
+                "{:?}",
+                Report::new(err)
+                    .wrap_err("Failed to run launch command.")
+                    .suggestion("Perhaps the desktop file is invalid or orphaned?")
+            );
+            None
+        }
+    };
+
+    match exit_status {
+        Some(Ok(exit_status)) if !exit_status.success() => {
+            error!("received non-success exit status running {launch_command_parts:?}")
+        }
+        Some(Err(err)) => error!("{err:?}"),
+        _ => {}
     }
 }
 

@@ -194,12 +194,12 @@ The list of available functions is shown below:
 
 It is also possible to get only a single value from the set by specifying a name instead of a function.
 
-| Token category | Valid name                                                              |
-|----------------|-------------------------------------------------------------------------|
-| CPU            | A CPU thread, eg `cpu0`, `cpu1`, ...                                    |
-| Temperature    | A sensor name, eg `CPUTIN`. These line up with the output of `sensors`. |
-| Disk           | A disk mountpoint, eg `/`, `/home`, ...                                 |
-| Network        | An adapter name, eg `eth0` or `enp30s0`.                                |
+| Token category | Valid name                               |
+|----------------|------------------------------------------|
+| CPU            | A CPU thread, eg `cpu0`, `cpu1`, ...     |
+| Temperature    | A sensor name, eg `CPUTIN`.              |
+| Disk           | A disk mountpoint, eg `/`, `/home`, ...  |
+| Network        | An adapter name, eg `eth0` or `enp30s0`. |
 
 
 To specify a name or function, use a `@`. For example, to show disk percent for `/home`:
@@ -213,6 +213,22 @@ To show total CPU utilization where each core represents 100% (like `htop` etc):
 ```json
 "{cpu_percent@sum}%"
 ```
+
+> [!TIP]
+> Available values can be queried over IPC using the CLI.
+> This can be particularly useful for sensors, which tend not to have obvious names.
+> 
+> ```shell
+> ironbar var list sysinfo.temp_c
+> ```
+> 
+> Some usual cases to look out for:
+> 
+> - `k10temp` is an AMD CPU internal sensor
+> - Motherboard chipsets tend to prefix their sensors accordingly. For example, `CPUTIN`, `nct6687 CPU`, `asusec AMD`.
+> - `amdgpu` is as it suggests.
+> 
+> Sensor names are pulled from `hwmon` and should vaguely line up with the output of `sensors`
 
 #### Prefixes and units
 
