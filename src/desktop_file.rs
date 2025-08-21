@@ -244,20 +244,20 @@ impl DesktopFiles {
         // first pass - check name for exact match
         for (_, file_ref) in files.iter_mut() {
             let file = file_ref.get().await?;
-            if let Some(name) = &file.name {
-                if name.eq_ignore_ascii_case(app_id) {
-                    return Ok(Some(file));
-                }
+            if let Some(name) = &file.name
+                && name.eq_ignore_ascii_case(app_id)
+            {
+                return Ok(Some(file));
             }
         }
 
         // second pass - check name for partial match
         for (_, file_ref) in files.iter_mut() {
             let file = file_ref.get().await?;
-            if let Some(name) = &file.name {
-                if name.to_lowercase().contains(&app_id_lower) {
-                    return Ok(Some(file));
-                }
+            if let Some(name) = &file.name
+                && name.to_lowercase().contains(&app_id_lower)
+            {
+                return Ok(Some(file));
             }
         }
 
@@ -265,22 +265,22 @@ impl DesktopFiles {
         for (_, file_ref) in files.iter_mut() {
             let file = file_ref.get().await?;
 
-            if let Some(name) = &file.exec {
-                if name.to_lowercase().contains(&app_id_lower) {
-                    return Ok(Some(file));
-                }
+            if let Some(name) = &file.exec
+                && name.to_lowercase().contains(&app_id_lower)
+            {
+                return Ok(Some(file));
             }
 
-            if let Some(name) = &file.startup_wm_class {
-                if name.to_lowercase().contains(&app_id_lower) {
-                    return Ok(Some(file));
-                }
+            if let Some(name) = &file.startup_wm_class
+                && name.to_lowercase().contains(&app_id_lower)
+            {
+                return Ok(Some(file));
             }
 
-            if let Some(name) = &file.icon {
-                if name.to_lowercase().contains(&app_id_lower) {
-                    return Ok(Some(file));
-                }
+            if let Some(name) = &file.icon
+                && name.to_lowercase().contains(&app_id_lower)
+            {
+                return Ok(Some(file));
             }
         }
 

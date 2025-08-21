@@ -164,20 +164,18 @@ impl Client {
                             if matches!(event, Ok(Event::Playing)) {
                                 current_player_lock.replace(identity.to_string());
                             }
-                            if let Some(current_identity) = current_player_lock.as_ref() {
-                                if current_identity == identity {
-                                    if let Err(err) = Self::send_update(&player, &tx) {
-                                        if let Some(DBusError::TransportError(transport_error)) =
-                                            err.downcast_ref::<DBusError>()
-                                        {
-                                            if transport_error.name() == Some(NO_SERVICE) {
-                                                handle_shutdown(Some(current_player_lock));
-                                                break;
-                                            }
-                                        }
-                                        error!("{err:?}");
-                                    }
+                            if let Some(current_identity) = current_player_lock.as_ref()
+                                && current_identity == identity
+                                && let Err(err) = Self::send_update(&player, &tx)
+                            {
+                                if let Some(DBusError::TransportError(transport_error)) =
+                                    err.downcast_ref::<DBusError>()
+                                    && transport_error.name() == Some(NO_SERVICE)
+                                {
+                                    handle_shutdown(Some(current_player_lock));
+                                    break;
                                 }
+                                error!("{err:?}");
                             }
                         }
                         Err(err) => error!("{err:?}"),
@@ -236,15 +234,14 @@ impl Client {
         if let Some(player) = lock!(current_player)
             .as_ref()
             .and_then(|name| player_finder.find_by_name(name).ok())
+            && let Ok(metadata) = player.get_metadata()
         {
-            if let Ok(metadata) = player.get_metadata() {
-                let update = PlayerUpdate::ProgressTick(ProgressTick {
-                    elapsed: player.get_position().ok(),
-                    duration: metadata.length(),
-                });
+            let update = PlayerUpdate::ProgressTick(ProgressTick {
+                elapsed: player.get_position().ok(),
+                duration: metadata.length(),
+            });
 
-                tx.send_expect(update);
-            }
+            tx.send_expect(update);
         }
     }
 }

@@ -368,16 +368,16 @@ impl Module<gtk::Box> for WorkspacesModule {
                         // as that seems to come back wrong, at least on Hyprland.
                         // Likely a deeper issue that needs exploring.
 
-                        if let Some(old) = old {
-                            if let Some(button) = button_map.find_button_mut(&old) {
-                                let open_state = if new.monitor == old.monitor {
-                                    OpenState::Hidden
-                                } else {
-                                    OpenState::Visible
-                                };
+                        if let Some(old) = old
+                            && let Some(button) = button_map.find_button_mut(&old)
+                        {
+                            let open_state = if new.monitor == old.monitor {
+                                OpenState::Hidden
+                            } else {
+                                OpenState::Visible
+                            };
 
-                                button.set_open_state(open_state);
-                            }
+                            button.set_open_state(open_state);
                         }
 
                         if let Some(button) = button_map.find_button_mut(&new) {

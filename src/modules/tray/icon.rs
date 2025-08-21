@@ -56,10 +56,11 @@ pub fn get_image(
 /// Attempts to get a GTK `Image` component
 /// for the status notifier item's icon.
 fn get_image_from_icon_name(item: &TrayMenu, size: u32, icon_theme: &IconTheme) -> Result<Image> {
-    if let Some(path) = item.icon_theme_path.as_ref() {
-        if !path.is_empty() && !get_icon_theme_search_paths(icon_theme).contains(path) {
-            icon_theme.append_search_path(path);
-        }
+    if let Some(path) = item.icon_theme_path.as_ref()
+        && !path.is_empty()
+        && !get_icon_theme_search_paths(icon_theme).contains(path)
+    {
+        icon_theme.append_search_path(path);
     }
 
     let icon_info = item.icon_name.as_ref().and_then(|icon_name| {
