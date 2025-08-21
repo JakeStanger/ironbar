@@ -1,0 +1,4 @@
+{
+    center = [ { type = "clock" } ]
+    end = [ { type = "bluetooth" } ]
+}

@@ -42,6 +42,48 @@ scale trough {
     padding: 1em;
 }
 
+/* -- bluetooth -- */
+.popup-bluetooth {
+    min-height: 14em;
+    min-width: 24em;
+}
+
+.popup-bluetooth .header {
+    padding-bottom: 1.0em;
+    margin-bottom: 0.6em;
+    border-bottom: 1px solid @color_border;
+}
+
+.popup-bluetooth .header .label {
+    margin-left: 0.5em;
+}
+
+.popup-bluetooth .disabled .spinner {
+    min-width: 2.0em;
+    min-height: 2.0em;
+    padding: 0.4em;
+}
+
+.popup-bluetooth .devices .box .device {
+    margin-bottom: 0.4em;
+}
+
+.popup-bluetooth .devices .icon {
+    min-width: 2.5em;
+    min-height: 2.5em;
+    margin-right: 0.8em;
+}
+
+.popup-bluetooth .devices .box .device .status .footer-label {
+    font-size: 0.8em;
+}
+
+.popup-bluetooth .devices .box .device .spinner {
+    min-width: 1.5em;
+    min-height: 1.5em;
+    margin: 0.5em;
+}
+
 
 /* -- clipboard -- */
 
