@@ -159,7 +159,7 @@ reqwest = { version = "0.12.22", default-features = false, features = ["default-
 
 # cairo
 lua-src = { version = "548.1.1", optional = true }
-mlua = { version = "0.11.1", optional = true, features = ["luajit", "send"] }
+mlua = { version = "0.11.2", optional = true, features = ["luajit", "send"] }
 cairo-rs = { version = "0.18.5", optional = true, features = ["png"] }
 
 # clock
