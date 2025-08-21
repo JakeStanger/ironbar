@@ -264,18 +264,18 @@ fn set_default_sink(
 ) {
     let default_sink_name = info.default_sink_name.as_ref().map(ToString::to_string);
 
-    if default_sink_name != *lock!(default_sink) {
-        if let Some(ref default_sink_name) = default_sink_name {
-            if let Some(sink) = lock!(sinks)
-                .iter_mut()
-                .find(|s| s.name.as_str() == default_sink_name.as_str())
-            {
-                sink.active = true;
-                debug!("Set sink active: {}", sink.name);
-                tx.send_expect(Event::UpdateSink(sink.clone()));
-            } else {
-                warn!("Couldn't find sink: {}", default_sink_name);
-            }
+    if default_sink_name != *lock!(default_sink)
+        && let Some(ref default_sink_name) = default_sink_name
+    {
+        if let Some(sink) = lock!(sinks)
+            .iter_mut()
+            .find(|s| s.name.as_str() == default_sink_name.as_str())
+        {
+            sink.active = true;
+            debug!("Set sink active: {}", sink.name);
+            tx.send_expect(Event::UpdateSink(sink.clone()));
+        } else {
+            warn!("Couldn't find sink: {}", default_sink_name);
         }
     }
 

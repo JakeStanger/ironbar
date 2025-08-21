@@ -107,15 +107,15 @@ impl Client {
     async fn send_tick_update(client: &PersistentClient, tx: &broadcast::Sender<PlayerUpdate>) {
         let status = client.command(commands::Status).await;
 
-        if let Ok(status) = status {
-            if status.state == PlayState::Playing {
-                let update = PlayerUpdate::ProgressTick(ProgressTick {
-                    duration: status.duration,
-                    elapsed: status.elapsed,
-                });
+        if let Ok(status) = status
+            && status.state == PlayState::Playing
+        {
+            let update = PlayerUpdate::ProgressTick(ProgressTick {
+                duration: status.duration,
+                elapsed: status.elapsed,
+            });
 
-                tx.send_expect(update);
-            }
+            tx.send_expect(update);
         }
     }
 }

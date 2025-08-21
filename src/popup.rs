@@ -155,16 +155,16 @@ impl Popup {
                 if container.is_visible() {
                     trace!("Resized:  {}x{}", rect.width(), rect.height());
 
-                    if let Some((widget_id, button_id)) = *current_widget.borrow() {
-                        if let Some(PopupCacheValue { .. }) = cache.borrow().get(&widget_id) {
-                            Self::set_position(
-                                &button_cache.borrow(),
-                                button_id,
-                                orientation,
-                                &window,
-                                &output_size,
-                            );
-                        }
+                    if let Some((widget_id, button_id)) = *current_widget.borrow()
+                        && let Some(PopupCacheValue { .. }) = cache.borrow().get(&widget_id)
+                    {
+                        Self::set_position(
+                            &button_cache.borrow(),
+                            button_id,
+                            orientation,
+                            &window,
+                            &output_size,
+                        );
                     }
                 }
             });

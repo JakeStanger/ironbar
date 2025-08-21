@@ -155,20 +155,20 @@ fn update(
         sinks[pos] = info.into();
 
         // update in local copy
-        if !sinks[pos].active {
-            if let Some(default_sink) = &*lock!(default_sink) {
-                sinks[pos].active = &sinks[pos].name == default_sink;
-            }
+        if !sinks[pos].active
+            && let Some(default_sink) = &*lock!(default_sink)
+        {
+            sinks[pos].active = &sinks[pos].name == default_sink;
         }
     }
 
     let mut sink: Sink = info.into();
 
     // update in broadcast copy
-    if !sink.active {
-        if let Some(default_sink) = &*lock!(default_sink) {
-            sink.active = &sink.name == default_sink;
-        }
+    if !sink.active
+        && let Some(default_sink) = &*lock!(default_sink)
+    {
+        sink.active = &sink.name == default_sink;
     }
 
     tx.send_expect(Event::UpdateSink(sink));

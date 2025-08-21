@@ -347,7 +347,7 @@ impl Module<gtk::Box> for KeyboardModule {
                                 pattern == &language
                             };
 
-                            is_match.then(|| display_text)
+                            is_match.then_some(display_text)
                         })
                         .unwrap_or(&language);
                     layout_button.set_label(text);

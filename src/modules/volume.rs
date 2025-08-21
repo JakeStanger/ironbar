@@ -378,18 +378,18 @@ impl Module<Button> for VolumeModule {
                         sinks.push(info);
                     }
                     Event::UpdateSink(info) => {
-                        if info.active {
-                            if let Some(pos) = sinks.iter().position(|s| s.name == info.name) {
-                                sink_selector.set_active(Some(pos as u32));
-                                slider.set_value(info.volume);
+                        if info.active
+                            && let Some(pos) = sinks.iter().position(|s| s.name == info.name)
+                        {
+                            sink_selector.set_active(Some(pos as u32));
+                            slider.set_value(info.volume);
 
-                                btn_mute.set_active(info.muted);
-                                btn_mute.set_label(if info.muted {
-                                    &self.icons.muted
-                                } else {
-                                    self.icons.volume_icon(info.volume)
-                                });
-                            }
+                            btn_mute.set_active(info.muted);
+                            btn_mute.set_label(if info.muted {
+                                &self.icons.muted
+                            } else {
+                                self.icons.volume_icon(info.volume)
+                            });
                         }
                     }
                     Event::RemoveSink(name) => {

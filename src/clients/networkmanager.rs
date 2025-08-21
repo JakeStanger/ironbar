@@ -43,19 +43,19 @@ pub enum ClientState {
 )]
 trait NetworkManagerDbus {
     #[zbus(property)]
-    fn active_connections(&self) -> Result<Vec<ObjectPath>>;
+    fn active_connections(&self) -> Result<Vec<ObjectPath<'_>>>;
 
     #[zbus(property)]
-    fn devices(&self) -> Result<Vec<ObjectPath>>;
+    fn devices(&self) -> Result<Vec<ObjectPath<'_>>>;
 
     #[zbus(property)]
     fn networking_enabled(&self) -> Result<bool>;
 
     #[zbus(property)]
-    fn primary_connection(&self) -> Result<ObjectPath>;
+    fn primary_connection(&self) -> Result<ObjectPath<'_>>;
 
     #[zbus(property)]
-    fn primary_connection_type(&self) -> Result<Str>;
+    fn primary_connection_type(&self) -> Result<Str<'_>>;
 
     #[zbus(property)]
     fn wireless_enabled(&self) -> Result<bool>;

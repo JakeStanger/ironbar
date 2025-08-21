@@ -254,10 +254,10 @@ impl Module<gtk::Box> for LauncherModule {
             {
                 let favorites: Vec<_> = lock!(items).keys().cloned().collect();
                 for fav in favorites {
-                    if let Ok(Some(file)) = desktop_files.find(&fav).await {
-                        if let Some(wm_class) = file.startup_wm_class {
-                            app_id_map.insert(wm_class, fav);
-                        }
+                    if let Ok(Some(file)) = desktop_files.find(&fav).await
+                        && let Some(wm_class) = file.startup_wm_class
+                    {
+                        app_id_map.insert(wm_class, fav);
                     }
                 }
             }
@@ -431,17 +431,16 @@ impl Module<gtk::Box> for LauncherModule {
                         ItemEvent::OpenItem(_) => unreachable!(),
                     };
 
-                    if let Some(id) = id {
-                        if let Some(window) = lock!(items)
+                    if let Some(id) = id
+                        && let Some(window) = lock!(items)
                             .iter()
                             .find_map(|(_, item)| item.windows.get(&id))
-                        {
-                            debug!("Focusing window {id}: {}", window.name);
-                            if minimize_window && minimize_focused {
-                                wl.toplevel_minimize(window.id);
-                            } else {
-                                wl.toplevel_focus(window.id);
-                            }
+                    {
+                        debug!("Focusing window {id}: {}", window.name);
+                        if minimize_window && minimize_focused {
+                            wl.toplevel_minimize(window.id);
+                        } else {
+                            wl.toplevel_focus(window.id);
                         }
                     }
                 }
@@ -587,10 +586,8 @@ impl Module<gtk::Box> for LauncherModule {
                         LauncherUpdate::Title(app_id, _, name) => {
                             debug!("Updating title for item with id {}: {:?}", app_id, name);
 
-                            if show_names {
-                                if let Some(button) = buttons.get(&app_id) {
-                                    button.button.label.set_label(&name);
-                                }
+                            if show_names && let Some(button) = buttons.get(&app_id) {
+                                button.button.label.set_label(&name);
                             }
                         }
                         LauncherUpdate::Hover(_) => {}
@@ -689,10 +686,10 @@ impl Module<gtk::Box> for LauncherModule {
                             "Updating window title on popup for '{app_id}'/{win_id} to '{title}'"
                         );
 
-                        if let Some(buttons) = buttons.get_mut(&app_id) {
-                            if let Some(button) = buttons.get(&win_id) {
-                                button.label.set_label(&title);
-                            }
+                        if let Some(buttons) = buttons.get_mut(&app_id)
+                            && let Some(button) = buttons.get(&win_id)
+                        {
+                            button.label.set_label(&title);
                         }
                     }
                     LauncherUpdate::Hover(app_id) => {
