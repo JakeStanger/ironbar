@@ -4,19 +4,19 @@ use std::ops::Deref;
 use color_eyre::Result;
 use glib::SignalHandlerId;
 use gtk::{Align, Button, Label, Orientation};
-use gtk::{IconTheme, ScrolledWindow, Spinner, prelude::*};
-use tokio::sync::{broadcast, mpsc};
+use gtk::{ScrolledWindow, Spinner, prelude::*};
+use tokio::sync::mpsc;
 
+pub use self::config::BluetoothModule;
+use self::config::PopupDeviceConfig;
+use crate::channels::{AsyncSenderExt, BroadcastReceiverExt};
 use crate::clients::bluetooth::{self, BluetoothDevice, BluetoothDeviceStatus, BluetoothState};
 use crate::gtk_helpers::IronbarGtkExt;
 use crate::image::IconLabel;
 use crate::modules::{
     Module, ModuleInfo, ModuleParts, ModulePopup, ModuleUpdateEvent, PopupButton, WidgetContext,
 };
-use crate::{glib_recv, module_impl, send_async, spawn, try_send};
-
-pub use self::config::BluetoothModule;
-use self::config::PopupDeviceConfig;
+use crate::{image, module_impl, spawn};
 
 mod config;
 
@@ -40,10 +40,14 @@ struct BluetoothDeviceBox {
 }
 
 impl BluetoothDeviceBox {
-    fn new(tx: mpsc::Sender<BluetoothAction>, icon_theme: &IconTheme, icon_size: i32) -> Self {
+    fn new(
+        tx: mpsc::Sender<BluetoothAction>,
+        icon_size: i32,
+        image_provider: &image::Provider,
+    ) -> Self {
         let container = gtk::Box::new(Orientation::Horizontal, 0);
         container.add_class("device");
-        let icon_box = IconLabel::new("", icon_theme, icon_size);
+        let icon_box = IconLabel::new("", icon_size, image_provider);
         icon_box.add_class("icon-box");
 
         let status = gtk::Box::new(Orientation::Vertical, 0);
@@ -129,7 +133,7 @@ impl BluetoothDeviceBox {
         if data.status == BluetoothDeviceStatus::Disconnected {
             let tx = self.tx.clone();
             self.switch_handler = Some(self.switch.connect_active_notify(move |switch| {
-                try_send!(tx, BluetoothAction::Connect(data.address));
+                tx.send_spawn(BluetoothAction::Connect(data.address));
                 switch.set_sensitive(false);
             }));
         }
@@ -137,7 +141,7 @@ impl BluetoothDeviceBox {
         if data.status == BluetoothDeviceStatus::Connected {
             let tx = self.tx.clone();
             self.switch_handler = Some(self.switch.connect_active_notify(move |switch| {
-                try_send!(tx, BluetoothAction::Disconnect(data.address));
+                tx.send_spawn(BluetoothAction::Disconnect(data.address));
                 switch.set_sensitive(false);
             }));
         }
@@ -172,7 +176,7 @@ impl Module<Button> for BluetoothModule {
             spawn(async move {
                 loop {
                     let state = rx.borrow_and_update().clone();
-                    send_async!(tx, ModuleUpdateEvent::Update(state));
+                    tx.send_update(state).await;
 
                     if rx.changed().await.is_err() {
                         break;
@@ -207,7 +211,7 @@ impl Module<Button> for BluetoothModule {
 
         let tx = context.tx.clone();
         button.connect_clicked(move |button| {
-            try_send!(tx, ModuleUpdateEvent::TogglePopup(button.popup_id()));
+            tx.send_spawn(ModuleUpdateEvent::TogglePopup(button.popup_id()));
         });
 
         {
@@ -217,7 +221,7 @@ impl Module<Button> for BluetoothModule {
             let adapter_status = self.adapter_status.clone();
             let button = button.clone();
 
-            let handle_state = move |state: BluetoothState| {
+            rx.recv_glib((), move |(), state: BluetoothState| {
                 let (text, class) = match &state {
                     BluetoothState::NotFound => (
                         Self::format_adapter(&state, &adapter_status, &format_strings.not_found),
@@ -262,18 +266,11 @@ impl Module<Button> for BluetoothModule {
                 button.remove_class("enabled");
                 button.remove_class("connected");
                 button.add_class(class);
-            };
-
-            glib_recv!(rx, handle_state);
+            });
         }
 
         let popup = self
-            .into_popup(
-                context.controller_tx.clone(),
-                context.subscribe(),
-                context,
-                info,
-            )
+            .into_popup(context, info)
             .into_popup_parts(vec![&button]);
 
         Ok(ModuleParts::new(button, popup))
@@ -281,11 +278,11 @@ impl Module<Button> for BluetoothModule {
 
     fn into_popup(
         self,
-        tx: mpsc::Sender<Self::ReceiveMessage>,
-        rx: broadcast::Receiver<Self::SendMessage>,
-        _context: WidgetContext<Self::SendMessage, Self::ReceiveMessage>,
-        info: &ModuleInfo,
+        context: WidgetContext<Self::SendMessage, Self::ReceiveMessage>,
+        _info: &ModuleInfo,
     ) -> Option<gtk::Box> {
+        let tx = context.controller_tx.clone();
+
         let container = gtk::Box::new(Orientation::Vertical, 0);
 
         let header = gtk::Box::new(Orientation::Horizontal, 0);
@@ -340,7 +337,6 @@ impl Module<Button> for BluetoothModule {
 
         {
             let icon_size = self.icon_size;
-            let icon_theme = info.icon_theme.clone();
 
             let popup_header = self.popup.header;
             let popup_disabled = self.popup.disabled;
@@ -353,7 +349,8 @@ impl Module<Button> for BluetoothModule {
             let mut seq = 0u32;
             let mut num_pinned = 0;
 
-            let mut handle_state = move |state: BluetoothState| {
+            let rx = context.subscribe();
+            rx.recv_glib((), move |(), state: BluetoothState| {
                 if let Some(handle) = enable_handle.take() {
                     header_switch.disconnect(handle);
                 }
@@ -395,7 +392,7 @@ impl Module<Button> for BluetoothModule {
                     {
                         let tx = tx.clone();
                         enable_handle = Some(header_switch.connect_active_notify(move |switch| {
-                            try_send!(tx, BluetoothAction::Disable);
+                            tx.send_spawn(BluetoothAction::Disable);
                             switch.set_sensitive(false);
                         }));
                     }
@@ -403,11 +400,12 @@ impl Module<Button> for BluetoothModule {
                     // `seq` is used here to find device boxes to remove
                     seq = seq.wrapping_add(1);
 
+                    let image_provider = context.ironbar.image_provider();
                     for device in devices {
                         let (device_box, local_seq) =
                             device_map.entry(device.address).or_insert_with(|| {
                                 let device_box =
-                                    BluetoothDeviceBox::new(tx.clone(), &icon_theme, icon_size);
+                                    BluetoothDeviceBox::new(tx.clone(), icon_size, &image_provider);
                                 devices_box.add(&*device_box);
 
                                 (device_box, seq)
@@ -462,13 +460,11 @@ impl Module<Button> for BluetoothModule {
                 } else if state == BluetoothState::Disabled {
                     let tx = tx.clone();
                     enable_handle = Some(header_switch.connect_active_notify(move |switch| {
-                        try_send!(tx, BluetoothAction::Enable);
+                        tx.send_spawn(BluetoothAction::Enable);
                         switch.set_sensitive(false);
                     }));
                 }
-            };
-
-            glib_recv!(rx, handle_state);
+            });
         }
 
         Some(container)
