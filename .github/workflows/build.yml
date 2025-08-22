@@ -103,6 +103,7 @@ jobs:
           - bindmode+all
           - bindmode+sway
           - bindmode+hyprland
+          - bluetooth
           - cairo
           - clipboard
           - clock
