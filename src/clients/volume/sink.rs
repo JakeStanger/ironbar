@@ -1,4 +1,7 @@
-use super::{ArcMutVec, Client, ConnectionState, Event, percent_to_volume, volume_to_percent};
+use super::{
+    ArcMutVec, Client, ConnectionState, Event, percent_to_volume, scroll_to_volume,
+    volume_to_percent,
+};
 use crate::channels::SyncSenderExt;
 use crate::lock;
 use libpulse_binding::callbacks::ListResult;
@@ -51,6 +54,41 @@ impl Client {
     pub fn set_default_sink(&self, name: &str) {
         if let ConnectionState::Connected { context, .. } = &*lock!(self.connection) {
             lock!(context).set_default_sink(name, |_| {});
+        }
+    }
+
+    #[instrument(level = "trace")]
+    pub fn set_default_volume(&self, value: f64) {
+        trace!("raceived volume change: {value:?}");
+        let mut active = None;
+        for sync in &*lock!(self.data.sinks) {
+            if sync.active {
+                active = Some(sync.name.to_string());
+                break;
+            }
+        }
+        if let Some(name) = active {
+            if let ConnectionState::Connected { introspector, .. } = &mut *lock!(self.connection) {
+                let (tx, rx) = mpsc::channel();
+
+                introspector.get_sink_info_by_name(&name, move |info| {
+                    let ListResult::Item(info) = info else {
+                        return;
+                    };
+
+                    tx.send_expect(info.volume);
+                });
+
+                let mut volume = rx.recv().expect("to receive info");
+                for v in volume.get_mut() {
+                    let dval = v.0;
+                    let val = scroll_to_volume(v.0, value);
+                    trace!("changing value from: {dval:?} to: {val}");
+                    v.0 = val;
+                }
+
+                introspector.set_sink_volume_by_name(&name, &volume, None);
+            }
         }
     }
 

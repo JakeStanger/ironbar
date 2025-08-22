@@ -7,9 +7,12 @@ use crate::modules::{
 };
 use crate::{lock, module_impl, spawn};
 use glib::Propagation;
+use gtk::gdk::{EventMask, ScrollDirection};
 use gtk::pango::EllipsizeMode;
 use gtk::prelude::*;
-use gtk::{Button, CellRendererText, ComboBoxText, Label, Orientation, Scale, ToggleButton};
+use gtk::{
+    Button, CellRendererText, ComboBoxText, EventBox, Label, Orientation, Scale, ToggleButton,
+};
 use serde::Deserialize;
 use std::collections::HashMap;
 use tokio::sync::mpsc;
@@ -134,9 +137,11 @@ pub enum Update {
 
     InputVolume(u32, f64),
     InputMute(u32, bool),
+    InputVolumeUp(f64),
+    InputVolumeDown(f64),
 }
 
-impl Module<Button> for VolumeModule {
+impl Module<EventBox> for VolumeModule {
     type SendMessage = Event;
     type ReceiveMessage = Update;
 
@@ -149,7 +154,7 @@ impl Module<Button> for VolumeModule {
         mut rx: mpsc::Receiver<Self::ReceiveMessage>,
     ) -> color_eyre::Result<()>
     where
-        <Self as Module<Button>>::SendMessage: Clone,
+        <Self as Module<EventBox>>::SendMessage: Clone,
     {
         let client = context.client::<volume::Client>();
 
@@ -200,6 +205,8 @@ impl Module<Button> for VolumeModule {
                     Update::SinkVolume(name, volume) => client.set_sink_volume(&name, volume),
                     Update::SinkMute(name, muted) => client.set_sink_muted(&name, muted),
                     Update::InputVolume(index, volume) => client.set_input_volume(index, volume),
+                    Update::InputVolumeUp(val) => client.set_default_volume(val),
+                    Update::InputVolumeDown(val) => client.set_default_volume(val),
                     Update::InputMute(index, muted) => client.set_input_muted(index, muted),
                 }
             }
@@ -212,9 +219,9 @@ impl Module<Button> for VolumeModule {
         self,
         context: WidgetContext<Self::SendMessage, Self::ReceiveMessage>,
         info: &ModuleInfo,
-    ) -> color_eyre::Result<ModuleParts<Button>>
+    ) -> color_eyre::Result<ModuleParts<EventBox>>
     where
-        <Self as Module<Button>>::SendMessage: Clone,
+        <Self as Module<EventBox>>::SendMessage: Clone,
     {
         let button_label = Label::builder()
             .use_markup(true)
@@ -222,7 +229,7 @@ impl Module<Button> for VolumeModule {
             .justify(self.layout.justify.into())
             .build();
 
-        let button = Button::new();
+        let button = Button::builder().build();
         button.add(&button_label);
 
         {
@@ -257,11 +264,42 @@ impl Module<Button> for VolumeModule {
             },
         );
 
+        let event_box = EventBox::builder()
+            .events(
+                EventMask::SCROLL_MASK
+                    | EventMask::SMOOTH_SCROLL_MASK
+                    | EventMask::BUTTON_MOTION_MASK,
+            )
+            .child(&button)
+            .build();
+
+        {
+            let tx = context.tx.clone();
+            event_box.connect_scroll_event(move |_button, scroll| {
+                match scroll.direction() {
+                    ScrollDirection::Up => {
+                        tx.send_update_spawn(Event::VolumeUp(scroll.delta().1));
+                    }
+                    ScrollDirection::Down => {
+                        tx.send_update_spawn(Event::VolumeDown(scroll.delta().1));
+                    }
+                    ScrollDirection::Smooth => {
+                        if scroll.scroll_deltas().unwrap_or_default().1 > 0.0 {
+                            tx.send_update_spawn(Event::VolumeUp(scroll.delta().1));
+                        } else {
+                            tx.send_update_spawn(Event::VolumeDown(scroll.delta().1));
+                        }
+                    }
+                    _ => {}
+                }
+                Propagation::Stop
+            });
+        }
         let popup = self
             .into_popup(context, info)
             .into_popup_parts(vec![&button]);
 
-        Ok(ModuleParts::new(button, popup))
+        Ok(ModuleParts::new(event_box, popup))
     }
 
     fn into_popup(
@@ -355,6 +393,8 @@ impl Module<Button> for VolumeModule {
 
         let mut inputs = HashMap::new();
         let mut sinks = vec![];
+
+        let tx = context.controller_tx.clone();
 
         context
             .subscribe()
@@ -479,6 +519,13 @@ impl Module<Button> for VolumeModule {
                         if let Some(ui) = inputs.remove(&index) {
                             input_container.remove(&ui.container);
                         }
+                    }
+                    Event::VolumeUp(val) => {
+                        tx.send_spawn(Update::InputVolumeUp(val));
+                    }
+
+                    Event::VolumeDown(val) => {
+                        tx.send_spawn(Update::InputVolumeDown(val));
                     }
                 }
             });

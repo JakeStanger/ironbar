@@ -29,6 +29,8 @@ pub enum Event {
     AddInput(SinkInput),
     UpdateInput(SinkInput),
     RemoveInput(u32),
+    VolumeUp(f64),
+    VolumeDown(f64),
 }
 
 #[derive(Debug)]
@@ -306,6 +308,20 @@ pub fn percent_to_volume(target_percent: f64) -> u32 {
         Volume::MUTED.0 + target_percent as u32 * base_delta as u32
     } else {
         Volume::NORMAL.0 + (target_percent - 100.0) as u32 * base_delta as u32
+    }
+}
+
+pub fn scroll_to_volume(current_value: u32, scroll_value: f64) -> u32 {
+    let mut val: i32 = current_value as i32;
+    let scroll_delta = scroll_value * -1000.0;
+    trace!("base+delta: {val} + {scroll_delta} orig: scroll_value");
+    val += scroll_delta as i32;
+    if val > Volume::NORMAL.0 as i32 {
+        Volume::NORMAL.0 as u32
+    } else if val < Volume::MUTED.0 as i32 {
+        Volume::MUTED.0 as u32
+    } else {
+        val as u32
     }
 }
 
