@@ -1,4 +1,5 @@
 #[cfg(any(
+    feature = "bluetooth",
     feature = "clipboard",
     feature = "keyboard",
     feature = "launcher",
@@ -9,6 +10,7 @@ mod gtk;
 mod provider;
 
 #[cfg(any(
+    feature = "bluetooth",
     feature = "clipboard",
     feature = "keyboard",
     feature = "launcher",
