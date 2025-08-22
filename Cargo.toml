@@ -149,7 +149,7 @@ ctrlc = "3.4.7"
 cfg-if = "1.0.1"
 
 # bluetooth
-bluer = { version = "0.17.3", optional = true, features = ["bluetoothd"] }
+bluer = { version = "0.17.4", optional = true, features = ["bluetoothd"] }
 
 # cli
 clap = { version = "4.5.42", optional = true, features = ["derive"] }
