@@ -1,0 +1,13 @@
+{
+    center = [
+        {
+            type = "custom"
+            bar = [{
+                type = "label"
+                label="val: #value"
+                on_scroll_up = "target/debug/ironbar var set value \$((`target/debug/ironbar var get value` + 1))"
+                on_scroll_down = "target/debug/ironbar var set value \$((`target/debug/ironbar var get value` - 1))"
+            }]
+        }
+    ]
+}
