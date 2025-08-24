@@ -218,3 +218,48 @@ impl Deref for IconLabel {
         &self.container
     }
 }
+
+#[derive(Clone, Debug)]
+#[cfg(feature = "music")]
+pub struct IconPrefixedLabel {
+    label: Label,
+    container: gtk::Box,
+}
+
+#[cfg(feature = "music")]
+impl IconPrefixedLabel {
+    pub fn new(icon_input: &str, label: Option<&str>, image_provider: &image::Provider) -> Self {
+        let container = gtk::Box::new(Orientation::Horizontal, 5);
+
+        let icon = IconLabel::new(icon_input, 24, image_provider);
+
+        let mut builder = Label::builder().use_markup(true);
+
+        if let Some(label) = label {
+            builder = builder.label(label);
+        }
+
+        let label = builder.build();
+
+        icon.add_class("icon-box");
+        label.add_class("label");
+
+        container.add(&*icon);
+        container.add(&label);
+
+        Self { label, container }
+    }
+
+    pub fn label(&self) -> &Label {
+        &self.label
+    }
+}
+
+#[cfg(feature = "music")]
+impl Deref for IconPrefixedLabel {
+    type Target = gtk::Box;
+
+    fn deref(&self) -> &Self::Target {
+        &self.container
+    }
+}
