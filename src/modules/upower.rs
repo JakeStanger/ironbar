@@ -5,10 +5,9 @@ use gtk::{Label, Orientation};
 use serde::Deserialize;
 use std::fmt::Write;
 use tokio::sync::mpsc;
-use zbus;
-use zbus::fdo::PropertiesProxy;
 
 use crate::channels::{AsyncSenderExt, BroadcastReceiverExt};
+use crate::clients::upower;
 use crate::clients::upower::BatteryState;
 use crate::config::{CommonConfig, LayoutConfig};
 use crate::gtk_helpers::{IronbarGtkExt, IronbarLabelExt};
@@ -80,16 +79,14 @@ impl Module<Button> for UpowerModule {
     ) -> Result<()> {
         let tx = context.tx.clone();
 
-        let display_proxy = context.try_client::<PropertiesProxy>()?;
+        let display_proxy = context.try_client::<upower::Client>()?;
 
         spawn(async move {
             let mut prop_changed_stream = display_proxy.receive_properties_changed().await?;
 
-            let device_interface_name =
-                zbus::names::InterfaceName::from_static_str("org.freedesktop.UPower.Device")
-                    .expect("failed to create zbus InterfaceName");
-
-            let properties = display_proxy.get_all(device_interface_name.clone()).await?;
+            let properties = display_proxy
+                .get_all(display_proxy.interface_name.clone())
+                .await?;
 
             let percentage = properties["Percentage"]
                 .downcast_ref::<f64>()
@@ -127,7 +124,7 @@ impl Module<Button> for UpowerModule {
 
             while let Some(signal) = prop_changed_stream.next().await {
                 let args = signal.args().expect("Invalid signal arguments");
-                if args.interface_name != device_interface_name {
+                if args.interface_name != display_proxy.interface_name {
                     continue;
                 }
 

@@ -70,7 +70,7 @@ pub struct Clients {
     #[cfg(feature = "tray")]
     tray: Option<Arc<tray::Client>>,
     #[cfg(feature = "upower")]
-    upower: Option<Arc<zbus::fdo::PropertiesProxy<'static>>>,
+    upower: Option<Arc<upower::Client>>,
     #[cfg(feature = "volume")]
     volume: Option<Arc<volume::Client>>,
     #[cfg(feature = "bluetooth")]
@@ -243,11 +243,15 @@ impl Clients {
     }
 
     #[cfg(feature = "upower")]
-    pub fn upower(&mut self) -> ClientResult<zbus::fdo::PropertiesProxy<'static>> {
+    pub fn upower(&mut self) -> ClientResult<upower::Client> {
         let client = if let Some(client) = &self.upower {
             client.clone()
         } else {
-            let client = await_sync(async { upower::create_display_proxy().await })?;
+            let client = await_sync(async { upower::Client::new().await })?;
+
+            #[cfg(feature = "ipc")]
+            Ironbar::variable_manager().register_namespace("upower", client.clone());
+
             self.upower.replace(client.clone());
             client
         };

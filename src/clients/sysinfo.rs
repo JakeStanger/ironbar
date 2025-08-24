@@ -483,8 +483,7 @@ impl FromStr for TokenType {
 }
 
 #[cfg(feature = "ipc")]
-use crate::ironvar::Namespace;
-use crate::ironvar::NamespaceTrait;
+use crate::ironvar::{Namespace, NamespaceTrait};
 
 #[cfg(feature = "ipc")]
 impl Namespace for Client {
