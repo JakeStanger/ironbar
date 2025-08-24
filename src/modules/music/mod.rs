@@ -20,12 +20,12 @@ use crate::clients::music::{
     self, MusicClient, PlayerState, PlayerUpdate, ProgressTick, Status, Track,
 };
 use crate::gtk_helpers::{IronbarGtkExt, IronbarLabelExt};
-use crate::image::{IconButton, IconLabel};
+use crate::image::{IconButton, IconLabel, IconPrefixedLabel};
 use crate::modules::PopupButton;
 use crate::modules::{
     Module, ModuleInfo, ModuleParts, ModulePopup, ModuleUpdateEvent, WidgetContext,
 };
-use crate::{image, module_impl, spawn};
+use crate::{module_impl, spawn};
 
 mod config;
 
@@ -283,26 +283,26 @@ impl Module<Button> for MusicModule {
 
         let title_label = IconPrefixedLabel::new(&icons.track, None, &image_provider);
         if let Some(truncate) = self.truncate_popup_title {
-            title_label.label.truncate(truncate);
+            title_label.label().truncate(truncate);
         }
 
         let album_label = IconPrefixedLabel::new(&icons.album, None, &image_provider);
         if let Some(truncate) = self.truncate_popup_album {
-            album_label.label.truncate(truncate);
+            album_label.label().truncate(truncate);
         }
 
         let artist_label = IconPrefixedLabel::new(&icons.artist, None, &image_provider);
         if let Some(truncate) = self.truncate_popup_artist {
-            artist_label.label.truncate(truncate);
+            artist_label.label().truncate(truncate);
         }
 
-        title_label.container.add_class("title");
-        album_label.container.add_class("album");
-        artist_label.container.add_class("artist");
+        title_label.add_class("title");
+        album_label.add_class("album");
+        artist_label.add_class("artist");
 
-        info_box.add(&title_label.container);
-        info_box.add(&album_label.container);
-        info_box.add(&artist_label.container);
+        info_box.add(&*title_label);
+        info_box.add(&*album_label);
+        info_box.add(&*artist_label);
 
         let controls_box = gtk::Box::new(Orientation::Horizontal, 0);
         controls_box.add_class("controls");
@@ -526,11 +526,11 @@ impl Module<Button> for MusicModule {
 fn update_popup_metadata_label(text: Option<String>, label: &IconPrefixedLabel) {
     match text {
         Some(value) => {
-            label.label.set_label_escaped(&value);
-            label.container.show_all();
+            label.label().set_label_escaped(&value);
+            label.show_all();
         }
         None => {
-            label.container.hide();
+            label.hide();
         }
     }
 }
@@ -560,34 +560,4 @@ fn get_token_value(song: &Track, token: &str) -> String {
         _ => Some(token.to_string()),
     }
     .unwrap_or_default()
-}
-
-#[derive(Clone, Debug)]
-struct IconPrefixedLabel {
-    label: Label,
-    container: gtk::Box,
-}
-
-impl IconPrefixedLabel {
-    fn new(icon_input: &str, label: Option<&str>, image_provider: &image::Provider) -> Self {
-        let container = gtk::Box::new(Orientation::Horizontal, 5);
-
-        let icon = IconLabel::new(icon_input, 24, image_provider);
-
-        let mut builder = Label::builder().use_markup(true);
-
-        if let Some(label) = label {
-            builder = builder.label(label);
-        }
-
-        let label = builder.build();
-
-        icon.add_class("icon-box");
-        label.add_class("label");
-
-        container.add(&*icon);
-        container.add(&label);
-
-        Self { label, container }
-    }
 }

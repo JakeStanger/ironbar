@@ -12,6 +12,7 @@ use std::ops::Deref;
     feature = "keyboard",
     feature = "launcher",
     feature = "music",
+    feature = "notifications",
     feature = "workspaces",
 ))]
 pub struct IconButton {
@@ -26,6 +27,7 @@ pub struct IconButton {
     feature = "keyboard",
     feature = "launcher",
     feature = "music",
+    feature = "notifications",
     feature = "workspaces",
 ))]
 impl IconButton {
@@ -73,6 +75,7 @@ impl IconButton {
     feature = "clipboard",
     feature = "keyboard",
     feature = "music",
+    feature = "notifications",
     feature = "workspaces",
     feature = "cairo",
     feature = "clipboard",
@@ -89,8 +92,10 @@ impl Deref for IconButton {
 #[cfg(any(
     feature = "bluetooth",
     feature = "keyboard",
+    feature = "menu",
     feature = "music",
-    feature = "workspaces"
+    feature = "workspaces",
+    feature = "upower"
 ))]
 pub struct IconLabel {
     provider: image::Provider,
@@ -104,8 +109,10 @@ pub struct IconLabel {
 #[cfg(any(
     feature = "bluetooth",
     feature = "keyboard",
+    feature = "menu",
     feature = "music",
-    feature = "workspaces"
+    feature = "workspaces",
+    feature = "upower"
 ))]
 impl IconLabel {
     pub fn new(input: &str, size: i32, image_provider: &image::Provider) -> Self {
@@ -199,10 +206,57 @@ impl IconLabel {
 #[cfg(any(
     feature = "bluetooth",
     feature = "keyboard",
+    feature = "menu",
     feature = "music",
-    feature = "workspaces"
+    feature = "workspaces",
+    feature = "upower"
 ))]
 impl Deref for IconLabel {
+    type Target = gtk::Box;
+
+    fn deref(&self) -> &Self::Target {
+        &self.container
+    }
+}
+
+#[derive(Clone, Debug)]
+#[cfg(feature = "music")]
+pub struct IconPrefixedLabel {
+    label: Label,
+    container: gtk::Box,
+}
+
+#[cfg(feature = "music")]
+impl IconPrefixedLabel {
+    pub fn new(icon_input: &str, label: Option<&str>, image_provider: &image::Provider) -> Self {
+        let container = gtk::Box::new(Orientation::Horizontal, 5);
+
+        let icon = IconLabel::new(icon_input, 24, image_provider);
+
+        let mut builder = Label::builder().use_markup(true);
+
+        if let Some(label) = label {
+            builder = builder.label(label);
+        }
+
+        let label = builder.build();
+
+        icon.add_class("icon-box");
+        label.add_class("label");
+
+        container.add(&*icon);
+        container.add(&label);
+
+        Self { label, container }
+    }
+
+    pub fn label(&self) -> &Label {
+        &self.label
+    }
+}
+
+#[cfg(feature = "music")]
+impl Deref for IconPrefixedLabel {
     type Target = gtk::Box;
 
     fn deref(&self) -> &Self::Target {
