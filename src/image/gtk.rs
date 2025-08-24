@@ -12,6 +12,7 @@ use std::ops::Deref;
     feature = "keyboard",
     feature = "launcher",
     feature = "music",
+    feature = "notifications",
     feature = "workspaces",
 ))]
 pub struct IconButton {
@@ -26,6 +27,7 @@ pub struct IconButton {
     feature = "keyboard",
     feature = "launcher",
     feature = "music",
+    feature = "notifications",
     feature = "workspaces",
 ))]
 impl IconButton {
@@ -73,6 +75,7 @@ impl IconButton {
     feature = "clipboard",
     feature = "keyboard",
     feature = "music",
+    feature = "notifications",
     feature = "workspaces",
     feature = "cairo",
     feature = "clipboard",
@@ -89,8 +92,10 @@ impl Deref for IconButton {
 #[cfg(any(
     feature = "bluetooth",
     feature = "keyboard",
+    feature = "menu",
     feature = "music",
-    feature = "workspaces"
+    feature = "workspaces",
+    feature = "upower"
 ))]
 pub struct IconLabel {
     provider: image::Provider,
@@ -104,8 +109,10 @@ pub struct IconLabel {
 #[cfg(any(
     feature = "bluetooth",
     feature = "keyboard",
+    feature = "menu",
     feature = "music",
-    feature = "workspaces"
+    feature = "workspaces",
+    feature = "upower"
 ))]
 impl IconLabel {
     pub fn new(input: &str, size: i32, image_provider: &image::Provider) -> Self {
@@ -199,8 +206,10 @@ impl IconLabel {
 #[cfg(any(
     feature = "bluetooth",
     feature = "keyboard",
+    feature = "menu",
     feature = "music",
-    feature = "workspaces"
+    feature = "workspaces",
+    feature = "upower"
 ))]
 impl Deref for IconLabel {
     type Target = gtk::Box;

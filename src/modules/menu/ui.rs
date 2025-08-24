@@ -3,6 +3,7 @@ use crate::channels::AsyncSenderExt;
 use crate::config::TruncateMode;
 use crate::desktop_file::open_program;
 use crate::gtk_helpers::{IronbarGtkExt, IronbarLabelExt};
+use crate::image::IconLabel;
 use crate::modules::ModuleUpdateEvent;
 use crate::script::Script;
 use crate::{image, spawn};
@@ -32,16 +33,9 @@ where
     label.truncate(truncate_mode);
 
     if let Some(icon_name) = entry.icon() {
-        let gtk_image = gtk::Image::new();
-        gtk_image.set_halign(Align::Start);
-        button_container.add(&gtk_image);
-
-        let image_provider = image_provider.clone();
-        glib::spawn_future_local(async move {
-            image_provider
-                .load_into_image_silent(&icon_name, 16, true, &gtk_image)
-                .await;
-        });
+        let image = IconLabel::new(&icon_name, 16, image_provider);
+        image.set_halign(Align::Start);
+        button_container.add(&*image);
     }
 
     button_container.add(&label);

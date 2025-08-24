@@ -2,10 +2,11 @@ use crate::channels::{AsyncSenderExt, BroadcastReceiverExt};
 use crate::clients::swaync;
 use crate::config::CommonConfig;
 use crate::gtk_helpers::IronbarGtkExt;
+use crate::image::IconButton;
 use crate::modules::{Module, ModuleInfo, ModuleParts, WidgetContext};
 use crate::{module_impl, spawn};
 use gtk::prelude::*;
-use gtk::{Align, Button, Label, Overlay};
+use gtk::{Align, Label, Overlay};
 use serde::Deserialize;
 use tokio::sync::mpsc::Receiver;
 use tracing::error;
@@ -184,8 +185,12 @@ impl Module<Overlay> for NotificationsModule {
         <Self as Module<Overlay>>::SendMessage: Clone,
     {
         let overlay = Overlay::new();
-        let button = Button::with_label(&self.icons.closed_none);
-        overlay.add(&button);
+        let button = IconButton::new(
+            &self.icons.closed_none,
+            16,
+            context.ironbar.image_provider(),
+        );
+        overlay.add(&*button);
 
         let label = Label::builder()
             .label("0")

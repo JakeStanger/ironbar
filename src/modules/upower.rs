@@ -12,6 +12,7 @@ use crate::channels::{AsyncSenderExt, BroadcastReceiverExt};
 use crate::clients::upower::BatteryState;
 use crate::config::{CommonConfig, LayoutConfig};
 use crate::gtk_helpers::{IronbarGtkExt, IronbarLabelExt};
+use crate::image::IconLabel;
 use crate::modules::PopupButton;
 use crate::modules::{
     Module, ModuleInfo, ModuleParts, ModulePopup, ModuleUpdateEvent, WidgetContext,
@@ -93,22 +94,27 @@ impl Module<Button> for UpowerModule {
             let percentage = properties["Percentage"]
                 .downcast_ref::<f64>()
                 .expect("expected percentage: f64 in HashMap of all properties");
+
             let icon_name = properties["IconName"]
                 .downcast_ref::<&str>()
                 .expect("expected IconName: str in HashMap of all properties")
                 .to_string();
+
             let state = u32_to_battery_state(
                 properties["State"]
                     .downcast_ref::<u32>()
                     .expect("expected State: u32 in HashMap of all properties"),
             )
             .unwrap_or(BatteryState::Unknown);
+
             let time_to_full = properties["TimeToFull"]
                 .downcast_ref::<i64>()
                 .expect("expected TimeToFull: i64 in HashMap of all properties");
+
             let time_to_empty = properties["TimeToEmpty"]
                 .downcast_ref::<i64>()
                 .expect("expected TimeToEmpty: i64 in HashMap of all properties");
+
             let mut properties = UpowerProperties {
                 percentage,
                 icon_name: icon_name.clone(),
@@ -171,7 +177,7 @@ impl Module<Button> for UpowerModule {
         context: WidgetContext<Self::SendMessage, Self::ReceiveMessage>,
         info: &ModuleInfo,
     ) -> Result<ModuleParts<Button>> {
-        let icon = gtk::Image::new();
+        let icon = IconLabel::new("", self.icon_size, &context.ironbar.image_provider());
         icon.add_class("icon");
 
         let label = Label::builder()
@@ -189,7 +195,7 @@ impl Module<Button> for UpowerModule {
         let button = Button::new();
         button.add_class("button");
 
-        container.add(&icon);
+        container.add(&*icon);
         container.add(&label);
         button.add(&container);
 
@@ -198,11 +204,8 @@ impl Module<Button> for UpowerModule {
             tx.send_spawn(ModuleUpdateEvent::TogglePopup(button.popup_id()));
         });
 
-        let format = self.format.clone();
-
         let rx = context.subscribe();
-        let provider = context.ironbar.image_provider();
-        rx.recv_glib_async((), move |(), properties| {
+        rx.recv_glib(&self.format, move |format, properties| {
             let state = properties.state;
 
             let is_charging =
@@ -220,19 +223,8 @@ impl Module<Button> for UpowerModule {
                 .replace("{time_remaining}", &time_remaining)
                 .replace("{state}", battery_state_to_string(state));
 
-            let mut icon_name = String::from("icon:");
-            icon_name.push_str(&properties.icon_name);
-
-            let provider = provider.clone();
-            let icon = icon.clone();
-
             label.set_label_escaped(&format);
-
-            async move {
-                provider
-                    .load_into_image_silent(&icon_name, self.icon_size, false, &icon)
-                    .await;
-            }
+            icon.set_label(Some(&properties.icon_name));
         });
 
         let popup = self
