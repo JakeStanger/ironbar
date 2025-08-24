@@ -224,7 +224,7 @@ impl Module<Button> for UpowerModule {
                 .replace("{state}", battery_state_to_string(state));
 
             label.set_label_escaped(&format);
-            icon.set_label(Some(&properties.icon_name));
+            icon.set_label(Some(&format!("icon:{}", properties.icon_name)));
         });
 
         let popup = self

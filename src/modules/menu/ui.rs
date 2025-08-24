@@ -33,7 +33,7 @@ where
     label.truncate(truncate_mode);
 
     if let Some(icon_name) = entry.icon() {
-        let image = IconLabel::new(&icon_name, 16, image_provider);
+        let image = IconLabel::new(&format!("icon:{icon_name}"), 16, image_provider);
         image.set_halign(Align::Start);
         button_container.add(&*image);
     }
