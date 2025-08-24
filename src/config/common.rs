@@ -5,6 +5,7 @@ use gtk::gdk::ScrollDirection;
 use gtk::prelude::*;
 use gtk::{EventBox, Justification, Orientation, Revealer, RevealerTransitionType};
 use serde::Deserialize;
+use std::cell::Cell;
 use tracing::trace;
 
 /// The following are module-level options which are present on **all** modules.
@@ -129,6 +130,12 @@ pub struct CommonConfig {
     /// { on_scroll_down = "echo 'event' >> log.txt" }
     /// ```
     pub on_scroll_down: Option<ScriptInput>,
+
+    /// A multiplier from `0.0` - `10.0` to control the speed
+    /// of smooth scrolling on trackpad.
+    ///
+    /// **Default**: `1.0`
+    pub smooth_scroll_speed: Option<f64>,
 
     /// A [script](scripts) to run when the cursor begins hovering over the module.
     ///
@@ -264,15 +271,26 @@ impl CommonConfig {
         let scroll_up_script = self.on_scroll_up.map(Script::new_polling);
         let scroll_down_script = self.on_scroll_down.map(Script::new_polling);
 
+        let scroll_speed = self.smooth_scroll_speed.unwrap_or(1.0);
+        let curr_scroll = Cell::new(0.0);
+        const REQUIRED_DELTA: f64 = 10.0;
+
         container.connect_scroll_event(move |_, event| {
             let script = match event.direction() {
                 ScrollDirection::Up => scroll_up_script.as_ref(),
                 ScrollDirection::Down => scroll_down_script.as_ref(),
                 ScrollDirection::Smooth => {
-                    if event.scroll_deltas().unwrap_or_default().1 > 0.0 {
+                    let delta = event.scroll_deltas().unwrap_or_default().1 * scroll_speed;
+                    curr_scroll.set(curr_scroll.get() + delta);
+
+                    if curr_scroll.get() >= REQUIRED_DELTA {
+                        curr_scroll.set(curr_scroll.get() - REQUIRED_DELTA);
                         scroll_down_script.as_ref()
-                    } else {
+                    } else if curr_scroll.get() <= -REQUIRED_DELTA {
+                        curr_scroll.set(curr_scroll.get() + REQUIRED_DELTA);
                         scroll_up_script.as_ref()
+                    } else {
+                        None
                     }
                 }
                 _ => None,
