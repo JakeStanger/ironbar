@@ -7,7 +7,7 @@ use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
 use tokio::sync::broadcast;
 
-type NamespaceTrait = Arc<dyn Namespace + Sync + Send>;
+pub type NamespaceTrait = Arc<dyn Namespace + Sync + Send>;
 
 pub trait Namespace {
     fn get(&self, key: &str) -> Option<String>;

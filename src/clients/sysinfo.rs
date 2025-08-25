@@ -483,7 +483,7 @@ impl FromStr for TokenType {
 }
 
 #[cfg(feature = "ipc")]
-use crate::ironvar::Namespace;
+use crate::ironvar::{Namespace, NamespaceTrait};
 
 #[cfg(feature = "ipc")]
 impl Namespace for Client {
@@ -561,7 +561,7 @@ impl Namespace for Client {
         .collect()
     }
 
-    fn get_namespace(&self, key: &str) -> Option<Arc<dyn Namespace + Sync + Send>> {
+    fn get_namespace(&self, key: &str) -> Option<NamespaceTrait> {
         let token = TokenType::from_str(key).ok()?;
 
         match token {

@@ -12,10 +12,11 @@ Displays system power information such as the battery percentage, and estimated 
 
 > Type: `upower`
 
-| Name        | Type      | Default         | Description                                       |
-|-------------|-----------|-----------------|---------------------------------------------------|
-| `format`    | `string`  | `{percentage}%` | Format string to use for the widget button label. |
-| `icon_size` | `integer` | `24`            | Size to render icon at.                           |
+| Name         | Type                 | Default         | Description                                                                                                                                          |
+|--------------|----------------------|-----------------|------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `format`     | `string`             | `{percentage}%` | Format string to use for the widget button label.                                                                                                    |
+| `icon_size`  | `integer`            | `24`            | Size to render icon at.                                                                                                                              |
+| `thresholds` | `Map<string, float>` | `{}`            | Map of threshold names to apply as classes against the percentage at which to apply them. The nearest value above the current percentage is applied. |
 
 <details>
 <summary>JSON</summary>
@@ -25,7 +26,11 @@ Displays system power information such as the battery percentage, and estimated 
   "end": [
     {
       "type": "upower",
-      "format": "{percentage}%"
+      "format": "{percentage}%",
+      "thresholds": {
+        "warning": 20,
+        "critical": 5
+      }
     }
   ]
 }
@@ -41,6 +46,10 @@ Displays system power information such as the battery percentage, and estimated 
 [[end]]
 type = "upower"
 format = "{percentage}%"
+
+[[end.thresholds]]
+warning = 20
+critical = 5
 ```
 
 </details>
@@ -52,6 +61,9 @@ format = "{percentage}%"
 end:
   - type: "upower"
     format: "{percentage}%"
+    thresholds:
+      warning: 20
+      critical: 5
 ```
 
 </details>
@@ -65,6 +77,8 @@ end:
     {
       type = "upower"
       format = "{percentage}%"
+      thresholds.warning = 20
+      thresholds.critical = 5
     }
   ]
 }
@@ -85,13 +99,14 @@ and will be replaced with values from the current battery state:
 
 ## Styling
 
-| Selector                        | Description                    |
-|---------------------------------|--------------------------------|
-| `.upower`                       | Upower widget button.          |
-| `.upower .contents`             | Upower widget button contents. |
-| `.upower .icon`                 | Upower widget battery icon.    |
-| `.upower .label`                | Upower widget button label.    |
-| `.popup-upower`                 | Upower popup box.              |
-| `.popup-upower .upower-details` | Label inside the popup.        |
+| Selector                        | Description                                    |
+|---------------------------------|------------------------------------------------|
+| `.upower`                       | Upower widget button.                          |
+| `.upower.<threshold>`           | Upower widget button (dynamic threshold class) |
+| `.upower .contents`             | Upower widget button contents.                 |
+| `.upower .icon`                 | Upower widget battery icon.                    |
+| `.upower .label`                | Upower widget button label.                    |
+| `.popup-upower`                 | Upower popup box.                              |
+| `.popup-upower .upower-details` | Label inside the popup.                        |
 
 For more information on styling, please see the [styling guide](styling-guide).
