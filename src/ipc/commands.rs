@@ -16,19 +16,16 @@ pub enum Command {
     /// Reload the config.
     Reload,
 
-    /// Load an additional CSS stylesheet.
-    /// The sheet is automatically hot-reloaded.
-    LoadCss {
-        /// The path to the sheet.
-        path: PathBuf,
-    },
-
     /// Get and set reactive Ironvar values.
     #[command(subcommand)]
     Var(IronvarCommand),
 
     /// Interact with a specific bar.
     Bar(BarCommand),
+
+    /// Load stylesheets and dynamically add/remove classes
+    #[command(subcommand)]
+    Style(StyleCommand),
 }
 
 #[derive(Subcommand, Debug, Serialize, Deserialize)]
@@ -128,5 +125,43 @@ pub enum BarCommandType {
             action = ArgAction::Set,
         )]
         exclusive: bool,
+    },
+}
+
+#[derive(Subcommand, Debug, Serialize, Deserialize)]
+#[serde(tag = "subcommand", rename_all = "snake_case")]
+pub enum StyleCommand {
+    /// Load an additional CSS stylesheet.
+    /// The sheet is automatically hot-reloaded.
+    LoadCss {
+        /// The path to the sheet.
+        path: PathBuf,
+    },
+
+    /// Add a CSS class `name` to all modules
+    /// matching `module_name`.
+    AddClass {
+        /// The name of the module to target.
+        module_name: String,
+        /// The class name to add.
+        name: String,
+    },
+
+    /// Remove a CSS class `name` from all modules
+    /// matching `module_name`.
+    RemoveClass {
+        /// The name of the module to target.
+        module_name: String,
+        /// The class name to remove.
+        name: String,
+    },
+
+    /// Toggle a CSS class `name` on all modules
+    /// matching `module_name`.
+    ToggleClass {
+        /// The name of the module to target.
+        module_name: String,
+        /// The class name to toggle.
+        name: String,
     },
 }

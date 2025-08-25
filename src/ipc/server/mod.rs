@@ -1,5 +1,6 @@
 mod bar;
 mod ironvar;
+mod style;
 
 use std::fs;
 use std::path::Path;
@@ -16,7 +17,6 @@ use tracing::{debug, error, info, trace, warn};
 use super::Ipc;
 use crate::channels::{AsyncSenderExt, MpscReceiverExt};
 use crate::ipc::{Command, Response};
-use crate::style::load_css;
 use crate::{Ironbar, spawn};
 
 impl Ipc {
@@ -156,16 +156,9 @@ impl Ipc {
 
                 Response::Ok
             }
-            Command::LoadCss { path } => {
-                if path.exists() {
-                    load_css(path, application.clone());
-                    Response::Ok
-                } else {
-                    Response::error("File not found")
-                }
-            }
             Command::Var(cmd) => ironvar::handle_command(cmd),
             Command::Bar(cmd) => bar::handle_command(&cmd, ironbar),
+            Command::Style(cmd) => style::handle_command(cmd, ironbar, application),
         }
     }
 
