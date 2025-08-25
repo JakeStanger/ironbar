@@ -86,19 +86,6 @@ Responds with `ok`.
 }
 ```
 
-### `load_css`
-
-Loads an additional CSS stylesheet, with hot-reloading enabled.
-
-Responds with `ok` if the stylesheet exists, otherwise `error`.
-
-```json
-{
-  "command": "load_css",
-  "path": "/path/to/style.css"
-}
-```
-
 ### `var`
 
 Subcommand for controlling Ironvars.
@@ -300,6 +287,67 @@ Sets whether the bar reserves an exclusive zone.
   "command": "bar",
   "subcommand": "set_exclusive",
   "exclusive": true
+}
+```
+
+### `style`
+
+#### `load_css`
+
+Loads an additional CSS stylesheet, with hot-reloading enabled.
+
+Responds with `ok` if the stylesheet exists, otherwise `error`.
+
+```json
+{
+  "command": "load_css",
+  "path": "/path/to/style.css"
+}
+```
+
+#### `add_class`
+
+Adds a CSS class to the top-level widget for all modules matching `module_name`.
+If the module also has a popup, the class is added to the top container.
+
+Response with `ok` if at least one module is found, otherwise `error`.
+
+```json
+{
+  "command": "add_class",
+  "module_name": "clock",
+  "name": "night"
+}
+```
+
+#### `remove_class`
+
+Removes a CSS class from the top-level widget for all modules matching `module_name`.
+If the module also has a popup, the class is added to the top container.
+
+Response with `ok` if at least one module is found, otherwise `error`.
+
+```json
+{
+  "command": "remove_class",
+  "module_name": "clock",
+  "name": "night"
+}
+```
+
+#### `toggle_class`
+
+Toggles a CSS class on the top-level widget for all modules matching `module_name`, 
+removing it if already present and adding it otherwise.
+If the module also has a popup, the class is added to the top container.
+
+Response with `ok` if at least one module is found, otherwise `error`.
+
+```json
+{
+  "command": "toggle_class",
+  "module_name": "clock",
+  "name": "night"
 }
 ```
 

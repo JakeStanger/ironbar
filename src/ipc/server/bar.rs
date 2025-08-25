@@ -49,9 +49,9 @@ pub fn handle_command(command: &BarCommand, ironbar: &Rc<Ironbar>) -> Response {
             }
         })
         .reduce(|acc, rsp| match (acc, rsp) {
-            // If all responses are Ok, return one Ok. We assume we'll never mix Ok and OkValue.
+            // If all responses are `Ok`, return one `Ok`. We assume we'll never mix `Ok` and `OkValue`.
             (Response::Ok, _) => Response::Ok,
-            // Two or more OkValues create a multi:
+            // Two or more `OkValue`s create a multi:
             (Response::OkValue { value: v1 }, Response::OkValue { value: v2 }) => Response::Multi {
                 values: vec![v1, v2],
             },

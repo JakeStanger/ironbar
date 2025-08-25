@@ -44,7 +44,7 @@ use crate::modules::volume::VolumeModule;
 #[cfg(feature = "workspaces")]
 use crate::modules::workspaces::WorkspacesModule;
 
-use crate::modules::{AnyModuleFactory, ModuleFactory, ModuleInfo};
+use crate::modules::{AnyModuleFactory, ModuleFactory, ModuleInfo, ModuleRef};
 use cfg_if::cfg_if;
 use color_eyre::Result;
 #[cfg(feature = "schema")]
@@ -108,7 +108,7 @@ impl ModuleConfig {
         module_factory: &AnyModuleFactory,
         container: &gtk::Box,
         info: &ModuleInfo,
-    ) -> Result<()> {
+    ) -> Result<ModuleRef> {
         macro_rules! create {
             ($module:expr) => {
                 module_factory.create(*$module, container, info)

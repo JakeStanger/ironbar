@@ -146,6 +146,13 @@ where
     }
 }
 
+#[derive(Debug, Clone)]
+pub struct ModuleRef {
+    pub name: String,
+    pub widget: Widget,
+    pub popup: Option<gtk::Box>,
+}
+
 pub struct ModuleParts<W: IsA<Widget>> {
     pub widget: W,
     pub popup: Option<ModulePopupParts>,
@@ -290,7 +297,7 @@ pub trait ModuleFactory {
         mut module: TModule,
         container: &gtk::Box,
         info: &ModuleInfo,
-    ) -> Result<()>
+    ) -> Result<ModuleRef>
     where
         TModule: Module<TWidget, SendMessage = TSend, ReceiveMessage = TRev>,
         TWidget: IsA<Widget>,
@@ -336,7 +343,7 @@ pub trait ModuleFactory {
                 .add_class(&format!("popup-{module_name}"));
 
             self.popup()
-                .register_content(id, instance_name, popup_content);
+                .register_content(id, instance_name.clone(), popup_content);
         }
 
         self.setup_receiver(tx, ui_rx, module_name, id, common.disable_popup);
@@ -350,7 +357,11 @@ pub trait ModuleFactory {
         );
         container.add(&ev_container);
 
-        Ok(())
+        Ok(ModuleRef {
+            name: instance_name,
+            widget: module_parts.widget.upcast(),
+            popup: module_parts.popup.map(|p| p.container),
+        })
     }
 
     fn setup_receiver<TSend>(

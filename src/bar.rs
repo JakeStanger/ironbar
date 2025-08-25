@@ -1,6 +1,6 @@
 use crate::Ironbar;
 use crate::config::{BarConfig, BarPosition, MarginConfig, ModuleConfig};
-use crate::modules::{BarModuleFactory, ModuleInfo, ModuleLocation};
+use crate::modules::{BarModuleFactory, ModuleInfo, ModuleLocation, ModuleRef};
 use crate::popup::Popup;
 use color_eyre::Result;
 use glib::Propagation;
@@ -14,8 +14,13 @@ use tracing::{debug, error, info};
 
 #[derive(Debug, Clone)]
 enum Inner {
-    New { config: Option<BarConfig> },
-    Loaded { popup: Rc<Popup> },
+    New {
+        config: Option<BarConfig>,
+    },
+    Loaded {
+        module_refs: Vec<ModuleRef>,
+        popup: Rc<Popup>,
+    },
 }
 
 #[derive(Debug, Clone)]
@@ -155,6 +160,7 @@ impl Bar {
 
         self.inner = Inner::Loaded {
             popup: load_result.popup,
+            module_refs: load_result.module_refs,
         };
         Ok(self)
     }
@@ -275,28 +281,51 @@ impl Bar {
         );
         let popup = Rc::new(popup);
 
+        let mut refs = vec![];
+
         if let Some(modules) = config.start {
             self.content.add(&self.start);
 
             let info = info!(ModuleLocation::Left);
-            add_modules(&self.start, modules, &info, &self.ironbar, &popup)?;
+            refs.extend(add_modules(
+                &self.start,
+                modules,
+                &info,
+                &self.ironbar,
+                &popup,
+            ));
         }
 
         if let Some(modules) = config.center {
             self.content.set_center_widget(Some(&self.center));
 
             let info = info!(ModuleLocation::Center);
-            add_modules(&self.center, modules, &info, &self.ironbar, &popup)?;
+            refs.extend(add_modules(
+                &self.center,
+                modules,
+                &info,
+                &self.ironbar,
+                &popup,
+            ));
         }
 
         if let Some(modules) = config.end {
             self.content.pack_end(&self.end, false, true, 0);
 
             let info = info!(ModuleLocation::Right);
-            add_modules(&self.end, modules, &info, &self.ironbar, &popup)?;
+            refs.extend(add_modules(
+                &self.end,
+                modules,
+                &info,
+                &self.ironbar,
+                &popup,
+            ));
         }
 
-        let result = BarLoadResult { popup };
+        let result = BarLoadResult {
+            popup,
+            module_refs: refs,
+        };
 
         Ok(result)
     }
@@ -330,7 +359,7 @@ impl Bar {
             Inner::New { .. } => {
                 panic!("Attempted to get popup of uninitialized bar. This is a serious bug!")
             }
-            Inner::Loaded { popup } => popup.clone(),
+            Inner::Loaded { popup, .. } => popup.clone(),
         }
     }
 
@@ -350,6 +379,15 @@ impl Bar {
             self.window.set_exclusive_zone(0);
         }
     }
+
+    pub fn modules(&self) -> &[ModuleRef] {
+        match &self.inner {
+            Inner::New { .. } => {
+                panic!("Attempted to get modules of uninitialized bar. This is a serious bug!")
+            }
+            Inner::Loaded { module_refs, .. } => module_refs,
+        }
+    }
 }
 
 /// Creates a `gtk::Box` container to place widgets inside.
@@ -367,6 +405,7 @@ fn create_container(name: &str, orientation: Orientation) -> gtk::Box {
 #[derive(Debug)]
 struct BarLoadResult {
     popup: Rc<Popup>,
+    module_refs: Vec<ModuleRef>,
 }
 
 /// Adds modules into a provided GTK box,
@@ -377,17 +416,19 @@ fn add_modules(
     info: &ModuleInfo,
     ironbar: &Rc<Ironbar>,
     popup: &Rc<Popup>,
-) -> Result<()> {
+) -> Vec<ModuleRef> {
     let module_factory = BarModuleFactory::new(ironbar.clone(), popup.clone()).into();
 
+    let mut results = vec![];
     for config in modules {
         let name = config.name();
-        if let Err(err) = config.create(&module_factory, content, info) {
-            error!("failed to create module {name}: {:?}", err);
+        match config.create(&module_factory, content, info) {
+            Ok(res) => results.push(res),
+            Err(err) => error!("failed to create module {name}: {:?}", err),
         }
     }
 
-    Ok(())
+    results
 }
 
 pub fn create_bar(
