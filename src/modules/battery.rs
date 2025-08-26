@@ -26,7 +26,7 @@ const MINUTE: i64 = 60;
 
 #[derive(Debug, Deserialize, Clone)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
-pub struct UpowerModule {
+pub struct BatteryModule {
     /// The format string to use for the widget button label.
     /// For available tokens, see [below](#formatting-tokens).
     ///
@@ -40,6 +40,11 @@ pub struct UpowerModule {
     #[serde(default = "default_icon_size")]
     icon_size: i32,
 
+    // -- Common --
+    /// See [layout options](module-level-options#layout)
+    #[serde(default, flatten)]
+    layout: LayoutConfig,
+
     /// A map of threshold names to apply as classes,
     /// against the battery percentage at which to apply them.
     ///
@@ -51,7 +56,7 @@ pub struct UpowerModule {
     /// {
     ///   end = [
     ///     {
-    ///       type = "upower"
+    ///       type = "battery"
     ///       format = "{percentage}%"
     ///       thresholds.warning = 20
     ///       thresholds.critical = 5
@@ -67,11 +72,6 @@ pub struct UpowerModule {
     /// **Default**: `{}`
     #[serde(default)]
     thresholds: HashMap<Box<str>, f64>,
-
-    // -- Common --
-    /// See [layout options](module-level-options#layout)
-    #[serde(default, flatten)]
-    layout: LayoutConfig,
 
     /// See [common options](module-level-options#common-options).
     #[serde(flatten)]
@@ -95,11 +95,11 @@ pub struct UpowerProperties {
     time_to_empty: i64,
 }
 
-impl Module<Button> for UpowerModule {
+impl Module<Button> for BatteryModule {
     type SendMessage = UpowerProperties;
     type ReceiveMessage = ();
 
-    module_impl!("upower");
+    module_impl!("battery");
 
     fn spawn_controller(
         &self,
@@ -247,7 +247,7 @@ impl Module<Button> for UpowerModule {
             .build();
 
         let label = Label::builder().use_markup(true).build();
-        label.add_class("upower-details");
+        label.add_class("details");
         container.add(&label);
 
         context.subscribe().recv_glib((), move |(), properties| {

@@ -10,7 +10,7 @@ Displays system power information such as the battery percentage, and estimated 
 
 ## Configuration
 
-> Type: `upower`
+> Type: `battery`
 
 | Name         | Type                 | Default         | Description                                                                                                                                          |
 |--------------|----------------------|-----------------|------------------------------------------------------------------------------------------------------------------------------------------------------|
@@ -25,7 +25,7 @@ Displays system power information such as the battery percentage, and estimated 
 {
   "end": [
     {
-      "type": "upower",
+      "type": "battery",
       "format": "{percentage}%",
       "thresholds": {
         "warning": 20,
@@ -44,7 +44,7 @@ Displays system power information such as the battery percentage, and estimated 
 
 ```toml
 [[end]]
-type = "upower"
+type = "battery"
 format = "{percentage}%"
 
 [[end.thresholds]]
@@ -59,7 +59,7 @@ critical = 5
 
 ```yaml
 end:
-  - type: "upower"
+  - type: "battery"
     format: "{percentage}%"
     thresholds:
       warning: 20
@@ -75,7 +75,7 @@ end:
 {
   end = [
     {
-      type = "upower"
+      type = "battery"
       format = "{percentage}%"
       thresholds.warning = 20
       thresholds.critical = 5
@@ -99,14 +99,14 @@ and will be replaced with values from the current battery state:
 
 ## Styling
 
-| Selector                        | Description                                    |
-|---------------------------------|------------------------------------------------|
-| `.upower`                       | Upower widget button.                          |
-| `.upower.<threshold>`           | Upower widget button (dynamic threshold class) |
-| `.upower .contents`             | Upower widget button contents.                 |
-| `.upower .icon`                 | Upower widget battery icon.                    |
-| `.upower .label`                | Upower widget button label.                    |
-| `.popup-upower`                 | Upower popup box.                              |
-| `.popup-upower .upower-details` | Label inside the popup.                        |
+| Selector                  | Description                                     |
+|---------------------------|-------------------------------------------------|
+| `.battery`                | Battery widget button.                          |
+| `.battery.<threshold>`    | Battery widget button (dynamic threshold class) |
+| `.battery .contents`      | Battery widget button contents.                 |
+| `.battery .icon`          | Battery widget battery icon.                    |
+| `.battery .label`         | Battery widget button label.                    |
+| `.popup-battery`          | Battery popup box.                              |
+| `.popup-battery .details` | Label inside the popup.                         |
 
 For more information on styling, please see the [styling guide](styling-guide).

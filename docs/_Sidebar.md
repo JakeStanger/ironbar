@@ -25,6 +25,7 @@
 
 # Modules
 
+- [Battery](battery)
 - [Bindmode](bindmode)
 - [Bluetooth](bluetooth)
 - [Cairo](cairo)
@@ -42,6 +43,5 @@
 - [Script](script)
 - [Sys_Info](sys-info)
 - [Tray](tray)
-- [Upower](upower)
 - [Volume](volume)
 - [Workspaces](workspaces)

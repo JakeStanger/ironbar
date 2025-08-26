@@ -1,4 +1,5 @@
 #[cfg(any(
+    feature = "battery",
     feature = "bluetooth",
     feature = "clipboard",
     feature = "keyboard",
@@ -6,13 +7,13 @@
     feature = "menu",
     feature = "music",
     feature = "notifications",
-    feature = "workspaces",
-    feature = "upower"
+    feature = "workspaces"
 ))]
 mod gtk;
 mod provider;
 
 #[cfg(any(
+    feature = "battery",
     feature = "bluetooth",
     feature = "clipboard",
     feature = "keyboard",
@@ -20,8 +21,7 @@ mod provider;
     feature = "menu",
     feature = "music",
     feature = "notifications",
-    feature = "workspaces",
-    feature = "upower"
+    feature = "workspaces"
 ))]
 pub use self::gtk::*;
 pub use provider::{Provider, create_and_load_surface};

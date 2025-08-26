@@ -90,12 +90,12 @@ impl Deref for IconButton {
 }
 
 #[cfg(any(
+    feature = "battery",
     feature = "bluetooth",
     feature = "keyboard",
     feature = "menu",
     feature = "music",
     feature = "workspaces",
-    feature = "upower"
 ))]
 pub struct IconLabel {
     provider: image::Provider,
@@ -107,12 +107,12 @@ pub struct IconLabel {
 }
 
 #[cfg(any(
+    feature = "battery",
     feature = "bluetooth",
     feature = "keyboard",
     feature = "menu",
     feature = "music",
-    feature = "workspaces",
-    feature = "upower"
+    feature = "workspaces"
 ))]
 impl IconLabel {
     pub fn new(input: &str, size: i32, image_provider: &image::Provider) -> Self {
@@ -204,12 +204,12 @@ impl IconLabel {
 }
 
 #[cfg(any(
+    feature = "battery",
     feature = "bluetooth",
     feature = "keyboard",
     feature = "menu",
     feature = "music",
-    feature = "workspaces",
-    feature = "upower"
+    feature = "workspaces"
 ))]
 impl Deref for IconLabel {
     type Target = gtk::Box;
