@@ -1,13 +1,14 @@
 /// Originally taken from `upower-dbus` crate
 /// <https://github.com/pop-os/upower-dbus/blob/main/LICENSE>
-// Copyright 2021 System76 <info@system76.com>
-// SPDX-License-Identifier: MPL-2.0
+///  Copyright 2021 System76 <info@system76.com>
+///  SPDX-License-Identifier: MPL-2.0
 use zbus::proxy;
-use zbus::zvariant::OwnedValue;
+use zbus::zvariant::{OwnedValue, Value};
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, OwnedValue)]
+#[derive(Debug, Default, Copy, Clone, PartialEq, Eq, OwnedValue)]
 #[repr(u32)]
 pub enum BatteryState {
+    #[default]
     Unknown = 0,
     Charging = 1,
     Discharging = 2,
@@ -15,6 +16,29 @@ pub enum BatteryState {
     FullyCharged = 4,
     PendingCharge = 5,
     PendingDischarge = 6,
+}
+
+impl From<u32> for BatteryState {
+    fn from(number: u32) -> Self {
+        match number {
+            n if n == BatteryState::Charging as u32 => BatteryState::Charging,
+            n if n == BatteryState::Discharging as u32 => BatteryState::Discharging,
+            n if n == BatteryState::Empty as u32 => BatteryState::Empty,
+            n if n == BatteryState::FullyCharged as u32 => BatteryState::FullyCharged,
+            n if n == BatteryState::PendingCharge as u32 => BatteryState::PendingCharge,
+            n if n == BatteryState::PendingDischarge as u32 => BatteryState::PendingCharge,
+            _ => BatteryState::Unknown,
+        }
+    }
+}
+
+impl TryFrom<&zbus::zvariant::Value<'_>> for BatteryState {
+    type Error = zbus::zvariant::Error;
+
+    fn try_from(value: &Value<'_>) -> Result<Self, Self::Error> {
+        let value = value.downcast_ref::<u32>()?;
+        Ok(value.into())
+    }
 }
 
 #[derive(Debug, Copy, Clone, OwnedValue)]

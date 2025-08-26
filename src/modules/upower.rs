@@ -1,13 +1,3 @@
-use color_eyre::Result;
-use futures_lite::stream::StreamExt;
-use gtk::{Button, prelude::*};
-use gtk::{Label, Orientation};
-use serde::Deserialize;
-use std::cmp::Ordering;
-use std::collections::HashMap;
-use std::fmt::{Display, Formatter, Write};
-use tokio::sync::mpsc;
-
 use crate::channels::{AsyncSenderExt, BroadcastReceiverExt};
 use crate::clients::upower;
 use crate::clients::upower::BatteryState;
@@ -19,6 +9,16 @@ use crate::modules::{
     Module, ModuleInfo, ModuleParts, ModulePopup, ModuleUpdateEvent, WidgetContext,
 };
 use crate::{module_impl, spawn};
+use color_eyre::Result;
+use futures_lite::stream::StreamExt;
+use gtk::{Button, prelude::*};
+use gtk::{Label, Orientation};
+use serde::Deserialize;
+use std::cmp::Ordering;
+use std::collections::HashMap;
+use std::fmt::{Display, Formatter, Write};
+use tokio::sync::mpsc;
+use zbus::zvariant::OwnedValue;
 
 const DAY: i64 = 24 * 60 * 60;
 const HOUR: i64 = 60 * 60;
@@ -86,7 +86,7 @@ const fn default_icon_size() -> i32 {
     24
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 pub struct UpowerProperties {
     percentage: f64,
     icon_name: String,
@@ -114,40 +114,10 @@ impl Module<Button> for UpowerModule {
         spawn(async move {
             let mut prop_changed_stream = display_proxy.receive_properties_changed().await?;
 
-            let properties = display_proxy
+            let mut properties: UpowerProperties = display_proxy
                 .get_all(display_proxy.interface_name.clone())
-                .await?;
-
-            let percentage = properties["Percentage"]
-                .downcast_ref::<f64>()
-                .expect("expected percentage: f64 in HashMap of all properties");
-
-            let icon_name = properties["IconName"]
-                .downcast_ref::<&str>()
-                .expect("expected IconName: str in HashMap of all properties")
-                .to_string();
-
-            let state = properties["State"]
-                .downcast_ref::<u32>()
-                .expect("expected State: u32 in HashMap of all properties")
-                .try_into()
-                .unwrap_or(BatteryState::Unknown);
-
-            let time_to_full = properties["TimeToFull"]
-                .downcast_ref::<i64>()
-                .expect("expected TimeToFull: i64 in HashMap of all properties");
-
-            let time_to_empty = properties["TimeToEmpty"]
-                .downcast_ref::<i64>()
-                .expect("expected TimeToEmpty: i64 in HashMap of all properties");
-
-            let mut properties = UpowerProperties {
-                percentage,
-                icon_name: icon_name.clone(),
-                state,
-                time_to_full,
-                time_to_empty,
-            };
+                .await?
+                .try_into()?;
 
             tx.send_update(properties.clone()).await;
 
@@ -157,35 +127,23 @@ impl Module<Button> for UpowerModule {
                     continue;
                 }
 
-                for (name, changed_value) in args.changed_properties {
-                    match name {
+                for (key, value) in args.changed_properties {
+                    match key {
                         "Percentage" => {
-                            properties.percentage = changed_value
-                                .downcast::<f64>()
-                                .expect("expected Percentage to be f64");
+                            properties.percentage = value.downcast::<f64>().unwrap_or_default()
                         }
                         "IconName" => {
-                            properties.icon_name = changed_value
-                                .downcast_ref::<&str>()
-                                .expect("expected IconName to be str")
-                                .to_string();
+                            properties.icon_name = value.downcast::<String>().unwrap_or_default()
                         }
                         "State" => {
-                            properties.state = changed_value
-                                .downcast::<u32>()
-                                .unwrap_or(0)
-                                .try_into()
-                                .expect("expected State to be BatteryState");
+                            properties.state =
+                                value.downcast_ref::<BatteryState>().unwrap_or_default()
                         }
                         "TimeToFull" => {
-                            properties.time_to_full = changed_value
-                                .downcast::<i64>()
-                                .expect("expected TimeToFull to be i64");
+                            properties.time_to_full = value.downcast::<i64>().unwrap_or_default()
                         }
                         "TimeToEmpty" => {
-                            properties.time_to_empty = changed_value
-                                .downcast::<i64>()
-                                .expect("expected TimeToEmpty to be i64");
+                            properties.time_to_empty = value.downcast::<i64>().unwrap_or_default()
                         }
                         _ => {}
                     }
@@ -356,27 +314,17 @@ fn seconds_to_string(seconds: i64) -> Result<String> {
     Ok(time_string.trim_start().to_string())
 }
 
-impl TryFrom<u32> for BatteryState {
-    type Error = ();
+impl TryFrom<HashMap<String, OwnedValue>> for UpowerProperties {
+    type Error = zbus::zvariant::Error;
 
-    fn try_from(number: u32) -> std::result::Result<Self, Self::Error> {
-        if number == (BatteryState::Unknown as u32) {
-            Ok(BatteryState::Unknown)
-        } else if number == (BatteryState::Charging as u32) {
-            Ok(BatteryState::Charging)
-        } else if number == (BatteryState::Discharging as u32) {
-            Ok(BatteryState::Discharging)
-        } else if number == (BatteryState::Empty as u32) {
-            Ok(BatteryState::Empty)
-        } else if number == (BatteryState::FullyCharged as u32) {
-            Ok(BatteryState::FullyCharged)
-        } else if number == (BatteryState::PendingCharge as u32) {
-            Ok(BatteryState::PendingCharge)
-        } else if number == (BatteryState::PendingDischarge as u32) {
-            Ok(BatteryState::PendingDischarge)
-        } else {
-            Err(())
-        }
+    fn try_from(properties: HashMap<String, OwnedValue>) -> std::result::Result<Self, Self::Error> {
+        Ok(UpowerProperties {
+            percentage: properties["Percentage"].downcast_ref::<f64>()?,
+            icon_name: properties["IconName"].downcast_ref::<&str>()?.to_string(),
+            state: properties["State"].downcast_ref::<BatteryState>()?,
+            time_to_full: properties["TimeToFull"].downcast_ref::<i64>()?,
+            time_to_empty: properties["TimeToEmpty"].downcast_ref::<i64>()?,
+        })
     }
 }
 
