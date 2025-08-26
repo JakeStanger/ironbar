@@ -32,7 +32,7 @@ pub mod swaync;
 pub mod sysinfo;
 #[cfg(feature = "tray")]
 pub mod tray;
-#[cfg(feature = "upower")]
+#[cfg(feature = "battery")]
 pub mod upower;
 #[cfg(feature = "volume")]
 pub mod volume;
@@ -69,7 +69,7 @@ pub struct Clients {
     sys_info: Option<Arc<sysinfo::Client>>,
     #[cfg(feature = "tray")]
     tray: Option<Arc<tray::Client>>,
-    #[cfg(feature = "upower")]
+    #[cfg(feature = "battery")]
     upower: Option<Arc<upower::Client>>,
     #[cfg(feature = "volume")]
     volume: Option<Arc<volume::Client>>,
@@ -242,7 +242,7 @@ impl Clients {
         Ok(client)
     }
 
-    #[cfg(feature = "upower")]
+    #[cfg(feature = "battery")]
     pub fn upower(&mut self) -> ClientResult<upower::Client> {
         let client = if let Some(client) = &self.upower {
             client.clone()

@@ -3,6 +3,8 @@ mod r#impl;
 mod layout;
 mod truncate;
 
+#[cfg(feature = "battery")]
+use crate::modules::battery::BatteryModule;
 #[cfg(feature = "bindmode")]
 use crate::modules::bindmode::Bindmode;
 #[cfg(feature = "bluetooth")]
@@ -37,8 +39,6 @@ use crate::modules::script::ScriptModule;
 use crate::modules::sysinfo::SysInfoModule;
 #[cfg(feature = "tray")]
 use crate::modules::tray::TrayModule;
-#[cfg(feature = "upower")]
-use crate::modules::upower::UpowerModule;
 #[cfg(feature = "volume")]
 use crate::modules::volume::VolumeModule;
 #[cfg(feature = "workspaces")]
@@ -60,6 +60,8 @@ pub use self::truncate::{EllipsizeMode, TruncateMode};
 #[serde(tag = "type", rename_all = "snake_case")]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub enum ModuleConfig {
+    #[cfg(feature = "battery")]
+    Battery(Box<BatteryModule>),
     #[cfg(feature = "bindmode")]
     Bindmode(Box<Bindmode>),
     #[cfg(feature = "bluetooth")]
@@ -94,8 +96,6 @@ pub enum ModuleConfig {
     SysInfo(Box<SysInfoModule>),
     #[cfg(feature = "tray")]
     Tray(Box<TrayModule>),
-    #[cfg(feature = "upower")]
-    Upower(Box<UpowerModule>),
     #[cfg(feature = "volume")]
     Volume(Box<VolumeModule>),
     #[cfg(feature = "workspaces")]
@@ -116,6 +116,8 @@ impl ModuleConfig {
         }
 
         match self {
+            #[cfg(feature = "battery")]
+            Self::Battery(module) => create!(module),
             #[cfg(feature = "bindmode")]
             Self::Bindmode(module) => create!(module),
             #[cfg(feature = "bluetooth")]
@@ -150,8 +152,6 @@ impl ModuleConfig {
             Self::SysInfo(module) => create!(module),
             #[cfg(feature = "tray")]
             Self::Tray(module) => create!(module),
-            #[cfg(feature = "upower")]
-            Self::Upower(module) => create!(module),
             #[cfg(feature = "volume")]
             Self::Volume(module) => create!(module),
             #[cfg(feature = "workspaces")]
@@ -161,6 +161,8 @@ impl ModuleConfig {
 
     pub fn name(&self) -> String {
         match self {
+            #[cfg(feature = "battery")]
+            ModuleConfig::Battery(_) => "Battery",
             #[cfg(feature = "bindmode")]
             ModuleConfig::Bindmode(_) => "Bindmode",
             #[cfg(feature = "cairo")]
@@ -193,8 +195,6 @@ impl ModuleConfig {
             ModuleConfig::SysInfo(_) => "SysInfo",
             #[cfg(feature = "tray")]
             ModuleConfig::Tray(_) => "Tray",
-            #[cfg(feature = "upower")]
-            ModuleConfig::Upower(_) => "UPower",
             #[cfg(feature = "volume")]
             ModuleConfig::Volume(_) => "Volume",
             #[cfg(feature = "workspaces")]

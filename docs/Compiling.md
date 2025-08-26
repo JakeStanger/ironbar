@@ -97,6 +97,9 @@ cargo build --release --no-default-features \
 | config+corn         | Enables configuration support for [Corn](https://github.com/jakestanger/corn).    |
 | config+ron          | Enables configuration support for [Ron](https://github.com/ron-rs/ron).           |
 | **Modules**         |                                                                                   |
+| battery             | Enables the `battery` module.                                                     |
+| bindmode            | Enables the `bindmode` module.                                                    |
+| bluetooth           | Enables the `bluetooth` module.                                                   |
 | cairo               | Enables the `cairo` module                                                        |
 | clipboard           | Enables the `clipboard` module.                                                   |
 | clock               | Enables the `clock` module.                                                       |
@@ -116,7 +119,6 @@ cargo build --release --no-default-features \
 | sys_info            | Enables the `sys_info` module.                                                    |
 | script              | Enables the `script` module.                                                      |
 | tray                | Enables the `tray` module.                                                        |
-| upower              | Enables the `upower` module.                                                      |
 | volume              | Enables the `volume` module.                                                      |
 | workspaces+all      | Enables the `workspaces` module with support for all compositors.                 |
 | workspaces+sway     | Enables the `workspaces` module with support for Sway.                            |

@@ -10,6 +10,7 @@ keywords = ["gtk", "bar", "wayland", "wlroots", "gtk-layer-shell"]
 
 [features]
 default = [
+    "battery",
     "bindmode+all",
     "bluetooth",
     "cli",
@@ -31,20 +32,16 @@ default = [
     "script",
     "sys_info",
     "tray",
-    "upower",
     "volume",
     "workspaces+all",
 ]
+
+# -- core features --
 
 cli = ["ipc"]
 ipc = ["dep:serde_json", "dep:clap"]
 
 http = ["dep:reqwest"]
-
-bindmode = []
-"bindmode+all" = ["bindmode+sway", "bindmode+hyprland"]
-"bindmode+sway" = ["bindmode", "sway"]
-"bindmode+hyprland" = ["bindmode", "hyprland"]
 
 "config+all" = [
     "config+json",
@@ -58,6 +55,15 @@ bindmode = []
 "config+toml" = ["universal-config/toml"]
 "config+corn" = ["universal-config/corn"]
 "config+ron" = ["universal-config/ron"]
+
+# -- module features --
+
+battery = ["zbus", "futures-lite"]
+
+bindmode = []
+"bindmode+all" = ["bindmode+sway", "bindmode+hyprland"]
+"bindmode+sway" = ["bindmode", "sway"]
+"bindmode+hyprland" = ["bindmode", "hyprland"]
 
 bluetooth = ["dep:bluer"]
 
@@ -96,8 +102,6 @@ script = []
 sys_info = ["dep:sysinfo"]
 
 tray = ["system-tray"]
-
-upower = ["zbus", "futures-lite"]
 
 volume = ["libpulse-binding"]
 
@@ -189,8 +193,8 @@ system-tray = { version = "0.8.1", features = ["dbusmenu-gtk3"], optional = true
 libpulse-binding = { version = "2.30.1", optional = true }
 
 # shared
-futures-lite = { version = "2.6.1", optional = true } # network_manager, upower, workspaces, keyboard
-zbus = { version = "5.10.0", default-features = false, features = ["tokio"], optional = true } # network_manager, notifications, upower
+futures-lite = { version = "2.6.1", optional = true } # battery, network_manager, workspaces, keyboard
+zbus = { version = "5.10.0", default-features = false, features = ["tokio"], optional = true } # battery, network_manager, notifications
 swayipc-async = { version = "2.1.0", optional = true } # workspaces, keyboard
 hyprland = { version = "0.4.0-beta.2", optional = true } # workspaces, keyboard
 rustix = { version = "1.0.8", default-features = false, features = ["std", "fs", "pipe", "event"], optional = true } # clipboard, input
