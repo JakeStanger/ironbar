@@ -1,4 +1,5 @@
 #![doc = include_str!("../README.md")]
+#![allow(unused)]
 
 use std::cell::RefCell;
 use std::env;
@@ -7,7 +8,7 @@ use std::path::PathBuf;
 use std::process::exit;
 use std::rc::Rc;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
-use std::sync::{Arc, OnceLock, mpsc};
+use std::sync::{Arc, Mutex, OnceLock, mpsc};
 
 use cfg_if::cfg_if;
 #[cfg(feature = "cli")]
@@ -16,7 +17,7 @@ use color_eyre::Report;
 use color_eyre::eyre::Result;
 use dirs::config_dir;
 use gtk::Application;
-use gtk::gdk::Display;
+use gtk::gdk::{Display, Monitor};
 use gtk::prelude::*;
 use smithay_client_toolkit::output::OutputInfo;
 use tokio::runtime::Runtime;
@@ -370,7 +371,7 @@ fn load_config() -> (Config, PathBuf) {
 }
 
 /// Gets the GDK `Display` instance.
-fn get_display() -> Display {
+pub fn get_display() -> Display {
     Display::default().map_or_else(
         || {
             let report = Report::msg("Failed to get default GTK display");
@@ -387,6 +388,12 @@ fn load_output_bars(
     app: &Application,
     output: &OutputInfo,
 ) -> Result<Vec<Bar>> {
+    // Hack to track monitor positions due to new GTK3/wlroots bug:
+    // https://github.com/swaywm/sway/issues/8164
+    // This relies on Wayland always tracking monitors in the same order as GDK.
+    // We also need this static to ensure hot-reloading continues to work as best we can.
+    static INDEX_MAP: OnceLock<Mutex<Vec<String>>> = OnceLock::new();
+
     let output_size = output.logical_size.unwrap_or_default();
 
     let Some(monitor_name) = &output.name else {
@@ -397,10 +404,27 @@ fn load_output_bars(
 
     let display = get_display();
 
-    let pos = output.logical_position.unwrap_or_default();
-    let monitor = display
-        .monitor_at_point(pos.0, pos.1)
-        .expect("monitor to exist");
+    let map = INDEX_MAP.get_or_init(|| Mutex::new(vec![]));
+
+    let index = lock!(map).iter().position(|n| n == monitor_name);
+    let index = if let Some(index) = index {
+        index
+    } else {
+        lock!(map).push(monitor_name.clone());
+        lock!(map).len() - 1
+    };
+
+    // let pos = output.logical_position.unwrap_or_default();
+    // let monitor = display
+    //     .monitor_at_point(pos.0, pos.1)
+    //     .expect("monitor to exist");
+
+    let monitors = display.monitors();
+    let monitor = monitors
+        .item(index as u32)
+        .expect("monitor should exist")
+        .downcast::<Monitor>()
+        .expect("should be a monitor");
 
     let show_default_bar =
         config.bar.start.is_some() || config.bar.center.is_some() || config.bar.end.is_some();

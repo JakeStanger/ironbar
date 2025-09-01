@@ -123,12 +123,11 @@ impl Module<Button> for ClockModule {
     ) -> Result<ModuleParts<Button>> {
         let button = Button::new();
         let label = Label::builder()
-            .angle(self.layout.angle(info))
             .use_markup(true)
             .justify(self.layout.justify.into())
             .build();
 
-        button.add(&label);
+        button.set_child(Some(&label));
 
         let tx = context.tx.clone();
         button.connect_clicked(move |button| {
@@ -164,11 +163,11 @@ impl Module<Button> for ClockModule {
             .build();
         clock.add_class("calendar-clock");
 
-        container.add(&clock);
+        container.append(&clock);
 
         let calendar = Calendar::new();
         calendar.add_class("calendar");
-        container.add(&calendar);
+        container.append(&calendar);
 
         let format = self.format_popup;
         let locale = Locale::try_from(self.locale.as_str()).unwrap_or(Locale::POSIX);
@@ -179,13 +178,13 @@ impl Module<Button> for ClockModule {
         });
 
         // Reset selected date on each popup open
-        context.popup.window.connect_show(move |_| {
-            let date = Local::now();
-            calendar.select_day(date.day());
-            calendar.select_month(date.month() - 1, date.year() as u32);
+        context.popup.popover.connect_show(move |_| {
+            if let Ok(date) = glib::DateTime::now_local() {
+                calendar.select_day(&date);
+                calendar.set_month(date.month() - 1);
+                calendar.set_year(date.year());
+            }
         });
-
-        container.show_all();
 
         Some(container)
     }

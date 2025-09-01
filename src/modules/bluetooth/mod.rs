@@ -78,13 +78,12 @@ impl BluetoothDeviceBox {
 
         header.set_hexpand(true);
 
-        container.add(&*icon_box);
-        status.add(&header);
-        status.add(&footer);
-        container.add(&status);
-        container.add(&spinner);
-        container.add(&switch);
-        container.show_all();
+        container.append(&*icon_box);
+        status.append(&header);
+        status.append(&footer);
+        container.append(&status);
+        container.append(&spinner);
+        container.append(&switch);
 
         Self {
             container,
@@ -108,7 +107,7 @@ impl BluetoothDeviceBox {
             self.switch.disconnect(handler);
         }
 
-        self.spinner.set_active(
+        self.spinner.set_spinning(
             data.status == BluetoothDeviceStatus::Connecting
                 || data.status == BluetoothDeviceStatus::Disconnecting,
         );
@@ -207,7 +206,7 @@ impl Module<Button> for BluetoothModule {
     ) -> Result<ModuleParts<Button>> {
         let button = Button::new();
         let label = Label::new(None);
-        button.add(&label);
+        button.set_child(Some(&label));
 
         let tx = context.tx.clone();
         button.connect_clicked(move |button| {
@@ -294,12 +293,12 @@ impl Module<Button> for BluetoothModule {
         let header_label = Label::new(None);
         header_label.add_class("label");
 
-        header.add(&header_switch);
-        header.add(&header_label);
+        header.append(&header_switch);
+        header.append(&header_label);
 
-        container.add(&header);
+        container.append(&header);
 
-        let devices = ScrolledWindow::new(gtk::Adjustment::NONE, gtk::Adjustment::NONE);
+        let devices = ScrolledWindow::new();
         devices.set_policy(
             gtk::PolicyType::Never,
             if self.popup.scrollable {
@@ -314,8 +313,8 @@ impl Module<Button> for BluetoothModule {
         let devices_box = gtk::Box::new(Orientation::Vertical, 0);
         devices_box.add_class("box");
 
-        devices.add(&devices_box);
-        container.add(&devices);
+        devices.set_child(Some(&devices_box));
+        container.append(&devices);
 
         let disabled = gtk::Box::new(Orientation::Vertical, 0);
         disabled.add_class("disabled");
@@ -325,15 +324,13 @@ impl Module<Button> for BluetoothModule {
         let disabled_spinner = Spinner::new();
         disabled_spinner.add_class("spinner");
         disabled_spinner.start();
-        disabled.add(&disabled_spinner);
+        disabled.append(&disabled_spinner);
 
         let disabled_label = Label::new(None);
         disabled_label.add_class("label");
-        disabled.add(&disabled_label);
+        disabled.append(&disabled_label);
 
-        container.add(&disabled);
-
-        container.show_all();
+        container.append(&disabled);
 
         {
             let icon_size = self.icon_size;
@@ -406,7 +403,7 @@ impl Module<Button> for BluetoothModule {
                             device_map.entry(device.address).or_insert_with(|| {
                                 let device_box =
                                     BluetoothDeviceBox::new(tx.clone(), icon_size, &image_provider);
-                                devices_box.add(&*device_box);
+                                devices_box.append(&*device_box);
 
                                 (device_box, seq)
                             });
@@ -415,6 +412,9 @@ impl Module<Button> for BluetoothModule {
                         *local_seq = seq;
 
                         // Pin non-disconnected devices to the top and unpin other types
+                        /*
+                         * TODO: redisign with GTK4
+                         *
                         let pos = devices_box.child_position(Deref::deref(&*device_box));
                         if device.status == BluetoothDeviceStatus::Disconnected {
                             // Unpin
@@ -423,7 +423,7 @@ impl Module<Button> for BluetoothModule {
 
                                 if pos != num_pinned {
                                     devices_box
-                                        .reorder_child(Deref::deref(&*device_box), num_pinned);
+                                        .reorder_child_after(Deref::deref(&*device_box), num_pinned);
                                 }
                             }
                         } else {
@@ -436,7 +436,7 @@ impl Module<Button> for BluetoothModule {
 
                                 num_pinned += 1;
                             }
-                        }
+                        }*/
 
                         let strings =
                             &Self::replace_device(&device, &device_status, &device_strings);
@@ -446,12 +446,15 @@ impl Module<Button> for BluetoothModule {
                     // Remove devices without updated `seq` (i.e. not in `devices`)
                     device_map.retain(|_, (device_box, local_seq)| {
                         if *local_seq != seq {
+                            /*
+                             * TODO: redisign with GTK4
                             let pos = devices_box.child_position(Deref::deref(&*device_box));
                             if pos < num_pinned {
                                 num_pinned -= 1;
                             }
 
                             devices_box.remove(Deref::deref(&*device_box));
+                            */
                             false
                         } else {
                             true

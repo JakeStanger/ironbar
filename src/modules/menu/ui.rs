@@ -26,7 +26,7 @@ where
     button.add_class("category");
 
     let button_container = gtk::Box::new(Orientation::Horizontal, 4);
-    button.add(&button_container);
+    button.set_child(Some(&button_container));
 
     let label = Label::new(Some(&entry.label()));
     label.set_halign(Align::Start);
@@ -35,21 +35,19 @@ where
     if let Some(icon_name) = entry.icon() {
         let image = IconLabel::new(&format!("icon:{icon_name}"), 16, image_provider);
         image.set_halign(Align::Start);
-        button_container.add(&*image);
+        button_container.append(&*image);
     }
 
-    button_container.add(&label);
-    button_container.foreach(|child| {
+    button_container.append(&label);
+    button_container.children().for_each(|child| {
         child.set_halign(Align::Start);
     });
 
     if let MenuEntry::Xdg(_) = entry {
         let right_arrow = Label::new(Some("🢒"));
         right_arrow.set_halign(Align::End);
-        button_container.pack_end(&right_arrow, false, false, 0);
+        button_container.append(&right_arrow);
     }
-
-    button.show_all();
 
     let sub_menu = match entry {
         MenuEntry::Xdg(entry) => {
@@ -60,7 +58,8 @@ where
                 button.add_class("application");
 
                 let button_container = gtk::Box::new(Orientation::Horizontal, 4);
-                button.add(&button_container);
+                button_container.set_halign(Align::Start);
+                button.set_child(Some(&button_container));
 
                 let label = Label::new(Some(&sub_entry.label));
                 label.set_halign(Align::Start);
@@ -70,8 +69,8 @@ where
                 let gtk_image = gtk::Image::new();
                 gtk_image.set_halign(Align::Start);
 
-                button_container.add(&gtk_image);
-                button_container.add(&label);
+                button_container.append(&gtk_image);
+                button_container.append(&label);
 
                 let image_provider = image_provider.clone();
 
@@ -81,11 +80,7 @@ where
                         .await;
                 });
 
-                button.foreach(|child| {
-                    child.set_halign(Align::Start);
-                });
-
-                sub_menu.add(&button);
+                sub_menu.append(&button);
 
                 {
                     let sub_menu = sub_menu.clone();
@@ -104,8 +99,6 @@ where
                         tx.send_spawn(ModuleUpdateEvent::ClosePopup);
                     });
                 }
-
-                button.show_all();
             });
 
             Some(sub_menu)
@@ -125,7 +118,7 @@ pub fn add_entries(
     height: Option<i32>,
 ) {
     let container1 = container.clone();
-    main_menu.add(&button);
+    main_menu.append(&button);
 
     if let Some(sub_menu) = sub_menu {
         if let Some(height) = height {
@@ -137,14 +130,14 @@ pub fn add_entries(
                 .build();
 
             sub_menu.show();
-            scrolled.add(sub_menu);
-            container.add(&scrolled);
+            scrolled.set_child(Some(sub_menu));
+            container.append(&scrolled);
 
             let sub_menu1 = scrolled.clone();
             let sub_menu_popup_container = sub_menu.clone();
 
             button.connect_clicked(move |button| {
-                container1.children().iter().skip(1).for_each(|sub_menu| {
+                container1.children().skip(1).for_each(|sub_menu| {
                     if sub_menu.get_visible() {
                         sub_menu.hide();
                     }
@@ -156,23 +149,21 @@ pub fn add_entries(
                     .downcast::<gtk::Box>()
                     .expect("button container should be gtk::Box")
                     .children()
-                    .iter()
                     .for_each(|child| child.remove_class("open"));
 
-                sub_menu1.show_all();
                 button.add_class("open");
 
                 // Reset scroll to top.
-                if let Some(w) = sub_menu_popup_container.children().first() {
-                    w.set_has_focus(true)
+                if let Some(w) = sub_menu_popup_container.children().next() {
+                    w.grab_focus();
                 }
             });
         } else {
-            container.add(sub_menu);
+            container.append(sub_menu);
             let sub_menu1 = sub_menu.clone();
 
             button.connect_clicked(move |_button| {
-                container1.children().iter().skip(1).for_each(|sub_menu| {
+                container1.children().skip(1).for_each(|sub_menu| {
                     if sub_menu.get_visible() {
                         sub_menu.hide();
                     }
@@ -187,7 +178,7 @@ pub fn add_entries(
         let container = container.clone();
 
         button.connect_clicked(move |_button| {
-            container.children().iter().skip(1).for_each(|sub_menu| {
+            container.children().skip(1).for_each(|sub_menu| {
                 sub_menu.hide();
             });
 
@@ -203,6 +194,4 @@ pub fn add_entries(
             });
         });
     }
-
-    main_menu.show_all();
 }

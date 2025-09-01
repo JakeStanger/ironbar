@@ -169,7 +169,6 @@ impl Module<Button> for BatteryModule {
         let label = Label::builder()
             .label(&self.format)
             .use_markup(true)
-            .angle(self.layout.angle(info))
             .justify(self.layout.justify.into())
             .build();
 
@@ -181,9 +180,9 @@ impl Module<Button> for BatteryModule {
         let button = Button::new();
         button.add_class("button");
 
-        container.add(&*icon);
-        container.add(&label);
-        button.add(&container);
+        container.append(&*icon);
+        container.append(&label);
+        button.set_child(Some(&container));
 
         let tx = context.tx.clone();
         button.connect_clicked(move |button| {
@@ -248,7 +247,7 @@ impl Module<Button> for BatteryModule {
 
         let label = Label::builder().use_markup(true).build();
         label.add_class("details");
-        container.add(&label);
+        container.append(&label);
 
         context.subscribe().recv_glib((), move |(), properties| {
             let state = properties.state;
@@ -275,7 +274,7 @@ impl Module<Button> for BatteryModule {
             label.set_label_escaped(&format);
         });
 
-        container.show_all();
+        container.show();
 
         Some(container)
     }
