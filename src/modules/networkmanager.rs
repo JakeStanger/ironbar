@@ -84,7 +84,7 @@ impl Module<gtk::Box> for NetworkManagerModule {
 }
 
 async fn handle_update_events(
-    mut receiver: broadcast::Receiver<ClientToModuleEvent>,
+    mut widget_receiver: broadcast::Receiver<ClientToModuleEvent>,
     container: gtk::Box,
     icon_size: i32,
     image_provider: Provider,
@@ -92,7 +92,7 @@ async fn handle_update_events(
     // TODO: Ensure the visible icons are always in the same order
     let mut icons = HashMap::<String, Image>::new();
 
-    while let Result::Ok(event) = receiver.recv().await {
+    while let Result::Ok(event) = widget_receiver.recv().await {
         match event {
             ClientToModuleEvent::DeviceChanged {
                 interface,

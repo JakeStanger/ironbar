@@ -5,7 +5,7 @@ use std::collections::HashSet;
 use std::sync::Arc;
 use tokio::sync::{Mutex, broadcast};
 use zbus::Connection;
-use zbus::zvariant::{ObjectPath, Str};
+use zbus::zvariant::ObjectPath;
 
 use crate::clients::ClientResult;
 use crate::clients::networkmanager::dbus::{DbusProxy, DeviceDbusProxy};
@@ -141,24 +141,16 @@ async fn watch_device(
     let dbus_connection = Connection::system().await?;
     let device = DeviceDbusProxy::new(&dbus_connection, device_path.to_owned()).await?;
 
-    let interface = device.interface().await?;
-
-    spawn(watch_device_state(
-        device_path.to_owned(),
-        interface.to_owned(),
-        controller_sender.clone(),
-    ));
+    spawn(watch_device_state(device, controller_sender));
 
     Ok(())
 }
 
 async fn watch_device_state(
-    device_path: ObjectPath<'_>,
-    interface: Str<'_>,
+    device: DeviceDbusProxy<'_>,
     controller_sender: broadcast::Sender<ClientToModuleEvent>,
 ) -> Result<()> {
-    let dbus_connection = Connection::system().await?;
-    let device = DeviceDbusProxy::new(&dbus_connection, &device_path).await?;
+    let interface = device.interface().await?;
     let r#type = device.device_type().await?;
 
     // Send an event communicating the initial state
