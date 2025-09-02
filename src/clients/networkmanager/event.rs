@@ -2,10 +2,10 @@ use crate::clients::networkmanager::dbus::{DeviceState, DeviceType};
 
 #[derive(Debug, Clone)]
 pub enum ClientToModuleEvent {
-    DeviceStateChanged {
+    DeviceChanged {
         interface: String,
         r#type: DeviceType,
-        state: DeviceState,
+        new_state: DeviceState,
     },
     DeviceRemoved {
         interface: String,

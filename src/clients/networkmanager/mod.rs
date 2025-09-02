@@ -118,14 +118,13 @@ async fn handle_received_events(
                 for device_path in devices_snapshot {
                     let device = DeviceDbusProxy::new(&dbus_connection, device_path).await?;
 
-                    // TODO: Create DeviceDbusProxy -> DeviceStateChanged function and use it in the watcher as well
                     let interface = device.interface().await?.to_string();
                     let r#type = device.device_type().await?;
-                    let state = device.state().await?;
-                    controller_sender.send(ClientToModuleEvent::DeviceStateChanged {
+                    let new_state = device.state().await?;
+                    controller_sender.send(ClientToModuleEvent::DeviceChanged {
                         interface,
                         r#type,
-                        state,
+                        new_state,
                     })?;
                 }
             }
@@ -163,20 +162,20 @@ async fn watch_device_state(
     let r#type = device.device_type().await?;
 
     // Send an event communicating the initial state
-    let state = device.state().await?;
-    controller_sender.send(ClientToModuleEvent::DeviceStateChanged {
+    let new_state = device.state().await?;
+    controller_sender.send(ClientToModuleEvent::DeviceChanged {
         interface: interface.to_string(),
         r#type: r#type.clone(),
-        state,
+        new_state,
     })?;
 
     let mut state_changes = device.receive_state_changed().await;
     while let Some(state_change) = state_changes.next().await {
-        let state = state_change.get().await?;
-        controller_sender.send(ClientToModuleEvent::DeviceStateChanged {
+        let new_state = state_change.get().await?;
+        controller_sender.send(ClientToModuleEvent::DeviceChanged {
             interface: interface.to_string(),
             r#type: r#type.clone(),
-            state,
+            new_state,
         })?;
     }
 

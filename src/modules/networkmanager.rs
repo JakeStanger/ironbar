@@ -89,14 +89,15 @@ async fn handle_update_events(
     icon_size: i32,
     image_provider: Provider,
 ) -> Result<()> {
+    // TODO: Ensure the visible icons are always in the same order
     let mut icons = HashMap::<String, Image>::new();
 
     while let Result::Ok(event) = receiver.recv().await {
         match event {
-            ClientToModuleEvent::DeviceStateChanged {
+            ClientToModuleEvent::DeviceChanged {
                 interface,
                 r#type,
-                state,
+                new_state,
             } => {
                 let icon: &_ = icons.entry(interface).or_insert_with(|| {
                     let icon = Image::new();
@@ -106,7 +107,7 @@ async fn handle_update_events(
                 });
 
                 // TODO: Make this configurable at runtime
-                let icon_name = get_icon_for_device_state(&r#type, &state);
+                let icon_name = get_icon_for_device_state(&r#type, &new_state);
                 match icon_name {
                     Some(icon_name) => {
                         image_provider
