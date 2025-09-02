@@ -1,6 +1,6 @@
 use crate::clients::networkmanager::Client;
 use crate::clients::networkmanager::dbus::{DeviceState, DeviceType};
-use crate::clients::networkmanager::event::Event;
+use crate::clients::networkmanager::event::{ClientToModuleEvent, ModuleToClientEvent};
 use crate::config::CommonConfig;
 use crate::gtk_helpers::IronbarGtkExt;
 use crate::image::Provider;
@@ -29,7 +29,7 @@ const fn default_icon_size() -> i32 {
 }
 
 impl Module<gtk::Box> for NetworkManagerModule {
-    type SendMessage = Event;
+    type SendMessage = ClientToModuleEvent;
     type ReceiveMessage = ();
 
     module_impl!("network_manager");
@@ -37,19 +37,24 @@ impl Module<gtk::Box> for NetworkManagerModule {
     fn spawn_controller(
         &self,
         _info: &ModuleInfo,
-        context: &WidgetContext<Event, ()>,
-        _rx: mpsc::Receiver<()>,
+        context: &WidgetContext<ClientToModuleEvent, ()>,
+        _widget_receiver: mpsc::Receiver<()>,
     ) -> Result<()> {
         let client = context.try_client::<Client>()?;
         // Should we be using context.tx with ModuleUpdateEvent::Update instead?
-        let tx = context.update_tx.clone();
-        // Must be done here synchronously to avoid race condition
-        let mut client_rx = client.subscribe();
-        spawn(async move {
-            while let Result::Ok(event) = client_rx.recv().await {
-                tx.send(event)?;
-            }
+        let widget_sender = context.update_tx.clone();
 
+        // Must be done here otherwise we miss the response to our `NewController` event
+        let mut client_receiver = client.subscribe();
+
+        client
+            .get_sender()
+            .send(ModuleToClientEvent::NewController)?;
+
+        spawn(async move {
+            while let Result::Ok(event) = client_receiver.recv().await {
+                widget_sender.send(event)?;
+            }
             Ok(())
         });
 
@@ -58,16 +63,17 @@ impl Module<gtk::Box> for NetworkManagerModule {
 
     fn into_widget(
         self,
-        context: WidgetContext<Event, ()>,
+        context: WidgetContext<ClientToModuleEvent, ()>,
         _info: &ModuleInfo,
     ) -> Result<ModuleParts<gtk::Box>> {
+        // Must be done here otherwise we miss the response to our `NewController` event
+        let receiver = context.subscribe();
+
         let container = gtk::Box::new(Orientation::Horizontal, 0);
 
-        // Must be done here synchronously to avoid race condition
-        let rx = context.subscribe();
         // We cannot use recv_glib_async here because the lifetimes don't work out
         spawn_future_local(handle_update_events(
-            rx,
+            receiver,
             container.clone(),
             self.icon_size,
             context.ironbar.image_provider(),
@@ -78,29 +84,27 @@ impl Module<gtk::Box> for NetworkManagerModule {
 }
 
 async fn handle_update_events(
-    mut rx: broadcast::Receiver<Event>,
+    mut receiver: broadcast::Receiver<ClientToModuleEvent>,
     container: gtk::Box,
     icon_size: i32,
     image_provider: Provider,
-) {
+) -> Result<()> {
     let mut icons = HashMap::<String, Image>::new();
 
-    while let Result::Ok(event) = rx.recv().await {
+    while let Result::Ok(event) = receiver.recv().await {
         match event {
-            Event::DeviceAdded { interface, .. } => {
-                let icon = Image::new();
-                icon.add_class("icon");
-                container.add(&icon);
-                icons.insert(interface, icon);
-            }
-            Event::DeviceStateChanged {
+            ClientToModuleEvent::DeviceStateChanged {
                 interface,
                 r#type,
                 state,
             } => {
-                let icon = icons
-                    .get(&interface)
-                    .expect("the icon for the interface to be present");
+                let icon: &_ = icons.entry(interface).or_insert_with(|| {
+                    let icon = Image::new();
+                    icon.add_class("icon");
+                    container.add(&icon);
+                    icon
+                });
+
                 // TODO: Make this configurable at runtime
                 let icon_name = get_icon_for_device_state(&r#type, &state);
                 match icon_name {
@@ -115,8 +119,11 @@ async fn handle_update_events(
                     }
                 }
             }
-        };
+            ClientToModuleEvent::DeviceRemoved { .. } => {}
+        }
     }
+
+    Ok(())
 }
 
 fn get_icon_for_device_state(r#type: &DeviceType, state: &DeviceState) -> Option<&'static str> {
