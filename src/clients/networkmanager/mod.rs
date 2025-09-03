@@ -3,7 +3,8 @@ use color_eyre::eyre::Ok;
 use futures_lite::StreamExt;
 use std::collections::HashSet;
 use std::sync::Arc;
-use tokio::sync::{Mutex, broadcast};
+use tokio::sync::{RwLock, broadcast};
+use tracing::debug;
 use zbus::Connection;
 use zbus::zvariant::ObjectPath;
 
@@ -32,7 +33,9 @@ impl Client {
     }
 
     fn run(&self) -> Result<()> {
-        let devices = Arc::new(Mutex::new(HashSet::<ObjectPath>::new()));
+        debug!("Client running");
+
+        let devices = Arc::new(RwLock::new(HashSet::<ObjectPath>::new()));
 
         spawn(watch_devices_list(
             devices.clone(),
@@ -65,9 +68,11 @@ pub fn create_client() -> ClientResult<Client> {
 }
 
 async fn watch_devices_list(
-    devices: Arc<Mutex<HashSet<ObjectPath<'_>>>>,
+    devices: Arc<RwLock<HashSet<ObjectPath<'_>>>>,
     controller_sender: broadcast::Sender<ClientToModuleEvent>,
 ) -> Result<()> {
+    debug!("D-Bus devices list watcher starting");
+
     let dbus_connection = Connection::system().await?;
     let root = DbusProxy::new(&dbus_connection).await?;
 
@@ -82,7 +87,7 @@ async fn watch_devices_list(
             .collect::<HashSet<_>>();
 
         // Atomic read-then-write of `devices`
-        let mut devices_locked = devices.lock().await;
+        let mut devices_locked = devices.write().await;
         let devices_snapshot = devices_locked.clone();
         (*devices_locked).clone_from(&new_devices);
         drop(devices_locked);
@@ -96,7 +101,8 @@ async fn watch_devices_list(
         }
 
         let _removed_devices = devices_snapshot.difference(&new_devices);
-        // TODO: Cook up some way to notify closures for removed devices to exit
+        // TODO: Store join handles for watchers and abort them when their device is removed
+        // TODO: Inform module of removed devices
     }
 
     Ok(())
@@ -104,16 +110,18 @@ async fn watch_devices_list(
 
 async fn handle_received_events(
     mut receiver: broadcast::Receiver<ModuleToClientEvent>,
-    devices: Arc<Mutex<HashSet<ObjectPath<'_>>>>,
+    devices: Arc<RwLock<HashSet<ObjectPath<'_>>>>,
     controller_sender: broadcast::Sender<ClientToModuleEvent>,
 ) -> Result<()> {
     while let Result::Ok(event) = receiver.recv().await {
         match event {
             ModuleToClientEvent::NewController => {
+                debug!("Client received NewController event");
+
                 let dbus_connection = Connection::system().await?;
 
                 // We create a local clone here to avoid holding the lock for too long
-                let devices_snapshot = devices.lock().await.clone();
+                let devices_snapshot = devices.read().await.clone();
 
                 for device_path in devices_snapshot {
                     let device = DeviceDbusProxy::new(&dbus_connection, device_path).await?;
@@ -135,11 +143,11 @@ async fn handle_received_events(
 }
 
 async fn watch_device(
-    device_path: ObjectPath<'_>,
+    path: ObjectPath<'_>,
     controller_sender: broadcast::Sender<ClientToModuleEvent>,
 ) -> Result<()> {
     let dbus_connection = Connection::system().await?;
-    let device = DeviceDbusProxy::new(&dbus_connection, device_path.to_owned()).await?;
+    let device = DeviceDbusProxy::new(&dbus_connection, path.to_owned()).await?;
 
     spawn(watch_device_state(device, controller_sender));
 
@@ -150,6 +158,10 @@ async fn watch_device_state(
     device: DeviceDbusProxy<'_>,
     controller_sender: broadcast::Sender<ClientToModuleEvent>,
 ) -> Result<()> {
+    let path = device.inner().path();
+
+    debug!("D-Bus device state watcher for {} starting", path);
+
     let interface = device.interface().await?;
     let r#type = device.device_type().await?;
 
@@ -170,6 +182,8 @@ async fn watch_device_state(
             new_state,
         })?;
     }
+
+    debug!("D-Bus device state watcher for {} ended", path);
 
     Ok(())
 }
