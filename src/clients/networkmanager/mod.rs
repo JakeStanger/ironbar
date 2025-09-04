@@ -121,12 +121,9 @@ impl ClientInner {
                 watcher.state_watcher.abort();
                 watchers.remove(removed_device_path);
 
-                // TODO: Replace the identifier sent to modules with the dbus device number (last segment of its path)
-                let dbus_connection = &self.dbus_connection().await?;
-                let device = DeviceDbusProxy::new(dbus_connection, removed_device_path).await?;
-                let interface = device.interface().await?.to_string();
+                let number = get_number_from_dbus_path(removed_device_path);
                 self.controller_sender
-                    .send(ClientToModuleEvent::DeviceRemoved { interface })?;
+                    .send(ClientToModuleEvent::DeviceRemoved { number })?;
 
                 debug!("D-bus device watchers for {} stopped", removed_device_path);
             }
@@ -148,12 +145,12 @@ impl ClientInner {
                         let dbus_connection = &self.dbus_connection().await?;
                         let device = DeviceDbusProxy::new(dbus_connection, device_path).await?;
 
-                        let interface = device.interface().await?.to_string();
+                        let number = get_number_from_dbus_path(device_path);
                         let r#type = device.device_type().await?;
                         let new_state = device.state().await?;
                         self.controller_sender
                             .send(ClientToModuleEvent::DeviceChanged {
-                                interface,
+                                number,
                                 r#type,
                                 new_state,
                             })?;
@@ -177,14 +174,14 @@ impl ClientInner {
         let dbus_connection = Connection::system().await?;
         let device = DeviceDbusProxy::new(&dbus_connection, path.clone()).await?;
 
-        let interface = device.interface().await?;
+        let number = get_number_from_dbus_path(&path);
         let r#type = device.device_type().await?;
 
         // Send an event communicating the initial state
         let new_state = device.state().await?;
         self.controller_sender
             .send(ClientToModuleEvent::DeviceChanged {
-                interface: interface.to_string(),
+                number,
                 r#type: r#type.clone(),
                 new_state,
             })?;
@@ -194,7 +191,7 @@ impl ClientInner {
             let new_state = state_change.get().await?;
             self.controller_sender
                 .send(ClientToModuleEvent::DeviceChanged {
-                    interface: interface.to_string(),
+                    number,
                     r#type: r#type.clone(),
                     new_state,
                 })?;
@@ -223,6 +220,15 @@ pub fn create_client() -> ClientResult<Client> {
     let client = Arc::new(Client::new());
     client.run()?;
     Ok(client)
+}
+
+fn get_number_from_dbus_path(path: &ObjectPath) -> u32 {
+    let (_, number_str) = path
+        .rsplit_once('/')
+        .expect("Path must have at least two segments to contain an object number");
+    number_str
+        .parse()
+        .expect("Last segment was not a positive integer")
 }
 
 register_fallible_client!(Client, network_manager);

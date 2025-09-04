@@ -91,17 +91,17 @@ async fn handle_update_events(
     image_provider: Provider,
 ) -> Result<()> {
     // TODO: Ensure the visible icons are always in the same order
-    let mut icons = HashMap::<String, Image>::new();
+    let mut icons = HashMap::<u32, Image>::new();
 
     while let Result::Ok(event) = widget_receiver.recv().await {
         match event {
             ClientToModuleEvent::DeviceChanged {
-                interface,
+                number,
                 r#type,
                 new_state,
             } => {
-                let icon: &_ = icons.entry(interface.clone()).or_insert_with(|| {
-                    debug!("Adding icon for {}", interface);
+                let icon: &_ = icons.entry(number).or_insert_with(|| {
+                    debug!("Adding icon for device {}", number);
 
                     let icon = Image::new();
                     icon.add_class("icon");
@@ -123,14 +123,14 @@ async fn handle_update_events(
                     }
                 }
             }
-            ClientToModuleEvent::DeviceRemoved { interface } => {
+            ClientToModuleEvent::DeviceRemoved { number } => {
                 let icon = icons
-                    .get(interface.as_str())
+                    .get(&number)
                     .expect("The icon for {} was about to be removed but was not present");
                 container.remove(icon);
-                icons.remove(interface.as_str());
+                icons.remove(&number);
 
-                debug!("Removed icon for {}", interface);
+                debug!("Removed icon for device {}", number);
             }
         }
     }
