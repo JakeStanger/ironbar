@@ -113,7 +113,6 @@ impl ClientInner {
                 watchers.insert(added_device_path.clone(), watcher);
             }
 
-            // TODO: Inform module of removed devices
             let removed_device_paths = device_paths.difference(&new_device_paths);
             for removed_device_path in removed_device_paths {
                 let watcher = watchers
@@ -121,6 +120,13 @@ impl ClientInner {
                     .expect("Device to be removed should be present in watchers");
                 watcher.state_watcher.abort();
                 watchers.remove(removed_device_path);
+
+                // TODO: Replace the identifier sent to modules with the dbus device number (last segment of its path)
+                let dbus_connection = &self.dbus_connection().await?;
+                let device = DeviceDbusProxy::new(dbus_connection, removed_device_path).await?;
+                let interface = device.interface().await?.to_string();
+                self.controller_sender
+                    .send(ClientToModuleEvent::DeviceRemoved { interface })?;
 
                 debug!("D-bus device watchers for {} stopped", removed_device_path);
             }

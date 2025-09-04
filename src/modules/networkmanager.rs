@@ -13,6 +13,7 @@ use gtk::{Image, Orientation};
 use serde::Deserialize;
 use std::collections::HashMap;
 use tokio::sync::{broadcast, mpsc};
+use tracing::debug;
 
 #[derive(Debug, Deserialize, Clone)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
@@ -99,7 +100,9 @@ async fn handle_update_events(
                 r#type,
                 new_state,
             } => {
-                let icon: &_ = icons.entry(interface).or_insert_with(|| {
+                let icon: &_ = icons.entry(interface.clone()).or_insert_with(|| {
+                    debug!("Adding icon for {}", interface);
+
                     let icon = Image::new();
                     icon.add_class("icon");
                     container.add(&icon);
@@ -120,7 +123,15 @@ async fn handle_update_events(
                     }
                 }
             }
-            ClientToModuleEvent::DeviceRemoved { .. } => {}
+            ClientToModuleEvent::DeviceRemoved { interface } => {
+                let icon = icons
+                    .get(interface.as_str())
+                    .expect("The icon for {} was about to be removed but was not present");
+                container.remove(icon);
+                icons.remove(interface.as_str());
+
+                debug!("Removed icon for {}", interface);
+            }
         }
     }
 
