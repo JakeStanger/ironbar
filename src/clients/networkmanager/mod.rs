@@ -46,8 +46,7 @@ struct ClientInner {
     controller_sender: broadcast::Sender<ClientToModuleEvent>,
     sender: broadcast::Sender<ModuleToClientEvent>,
     device_watchers: RwLock<HashMap<ObjectPath<'static>, DeviceWatcher>>,
-    // TODO: Maybe find some way to late-init a dbus connection here
-    //     so we can just clone it when we need it instead of awaiting it every time
+    dbus_connection: RwLock<Option<Connection>>,
 }
 
 #[derive(Clone, Debug)]
@@ -60,10 +59,12 @@ impl ClientInner {
         let (controller_sender, _) = broadcast::channel(64);
         let (sender, _) = broadcast::channel(8);
         let device_watchers = RwLock::new(HashMap::new());
+        let dbus_connection = RwLock::new(None);
         ClientInner {
             controller_sender,
             sender,
             device_watchers,
+            dbus_connection,
         }
     }
 
@@ -89,8 +90,7 @@ impl ClientInner {
     async fn watch_devices_list(&'static self) -> Result<()> {
         debug!("D-Bus devices list watcher starting");
 
-        let dbus_connection = Connection::system().await?;
-        let root = DbusProxy::new(&dbus_connection).await?;
+        let root = DbusProxy::new(&self.dbus_connection().await?).await?;
 
         let mut devices_changes = root.receive_all_devices_changed().await;
         while let Some(devices_change) = devices_changes.next().await {
@@ -133,15 +133,14 @@ impl ClientInner {
         &'static self,
         mut receiver: broadcast::Receiver<ModuleToClientEvent>,
     ) -> Result<()> {
-        let dbus_connection = Connection::system().await?;
-
         while let Result::Ok(event) = receiver.recv().await {
             match event {
                 ModuleToClientEvent::NewController => {
                     debug!("Client received NewController event");
 
                     for device_path in self.device_watchers.read().await.keys() {
-                        let device = DeviceDbusProxy::new(&dbus_connection, device_path).await?;
+                        let dbus_connection = &self.dbus_connection().await?;
+                        let device = DeviceDbusProxy::new(dbus_connection, device_path).await?;
 
                         let interface = device.interface().await?.to_string();
                         let r#type = device.device_type().await?;
@@ -196,6 +195,21 @@ impl ClientInner {
         }
 
         Ok(())
+    }
+
+    async fn dbus_connection(&self) -> Result<Connection> {
+        let dbus_connection_guard = self.dbus_connection.read().await;
+        if let Some(dbus_connection) = &*dbus_connection_guard {
+            Ok(dbus_connection.clone())
+        } else {
+            // Yes it's a bit awkward to first obtain a read lock and then a write lock but it
+            //  needs to happen only once, and after that all read lock acquisitions will be
+            //  instant
+            drop(dbus_connection_guard);
+            let dbus_connection = Connection::system().await?;
+            *self.dbus_connection.write().await = Some(dbus_connection.clone());
+            Ok(dbus_connection)
+        }
     }
 }
 
