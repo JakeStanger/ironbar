@@ -100,6 +100,11 @@ async fn handle_update_events(
                 r#type,
                 new_state,
             } => {
+                debug!(
+                    "Module widget received DeviceChanged event for number {}",
+                    number
+                );
+
                 let icon: &_ = icons.entry(number).or_insert_with(|| {
                     debug!("Adding icon for device {}", number);
 
@@ -124,13 +129,16 @@ async fn handle_update_events(
                 }
             }
             ClientToModuleEvent::DeviceRemoved { number } => {
+                debug!(
+                    "Module widget received DeviceRemoved event for number {}",
+                    number
+                );
+
                 let icon = icons
                     .get(&number)
                     .expect("The icon for {} was about to be removed but was not present");
                 container.remove(icon);
                 icons.remove(&number);
-
-                debug!("Removed icon for device {}", number);
             }
         }
     }

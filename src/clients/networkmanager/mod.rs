@@ -109,7 +109,7 @@ impl ClientInner {
             for added_device_path in added_device_paths {
                 debug_assert!(!watchers.contains_key(added_device_path));
 
-                let watcher = self.watch_device(added_device_path.clone());
+                let watcher = self.watch_device(added_device_path.clone()).await?;
                 watchers.insert(added_device_path.clone(), watcher);
             }
 
@@ -162,23 +162,15 @@ impl ClientInner {
         Ok(())
     }
 
-    fn watch_device(&'static self, path: ObjectPath<'static>) -> DeviceWatcher {
-        let state_watcher = Arc::new(spawn(self.watch_device_state(path)));
-
-        DeviceWatcher { state_watcher }
-    }
-
-    async fn watch_device_state(&'static self, path: ObjectPath<'_>) -> Result<()> {
-        debug!("D-Bus device state watcher for {} starting", path);
-
-        let dbus_connection = Connection::system().await?;
-        let device = DeviceDbusProxy::new(&dbus_connection, path.clone()).await?;
+    async fn watch_device(&'static self, path: ObjectPath<'_>) -> Result<DeviceWatcher> {
+        let dbus_connection = &self.dbus_connection().await?;
+        let proxy = DeviceDbusProxy::new(dbus_connection, path.to_owned()).await?;
 
         let number = get_number_from_dbus_path(&path);
-        let r#type = device.device_type().await?;
+        let r#type = proxy.device_type().await?;
+        let new_state = proxy.state().await?;
 
-        // Send an event communicating the initial state
-        let new_state = device.state().await?;
+        // Notify modules that the device exists even if its properties don't change
         self.controller_sender
             .send(ClientToModuleEvent::DeviceChanged {
                 number,
@@ -186,9 +178,22 @@ impl ClientInner {
                 new_state,
             })?;
 
-        let mut state_changes = device.receive_state_changed().await;
-        while let Some(state_change) = state_changes.next().await {
-            let new_state = state_change.get().await?;
+        let state_watcher = Arc::new(spawn(self.watch_device_state(proxy)));
+
+        Ok(DeviceWatcher { state_watcher })
+    }
+
+    async fn watch_device_state(&'static self, proxy: DeviceDbusProxy<'_>) -> Result<()> {
+        let path = proxy.inner().path();
+
+        debug!("D-Bus device state watcher for {} starting", path);
+
+        let number = get_number_from_dbus_path(path);
+        let r#type = proxy.device_type().await?;
+
+        let mut changes = proxy.receive_state_changed().await;
+        while let Some(change) = changes.next().await {
+            let new_state = change.get().await?;
             self.controller_sender
                 .send(ClientToModuleEvent::DeviceChanged {
                     number,
