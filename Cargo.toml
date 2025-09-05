@@ -88,7 +88,7 @@ launcher = []
 
 menu = []
 
-music = ["dep:regex"]
+music = []
 "music+all" = ["music", "music+mpris", "music+mpd"]
 "music+mpris" = ["music", "mpris"]
 "music+mpd" = ["music", "mpd-utils"]
@@ -176,9 +176,6 @@ evdev-rs = { version = "0.6.2", optional = true }
 # music
 mpd-utils = { version = "0.2.1", optional = true }
 mpris = { version = "2.0.1", optional = true }
-regex = { version = "1.11.2", default-features = false, features = [
-    "std",
-], optional = true }
 
 # network_manager
 futures-signals = { version = "0.3.34", optional = true }

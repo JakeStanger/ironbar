@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use std::cell::RefMut;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -8,7 +9,6 @@ use color_eyre::Result;
 use glib::{Propagation, PropertySet};
 use gtk::prelude::*;
 use gtk::{Button, Label, Orientation, Scale};
-use regex::Regex;
 use tokio::sync::mpsc;
 use tracing::{error, warn};
 
@@ -54,13 +54,6 @@ fn format_time(duration: Duration) -> String {
     }
 }
 
-/// Extracts the formatting tokens from a formatting string
-fn get_tokens(re: &Regex, format_string: &str) -> Vec<String> {
-    re.captures_iter(format_string)
-        .map(|caps| caps[1].to_string())
-        .collect::<Vec<_>>()
-}
-
 #[derive(Clone, Debug)]
 pub enum ControllerEvent {
     Update(Option<SongUpdate>),
@@ -104,9 +97,6 @@ impl Module<Button> for MusicModule {
     ) -> Result<()> {
         let format = self.format.clone();
 
-        let re = Regex::new(r"\{([\w-]+)}")?;
-        let tokens = get_tokens(&re, self.format.as_str());
-
         let client = get_client(
             context.ironbar.clients.borrow_mut(),
             self.player_type,
@@ -127,8 +117,7 @@ impl Module<Button> for MusicModule {
                         match update {
                             PlayerUpdate::Update(track, status) => match *track {
                                 Some(track) => {
-                                    let display_string =
-                                        replace_tokens(format.as_str(), &tokens, &track);
+                                    let display_string = replace_tokens(format.as_str(), &track);
 
                                     let update = SongUpdate {
                                         song: track,
@@ -537,27 +526,37 @@ fn update_popup_metadata_label(text: Option<String>, label: &IconPrefixedLabel) 
 
 /// Replaces each of the formatting tokens in the formatting string
 /// with actual data pulled from the music player
-fn replace_tokens(format_string: &str, tokens: &Vec<String>, song: &Track) -> String {
-    let mut compiled_string = format_string.to_string();
-    for token in tokens {
-        let value = get_token_value(song, token);
-        compiled_string = compiled_string.replace(format!("{{{token}}}").as_str(), value.as_str());
-    }
-    compiled_string
+fn replace_tokens<'a>(format_string: &'a str, song: &'a Track) -> String {
+    format_string
+        .replace_with("{title}", || song.title.clone().unwrap_or_default())
+        .replace_with("{album}", || song.album.clone().unwrap_or_default())
+        .replace_with("{artist}", || song.artist.clone().unwrap_or_default())
+        .replace_with("{date}", || song.date.clone().unwrap_or_default())
+        .replace_with("{disc}", || {
+            song.disc.map(|val| val.to_string()).unwrap_or_default()
+        })
+        .replace_with("{genre}", || song.genre.clone().unwrap_or_default())
+        .replace_with("{track}", || {
+            song.track.map(|val| val.to_string()).unwrap_or_default()
+        })
+        .to_string()
 }
 
-/// Converts a string format token value
-/// into its respective value.
-fn get_token_value(song: &Track, token: &str) -> String {
-    match token {
-        "title" => song.title.clone(),
-        "album" => song.album.clone(),
-        "artist" => song.artist.clone(),
-        "date" => song.date.clone(),
-        "disc" => song.disc.map(|x| x.to_string()),
-        "genre" => song.genre.clone(),
-        "track" => song.track.map(|x| x.to_string()),
-        _ => Some(token.to_string()),
+trait StringExt<'a> {
+    fn replace_with<F>(self, from: &str, to: F) -> Cow<'a, str>
+    where
+        F: Fn() -> String;
+}
+
+impl<'a> StringExt<'a> for &'a str {
+    fn replace_with<F>(self, from: &str, to: F) -> Cow<'a, str>
+    where
+        F: Fn() -> String,
+    {
+        if self.contains(from) {
+            Cow::Owned(self.replace(from, &to()))
+        } else {
+            Cow::Borrowed(self)
+        }
     }
-    .unwrap_or_default()
 }
