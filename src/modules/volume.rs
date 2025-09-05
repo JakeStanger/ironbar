@@ -1,7 +1,7 @@
 use crate::channels::{AsyncSenderExt, BroadcastReceiverExt};
 use crate::clients::volume::{self, Event};
-use crate::config::{CommonConfig, LayoutConfig, TruncateMode};
-use crate::gtk_helpers::{IronbarGtkExt, IronbarLabelExt};
+use crate::config::{CommonConfig, LayoutConfig, MarqueeMode, TruncateMode};
+use crate::gtk_helpers::{self, IronbarGtkExt, IronbarLabelExt};
 use crate::modules::{
     Module, ModuleInfo, ModuleParts, ModulePopup, ModuleUpdateEvent, PopupButton, WidgetContext,
 };
@@ -43,6 +43,12 @@ pub struct VolumeModule {
     ///
     /// **Default**: `null`
     pub(crate) truncate: Option<TruncateMode>,
+
+    /// See [marquee options](module-level-options#marquee-mode).
+    ///
+    /// **Default**: `null`
+    #[serde(default)]
+    pub(crate) marquee: Option<MarqueeMode>,
 
     /// See [layout options](module-level-options#layout)
     #[serde(default, flatten)]
@@ -410,7 +416,18 @@ impl Module<Button> for VolumeModule {
 
                         if let Some(truncate) = self.truncate {
                             label.truncate(truncate);
-                        };
+                            item_container.add(&label);
+                        } else if let Some(marquee) = self.marquee {
+                            if marquee.enable {
+                                let scrolled =
+                                    gtk_helpers::create_marquee_widget(&label, &info.name, marquee);
+                                item_container.add(&scrolled);
+                            } else {
+                                item_container.add(&label);
+                            }
+                        } else {
+                            item_container.add(&label);
+                        }
 
                         let slider = Scale::builder().sensitive(info.can_set_volume).build();
                         slider.set_range(0.0, self.max_volume);
@@ -446,7 +463,6 @@ impl Module<Button> for VolumeModule {
                             });
                         }
 
-                        item_container.add(&label);
                         item_container.add(&slider);
                         item_container.add(&btn_mute);
                         item_container.show_all();
