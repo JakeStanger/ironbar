@@ -4,6 +4,155 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.17.0] - 2025-09-07
+### :boom: BREAKING CHANGES
+- due to [`03136e7`](https://github.com/JakeStanger/ironbar/commit/03136e7c700e545c566eb281c50e6ea343646bc6) - new sorting options *(commit by [@JakeStanger](https://github.com/JakeStanger))*:
+
+  The workspace `sort` config option valid values have changed. Where `alphanumeric` is explicitly set, this will need changing to one of `label` or `name`.
+
+- due to [`01de0ac`](https://github.com/JakeStanger/ironbar/commit/01de0ac6f5bf4c9a15714d360c1ee139922d7c50) - overhaul to add aggregate/unit/formatting support *(commit by [@JakeStanger](https://github.com/JakeStanger))*:
+
+  Use of the `sys_info` module in your config will need to be updated to use the new token format. See the wiki page for more info.
+
+- due to [`322fc0c`](https://github.com/JakeStanger/ironbar/commit/322fc0cdcc029dec46af2411bf1bda4f77689691) - standardize home-manager module options *(commit by [@74k1](https://github.com/74k1))*:
+
+  `programs.ironbar.systemd` is not enabled by default anymore
+
+- due to [`3e55d87`](https://github.com/JakeStanger/ironbar/commit/3e55d87c3a90f5b201b259a4af7c70b9addc4da0) - overhaul `.desktop` and image resolver systems *(commit by [@JakeStanger](https://github.com/JakeStanger))*:
+
+  The `icon_theme` setting has been moved from per-bar to top-level
+
+- due to [`0d8ec47`](https://github.com/JakeStanger/ironbar/commit/0d8ec4791eedbbacdab4d5f81b1e54b2fba1306d) - commands for controlling css class names *(commit by [@JakeStanger](https://github.com/JakeStanger))*:
+
+  The `load-css` command has been moved to the `style` subcommand (ie `ironbar style load-css`).
+
+
+### :sparkles: New Features
+- [`afe534c`](https://github.com/JakeStanger/ironbar/commit/afe534ccd9c7ef36e624551af98c41d4ddd41832) - add `.urgent` workspace css class *(commit by [@Rodrigodd](https://github.com/Rodrigodd))*
+- [`df4bfc8`](https://github.com/JakeStanger/ironbar/commit/df4bfc83d04146213ef44b125492e588c2a2d02b) - **truncate**: explicit `off` mode *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`da13b9d`](https://github.com/JakeStanger/ironbar/commit/da13b9d5005639056a6f0e026c58acd3f454fcd6) - **launcher**: `truncate` and `truncate_popup` config options *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`64b953c`](https://github.com/JakeStanger/ironbar/commit/64b953ce5ed8c328e9f78aa676ec2937adeb1c62) - **launcher**: add option to minimize window if focused *(commit by [@pachliopta](https://github.com/pachliopta))*
+- [`9f7c391`](https://github.com/JakeStanger/ironbar/commit/9f7c3918c4a0388b0d957718a7b1be011d99cdea) - **sway**: support workspace rename events *(PR [#799](https://github.com/JakeStanger/ironbar/pull/799) by [@quietvoid](https://github.com/quietvoid))*
+- [`7f71a38`](https://github.com/JakeStanger/ironbar/commit/7f71a383c4ec1a2cc31c3af6f64bb2215ff6f995) - **launcher**: open new window on middle-click *(commit by [@BowDown097](https://github.com/BowDown097))*
+- [`ccfe73f`](https://github.com/JakeStanger/ironbar/commit/ccfe73f6a78e8a30ae5f58fbb6cfafb39e91faa7) - libinput `keys` module *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`03136e7`](https://github.com/JakeStanger/ironbar/commit/03136e7c700e545c566eb281c50e6ea343646bc6) - **workspaces**: new sorting options *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`4381fd5`](https://github.com/JakeStanger/ironbar/commit/4381fd505d05e06d4e4a5bd6f72aaf19bb982f57) - add shell completions *(commit by [@donovanglover](https://github.com/donovanglover))*
+- [`708118d`](https://github.com/JakeStanger/ironbar/commit/708118d2664969cb239e1e769c08902510fbfd66) - justify property for clock and custom label *(commit by [@BowDown097](https://github.com/BowDown097))*
+- [`87c6801`](https://github.com/JakeStanger/ironbar/commit/87c680122b673afd50d27a89389a1e04ea8dc48c) - **launcher**: icon overrides *(commit by [@BowDown097](https://github.com/BowDown097))*
+- [`03e6f10`](https://github.com/JakeStanger/ironbar/commit/03e6f10141286b683ca23bc12d22fd6b4c5f44ac) - **keyboard**: ability to display and switch kb layout *(PR [#836](https://github.com/JakeStanger/ironbar/pull/836) by [@kuzy000](https://github.com/kuzy000))*
+  - :arrow_lower_right: *addresses issue [#575](https://github.com/JakeStanger/ironbar/issues/575) opened by [@madfanat](https://github.com/madfanat)*
+- [`5e7e741`](https://github.com/JakeStanger/ironbar/commit/5e7e741842a26a7ca32fdfbb1d27032af1861c65) - **volume**: add pango support to button *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`01de0ac`](https://github.com/JakeStanger/ironbar/commit/01de0ac6f5bf4c9a15714d360c1ee139922d7c50) - **sysinfo**: overhaul to add aggregate/unit/formatting support *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`02a8dda`](https://github.com/JakeStanger/ironbar/commit/02a8ddabf079aec2a21818be1c777ea99f0f0332) - **workspaces**: niri support *(commit by [@anant-357](https://github.com/anant-357))*
+- [`183ca40`](https://github.com/JakeStanger/ironbar/commit/183ca402d45a228356c5dd4fa320531dd5a3adbf) - **launcher**: pagination controls when item count is reached *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`ba5ec80`](https://github.com/JakeStanger/ironbar/commit/ba5ec8015d3e13a2f7d2777ad1c7c7b936f0e3ea) - **label**: add truncate to module and custom widget *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`b83f26c`](https://github.com/JakeStanger/ironbar/commit/b83f26cb1aac37a077fa971879b6f2f5c4556838) - **sysinfo**: expose values as ironvars *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`c20feb7`](https://github.com/JakeStanger/ironbar/commit/c20feb77b7391a5c3f74de6ae98da03c30b51081) - fully implement orientation/justify options *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`5a5b110`](https://github.com/JakeStanger/ironbar/commit/5a5b110c7aadd670b9bfa14b695d900d9f9ae3d6) - rename sway_mode to bindmode and add Hyprland support *(commit by [@Rodrigodd](https://github.com/Rodrigodd))*
+- [`322fc0c`](https://github.com/JakeStanger/ironbar/commit/322fc0cdcc029dec46af2411bf1bda4f77689691) - **nix**: standardize home-manager module options *(commit by [@74k1](https://github.com/74k1))*
+- [`89073dc`](https://github.com/JakeStanger/ironbar/commit/89073dc0cfa61a079ecf6a0e723811611a6ed122) - **nix**: use `lib.fileset` for `src` *(commit by [@reo101](https://github.com/reo101))*
+- [`b13c725`](https://github.com/JakeStanger/ironbar/commit/b13c725f67d076123303dc08a308f49806935dfc) - **custom**: add halign and valign options to box widget *(PR [#988](https://github.com/JakeStanger/ironbar/pull/988) by [@BBFifield](https://github.com/BBFifield))*
+  - :arrow_lower_right: *addresses issue [#985](https://github.com/JakeStanger/ironbar/issues/985) opened by [@BBFifield](https://github.com/BBFifield)*
+- [`3a0e102`](https://github.com/JakeStanger/ironbar/commit/3a0e102afcac028a4dd98035ba992d84b48aca81) - change `icon_overrides` to apply to all resolved images *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`96e10fe`](https://github.com/JakeStanger/ironbar/commit/96e10fe1398125124331939b8ca0f8dfd612c956) - add `menu` module *(commit by [@ClaireNeveu](https://github.com/ClaireNeveu))*
+- [`5520562`](https://github.com/JakeStanger/ironbar/commit/5520562a183c7c958e3c4e352e7906e2537e350d) - support glob patterns for keyboard layout icons *(PR [#949](https://github.com/JakeStanger/ironbar/pull/949) by [@postsolar](https://github.com/postsolar))*
+- [`53b1e0f`](https://github.com/JakeStanger/ironbar/commit/53b1e0f4576052e31a33303b251ff9943b030db7) - **bluetooth**: add bluetooth module *(commit by [@kuzy000](https://github.com/kuzy000))*
+- [`ebcb972`](https://github.com/JakeStanger/ironbar/commit/ebcb972886ed74b31a089408ab9f890e8151f6fb) - smooth scrolling speed option *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`69df0c9`](https://github.com/JakeStanger/ironbar/commit/69df0c952ac55e4d2d6641cf0b539948dd568aec) - **menu, notifications, upower**: use ironbar image system *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`a2bd428`](https://github.com/JakeStanger/ironbar/commit/a2bd42867b861f5e94d7467b2059baf47bb9a4b5) - **upower**: expose properties as ironvars *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`c76e569`](https://github.com/JakeStanger/ironbar/commit/c76e56919fb0c293e47c2d90c4826c8ab17a3b9e) - **upower**: dynamic thresholds for styling *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`0d8ec47`](https://github.com/JakeStanger/ironbar/commit/0d8ec4791eedbbacdab4d5f81b1e54b2fba1306d) - **ipc**: commands for controlling css class names *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`757588e`](https://github.com/JakeStanger/ironbar/commit/757588e0d81331677d2def4139dbf3d4992444ef) - **notifications**: add class for button widget *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`ffca125`](https://github.com/JakeStanger/ironbar/commit/ffca125f831cab2ac5de49b38fb79109ecd2146e) - support pango markup in icon buttons *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+
+### :bug: Bug Fixes
+- [`a181d4e`](https://github.com/JakeStanger/ironbar/commit/a181d4e2571b369e619917d4dc592f64bd16ec1b) - **networkmanager, upower**: widget not vertical on left/right bars *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`fa6f27d`](https://github.com/JakeStanger/ironbar/commit/fa6f27d4b9e4ef48d0d2dc3fa80b331b32a7c086) - **workspaces**: rewrite module to fix several small issues *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`e0bae2c`](https://github.com/JakeStanger/ironbar/commit/e0bae2c0af8494ebc3666e67704ed550f54e7a80) - **keys**: high cpu usage *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`75375aa`](https://github.com/JakeStanger/ironbar/commit/75375aa341ec154345a7f41d210c952d4ffe2002) - **clipboard**: possible deadlock when copying *(PR [#863](https://github.com/JakeStanger/ironbar/pull/863) by [@ToxicMushroom](https://github.com/ToxicMushroom))*
+- [`1d29d61`](https://github.com/JakeStanger/ironbar/commit/1d29d61628b2aa88748a3d9e60c6c4248b645a04) - exit 0 on ipc connection error *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`551e1ce`](https://github.com/JakeStanger/ironbar/commit/551e1ce691a2d32cafe3fc72ab6e9d0a2e9bbd43) - **keyboard**: panic when layout update channel lags behind *(PR [#869](https://github.com/JakeStanger/ironbar/pull/869) by [@quietvoid](https://github.com/quietvoid))*
+- [`e8da00b`](https://github.com/JakeStanger/ironbar/commit/e8da00b850b9a904b994d6704e5f11e22c6c8bbb) - **custom**: buttons lock up on long running commands *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`3320cf2`](https://github.com/JakeStanger/ironbar/commit/3320cf27b23f77cdb08bc07eb7ce56c012f19a61) - **workspaces**: niri workspaces not respecting `added` sort *(PR [#911](https://github.com/JakeStanger/ironbar/pull/911) by [@MapoMagpie](https://github.com/MapoMagpie))*
+- [`ff9ba7b`](https://github.com/JakeStanger/ironbar/commit/ff9ba7b5f5958c212db4bd5e8e1b4d71ce38b91d) - **clipboard**: failing to paste in some applications *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`963a450`](https://github.com/JakeStanger/ironbar/commit/963a450ff524b1ebfb06a9ab0425719e4365f1f7) - **wayland**: panicking on compositors without protocol support *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`4d92af7`](https://github.com/JakeStanger/ironbar/commit/4d92af7ced3b9501573031af69b19e038c154e38) - **music**: hours not being displayed in track duration *(PR [#968](https://github.com/JakeStanger/ironbar/pull/968) by [@postsolar](https://github.com/postsolar))*
+  - :arrow_lower_right: *fixes issue [#967](https://github.com/JakeStanger/ironbar/issues/967) opened by [@Ly-sec](https://github.com/Ly-sec)*
+- [`040e7e6`](https://github.com/JakeStanger/ironbar/commit/040e7e64eeb6a40843336016960c290c8589a43d) - **mpris**: use set_position instead of seek *(PR [#978](https://github.com/JakeStanger/ironbar/pull/978) by [@postsolar](https://github.com/postsolar))*
+  - :arrow_lower_right: *fixes issue [#970](https://github.com/JakeStanger/ironbar/issues/970) opened by [@postsolar](https://github.com/postsolar)*
+- [`e240ab7`](https://github.com/JakeStanger/ironbar/commit/e240ab7acbf5db8b3175df83036f02ffcd657b78) - **cairo**: huge memory leak *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`375ceb8`](https://github.com/JakeStanger/ironbar/commit/375ceb81ced796c2954eee0957cc039d49693b5b) - **workspaces**: reload broken on niri *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`7b220cb`](https://github.com/JakeStanger/ironbar/commit/7b220cb2ae53c952115cf33237e42d26e8b2f9fb) - issues with bar appearing on wrong monitor *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`ff359f6`](https://github.com/JakeStanger/ironbar/commit/ff359f61c2e13906b2dc5121cfcc9e1cef59c251) - **launcher**: regression - favourites in wrong order *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`9ed0d12`](https://github.com/JakeStanger/ironbar/commit/9ed0d1270aac81f90397abb1d9f34cc9278ba4bb) - unable to use markup in icon labels *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`448f461`](https://github.com/JakeStanger/ironbar/commit/448f461943e06456d8e71bc748e223dee5ea28f7) - regression - image prefixes not handled correctly *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`9b0c0dd`](https://github.com/JakeStanger/ironbar/commit/9b0c0dd0fe557ad47bfe7fad9c82d4a607ce4963) - default HM module `config` option to `null` *(commit by [@postsolar](https://github.com/postsolar))*
+- [`81ce2c1`](https://github.com/JakeStanger/ironbar/commit/81ce2c169f2f63beaa5c9d8e769c60f4607451b3) - **upower**: round battery percent to whole number *(PR [#1058](https://github.com/JakeStanger/ironbar/pull/1058) by [@pgattic](https://github.com/pgattic))*
+- [`673b05e`](https://github.com/JakeStanger/ironbar/commit/673b05e3375bee6cdd39ad3ea2bf7c060937216b) - panic when module controller errors *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`c4f5485`](https://github.com/JakeStanger/ironbar/commit/c4f5485d53834aaa9b2cff41f139723afc800a9f) - **ipc**: message size limited to 1024 bytes *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`40adfaf`](https://github.com/JakeStanger/ironbar/commit/40adfaf81026507aa157528d3a742d6187d95d56) - opening programs via `launcher` and `menu` leaving zombie processes *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`ff185d0`](https://github.com/JakeStanger/ironbar/commit/ff185d0de9163412cf9e00180cc9d571e859d9b4) - **desktop_file**: case-insensitive app_id -> desktop_file find *(commit by [@slowsage](https://github.com/slowsage))*
+- [`feccc29`](https://github.com/JakeStanger/ironbar/commit/feccc29fd139437c6136c17761ca8dff88fe6698) - regression caused by [#1089](https://github.com/JakeStanger/ironbar/pull/1089) *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`0159c01`](https://github.com/JakeStanger/ironbar/commit/0159c0155e96dae4d10090b539481418a5a34546) - app_id StartupWMClass resolution in launcher *(commit by [@slowsage](https://github.com/slowsage))*
+- [`663ccda`](https://github.com/JakeStanger/ironbar/commit/663ccda1f9bed8fc0a4d6fbe752a205950b2d9de) - **notifications, upower**: regression from [#1125](https://github.com/JakeStanger/ironbar/pull/1125) *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`caa1bf0`](https://github.com/JakeStanger/ironbar/commit/caa1bf0f82378bb8533b2dec9f483f4d4e0917d0) - **autohide**: hiding bar when some widgets hovered *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`c6a1670`](https://github.com/JakeStanger/ironbar/commit/c6a1670049081b66079fd840cf23421579ac1b25) - **autohide**: hiding bar when leaving and re-entering within timeout *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`8563786`](https://github.com/JakeStanger/ironbar/commit/85637861a4088f3cc21c56344273427b3179d1d9) - **custom**: spaces in class names not handled *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`c2e21d4`](https://github.com/JakeStanger/ironbar/commit/c2e21d40c1ad4a4fca73a6f2517172373ee549e5) - `on_click` events not working on button widgets *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+
+### :recycle: Refactors
+- [`cc6f21e`](https://github.com/JakeStanger/ironbar/commit/cc6f21ed682b5123c6a19309fbb03b50f995535a) - take reference into image provider *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`8b05ed5`](https://github.com/JakeStanger/ironbar/commit/8b05ed526d29f9636075ae0674de848e0fb9b9ac) - move label truncate function to ext trait *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`8cdbe7e`](https://github.com/JakeStanger/ironbar/commit/8cdbe7e083325f41ffa565eaeb63d0841345c8a1) - **hyprland**: improve logging *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`5136637`](https://github.com/JakeStanger/ironbar/commit/5136637752db9c6e07f319760338bb46044068f9) - fix some strict clippy warnings *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`9cb1dfc`](https://github.com/JakeStanger/ironbar/commit/9cb1dfc1b1687df38347a914b20bf677a5f88cb3) - enum/struct formatting *(commit by [@BowDown097](https://github.com/BowDown097))*
+- [`59b5ddc`](https://github.com/JakeStanger/ironbar/commit/59b5ddcc695516fcca586e59fea52cdfdcc6cb74) - **clock**: move justify above common *(commit by [@BowDown097](https://github.com/BowDown097))*
+- [`d1b4af4`](https://github.com/JakeStanger/ironbar/commit/d1b4af47105e6904d4790f8c9f5fde3929731fe0) - make icon overrides bar-level and apply to focused module *(commit by [@BowDown097](https://github.com/BowDown097))*
+- [`40d449e`](https://github.com/JakeStanger/ironbar/commit/40d449e011f83175b9a69251ee827d5a1af32dca) - address requested changes *(commit by [@BowDown097](https://github.com/BowDown097))*
+- [`d5e4e08`](https://github.com/JakeStanger/ironbar/commit/d5e4e08863266d1373c74c7a9f8b75cc27220d38) - address requested changes (2) *(commit by [@BowDown097](https://github.com/BowDown097))*
+- [`2fd49e0`](https://github.com/JakeStanger/ironbar/commit/2fd49e0f3a4e08289d4d3553218529d7efbd9144) - address requested changes (3) *(commit by [@BowDown097](https://github.com/BowDown097))*
+- [`63f5954`](https://github.com/JakeStanger/ironbar/commit/63f59548379dfc56a0805bc8f5161c27e6175b44) - upgrade to zbus v5 *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`c2beda8`](https://github.com/JakeStanger/ironbar/commit/c2beda852d5183fa6ee8874b8e19b15757fe06c2) - ensure one copy of icon_overrides *(commit by [@BowDown097](https://github.com/BowDown097))*
+- [`f39c4c4`](https://github.com/JakeStanger/ironbar/commit/f39c4c430ebcc677e33b42ca085dca469f213654) - fix clippy warnings *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`202c19e`](https://github.com/JakeStanger/ironbar/commit/202c19efd44693a160fb502e55b3ef030cdb8fbf) - update to rust 2024, fix strict clippy warnings *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`a023155`](https://github.com/JakeStanger/ironbar/commit/a0231559d04c86851b001ea8610e11d01327f0c6) - **keys**: switch to `colpetto` *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`5bb1c88`](https://github.com/JakeStanger/ironbar/commit/5bb1c88c126819d921694c1e80ef9455244553cf) - **clipboard**: switch from `nix` to `rustix` *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`fc24949`](https://github.com/JakeStanger/ironbar/commit/fc249497aaca3a8259d09092d7ecf338166e91f5) - update `mlua` crate *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`638f2a2`](https://github.com/JakeStanger/ironbar/commit/638f2a20d2f4901da2333cb18223872f3532341f) - avoid explicity cast with long type *(commit by [@Rodrigodd](https://github.com/Rodrigodd))*
+- [`5affad3`](https://github.com/JakeStanger/ironbar/commit/5affad340035ecd08bea7f0f7c24e9a9526aee3f) - **nix**: use `flake-parts` and `flake-compat` *(commit by [@74k1](https://github.com/74k1))*
+- [`1b6aa10`](https://github.com/JakeStanger/ironbar/commit/1b6aa104235df5f93ef165b816b63b2d827099a2) - update hyprland-rs, remove `expect`s from hyprland client code *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`c6f3af4`](https://github.com/JakeStanger/ironbar/commit/c6f3af41422249dd7406f9a9d1ca93d1c99f45f4) - improvements to feature flags *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`f929aef`](https://github.com/JakeStanger/ironbar/commit/f929aef2d95bad19a907c402c98d3d5aa1ff3aa4) - replace channel macros with ext trait methods *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`09ba381`](https://github.com/JakeStanger/ironbar/commit/09ba3816d67bfd7b261c4c2db41e1645dc4db76f) - couple of tiny changes *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`8575300`](https://github.com/JakeStanger/ironbar/commit/857530004497f00cb2fabfa5f70aea3f72e682a1) - **module**: remove redundant `into_popup` parameters *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`ca524f1`](https://github.com/JakeStanger/ironbar/commit/ca524f19f6875970dfceba3ada97972216ae201f) - fix some strict clippy warnings *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`3e55d87`](https://github.com/JakeStanger/ironbar/commit/3e55d87c3a90f5b201b259a4af7c70b9addc4da0) - overhaul `.desktop` and image resolver systems *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`9d18ce5`](https://github.com/JakeStanger/ironbar/commit/9d18ce52f5a5076ce94ea6642bf0d8220d552d6c) - `recv_glib` dependency arrays *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`3c4b6a0`](https://github.com/JakeStanger/ironbar/commit/3c4b6a0fdbab9f6a410c7284167914df60ab8d24) - remove unnecessary `Clone` constraint from `recv_glib` methods *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`b62d0d5`](https://github.com/JakeStanger/ironbar/commit/b62d0d58cbf0de5bd72b7615defd12a37ca982ad) - fix clippy warnings *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`d05c16f`](https://github.com/JakeStanger/ironbar/commit/d05c16ffd95b16b31d407d27a6c4a1ae937a46b7) - **music**: move `IconPrefixedLabel` to central module *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`630f88e`](https://github.com/JakeStanger/ironbar/commit/630f88ea4c75363920a2cf11da1c6f4287274d08) - **ironvar**: make `NamespaceTrait` public *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`ae4239c`](https://github.com/JakeStanger/ironbar/commit/ae4239cbe92c2675d25aecf7afd4597c74bf12b9) - **upower**: tidy module code *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`cce6adc`](https://github.com/JakeStanger/ironbar/commit/cce6adcad5993e956fc9c3b097fdd7df788ff181) - **music**: remove regex dependency *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`c507c16`](https://github.com/JakeStanger/ironbar/commit/c507c1600394a7e3b71de5c530f3db482d3afe4c) - fix lots of pedantic clippy warnings *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+
+### :memo: Documentation Changes
+- [`7bff8c0`](https://github.com/JakeStanger/ironbar/commit/7bff8c0a7fd16dd927e956af4b6f0ae717344495) - **launcher**: note middle click functionality *(commit by [@BowDown097](https://github.com/BowDown097))*
+- [`63a9a42`](https://github.com/JakeStanger/ironbar/commit/63a9a427bb3f44205f3a32eda70d4efa24892d93) - add keys page to sidebar *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`814fbc2`](https://github.com/JakeStanger/ironbar/commit/814fbc2d8f1e7d8dbfa20d54f20a1e74a194f5f9) - **keyboard**: add missing `show_layout` option *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`9c7a562`](https://github.com/JakeStanger/ironbar/commit/9c7a562469feea2357c97e294b623df0fcddd2bb) - **tray**: correct to `direction` instead of `orientation` *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`3e5fcdc`](https://github.com/JakeStanger/ironbar/commit/3e5fcdc86ccfea5ed7e3affb100ebd149dbef32a) - add info on gtk 4 port *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`41d29d8`](https://github.com/JakeStanger/ironbar/commit/41d29d84c865d2fe714b8a69b0913a00799d4e98) - **gtk4**: update notifications to ported *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`caa2886`](https://github.com/JakeStanger/ironbar/commit/caa288656c710e7f318a76a32621bb4db92e6996) - **gtk4**: add text format status *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`f4f5910`](https://github.com/JakeStanger/ironbar/commit/f4f5910f61df12d42994fde6f4221200358ecd4c) - **gtk4**: update clipboard, custom, keyboard, script, sysinfo to be ported *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`0c84c0c`](https://github.com/JakeStanger/ironbar/commit/0c84c0c5837e95b13dcfc761154aa14221bf5dc7) - **gtk4**: update workspaces to be ported *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`304fa03`](https://github.com/JakeStanger/ironbar/commit/304fa03d90eb663e795d9bdbc048e66e8741d18f) - **gtk4**: update music to ported, popup state *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`e19af2b`](https://github.com/JakeStanger/ironbar/commit/e19af2bdd33b600fbdc4134111f79515eca51acd) - **gtk4**: update launcher as partially ported, update popups/ipc *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`da5164c`](https://github.com/JakeStanger/ironbar/commit/da5164c8a47a9d6031cf6807c9ca610801bb2035) - **gtk4**: fix launcher icon *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`beab26a`](https://github.com/JakeStanger/ironbar/commit/beab26a37e9a227d16c41a5bbe2e7c88ea3e40a7) - add missing menu sidebar link *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`34da5ed`](https://github.com/JakeStanger/ironbar/commit/34da5edfe0ed42180a78441e4999d4b33de0c4aa) - **sysinfo**: add info on querying values *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+
+
 ## [v0.16.1] - 2024-11-24
 ### :boom: BREAKING CHANGES
 - due to [`e4e9632`](https://github.com/JakeStanger/ironbar/commit/e4e9632caab66f6a8627ffb03b2f82cd5404003f) - menu causing bar to lose focus on sway *(commit by [@JakeStanger](https://github.com/JakeStanger))*:
@@ -687,3 +836,4 @@ It also requires `lua-lgi` as a runtime dependency.
 [v0.15.1]: https://github.com/JakeStanger/ironbar/compare/v0.15.0...v0.15.1
 [v0.16.0]: https://github.com/JakeStanger/ironbar/compare/v0.15.1...v0.16.0
 [v0.16.1]: https://github.com/JakeStanger/ironbar/compare/v0.16.0...v0.16.1
+[v0.17.0]: https://github.com/JakeStanger/ironbar/compare/v0.16.1...v0.17.0
