@@ -172,15 +172,12 @@ impl<W: IsA<Widget>> ModuleParts<W> {
         if let Some(ref class) = common.class {
             // gtk counts classes with spaces as the same class
             for part in class.split(' ') {
-                self.widget.style_context().add_class(part);
+                self.widget.add_class(part);
             }
 
             if let Some(ref popup) = self.popup {
                 for part in class.split(' ') {
-                    popup
-                        .container
-                        .style_context()
-                        .add_class(&format!("popup-{part}"));
+                    popup.container.add_class(&format!("popup-{part}"));
                 }
             }
         }

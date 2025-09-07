@@ -119,7 +119,10 @@ macro_rules! build {
         let widget = builder.build();
 
         if let Some(class) = &$self.class {
-            widget.style_context().add_class(class);
+            let style = widget.style_context();
+            for part in class.split(' ') {
+                style.add_class(part);
+            }
         }
 
         widget
