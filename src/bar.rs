@@ -1,10 +1,10 @@
-use crate::Ironbar;
 use crate::config::{BarConfig, BarPosition, MarginConfig, ModuleConfig};
 use crate::modules::{BarModuleFactory, ModuleInfo, ModuleLocation, ModuleRef};
 use crate::popup::Popup;
+use crate::{Ironbar, rc_mut};
 use color_eyre::Result;
 use glib::Propagation;
-use gtk::gdk::Monitor;
+use gtk::gdk::{Monitor, NotifyType};
 use gtk::prelude::*;
 use gtk::{Application, ApplicationWindow, Orientation, Window, WindowType};
 use gtk_layer_shell::LayerShell;
@@ -224,20 +224,40 @@ impl Bar {
         hotspot_window.set_decorated(false);
         hotspot_window.set_size_request(0, 1);
 
+        let timeout_id = rc_mut!(None);
+
         {
             let hotspot_window = hotspot_window.clone();
+            let timeout_id = timeout_id.clone();
 
-            window.connect_leave_notify_event(move |win, _| {
-                let win = win.clone();
-                let hotspot_window = hotspot_window.clone();
+            window.connect_leave_notify_event(move |win, ev| {
+                if matches!(ev.detail(), NotifyType::Ancestor | NotifyType::Nonlinear) {
+                    let win = win.clone();
+                    let hotspot_window = hotspot_window.clone();
+                    let value = timeout_id.clone();
 
-                glib::timeout_add_local_once(Duration::from_millis(timeout), move || {
-                    win.hide();
-                    hotspot_window.show();
-                });
+                    *timeout_id.borrow_mut() = Some(glib::timeout_add_local_once(
+                        Duration::from_millis(timeout),
+                        move || {
+                            win.hide();
+                            hotspot_window.show();
+
+                            *value.borrow_mut() = None;
+                        },
+                    ));
+                }
+
                 Propagation::Proceed
             });
         }
+
+        window.connect_enter_notify_event(move |_win, _ev| {
+            if let Some(id) = timeout_id.borrow_mut().take() {
+                id.remove();
+            }
+
+            Propagation::Proceed
+        });
 
         {
             let win = window.clone();
