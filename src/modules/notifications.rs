@@ -190,6 +190,7 @@ impl Module<Overlay> for NotificationsModule {
             16,
             context.ironbar.image_provider(),
         );
+        button.add_class("button");
         overlay.add(&*button);
 
         let label = Label::builder()

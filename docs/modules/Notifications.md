@@ -110,9 +110,10 @@ end:
 
 ## Styling
 
-| Selector                | Description                           |
-|-------------------------|---------------------------------------|
-| `.notifications`        | Notifications widget button           |
-| `.notifications .count` | Notifications count indicator overlay |
+| Selector                 | Description                           |
+|--------------------------|---------------------------------------|
+| `.notifications`         | Notifications widget container        |
+| `.notifications .button` | Notifications widget button           |
+| `.notifications .count`  | Notifications count indicator overlay |
 
 For more information on styling, please see the [styling guide](styling-guide).
