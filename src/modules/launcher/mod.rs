@@ -279,7 +279,7 @@ impl Module<gtk::Box> for LauncherModule {
                     item.merge_toplevel(info.clone());
                 } else {
                     let mut item = Item::from(info.clone());
-                    item.app_id = app_id.clone();
+                    item.app_id.clone_from(&app_id);
                     items.insert(app_id, item);
                 }
             }
@@ -313,7 +313,7 @@ impl Module<gtk::Box> for LauncherModule {
                             match items.get_mut(&app_id) {
                                 None => {
                                     let mut item: Item = info.into();
-                                    item.app_id = app_id.clone();
+                                    item.app_id.clone_from(&app_id);
                                     items.insert(app_id.clone(), item.clone());
 
                                     ItemOrWindow::Item(item)

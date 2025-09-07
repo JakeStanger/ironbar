@@ -130,20 +130,20 @@ impl Module<Button> for BatteryModule {
                 for (key, value) in args.changed_properties {
                     match key {
                         "Percentage" => {
-                            properties.percentage = value.downcast::<f64>().unwrap_or_default()
+                            properties.percentage = value.downcast::<f64>().unwrap_or_default();
                         }
                         "IconName" => {
-                            properties.icon_name = value.downcast::<String>().unwrap_or_default()
+                            properties.icon_name = value.downcast::<String>().unwrap_or_default();
                         }
                         "State" => {
                             properties.state =
-                                value.downcast_ref::<BatteryState>().unwrap_or_default()
+                                value.downcast_ref::<BatteryState>().unwrap_or_default();
                         }
                         "TimeToFull" => {
-                            properties.time_to_full = value.downcast::<i64>().unwrap_or_default()
+                            properties.time_to_full = value.downcast::<i64>().unwrap_or_default();
                         }
                         "TimeToEmpty" => {
-                            properties.time_to_empty = value.downcast::<i64>().unwrap_or_default()
+                            properties.time_to_empty = value.downcast::<i64>().unwrap_or_default();
                         }
                         _ => {}
                     }

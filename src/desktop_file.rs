@@ -85,7 +85,7 @@ impl DesktopFileRef {
                     has_icon = true;
                 }
                 "Categories" if !has_categories => {
-                    desktop_file.categories = value.split(';').map(|s| s.to_string()).collect();
+                    desktop_file.categories = value.split(';').map(ToString::to_string).collect();
                     has_categories = true;
                 }
                 "NoDisplay" if !has_no_display => {
@@ -354,7 +354,7 @@ pub async fn open_program(file_name: &str, launch_command: &str) {
 
     match exit_status {
         Some(Ok(exit_status)) if !exit_status.success() => {
-            error!("received non-success exit status running {launch_command_parts:?}")
+            error!("received non-success exit status running {launch_command_parts:?}");
         }
         Some(Err(err)) => error!("{err:?}"),
         _ => {}

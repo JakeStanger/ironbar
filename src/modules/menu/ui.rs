@@ -14,7 +14,7 @@ use tracing::{debug, error};
 
 pub fn make_entry<R>(
     entry: &MenuEntry,
-    tx: mpsc::Sender<ModuleUpdateEvent<R>>,
+    tx: &mpsc::Sender<ModuleUpdateEvent<R>>,
     image_provider: &image::Provider,
     truncate_mode: TruncateMode,
     launch_command_str: &str,
@@ -118,14 +118,14 @@ where
 
 pub fn add_entries(
     entry: &MenuEntry,
-    button: Button,
+    button: &Button,
     sub_menu: Option<&gtk::Box>,
     main_menu: &gtk::Box,
     container: &gtk::Box,
     height: Option<i32>,
 ) {
     let container1 = container.clone();
-    main_menu.add(&button);
+    main_menu.add(button);
 
     if let Some(sub_menu) = sub_menu {
         if let Some(height) = height {
@@ -164,7 +164,7 @@ pub fn add_entries(
 
                 // Reset scroll to top.
                 if let Some(w) = sub_menu_popup_container.children().first() {
-                    w.set_has_focus(true)
+                    w.set_has_focus(true);
                 }
             });
         } else {

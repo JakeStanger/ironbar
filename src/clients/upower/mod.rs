@@ -64,7 +64,7 @@ impl crate::ironvar::Namespace for Client {
     }
 
     fn list(&self) -> Vec<String> {
-        self.get_all().keys().map(|v| v.to_string()).collect()
+        self.get_all().keys().map(ToString::to_string).collect()
     }
 
     fn get_all(&self) -> HashMap<Box<str>, String> {

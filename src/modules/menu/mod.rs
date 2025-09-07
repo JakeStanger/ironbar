@@ -3,7 +3,7 @@ mod ui;
 
 use color_eyre::Result;
 use color_eyre::eyre::Report;
-use config::*;
+use config::{CustomEntry, OTHER_LABEL, parse_config};
 use gtk::prelude::*;
 use gtk::{Align, Button, Orientation};
 use indexmap::IndexMap;
@@ -221,15 +221,16 @@ impl Module<Button> for MenuModule {
             ),
             move |(main_menu, container, start_section, center_section, end_section),
                   applications| {
-                for application in applications.iter() {
+                for application in &applications {
                     let mut inserted = false;
 
-                    for category in application.categories.iter() {
+                    for category in &application.categories {
                         if let Some(section_names) = sections_by_cat.get(category) {
-                            for section_name in section_names.iter() {
-                                [&mut start_entries, &mut center_entries, &mut end_entries]
-                                    .into_iter()
-                                    .for_each(|entries| {
+                            for section_name in section_names {
+                                for entries in
+                                    [&mut start_entries, &mut center_entries, &mut end_entries]
+                                {
+                                    {
                                         let existing = entries.get_mut(section_name);
                                         if let Some(MenuEntry::Xdg(existing)) = existing {
                                             existing.applications.insert_sorted(
@@ -237,7 +238,8 @@ impl Module<Button> for MenuModule {
                                                 application.clone(),
                                             );
                                         }
-                                    });
+                                    }
+                                }
                             }
                             inserted = true;
                         }
@@ -264,7 +266,7 @@ impl Module<Button> for MenuModule {
                             let tx = context.tx.clone();
                             let (button, sub_menu) = ui::make_entry(
                                 entry,
-                                tx,
+                                &tx,
                                 &image_provider,
                                 truncate_mode,
                                 &self.launch_command,
@@ -280,7 +282,7 @@ impl Module<Button> for MenuModule {
 
                             ui::add_entries(
                                 entry,
-                                button,
+                                &button,
                                 sub_menu.as_ref(),
                                 $section,
                                 &container1,

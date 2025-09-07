@@ -22,8 +22,8 @@ fn get_icon_theme_search_paths(icon_theme: &IconTheme) -> HashSet<String> {
     unsafe {
         gtk_icon_theme_get_search_path(
             icon_theme.to_glib_none().0,
-            &mut gtk_paths,
-            &mut n_elements,
+            &raw mut gtk_paths,
+            &raw mut n_elements,
         );
         // n_elements is never negative (that would be weird)
         for i in 0..n_elements as usize {

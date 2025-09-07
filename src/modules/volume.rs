@@ -410,7 +410,7 @@ impl Module<Button> for VolumeModule {
 
                         if let Some(truncate) = self.truncate {
                             label.truncate(truncate);
-                        };
+                        }
 
                         let slider = Scale::builder().sensitive(info.can_set_volume).build();
                         slider.set_range(0.0, self.max_volume);

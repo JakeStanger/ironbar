@@ -79,7 +79,7 @@ impl Module<Label> for LabelModule {
         }
 
         context.subscribe().recv_glib(&label, move |label, string| {
-            label.set_label_escaped(&string)
+            label.set_label_escaped(&string);
         });
 
         Ok(ModuleParts {
