@@ -34,7 +34,8 @@ impl IconButton {
     pub fn new(input: &str, size: i32, image_provider: image::Provider) -> Self {
         let button = Button::new();
         let image = Image::new();
-        let label = Label::new(Some(input));
+        let label = Label::builder().use_markup(true).build();
+        label.set_label_escaped(input);
 
         if image::Provider::is_explicit_input(input) {
             image.add_class("image");
