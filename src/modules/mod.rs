@@ -596,7 +596,7 @@ pub fn wrap_widget<W: IsA<Widget>>(
     container.add_events(EventMask::SCROLL_MASK | EventMask::SMOOTH_SCROLL_MASK);
     container.add(&revealer);
 
-    common.install_events(&container, &revealer);
+    common.install_events(widget, &container, &revealer);
 
     container
 }

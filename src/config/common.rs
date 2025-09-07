@@ -3,7 +3,7 @@ use crate::script::{Script, ScriptInput};
 use glib::Propagation;
 use gtk::gdk::ScrollDirection;
 use gtk::prelude::*;
-use gtk::{EventBox, Justification, Orientation, Revealer, RevealerTransitionType};
+use gtk::{EventBox, Justification, Orientation, Revealer, RevealerTransitionType, Widget};
 use serde::Deserialize;
 use std::cell::Cell;
 use tracing::trace;
@@ -245,15 +245,18 @@ impl TransitionType {
 
 impl CommonConfig {
     /// Configures the module's container according to the common config options.
-    pub fn install_events(mut self, container: &EventBox, revealer: &Revealer) {
+    pub fn install_events<W>(mut self, widget: &W, container: &EventBox, revealer: &Revealer)
+    where
+        W: IsA<Widget>,
+    {
         self.install_show_if(container, revealer);
 
         let left_click_script = self.on_click_left.map(Script::new_polling);
         let middle_click_script = self.on_click_middle.map(Script::new_polling);
         let right_click_script = self.on_click_right.map(Script::new_polling);
 
-        container.connect_button_press_event(move |_, event| {
-            let script = match event.button() {
+        let on_button_press = move |button: u32| {
+            let script = match button {
                 1 => left_click_script.as_ref(),
                 2 => middle_click_script.as_ref(),
                 3 => right_click_script.as_ref(),
@@ -261,12 +264,21 @@ impl CommonConfig {
             };
 
             if let Some(script) = script {
-                trace!("Running on-click script: {}", event.button());
+                trace!("Running on-click script: {}", button);
                 script.run_as_oneshot(None);
             }
 
             Propagation::Proceed
-        });
+        };
+
+        // as events do not bubble in gtk3, and buttons therefore eat the click event
+        // we need to handle attaching to either the container or widget
+        // switching to `EventController`s in the GTK4 port should fix this.
+        if widget.dynamic_cast_ref::<gtk::Button>().is_some() {
+            widget.connect_button_press_event(move |_, ev| on_button_press(ev.button()));
+        } else {
+            container.connect_button_press_event(move |_, ev| on_button_press(ev.button()));
+        }
 
         let scroll_up_script = self.on_scroll_up.map(Script::new_polling);
         let scroll_down_script = self.on_scroll_down.map(Script::new_polling);
