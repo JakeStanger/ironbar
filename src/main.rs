@@ -418,7 +418,7 @@ fn load_output_bars(
                 output_size,
                 config.clone(),
                 ironbar.clone(),
-            )?]
+            )]
         }
         Some(MonitorConfig::Multiple(configs)) => configs
             .iter()
@@ -432,7 +432,7 @@ fn load_output_bars(
                     ironbar.clone(),
                 )
             })
-            .collect::<Result<_>>()?,
+            .collect(),
         None if show_default_bar => vec![create_bar(
             app,
             &monitor,
@@ -440,7 +440,7 @@ fn load_output_bars(
             output_size,
             config.bar.clone(),
             ironbar.clone(),
-        )?],
+        )],
         None => vec![],
     };
 

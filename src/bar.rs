@@ -2,7 +2,6 @@ use crate::config::{BarConfig, BarPosition, MarginConfig, ModuleConfig};
 use crate::modules::{BarModuleFactory, ModuleInfo, ModuleLocation, ModuleRef};
 use crate::popup::Popup;
 use crate::{Ironbar, rc_mut};
-use color_eyre::Result;
 use glib::Propagation;
 use gtk::gdk::{Monitor, NotifyType};
 use gtk::prelude::*;
@@ -110,13 +109,13 @@ impl Bar {
         }
     }
 
-    pub fn init(mut self, monitor: &Monitor) -> Result<Self> {
+    pub fn init(mut self, monitor: &Monitor) -> Self {
         let Inner::New { ref mut config } = self.inner else {
-            return Ok(self);
+            return self;
         };
 
         let Some(config) = config.take() else {
-            return Ok(self);
+            return self;
         };
 
         info!(
@@ -154,7 +153,7 @@ impl Bar {
             }
         }
 
-        let load_result = self.load_modules(config, monitor, self.monitor_size)?;
+        let load_result = self.load_modules(config, monitor, self.monitor_size);
 
         self.show(!start_hidden);
 
@@ -162,7 +161,8 @@ impl Bar {
             popup: load_result.popup,
             module_refs: load_result.module_refs,
         };
-        Ok(self)
+
+        self
     }
 
     /// Sets up GTK layer shell for a provided application window.
@@ -277,7 +277,7 @@ impl Bar {
         config: BarConfig,
         monitor: &Monitor,
         output_size: (i32, i32),
-    ) -> Result<BarLoadResult> {
+    ) -> BarLoadResult {
         let app = &self.window.application().expect("to exist");
 
         macro_rules! info {
@@ -342,12 +342,10 @@ impl Bar {
             ));
         }
 
-        let result = BarLoadResult {
+        BarLoadResult {
             popup,
             module_refs: refs,
-        };
-
-        Ok(result)
+        }
     }
 
     fn show(&self, include_window: bool) {
@@ -458,7 +456,7 @@ pub fn create_bar(
     monitor_size: (i32, i32),
     config: BarConfig,
     ironbar: Rc<Ironbar>,
-) -> Result<Bar> {
+) -> Bar {
     let bar = Bar::new(app, monitor_name, monitor_size, config, ironbar);
     bar.init(monitor)
 }

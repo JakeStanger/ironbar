@@ -100,7 +100,7 @@ impl BluetoothDeviceBox {
 
     fn set_data(&mut self, data: BluetoothDevice, device_strings: &PopupDeviceConfig) {
         if let Some(icon) = data.icon {
-            self.icon_box.set_label(Some(&format!("icon:{}", icon)));
+            self.icon_box.set_label(Some(&format!("icon:{icon}")));
         }
         self.header.set_text(&data.alias);
 
@@ -415,23 +415,21 @@ impl Module<Button> for BluetoothModule {
                         *local_seq = seq;
 
                         // Pin non-disconnected devices to the top and unpin other types
-                        let pos = devices_box.child_position(Deref::deref(&*device_box));
+                        let pos = devices_box.child_position(&device_box.container);
                         if device.status == BluetoothDeviceStatus::Disconnected {
                             // Unpin
                             if pos < num_pinned {
                                 num_pinned -= 1;
 
                                 if pos != num_pinned {
-                                    devices_box
-                                        .reorder_child(Deref::deref(&*device_box), num_pinned);
+                                    devices_box.reorder_child(&device_box.container, num_pinned);
                                 }
                             }
                         } else {
                             // Pin
                             if pos >= num_pinned {
                                 if pos != num_pinned {
-                                    devices_box
-                                        .reorder_child(Deref::deref(&*device_box), num_pinned);
+                                    devices_box.reorder_child(&device_box.container, num_pinned);
                                 }
 
                                 num_pinned += 1;
@@ -445,16 +443,16 @@ impl Module<Button> for BluetoothModule {
 
                     // Remove devices without updated `seq` (i.e. not in `devices`)
                     device_map.retain(|_, (device_box, local_seq)| {
-                        if *local_seq != seq {
-                            let pos = devices_box.child_position(Deref::deref(&*device_box));
+                        if *local_seq == seq {
+                            true
+                        } else {
+                            let pos = devices_box.child_position(&device_box.container);
                             if pos < num_pinned {
                                 num_pinned -= 1;
                             }
 
-                            devices_box.remove(Deref::deref(&*device_box));
+                            devices_box.remove(&device_box.container);
                             false
-                        } else {
-                            true
                         }
                     });
                 } else if state == BluetoothState::Disabled {

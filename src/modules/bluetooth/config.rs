@@ -190,7 +190,7 @@ const fn default_icon_size() -> i32 {
 }
 
 fn default_format_not_found() -> String {
-    "".into()
+    String::new()
 }
 
 fn default_format_disabled() -> String {
@@ -275,7 +275,7 @@ impl Default for PopupConfig {
             scrollable: true,
             header: default_popup_header(),
             disabled: default_popup_disabled(),
-            device: Default::default(),
+            device: PopupDeviceConfig::default(),
         }
     }
 }
@@ -344,9 +344,9 @@ impl BluetoothModule {
         };
 
         let battery_percent = if let Some(percent) = device.battery_percent {
-            format!("{}", percent)
+            format!("{percent}")
         } else {
-            "".into()
+            String::new()
         };
 
         str.replace("{device_address}", &format!("{}", &device.address))

@@ -385,7 +385,7 @@ impl Client {
                 }
             }
             _ => (),
-        };
+        }
     }
 
     /// Tryies to change device status from `old_status` to `new_status`.
@@ -403,12 +403,12 @@ impl Client {
                     if device.status == old_status {
                         device.status = new_status;
                         return true;
-                    } else {
-                        debug!(
-                            "Failed change device status from {:?} to {:?} of device {:?} because device is in {:?} status",
-                            old_status, new_status, address, device.status
-                        );
                     }
+
+                    debug!(
+                        "Failed change device status from {:?} to {:?} of device {:?} because device is in {:?} status",
+                        old_status, new_status, address, device.status
+                    );
                 } else {
                     error!(
                         "Failed change status to {:?} of unknown device {:?}",
