@@ -1,6 +1,6 @@
 [package]
 name = "ironbar"
-version = "0.16.1"
+version = "0.17.0"
 edition = "2024"
 license = "MIT"
 description = "Customisable GTK Layer Shell wlroots/sway bar"
