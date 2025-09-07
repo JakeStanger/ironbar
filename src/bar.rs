@@ -230,6 +230,8 @@ impl Bar {
             window.connect_leave_notify_event(move |win, _| {
                 let win = win.clone();
                 let hotspot_window = hotspot_window.clone();
+            window.connect_leave_notify_event(move |win, ev| {
+                if matches!(ev.detail(), NotifyType::Ancestor | NotifyType::Nonlinear) {
 
                 glib::timeout_add_local_once(Duration::from_millis(timeout), move || {
                     win.hide();
@@ -238,6 +240,7 @@ impl Bar {
                 Propagation::Proceed
             });
         }
+                }
 
         {
             let win = window.clone();
