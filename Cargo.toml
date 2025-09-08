@@ -149,7 +149,7 @@ smithay-client-toolkit = { version = "0.19.2", default-features = false, feature
     "calloop",
 ] }
 universal-config = { version = "0.5.1", default-features = false }
-ctrlc = "3.4.7"
+ctrlc = "3.5.0"
 cfg-if = "1.0.3"
 
 # bluetooth
