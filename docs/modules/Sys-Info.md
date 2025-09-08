@@ -142,8 +142,8 @@ More information about each of these and the additional options can be found fur
 | Token                    | Default Function | Default Unit | Default Formatting |
 |--------------------------|------------------|--------------|--------------------|
 | **CPU**                  |                  |              |                    | 
-| `{cpu_frequency[#core]}` | `mean`           | MHz          | `.2`               | 
-| `{cpu_percent[#core]}`   | `mean`           | %            | `0<2`              | 
+| `{cpu_frequency[@core]}` | `mean`           | MHz          | `.2`               | 
+| `{cpu_percent[@core]}`   | `mean`           | %            | `0<2`              | 
 | **Memory**               |                  |              |                    | 
 | `{memory_free}`          | N/A              | GB           | `0<4.1`            | 
 | `{memory_available}`     | N/A              | GB           | `0<4.1`            | 
@@ -155,18 +155,18 @@ More information about each of these and the additional options can be found fur
 | `{swap_total}`           | N/A              | GB           | `0<4.1`            | 
 | `{swap_percent}`         | N/A              | GB           | `0<4.1`            | 
 | **Temperature**          |                  |              |                    | 
-| `{temp_c[#sensor]}`      | `max`            | °C           |                    | 
-| `{temp_f[#sensor]}`      | `max`            | °F           |                    | 
+| `{temp_c[@sensor]}`      | `max`            | °C           |                    | 
+| `{temp_f[@sensor]}`      | `max`            | °F           |                    | 
 | **Disk**                 |                  |              |                    | 
-| `{disk_free[#mount]}`    | `sum`            | GB           |                    | 
-| `{disk_used[#mount]}`    | `sum`            | GB           |                    | 
-| `{disk_total[#mount]}`   | `sum`            | GB           |                    | 
-| `{disk_percent[#mount]}` | `sum`            | %            |                    | 
-| `{disk_read[#mount]}`    | `sum`            | MB/s         |                    | 
-| `{disk_write[#mount]}`   | `sum`            | MB/s         |                    | 
+| `{disk_free[@mount]}`    | `sum`            | GB           |                    | 
+| `{disk_used[@mount]}`    | `sum`            | GB           |                    | 
+| `{disk_total[@mount]}`   | `sum`            | GB           |                    | 
+| `{disk_percent[@mount]}` | `sum`            | %            |                    | 
+| `{disk_read[@mount]}`    | `sum`            | MB/s         |                    | 
+| `{disk_write[@mount]}`   | `sum`            | MB/s         |                    | 
 | **Network**              |                  |              |                    | 
-| `{net_down[#adapter]}`   | `sum`            | Mb/s         |                    | 
-| `{net_up[#adapter]}`     | `sum`            | Mb/s         |                    | 
+| `{net_down[@adapter]}`   | `sum`            | Mb/s         |                    | 
+| `{net_up[@adapter]}`     | `sum`            | Mb/s         |                    | 
 | **System**               |                  |              |                    | 
 | `{load_average_1}`       | N/A              | -            | `.2`               | 
 | `{load_average_5}`       | N/A              | -            | `.2`               | 
