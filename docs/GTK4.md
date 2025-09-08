@@ -32,6 +32,7 @@ A full list of feature flags can be found [here](Compiling#features).
 |-----------------|--------|------------------------------------------------------------------------------------------------------------------------------------------|
 | Battery         | ❌      |                                                                                                                                          |
 | Bindmode        | ❌      |                                                                                                                                          |
+| Bluetooth       | ❌      |                                                                                                                                          |
 | Cairo           | ✅      |                                                                                                                                          |
 | Clipboard       | ✅      |                                                                                                                                          |
 | Clock           | ✅      |                                                                                                                                          |
@@ -40,6 +41,7 @@ A full list of feature flags can be found [here](Compiling#features).
 | Keyboard        | ✅      |                                                                                                                                          |
 | Label           | ✅      |                                                                                                                                          |
 | Launcher        | ⚠️     | Popup behaviour may be a little strange.                                                                                                 |
+| Menu            | ❌      |                                                                                                                                          |
 | Music           | ✅      |                                                                                                                                          |
 | Network Manager | ❌      |                                                                                                                                          |
 | Notifications   | ✅      |                                                                                                                                          |
