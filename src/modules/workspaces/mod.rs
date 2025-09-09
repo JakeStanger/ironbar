@@ -155,8 +155,6 @@ pub struct WorkspaceItemContext {
 ///
 /// Named workspaces are always sorted before numbered ones.
 fn reorder_workspaces(container: &gtk::Box, sort_order: SortOrder) {
-    println!("Reordering workspaces: {sort_order:?}");
-
     let mut buttons = container
         .children()
         .map(|child| {

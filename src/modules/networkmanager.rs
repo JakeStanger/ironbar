@@ -7,7 +7,7 @@ use crate::{module_impl, spawn};
 use color_eyre::Result;
 use futures_lite::StreamExt;
 use futures_signals::signal::SignalExt;
-use gtk::prelude::BoxExt;
+use gtk::prelude::*;
 use gtk::{Box as GtkBox, Image};
 use serde::Deserialize;
 use tokio::sync::mpsc::Receiver;

@@ -335,13 +335,13 @@ impl CommonConfig {
         container.add_controller(event_controller);
     }
 
-            fn install_show_if<W>(&mut self, container: &W, revealer: &Revealer)
+    fn install_show_if<W>(&mut self, container: &W, revealer: &Revealer)
     where
         W: IsA<Widget>,
-               {
+    {
         if let Some(show_if) = self.show_if.take() {
             // need to keep clone here for the notify callback
-                let container = container.clone();
+            let container = container.clone();
 
             show_if.subscribe((revealer, &container), |(revealer, container), success| {
                 if success {

@@ -6,12 +6,14 @@ use crate::modules::{
     Module, ModuleInfo, ModuleParts, ModulePopup, ModuleUpdateEvent, PopupButton, WidgetContext,
 };
 use crate::{lock, module_impl, spawn};
-use glib::Propagation;
+use glib::{GString, Propagation};
 use gtk::gdk::BUTTON_PRIMARY;
+use gtk::gio::ListModel;
 use gtk::pango::EllipsizeMode;
 use gtk::prelude::*;
 use gtk::{
-    Button, CellRendererText, ComboBoxText, GestureClick, Label, Orientation, Scale, ToggleButton,
+    Button, DropDown, Expression, GestureClick, Label, Orientation, Scale, SignalListItemFactory,
+    StringList, ToggleButton,
 };
 use serde::Deserialize;
 use std::collections::HashMap;
@@ -331,24 +333,17 @@ impl Module<Button> for VolumeModule {
         container.append(&sink_container);
         container.append(&input_container);
 
-        let sink_selector = ComboBoxText::new();
+        let options = StringList::new(&[]);
+
+        let sink_selector = DropDown::new(Some(options.clone()), None::<Expression>);
         sink_selector.add_css_class("device-selector");
-
-        let renderer = sink_selector
-            .cells()
-            .first()
-            .expect("to exist")
-            .clone()
-            .downcast::<CellRendererText>()
-            .expect("to be valid cast");
-
-        renderer.set_width_chars(20);
-        renderer.set_ellipsize(EllipsizeMode::End);
 
         {
             let tx = context.controller_tx.clone();
-            sink_selector.connect_changed(move |selector| {
-                if let Some(name) = selector.active_id() {
+            let options = options.clone();
+
+            sink_selector.connect_selected_notify(move |selector| {
+                if let Some(name) = options.string(selector.selected()) {
                     tx.send_spawn(Update::SinkChange(name.into()));
                 }
             });
@@ -371,15 +366,16 @@ impl Module<Button> for VolumeModule {
         {
             let tx = context.controller_tx.clone();
             let selector = sink_selector.clone();
+            let options = options.clone();
 
             let event_controller = GestureClick::new();
             event_controller.set_button(BUTTON_PRIMARY);
             let scale = slider.clone();
             event_controller.connect_released(move |_, _, _, _| {
-                if let Some(sink) = selector.active_id() {
+                if let Some(sink) = options.string(selector.selected()) {
                     // GTK will send values outside min/max range
                     let val = scale.value().clamp(0.0, self.max_volume);
-                    try_send!(tx, Update::SinkVolume(sink.into(), val));
+                    tx.send_spawn(Update::SinkVolume(sink.into(), val));
                 }
             });
             slider.add_controller(event_controller);
@@ -401,9 +397,10 @@ impl Module<Button> for VolumeModule {
         {
             let tx = context.controller_tx.clone();
             let selector = sink_selector.clone();
+            let options = options.clone();
 
             btn_mute.connect_toggled(move |btn| {
-                if let Some(sink) = selector.active_id() {
+                if let Some(sink) = options.string(selector.selected()) {
                     let muted = btn.is_active();
                     tx.send_spawn(Update::SinkMute(sink.into(), muted));
                 }
@@ -418,10 +415,11 @@ impl Module<Button> for VolumeModule {
             .recv_glib(&input_container, move |input_container, event| {
                 match event {
                     Event::AddSink(info) => {
-                        sink_selector.append(Some(&info.name), &info.description);
+                        // options.append(Some(&info.name), &info.description);
+                        options.append(&info.name);
 
                         if info.active {
-                            sink_selector.set_active(Some(sinks.len() as u32));
+                            sink_selector.set_selected(sinks.len() as u32);
                             slider.set_value(info.volume.percent());
 
                             btn_mute.set_active(info.muted);
@@ -438,7 +436,7 @@ impl Module<Button> for VolumeModule {
                         if info.active
                             && let Some(pos) = sinks.iter().position(|s| s.name == info.name)
                         {
-                            sink_selector.set_active(Some(pos as u32));
+                            sink_selector.set_selected(pos as u32);
 
                             if !slider.style_context().has_class("dragging") {
                                 slider.set_value(info.volume.percent());
@@ -454,7 +452,7 @@ impl Module<Button> for VolumeModule {
                     }
                     Event::RemoveSink(name) => {
                         if let Some(pos) = sinks.iter().position(|s| s.name == name) {
-                            sink_selector.remove(pos as i32);
+                            options.remove(pos as u32);
                             sinks.remove(pos);
                         }
                     }
@@ -483,7 +481,6 @@ impl Module<Button> for VolumeModule {
                                 // GTK will send values outside min/max range
                                 let val = scale.value().clamp(0.0, self.max_volume);
                                 tx.send_spawn(Update::InputVolume(index, val));
-
                             });
                         }
 
