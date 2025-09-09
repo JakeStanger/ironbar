@@ -168,7 +168,7 @@ end:
 {
   end = [
     {
-      type = bluetooth
+      type = "bluetooth"
       icon_size = 32
       format.not_found = ""
       format.disabled = " Off"
