@@ -1,22 +1,24 @@
-use color_eyre::Result;
-use futures_lite::stream::StreamExt;
-use gtk::{Button, prelude::*};
-use gtk::{Label, Orientation};
-use serde::Deserialize;
-use tokio::sync::{broadcast, mpsc};
-use zbus;
-use zbus::fdo::PropertiesProxy;
-
 use crate::channels::{AsyncSenderExt, BroadcastReceiverExt};
 use crate::clients::upower;
 use crate::clients::upower::BatteryState;
 use crate::config::{CommonConfig, LayoutConfig};
 use crate::gtk_helpers::{IronbarGtkExt, IronbarLabelExt};
+use crate::image::IconLabel;
 use crate::modules::PopupButton;
 use crate::modules::{
     Module, ModuleInfo, ModuleParts, ModulePopup, ModuleUpdateEvent, WidgetContext,
 };
 use crate::{module_impl, spawn};
+use color_eyre::Result;
+use futures_lite::stream::StreamExt;
+use gtk::{Button, prelude::*};
+use gtk::{Label, Orientation};
+use serde::Deserialize;
+use std::cmp::Ordering;
+use std::collections::HashMap;
+use std::fmt::{Display, Formatter, Write};
+use tokio::sync::mpsc;
+use zbus::zvariant::OwnedValue;
 
 const DAY: i64 = 24 * 60 * 60;
 const HOUR: i64 = 60 * 60;
@@ -43,6 +45,34 @@ pub struct BatteryModule {
     #[serde(default, flatten)]
     layout: LayoutConfig,
 
+    /// A map of threshold names to apply as classes,
+    /// against the battery percentage at which to apply them.
+    ///
+    /// Thresholds work by applying the nearest value
+    /// above the current percentage, if present.
+    ///
+    /// For example, using the below config:
+    /// ```corn
+    /// {
+    ///   end = [
+    ///     {
+    ///       type = "battery"
+    ///       format = "{percentage}%"
+    ///       thresholds.warning = 20
+    ///       thresholds.critical = 5
+    ///     }
+    ///   ]
+    /// }
+    /// ```
+    /// At battery levels below 20%,
+    /// the `.warning` class will be applied to the top-level widget.
+    /// Below 5%, `.critical` will be applied instead.
+    /// Above 20%, no class applies.
+    ///
+    /// **Default**: `{}`
+    #[serde(default)]
+    thresholds: HashMap<Box<str>, f64>,
+
     /// See [common options](module-level-options#common-options).
     #[serde(flatten)]
     pub common: Option<CommonConfig>,
@@ -56,7 +86,7 @@ const fn default_icon_size() -> i32 {
     24
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 pub struct UpowerProperties {
     percentage: f64,
     icon_name: String,
@@ -84,74 +114,36 @@ impl Module<Button> for BatteryModule {
         spawn(async move {
             let mut prop_changed_stream = display_proxy.receive_properties_changed().await?;
 
-            let device_interface_name =
-                zbus::names::InterfaceName::from_static_str("org.freedesktop.UPower.Device")
-                    .expect("failed to create zbus InterfaceName");
-
-            let properties = display_proxy.get_all(device_interface_name.clone()).await?;
-
-            let percentage = properties["Percentage"]
-                .downcast_ref::<f64>()
-                .expect("expected percentage: f64 in HashMap of all properties");
-            let icon_name = properties["IconName"]
-                .downcast_ref::<&str>()
-                .expect("expected IconName: str in HashMap of all properties")
-                .to_string();
-            let state = u32_to_battery_state(
-                properties["State"]
-                    .downcast_ref::<u32>()
-                    .expect("expected State: u32 in HashMap of all properties"),
-            )
-            .unwrap_or(BatteryState::Unknown);
-            let time_to_full = properties["TimeToFull"]
-                .downcast_ref::<i64>()
-                .expect("expected TimeToFull: i64 in HashMap of all properties");
-            let time_to_empty = properties["TimeToEmpty"]
-                .downcast_ref::<i64>()
-                .expect("expected TimeToEmpty: i64 in HashMap of all properties");
-            let mut properties = UpowerProperties {
-                percentage,
-                icon_name: icon_name.clone(),
-                state,
-                time_to_full,
-                time_to_empty,
-            };
+            let mut properties: UpowerProperties = display_proxy
+                .get_all(display_proxy.interface_name.clone())
+                .await?
+                .try_into()?;
 
             tx.send_update(properties.clone()).await;
 
             while let Some(signal) = prop_changed_stream.next().await {
                 let args = signal.args().expect("Invalid signal arguments");
-                if args.interface_name != device_interface_name {
+                if args.interface_name != display_proxy.interface_name {
                     continue;
                 }
 
-                for (name, changed_value) in args.changed_properties {
-                    match name {
+                for (key, value) in args.changed_properties {
+                    match key {
                         "Percentage" => {
-                            properties.percentage = changed_value
-                                .downcast::<f64>()
-                                .expect("expected Percentage to be f64");
+                            properties.percentage = value.downcast::<f64>().unwrap_or_default();
                         }
                         "IconName" => {
-                            properties.icon_name = changed_value
-                                .downcast_ref::<&str>()
-                                .expect("expected IconName to be str")
-                                .to_string();
+                            properties.icon_name = value.downcast::<String>().unwrap_or_default();
                         }
                         "State" => {
                             properties.state =
-                                u32_to_battery_state(changed_value.downcast::<u32>().unwrap_or(0))
-                                    .expect("expected State to be BatteryState");
+                                value.downcast_ref::<BatteryState>().unwrap_or_default();
                         }
                         "TimeToFull" => {
-                            properties.time_to_full = changed_value
-                                .downcast::<i64>()
-                                .expect("expected TimeToFull to be i64");
+                            properties.time_to_full = value.downcast::<i64>().unwrap_or_default();
                         }
                         "TimeToEmpty" => {
-                            properties.time_to_empty = changed_value
-                                .downcast::<i64>()
-                                .expect("expected TimeToEmpty to be i64");
+                            properties.time_to_empty = value.downcast::<i64>().unwrap_or_default();
                         }
                         _ => {}
                     }
@@ -171,7 +163,7 @@ impl Module<Button> for BatteryModule {
         context: WidgetContext<Self::SendMessage, Self::ReceiveMessage>,
         info: &ModuleInfo,
     ) -> Result<ModuleParts<Button>> {
-        let icon = gtk::Image::new();
+        let icon = IconLabel::new("", self.icon_size, &context.ironbar.image_provider());
         icon.add_css_class("icon");
 
         let label = Label::builder()
@@ -188,7 +180,7 @@ impl Module<Button> for BatteryModule {
         let button = Button::new();
         button.add_css_class("button");
 
-        container.append(&icon);
+        container.append(&*icon);
         container.append(&label);
         button.set_child(Some(&container));
 
@@ -197,32 +189,43 @@ impl Module<Button> for BatteryModule {
             tx.send_spawn(ModuleUpdateEvent::TogglePopup(button.popup_id()));
         });
 
-        let format = self.format.clone();
-        let image_provider = context.ironbar.image_provider();
-
-        context.subscribe().recv_glib((), move |(), properties| {
-            let state = properties.state;
-            let is_charging =
-                state == BatteryState::Charging || state == BatteryState::PendingCharge;
-            let time_remaining = if is_charging {
-                seconds_to_string(properties.time_to_full)
-            } else {
-                seconds_to_string(properties.time_to_empty)
-            };
-            let format = format
-                .replace("{percentage}", &properties.percentage.to_string())
-                .replace("{time_remaining}", &time_remaining)
-                .replace("{state}", battery_state_to_string(state));
-
-            let mut icon_name = String::from("icon:");
-            icon_name.push_str(&properties.icon_name);
-
-            image_provider.load_into_image(&icon_name, self.icon_size, false, &icon);
-
-            label.set_label_escaped(&format);
-        });
-
         let rx = context.subscribe();
+        rx.recv_glib(
+            (&button, &self.format, &self.thresholds),
+            move |(button, format, thresholds), properties| {
+                let state = properties.state;
+
+                let is_charging =
+                    state == BatteryState::Charging || state == BatteryState::PendingCharge;
+
+                let time_remaining = if is_charging {
+                    seconds_to_string(properties.time_to_full)
+                } else {
+                    seconds_to_string(properties.time_to_empty)
+                }
+                .unwrap_or_default();
+
+                let percentage = properties.percentage;
+                let format = format
+                    .replace("{percentage}", &percentage.round().to_string())
+                    .replace("{time_remaining}", &time_remaining)
+                    .replace("{state}", &state.to_string());
+
+                label.set_label_escaped(&format);
+                icon.set_label(Some(&format!("icon:{}", properties.icon_name)));
+
+                if let Some(threshold) = get_threshold(percentage, thresholds) {
+                    button.add_css_class(threshold);
+
+                    for class in thresholds.keys() {
+                        if **class != *threshold {
+                            button.remove_css_class(class);
+                        }
+                    }
+                }
+            },
+        );
+
         let popup = self
             .into_popup(context, info)
             .into_popup_parts(vec![&button]);
@@ -243,85 +246,99 @@ impl Module<Button> for BatteryModule {
             .build();
 
         let label = Label::builder().use_markup(true).build();
-        label.add_css_class("upower-details");
+        label.add_css_class("details");
         container.append(&label);
 
-        context
-            .subscribe()
-            .recv_glib((&label), |(label), properties| {
-                let state = properties.state;
-                let format = match state {
-                    BatteryState::Charging | BatteryState::PendingCharge => {
-                        let ttf = properties.time_to_full;
-                        if ttf > 0 {
-                            format!("Full in {}", seconds_to_string(ttf))
-                        } else {
-                            String::new()
-                        }
+        context.subscribe().recv_glib((), move |(), properties| {
+            let state = properties.state;
+            let format = match state {
+                BatteryState::Charging | BatteryState::PendingCharge => {
+                    let ttf = properties.time_to_full;
+                    if ttf > 0 {
+                        format!("Full in {}", seconds_to_string(ttf).unwrap_or_default())
+                    } else {
+                        String::new()
                     }
-                    BatteryState::Discharging | BatteryState::PendingDischarge => {
-                        let tte = properties.time_to_empty;
-                        if tte > 0 {
-                            format!("Empty in {}", seconds_to_string(tte))
-                        } else {
-                            String::new()
-                        }
+                }
+                BatteryState::Discharging | BatteryState::PendingDischarge => {
+                    let tte = properties.time_to_empty;
+                    if tte > 0 {
+                        format!("Empty in {}", seconds_to_string(tte).unwrap_or_default())
+                    } else {
+                        String::new()
                     }
-                    _ => String::new(),
-                };
+                }
+                _ => String::new(),
+            };
 
-                label.set_label_escaped(&format);
-            });
+            label.set_label_escaped(&format);
+        });
 
         Some(container)
     }
 }
 
-fn seconds_to_string(seconds: i64) -> String {
+fn get_threshold(percent: f64, thresholds: &HashMap<Box<str>, f64>) -> Option<&str> {
+    let mut candidates = thresholds
+        .iter()
+        .filter(|&(_, v)| *v >= percent)
+        .collect::<Vec<_>>();
+
+    candidates.sort_by(|&(_, v1), &(_, v2)| v2.partial_cmp(v1).unwrap_or(Ordering::Equal));
+
+    if let Some((key, _)) = candidates.first() {
+        Some(key)
+    } else {
+        None
+    }
+}
+
+fn seconds_to_string(seconds: i64) -> Result<String> {
     let mut time_string = String::new();
     let days = seconds / (DAY);
     if days > 0 {
-        time_string += &format!("{days}d");
+        write!(time_string, "{days}d")?;
     }
     let hours = (seconds % DAY) / HOUR;
     if hours > 0 {
-        time_string += &format!(" {hours}h");
+        write!(time_string, " {hours}h")?;
     }
     let minutes = (seconds % HOUR) / MINUTE;
     if minutes > 0 {
-        time_string += &format!(" {minutes}m");
+        write!(time_string, " {minutes}m")?;
     }
-    time_string.trim_start().to_string()
+
+    Ok(time_string.trim_start().to_string())
 }
 
-const fn u32_to_battery_state(number: u32) -> Result<BatteryState, u32> {
-    if number == (BatteryState::Unknown as u32) {
-        Ok(BatteryState::Unknown)
-    } else if number == (BatteryState::Charging as u32) {
-        Ok(BatteryState::Charging)
-    } else if number == (BatteryState::Discharging as u32) {
-        Ok(BatteryState::Discharging)
-    } else if number == (BatteryState::Empty as u32) {
-        Ok(BatteryState::Empty)
-    } else if number == (BatteryState::FullyCharged as u32) {
-        Ok(BatteryState::FullyCharged)
-    } else if number == (BatteryState::PendingCharge as u32) {
-        Ok(BatteryState::PendingCharge)
-    } else if number == (BatteryState::PendingDischarge as u32) {
-        Ok(BatteryState::PendingDischarge)
-    } else {
-        Err(number)
+impl TryFrom<HashMap<String, OwnedValue>> for UpowerProperties {
+    type Error = zbus::zvariant::Error;
+
+    fn try_from(properties: HashMap<String, OwnedValue>) -> std::result::Result<Self, Self::Error> {
+        Ok(UpowerProperties {
+            percentage: properties["Percentage"].downcast_ref::<f64>()?,
+            icon_name: properties["IconName"].downcast_ref::<&str>()?.to_string(),
+            state: properties["State"].downcast_ref::<BatteryState>()?,
+            time_to_full: properties["TimeToFull"].downcast_ref::<i64>()?,
+            time_to_empty: properties["TimeToEmpty"].downcast_ref::<i64>()?,
+        })
     }
 }
 
-fn battery_state_to_string(state: BatteryState) -> &'static str {
-    match state {
-        BatteryState::Unknown => "Unknown",
-        BatteryState::Charging => "Charging",
-        BatteryState::Discharging => "Discharging",
-        BatteryState::Empty => "Empty",
-        BatteryState::FullyCharged => "Fully charged",
-        BatteryState::PendingCharge => "Pending charge",
-        BatteryState::PendingDischarge => "Pending discharge",
+impl Display for BatteryState {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                BatteryState::Unknown => "Unknown",
+                BatteryState::Charging => "Charging",
+                BatteryState::Discharging => "Discharging",
+                BatteryState::Empty => "Empty",
+                BatteryState::FullyCharged => "Fully charged",
+                BatteryState::PendingCharge => "Pending charge",
+                BatteryState::PendingDischarge => "Pending discharge",
+            }
+        )
     }
 }
