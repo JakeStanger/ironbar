@@ -23,7 +23,7 @@ A full list of feature flags can be found [here](Compiling#features).
 | Popups          | ✅      | Potential styling issues, otherwise working.                                                          |
 | Theming - CSS   | ✅      |                                                                                                       |
 | Theming - Icons | ⚠️     | Image sizing/scaling issues. Some icons not resolving.                                                |
-| Config - Format | ⚠ ️    | Angle/justify properties have been removed from widgets and should now be controlled via CSS instead. |
+| Config - Format | ⚠️ ️   | Angle/justify properties have been removed from widgets and should now be controlled via CSS instead. |
 | IPC             | ⚠️     | Some popup-related commands not implemented.                                                          | 
 
 ## Modules
@@ -40,7 +40,7 @@ A full list of feature flags can be found [here](Compiling#features).
 | Focused         | ✅      |                                                                                                                                          |
 | Keyboard        | ✅      |                                                                                                                                          |
 | Label           | ✅      |                                                                                                                                          |
-| Launcher        | ⚠️     | Popup behaviour may be a little strange.                                                                                                 |
+| Launcher        | ⚠️     | Window switching behaviour not fully implemented. Popup behaviour may be a little strange.                                               |
 | Menu            | ❌      |                                                                                                                                          |
 | Music           | ✅      |                                                                                                                                          |
 | Network Manager | ✅      |                                                                                                                                          |
