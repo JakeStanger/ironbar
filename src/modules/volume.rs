@@ -448,11 +448,8 @@ impl Module<Button> for VolumeModule {
                         {
                             sink_selector.set_selected(pos as u32);
 
-                            if !slider.style_context().has_class("dragging") {
-                                slider.set_value(info.volume.percent());
-                            }
-
                             if !slider.has_css_class("dragging") {
+                                slider.set_value(info.volume.percent());
                             }
 
                             btn_mute.set_active(info.muted);
