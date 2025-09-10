@@ -1,11 +1,11 @@
-use super::{ArcMutVec, Client, ConnectionState, Event, percent_to_volume, volume_to_percent};
+use super::{ArcMutVec, Client, ConnectionState, Event, VolumeLevels};
 use crate::channels::SyncSenderExt;
 use crate::lock;
 use libpulse_binding::callbacks::ListResult;
 use libpulse_binding::context::Context;
 use libpulse_binding::context::introspect::SinkInputInfo;
 use libpulse_binding::context::subscribe::Operation;
-use std::sync::{Arc, Mutex, mpsc};
+use std::sync::{Arc, Mutex};
 use tokio::sync::broadcast;
 use tracing::{debug, error, instrument, trace};
 
@@ -13,7 +13,7 @@ use tracing::{debug, error, instrument, trace};
 pub struct SinkInput {
     pub index: u32,
     pub name: String,
-    pub volume: f64,
+    pub volume: VolumeLevels,
     pub muted: bool,
 
     pub can_set_volume: bool,
@@ -29,7 +29,7 @@ impl From<&SinkInputInfo<'_>> for SinkInput {
                 .map(ToString::to_string)
                 .unwrap_or_default(),
             muted: value.mute,
-            volume: volume_to_percent(value.volume),
+            volume: value.volume.into(),
             can_set_volume: value.has_volume && value.volume_writable,
         }
     }
@@ -37,30 +37,28 @@ impl From<&SinkInputInfo<'_>> for SinkInput {
 
 impl Client {
     #[instrument(level = "trace")]
-    pub fn sink_inputs(&self) -> Arc<Mutex<Vec<SinkInput>>> {
+    pub fn sink_inputs(&self) -> ArcMutVec<SinkInput> {
         self.data.sink_inputs.clone()
     }
 
     #[instrument(level = "trace")]
     pub fn set_input_volume(&self, index: u32, volume_percent: f64) {
         if let ConnectionState::Connected { introspector, .. } = &mut *lock!(self.connection) {
-            let (tx, rx) = mpsc::channel();
+            let Some(mut volume_levels) = ({
+                let inputs = self.sink_inputs();
+                lock!(inputs).iter().find_map(|s| {
+                    if s.index == index {
+                        Some(s.volume.clone())
+                    } else {
+                        None
+                    }
+                })
+            }) else {
+                return;
+            };
 
-            introspector.get_sink_input_info(index, move |info| {
-                let ListResult::Item(info) = info else {
-                    return;
-                };
-                tx.send_expect(info.volume);
-            });
-
-            let new_volume = percent_to_volume(volume_percent);
-
-            let mut volume = rx.recv().expect("to receive info");
-            for v in volume.get_mut() {
-                v.0 = new_volume;
-            }
-
-            introspector.set_sink_input_volume(index, &volume, None);
+            volume_levels.set_percent(volume_percent);
+            introspector.set_sink_input_volume(index, &volume_levels.into(), None);
         }
     }
 

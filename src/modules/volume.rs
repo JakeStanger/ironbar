@@ -6,7 +6,6 @@ use crate::modules::{
     Module, ModuleInfo, ModuleParts, ModulePopup, ModuleUpdateEvent, PopupButton, WidgetContext,
 };
 use crate::{lock, module_impl, spawn};
-use glib::Propagation;
 use gtk::pango::EllipsizeMode;
 use gtk::prelude::*;
 use gtk::{Button, CellRendererText, ComboBoxText, Label, Orientation, Scale, ToggleButton};
@@ -245,10 +244,10 @@ impl Module<Button> for VolumeModule {
                             if sink.muted {
                                 &icons.muted
                             } else {
-                                icons.volume_icon(sink.volume)
+                                icons.volume_icon(sink.volume.percent())
                             },
                         )
-                        .replace("{percentage}", &sink.volume.to_string())
+                        .replace("{percentage}", &sink.volume.percent().to_string())
                         .replace("{name}", &sink.description);
 
                     button_label.set_label_escaped(&label);
@@ -324,14 +323,12 @@ impl Module<Button> for VolumeModule {
             let tx = context.controller_tx.clone();
             let selector = sink_selector.clone();
 
-            slider.connect_button_release_event(move |scale, _| {
+            slider.connect_value_changed(move |scale| {
                 if let Some(sink) = selector.active_id() {
                     // GTK will send values outside min/max range
                     let val = scale.value().clamp(0.0, self.max_volume);
                     tx.send_spawn(Update::SinkVolume(sink.into(), val));
                 }
-
-                Propagation::Proceed
             });
         }
 
@@ -365,13 +362,13 @@ impl Module<Button> for VolumeModule {
 
                         if info.active {
                             sink_selector.set_active(Some(sinks.len() as u32));
-                            slider.set_value(info.volume);
+                            slider.set_value(info.volume.percent());
 
                             btn_mute.set_active(info.muted);
                             btn_mute.set_label(if info.muted {
                                 &self.icons.muted
                             } else {
-                                self.icons.volume_icon(info.volume)
+                                self.icons.volume_icon(info.volume.percent())
                             });
                         }
 
@@ -382,13 +379,16 @@ impl Module<Button> for VolumeModule {
                             && let Some(pos) = sinks.iter().position(|s| s.name == info.name)
                         {
                             sink_selector.set_active(Some(pos as u32));
-                            slider.set_value(info.volume);
+
+                            if !slider.style_context().has_class("dragging") {
+                                slider.set_value(info.volume.percent());
+                            }
 
                             btn_mute.set_active(info.muted);
                             btn_mute.set_label(if info.muted {
                                 &self.icons.muted
                             } else {
-                                self.icons.volume_icon(info.volume)
+                                self.icons.volume_icon(info.volume.percent())
                             });
                         }
                     }
@@ -414,17 +414,15 @@ impl Module<Button> for VolumeModule {
 
                         let slider = Scale::builder().sensitive(info.can_set_volume).build();
                         slider.set_range(0.0, self.max_volume);
-                        slider.set_value(info.volume);
+                        slider.set_value(info.volume.percent());
                         slider.add_class("slider");
 
                         {
                             let tx = context.controller_tx.clone();
-                            slider.connect_button_release_event(move |scale, _| {
+                            slider.connect_value_changed(move |scale| {
                                 // GTK will send values outside min/max range
                                 let val = scale.value().clamp(0.0, self.max_volume);
                                 tx.send_spawn(Update::InputVolume(index, val));
-
-                                Propagation::Proceed
                             });
                         }
 
@@ -435,7 +433,7 @@ impl Module<Button> for VolumeModule {
                         btn_mute.set_label(if info.muted {
                             &self.icons.muted
                         } else {
-                            self.icons.volume_icon(info.volume)
+                            self.icons.volume_icon(info.volume.percent())
                         });
 
                         {
@@ -466,12 +464,16 @@ impl Module<Button> for VolumeModule {
                     Event::UpdateInput(info) => {
                         if let Some(ui) = inputs.get(&info.index) {
                             ui.label.set_label(&info.name);
-                            ui.slider.set_value(info.volume);
+
+                            if !ui.slider.style_context().has_class("dragging") {
+                                ui.slider.set_value(info.volume.percent());
+                            }
+
                             ui.slider.set_sensitive(info.can_set_volume);
                             ui.btn_mute.set_label(if info.muted {
                                 &self.icons.muted
                             } else {
-                                self.icons.volume_icon(info.volume)
+                                self.icons.volume_icon(info.volume.percent())
                             });
                         }
                     }
