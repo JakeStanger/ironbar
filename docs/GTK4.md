@@ -22,15 +22,15 @@ A full list of feature flags can be found [here](Compiling#features).
 | Bar             | ✅      |                                                                                                       |
 | Popups          | ✅      | Potential styling issues, otherwise working.                                                          |
 | Theming - CSS   | ✅      |                                                                                                       |
-| Theming - Icons | ⚠️     | GTK4 does not support icon theming - always uses default theme. Image scaling may be incorrect.       |
-| Config - Format | ❌ ️    | Angle/justify properties have been removed from widgets and should now be controlled via CSS instead. |
+| Theming - Icons | ⚠️     | Image sizing/scaling issues. Some icons not resolving.                                                |
+| Config - Format | ⚠ ️    | Angle/justify properties have been removed from widgets and should now be controlled via CSS instead. |
 | IPC             | ⚠️     | Some popup-related commands not implemented.                                                          | 
 
 ## Modules
 
 | Module          | Status | Notes                                                                                                                                    |
 |-----------------|--------|------------------------------------------------------------------------------------------------------------------------------------------|
-| Battery         | ❌      |                                                                                                                                          |
+| Battery         | ✅      |                                                                                                                                          |
 | Bindmode        | ❌      |                                                                                                                                          |
 | Bluetooth       | ❌      |                                                                                                                                          |
 | Cairo           | ✅      |                                                                                                                                          |
@@ -43,10 +43,10 @@ A full list of feature flags can be found [here](Compiling#features).
 | Launcher        | ⚠️     | Popup behaviour may be a little strange.                                                                                                 |
 | Menu            | ❌      |                                                                                                                                          |
 | Music           | ✅      |                                                                                                                                          |
-| Network Manager | ❌      |                                                                                                                                          |
+| Network Manager | ✅      |                                                                                                                                          |
 | Notifications   | ✅      |                                                                                                                                          |
 | Script          | ✅      |                                                                                                                                          |
 | SysInfo         | ✅      |                                                                                                                                          |
 | Tray            | ❌      | GTK4 removes widgets required to move the tray. No `libdbusmenu-gtk4` either. will need to manually re-create menus with custom widgets. |
-| Volume          | ❌      |                                                                                                                                          |
+| Volume          | ✅      |                                                                                                                                          |
 | Workspaces      | ✅      |                                                                                                                                          |
