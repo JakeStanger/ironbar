@@ -1,6 +1,7 @@
 mod sink;
 mod sink_input;
 
+use crate::channels::SyncSenderExt;
 use crate::{APP_ID, arc_mut, lock, register_client, spawn_blocking};
 use libpulse_binding::callbacks::ListResult;
 use libpulse_binding::context::introspect::{Introspector, ServerInfo};
@@ -9,14 +10,13 @@ use libpulse_binding::context::{Context, FlagSet, State};
 use libpulse_binding::mainloop::standard::{IterateResult, Mainloop};
 use libpulse_binding::proplist::Proplist;
 use libpulse_binding::volume::{ChannelVolumes, Volume};
+pub use sink::Sink;
+pub use sink_input::SinkInput;
 use std::fmt::{Debug, Formatter};
+use std::ops::{Deref, DerefMut};
 use std::sync::{Arc, Mutex};
 use tokio::sync::broadcast;
 use tracing::{debug, error, info, trace, warn};
-
-use crate::channels::SyncSenderExt;
-pub use sink::Sink;
-pub use sink_input::SinkInput;
 
 type ArcMutVec<T> = Arc<Mutex<Vec<T>>>;
 
@@ -282,13 +282,56 @@ fn set_default_sink(
     *lock!(default_sink) = default_sink_name;
 }
 
-/// Converts a Pulse `ChannelVolumes` struct into a single percentage value,
-/// representing the average value across all channels.
-fn volume_to_percent(volume: ChannelVolumes) -> f64 {
-    let avg = volume.avg().0;
-    let base_delta = (Volume::NORMAL.0 - Volume::MUTED.0) as f64 / 100.0;
+#[derive(Debug, Clone)]
+pub struct VolumeLevels(Vec<u32>);
 
-    ((avg - Volume::MUTED.0) as f64 / base_delta).round()
+impl VolumeLevels {
+    pub fn percent(&self) -> f64 {
+        let avg: u32 = self.iter().sum::<u32>() / self.len() as u32;
+        let base_delta = (Volume::NORMAL.0 - Volume::MUTED.0) as f64 / 100.0;
+
+        ((avg - Volume::MUTED.0) as f64 / base_delta).round()
+    }
+
+    pub fn set_percent(&mut self, percent: f64) {
+        let volume = percent_to_volume(percent);
+        self.fill(volume);
+    }
+}
+
+impl Deref for VolumeLevels {
+    type Target = Vec<u32>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl DerefMut for VolumeLevels {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
+
+impl From<VolumeLevels> for ChannelVolumes {
+    fn from(levels: VolumeLevels) -> Self {
+        let mut cv = ChannelVolumes::default();
+        cv.set_len(levels.len() as u8);
+        cv.get_mut()
+            .copy_from_slice(unsafe { std::mem::transmute::<&[u32], &[Volume]>(&levels) });
+        cv
+    }
+}
+
+impl From<ChannelVolumes> for VolumeLevels {
+    fn from(value: ChannelVolumes) -> Self {
+        let levels: &[u32] = unsafe {
+            use libpulse_binding::volume::Volume;
+
+            std::mem::transmute::<&[Volume], &[u32]>(value.get())
+        };
+        Self(Vec::from(&levels[..value.len() as usize]))
+    }
 }
 
 /// Converts a percentage volume into a Pulse volume value,
