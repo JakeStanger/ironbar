@@ -6,17 +6,20 @@ use crate::modules::{
     Module, ModuleInfo, ModuleParts, ModulePopup, ModuleUpdateEvent, PopupButton, WidgetContext,
 };
 use crate::{lock, module_impl, spawn};
-use glib::{GString, Propagation};
+use glib::subclass::prelude::*;
+use glib::{Object, Propagation, Properties, Type};
 use gtk::gdk::BUTTON_PRIMARY;
 use gtk::gio::ListModel;
 use gtk::pango::EllipsizeMode;
 use gtk::prelude::*;
 use gtk::{
-    Button, DropDown, Expression, GestureClick, Label, Orientation, Scale, SignalListItemFactory,
-    StringList, ToggleButton,
+    Button, DropDown, Expression, GestureClick, Label, ListItem, Orientation, Scale,
+    SignalListItemFactory, ToggleButton, gio,
 };
 use serde::Deserialize;
+use std::cell::RefCell;
 use std::collections::HashMap;
+use std::time::Instant;
 use tokio::sync::mpsc;
 use tracing::trace;
 
@@ -141,6 +144,37 @@ pub enum Update {
     InputMute(u32, bool),
 }
 
+glib::wrapper! {
+    pub struct DropdownItem(ObjectSubclass<DropdownItemData>);
+}
+
+impl DropdownItem {
+    fn new(key: &str, value: &str) -> Self {
+        Object::builder()
+            .property("key", key)
+            .property("value", value)
+            .build()
+    }
+}
+
+#[derive(Properties, Default)]
+#[properties(wrapper_type = DropdownItem)]
+pub struct DropdownItemData {
+    #[property(get, set)]
+    key: RefCell<String>,
+    #[property(get, set)]
+    value: RefCell<String>,
+}
+
+#[glib::derived_properties]
+impl ObjectImpl for DropdownItemData {}
+
+#[glib::object_subclass]
+impl ObjectSubclass for DropdownItemData {
+    const NAME: &'static str = "DropdownItem";
+    type Type = DropdownItem;
+}
+
 impl Module<Button> for VolumeModule {
     type SendMessage = Event;
     type ReceiveMessage = Update;
@@ -207,52 +241,6 @@ impl Module<Button> for VolumeModule {
                     Update::InputVolume(index, volume) => client.set_input_volume(index, volume),
                     Update::InputMute(index, muted) => client.set_input_muted(index, muted),
                 }
-
-                /*
-                let mut sink_change = None;
-                let mut sink_volume = None;
-                let mut sink_mute = None;
-                let mut input_volume = None;
-                let mut input_mute = None;
-
-                match update {
-                    Update::SinkChange(name) => sink_change= Some (name),
-                    Update::SinkVolume(name, volume) => sink_volume = Some((name, volume)),
-                    Update::SinkMute(name, muted) => sink_mute = Some((name, muted)),
-                    Update::InputVolume(index, volume) => input_volume= Some((index, volume)),
-                    Update::InputMute(index, muted) => input_mute=Some((index, muted)),
-                }
-                while let Ok(update) = rx.try_recv() {
-                    match update {
-                        Update::SinkChange(name) => sink_change= Some (name),
-                        Update::SinkVolume(name, volume) => sink_volume = Some((name, volume)),
-                        Update::SinkMute(name, muted) => sink_mute = Some((name, muted)),
-                        Update::InputVolume(index, volume) => input_volume= Some((index, volume)),
-                        Update::InputMute(index, muted) => input_mute=Some((index, muted)),
-                    }
-                }
-
-                if let Some(name) = sink_change {
-                    client.set_default_sink(&name);
-                }
-
-                if let Some((name, volume)) = sink_volume {
-                    client.set_sink_volume(&name, volume);
-                }
-
-                if let Some ((name, muted)) = sink_mute {
-                    client.set_sink_muted(&name, muted);
-                }
-
-                if let Some ((index, volume)) = input_volume {
-                    client.set_input_volume(index, volume);
-                }
-
-                if let Some ((index, muted)) = input_mute {
-                    client.set_input_muted(index, muted);
-                }
-                tokio::time::sleep(std::time::Duration::from_millis(30)).await
-                */
             }
         });
 
@@ -333,9 +321,39 @@ impl Module<Button> for VolumeModule {
         container.append(&sink_container);
         container.append(&input_container);
 
-        let options = StringList::new(&[]);
+        let options = gio::ListStore::new::<DropdownItem>();
+        let factory = SignalListItemFactory::new();
+        factory.connect_setup(move |_, list_item| {
+            let label = Label::new(None);
+            list_item
+                .downcast_ref::<ListItem>()
+                .expect("Needs to be ListItem")
+                .set_child(Some(&label));
+        });
+
+        factory.connect_bind(move |_, list_item| {
+            // Get `IntegerObject` from `ListItem`
+            let integer_object = list_item
+                .downcast_ref::<ListItem>()
+                .expect("Needs to be ListItem")
+                .item()
+                .and_downcast::<DropdownItem>()
+                .expect("The item has to be an `DropdownItem`.");
+
+            // Get `Label` from `ListItem`
+            let label = list_item
+                .downcast_ref::<ListItem>()
+                .expect("Needs to be ListItem")
+                .child()
+                .and_downcast::<Label>()
+                .expect("The child has to be a `Label`.");
+
+            // Set "label" to "number"
+            label.set_label(&integer_object.value().to_string());
+        });
 
         let sink_selector = DropDown::new(Some(options.clone()), None::<Expression>);
+        sink_selector.set_factory(Some(&factory));
         sink_selector.add_css_class("device-selector");
 
         {
@@ -343,8 +361,8 @@ impl Module<Button> for VolumeModule {
             let options = options.clone();
 
             sink_selector.connect_selected_notify(move |selector| {
-                if let Some(name) = options.string(selector.selected()) {
-                    tx.send_spawn(Update::SinkChange(name.into()));
+                if let Some(item) = selector.selected_item().and_downcast_ref::<DropdownItem>() {
+                    tx.send_spawn(Update::SinkChange(item.key()));
                 }
             });
         }
@@ -371,23 +389,16 @@ impl Module<Button> for VolumeModule {
             let event_controller = GestureClick::new();
             event_controller.set_button(BUTTON_PRIMARY);
             let scale = slider.clone();
-            event_controller.connect_released(move |_, _, _, _| {
-                if let Some(sink) = options.string(selector.selected()) {
+            scale.connect_value_changed(move |scale| {
+                if scale.has_css_class("dragging")
+                    && let Some(sink) = selector.selected_item().and_downcast_ref::<DropdownItem>()
+                {
                     // GTK will send values outside min/max range
                     let val = scale.value().clamp(0.0, self.max_volume);
-                    tx.send_spawn(Update::SinkVolume(sink.into(), val));
+                    tx.send_spawn(Update::SinkVolume(sink.key(), val));
                 }
             });
             slider.add_controller(event_controller);
-            /*
-            slider.connect_value_changed(move |scale| {
-                if let Some(sink) = selector.active_id() {
-                    // GTK will send values outside min/max range
-                    let val = scale.value().clamp(0.0, self.max_volume);
-                    tx.send_spawn(Update::SinkVolume(sink.into(), val));
-                }
-            });
-            */
         }
 
         let btn_mute = ToggleButton::new();
@@ -400,9 +411,9 @@ impl Module<Button> for VolumeModule {
             let options = options.clone();
 
             btn_mute.connect_toggled(move |btn| {
-                if let Some(sink) = options.string(selector.selected()) {
+                if let Some(sink) = selector.selected_item().and_downcast_ref::<DropdownItem>() {
                     let muted = btn.is_active();
-                    tx.send_spawn(Update::SinkMute(sink.into(), muted));
+                    tx.send_spawn(Update::SinkMute(sink.key(), muted));
                 }
             });
         }
@@ -415,8 +426,7 @@ impl Module<Button> for VolumeModule {
             .recv_glib(&input_container, move |input_container, event| {
                 match event {
                     Event::AddSink(info) => {
-                        // options.append(Some(&info.name), &info.description);
-                        options.append(&info.name);
+                        options.append(&DropdownItem::new(&info.name, &info.description));
 
                         if info.active {
                             sink_selector.set_selected(sinks.len() as u32);
@@ -440,6 +450,9 @@ impl Module<Button> for VolumeModule {
 
                             if !slider.style_context().has_class("dragging") {
                                 slider.set_value(info.volume.percent());
+                            }
+
+                            if !slider.has_css_class("dragging") {
                             }
 
                             btn_mute.set_active(info.muted);
@@ -478,9 +491,11 @@ impl Module<Button> for VolumeModule {
                         {
                             let tx = context.controller_tx.clone();
                             slider.connect_value_changed(move |scale| {
-                                // GTK will send values outside min/max range
-                                let val = scale.value().clamp(0.0, self.max_volume);
-                                tx.send_spawn(Update::InputVolume(index, val));
+                                if scale.has_css_class("dragging") {
+                                    // GTK will send values outside min/max range
+                                    let val = scale.value().clamp(0.0, self.max_volume);
+                                    tx.send_spawn(Update::InputVolume(index, val));
+                                }
                             });
                         }
 
@@ -522,7 +537,7 @@ impl Module<Button> for VolumeModule {
                         if let Some(ui) = inputs.get(&info.index) {
                             ui.label.set_label(&info.name);
 
-                            if !ui.slider.style_context().has_class("dragging") {
+                            if !ui.slider.has_css_class("dragging") {
                                 ui.slider.set_value(info.volume.percent());
                             }
 
