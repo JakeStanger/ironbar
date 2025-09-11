@@ -31,8 +31,8 @@ A full list of feature flags can be found [here](Compiling#features).
 | Module          | Status | Notes                                                                                                                                    |
 |-----------------|--------|------------------------------------------------------------------------------------------------------------------------------------------|
 | Battery         | ✅      |                                                                                                                                          |
-| Bindmode        | ❌      |                                                                                                                                          |
-| Bluetooth       | ❌      |                                                                                                                                          |
+| Bindmode        | ✅      |                                                                                                                                          |
+| Bluetooth       | ✅      |                                                                                                                                          |
 | Cairo           | ✅      |                                                                                                                                          |
 | Clipboard       | ✅      |                                                                                                                                          |
 | Clock           | ✅      |                                                                                                                                          |
