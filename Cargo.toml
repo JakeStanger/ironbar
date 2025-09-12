@@ -67,7 +67,7 @@ bindmode = []
 
 bluetooth = ["dep:bluer"]
 
-cairo = ["lua-src", "mlua", "cairo-rs"]
+cairo = ["lua-src", "mlua"]
 
 clipboard = ["dep:rustix"]
 
@@ -119,9 +119,9 @@ schema = ["dep:schemars"]
 
 [dependencies]
 # core
-gtk = "0.18.2"
-gtk-layer-shell = "0.8.2"
-glib = "0.18.5"
+gtk = { package = "gtk4",  version = "0.10.0", features = ["v4_10"] }
+gtk-layer-shell = {  package = "gtk4-layer-shell", version = "0.6.3" }
+glib = "0.21.1"
 tokio = { version = "1.47.1", features = [
     "macros",
     "rt-multi-thread",
@@ -164,7 +164,7 @@ reqwest = { version = "0.12.23", default-features = false, features = ["default-
 # cairo
 lua-src = { version = "548.1.1", optional = true }
 mlua = { version = "0.11.3", optional = true, features = ["luajit", "send"] }
-cairo-rs = { version = "0.18.5", optional = true, features = ["png"] }
+#cairo-rs = { version = "0.18.5", optional = true, features = ["png"] }
 
 # clock
 chrono = { version = "0.4.42", optional = true, default-features = false, features = ["clock", "unstable-locales"] }

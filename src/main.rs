@@ -1,4 +1,5 @@
 #![doc = include_str!("../README.md")]
+#![allow(unused)]
 
 use std::cell::RefCell;
 use std::env;
@@ -16,7 +17,7 @@ use color_eyre::Report;
 use color_eyre::eyre::Result;
 use dirs::config_dir;
 use gtk::Application;
-use gtk::gdk::Display;
+use gtk::gdk::{Display, Monitor};
 use gtk::prelude::*;
 use smithay_client_toolkit::output::OutputInfo;
 use tokio::runtime::Runtime;
@@ -370,7 +371,7 @@ fn load_config() -> (Config, PathBuf) {
 }
 
 /// Gets the GDK `Display` instance.
-fn get_display() -> Display {
+pub fn get_display() -> Display {
     Display::default().map_or_else(
         || {
             let report = Report::msg("Failed to get default GTK display");
@@ -393,14 +394,34 @@ fn load_output_bars(
         return Err(Report::msg("Output missing monitor name"));
     };
 
+    let monitor_desc = &output.description.clone().unwrap_or_default();
+
     let config = ironbar.config.borrow();
 
     let display = get_display();
 
-    let pos = output.logical_position.unwrap_or_default();
-    let monitor = display
-        .monitor_at_point(pos.0, pos.1)
-        .expect("monitor to exist");
+    let monitors = display.monitors();
+    let find_monitor = || {
+        for i in 0..monitors.n_items() {
+            let Some(monitor) = monitors.item(i).and_downcast::<Monitor>() else {
+                continue;
+            };
+
+            // TODO: Check on more properties
+
+            if monitor.description().unwrap_or_default().as_str() == monitor_desc
+                || monitor.connector().unwrap_or_default().as_str() == monitor_name
+            {
+                return Some(monitor);
+            }
+        }
+
+        None
+    };
+
+    let Some(monitor) = find_monitor() else {
+        return Err(Report::msg("failed to find matching monitor"));
+    };
 
     let show_default_bar =
         config.bar.start.is_some() || config.bar.center.is_some() || config.bar.end.is_some();

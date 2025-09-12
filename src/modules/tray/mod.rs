@@ -165,7 +165,7 @@ fn on_update(
                 menu_item.set_label(&label);
             }
 
-            menu_item.event_box.show();
+            menu_item.event_box.set_visible(true);
             menus.insert(address.into(), menu_item);
         }
         Event::Update(address, update) => {
