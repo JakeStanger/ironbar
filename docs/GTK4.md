@@ -17,14 +17,14 @@ A full list of feature flags can be found [here](Compiling#features).
 
 ## Core functionality
 
-| Area            | Status | Notes                                                                                         |
-|-----------------|--------|-----------------------------------------------------------------------------------------------|
-| Bar             | ✅      |                                                                                               |
-| Popups          | ✅      | Potential styling issues, otherwise working.                                                  |
-| Theming - CSS   | ✅      |                                                                                               |
-| Theming - Icons | ⚠️     | Potential image sizing/scaling issues. Occasional error logged despite success loading.       |
-| Config - Format | ⚠️ ️   | Angle properties have been removed from widgets and should now be controlled via CSS instead. |
-| IPC             | ⚠️     | Some popup-related commands not implemented.                                                  | 
+| Area                     | Status | Notes                                                                                                                                |
+|--------------------------|--------|--------------------------------------------------------------------------------------------------------------------------------------|
+| Bar                      | ✅      |                                                                                                                                      |
+| Popups                   | ✅      | Potential styling issues, otherwise working.                                                                                         |
+| Theming - CSS            | ✅      |                                                                                                                                      |
+| Theming - Images & Icons | ✅      |                                                                                                                                      |
+| Config - Format          | ⚠️ ️   | Angle properties have been removed from widgets and should now be controlled via CSS instead. Some options may not work as expected. |
+| IPC                      | ⚠️     | Some popup-related commands not implemented.                                                                                         | 
 
 ## Modules
 
