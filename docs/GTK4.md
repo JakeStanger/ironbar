@@ -28,25 +28,25 @@ A full list of feature flags can be found [here](Compiling#features).
 
 ## Modules
 
-| Module          | Status   | Notes                                                                                                                                                      |
-|-----------------|----------|------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| Battery         | ✅        |                                                                                                                                                            |
-| Bindmode        | ✅        |                                                                                                                                                            |
-| Bluetooth       | ✅        |                                                                                                                                                            |
-| Cairo           | ✅        |                                                                                                                                                            |
-| Clipboard       | ✅        |                                                                                                                                                            |
-| Clock           | ✅        |                                                                                                                                                            |
-| Custom          | ✅        |                                                                                                                                                            |
-| Focused         | ✅        |                                                                                                                                                            |
-| Keyboard        | ✅        |                                                                                                                                                            |
-| Label           | ✅        |                                                                                                                                                            |
-| Launcher        | ️✅       |                                                                                                                                                            |
-| Menu            | ⚠️       | Buggy. Issues with submenus all showing at once, and setting size options not working properly.                                                            |
-| Music           | ✅        |                                                                                                                                                            |
-| Network Manager | ✅        |                                                                                                                                                            |
-| Notifications   | ✅        |                                                                                                                                                            |
-| Script          | ✅        |                                                                                                                                                            |
-| SysInfo         | ✅        |                                                                                                                                                            |
-| Tray            | ❌        | Tracking - #1043. GTK4 removes widgets required to move the tray. No `libdbusmenu-gtk4` either. will need to manually re-create menus with custom widgets. |
-| Volume          | ✅        |                                                                                                                                                            |
-| Workspaces      | ✅        |                                                                                                                                                            |
+| Module          | Status | Notes                                                                                           |
+|-----------------|--------|-------------------------------------------------------------------------------------------------|
+| Battery         | ✅      |                                                                                                 |
+| Bindmode        | ✅      |                                                                                                 |
+| Bluetooth       | ✅      |                                                                                                 |
+| Cairo           | ✅      |                                                                                                 |
+| Clipboard       | ✅      |                                                                                                 |
+| Clock           | ✅      |                                                                                                 |
+| Custom          | ✅      |                                                                                                 |
+| Focused         | ✅      |                                                                                                 |
+| Keyboard        | ✅      |                                                                                                 |
+| Label           | ✅      |                                                                                                 |
+| Launcher        | ️✅     |                                                                                                 |
+| Menu            | ⚠️     | Buggy. Issues with submenus all showing at once, and setting size options not working properly. |
+| Music           | ✅      |                                                                                                 |
+| Network Manager | ✅      |                                                                                                 |
+| Notifications   | ✅      |                                                                                                 |
+| Script          | ✅      |                                                                                                 |
+| SysInfo         | ✅      |                                                                                                 |
+| Tray            | ⚠️     | Some known issues activating menu items in some applications.                                   |
+| Volume          | ✅      |                                                                                                 |
+| Workspaces      | ✅      |                                                                                                 |
