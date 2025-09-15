@@ -5,15 +5,7 @@ This page documents the port progress.
 
 Assistance in the porting process is very much welcomed, no matter how small.
 
-As many modules have not been ported, the default feature set will fail to compile. 
-It is therefore necessary to compile manually with `--no-default-features`, enabling only the working modules:
-
-```shell
-cargo run --no-default-features \
-  --features config+all,clock,cairo
-```
-
-A full list of feature flags can be found [here](Compiling#features).
+All feature flags have been ported and will build/run properly. Known bugs are documented below.
 
 ## Core functionality
 
