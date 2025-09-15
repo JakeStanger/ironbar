@@ -16,7 +16,7 @@ All feature flags have been ported and will build/run properly. Known bugs are d
 | Theming - CSS            | ✅      |                                                                                                                                      |
 | Theming - Images & Icons | ✅      |                                                                                                                                      |
 | Config - Format          | ⚠️ ️   | Angle properties have been removed from widgets and should now be controlled via CSS instead. Some options may not work as expected. |
-| IPC                      | ⚠️     | Some popup-related commands not implemented.                                                                                         | 
+| IPC                      | ✅      |                                                                                                                                      | 
 
 ## Modules
 
