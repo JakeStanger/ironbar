@@ -171,7 +171,7 @@ chrono = { version = "0.4.42", optional = true, default-features = false, featur
 
 # keyboard
 colpetto = { version = "0.6.0", features = ["tokio", "tracing"], optional = true }
-evdev-rs = { version = "0.6.2", optional = true }
+evdev-rs = { version = "0.6.3", optional = true }
 
 # music
 mpd-utils = { version = "0.2.1", optional = true }

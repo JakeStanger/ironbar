@@ -835,7 +835,7 @@ dependencies = [
  "libc",
  "option-ext",
  "redox_users",
- "windows-sys 0.60.2",
+ "windows-sys 0.61.0",
 ]
 
 [[package]]
@@ -935,9 +935,9 @@ dependencies = [
 
 [[package]]
 name = "evdev-rs"
-version = "0.6.2"
+version = "0.6.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "53b9cb6084eed4e72c0306e1cbcd3fd4c8acb613044e66810f9f5d3c7896bfb7"
+checksum = "d28ab5638ed883532ae91b8f0e8b5ffa6e7296c0127855d6f8f9c0a1f468889a"
 dependencies = [
  "bitflags 2.9.1",
  "evdev-sys",
