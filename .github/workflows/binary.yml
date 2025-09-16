@@ -1,10 +1,10 @@
 name: Binary
 on:
   workflow_run:
-    workflows: [Deploy]
-    types: [completed]
+    workflows: [ Deploy ]
+    types: [ completed ]
   release:
-    types: [created]
+    types: [ created ]
   workflow_dispatch:
 
 jobs:
@@ -24,45 +24,42 @@ jobs:
   build:
     if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
     name: Build
-    runs-on: ubuntu-latest
+    runs-on: ${{matrix.platform.image}}
+    container: ghcr.io/jakestanger/ironbar-build:master
     needs: get_last_release
     strategy:
       fail-fast: false
       matrix:
         platform:
-          - {target: x86_64-unknown-linux-gnu, zipext: ".tar.gz"}
-          - {target: aarch64-unknown-linux-gnu, zipext: ".tar.gz"}
+          - { image: ubuntu-latest, name: x86_64 }
+          - { image: ubuntu-24.04-arm, name: arm64 }
 
     steps:
       - uses: actions/checkout@v4
         with:
           ref: ${{ needs.get_last_release.outputs.latest_release_tag }}
 
-      - uses: taiki-e/install-action@v2
-        with:
-          tool: cross
-
       - name: Add OpenSSL crate (vendored)
         run: cargo add openssl --features vendored
 
-      - name: Cross Build Release
-        run: cross build --locked --release --target=${{ matrix.platform.target }}
-
-      - name: Get name of Binary from metadata
-        run: echo "BINARY_NAME=$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[].targets[] | select( .kind | map(. == "bin") | any ) | .name')" >> $GITHUB_ENV
+      - name: Build Release
+        run: cargo build --locked --release
 
       - name: Compress the built binary
-        if: ${{ matrix.platform.zipext == '.tar.gz' }}
-        run: tar -zcvf ${{env.BINARY_NAME}}-${{needs.get_last_release.outputs.latest_release_tag}}-${{matrix.platform.target}}.tar.gz -C target/${{matrix.platform.target}}/release ${{env.BINARY_NAME}}
+        run: tar -zcvf ironbar-${{needs.get_last_release.outputs.latest_release_tag}}-${{matrix.platform.name}}.tar.gz -C target/release ironbar
+
+      - name: Take ownership of repo
+        run: git config --global --add safe.directory .
 
       - name: Upload to release
-        run: gh release upload ${{needs.get_last_release.outputs.latest_release_tag}} ${{env.BINARY_NAME}}-${{needs.get_last_release.outputs.latest_release_tag}}-${{matrix.platform.target}}${{matrix.platform.zipext}}
+        run: gh release upload ${{needs.get_last_release.outputs.latest_release_tag}} ironbar-${{needs.get_last_release.outputs.latest_release_tag}}-${{matrix.platform.name}}.tar.gz
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   on-failure:
     runs-on: ubuntu-latest
     if: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'failure' }}
+
     steps:
       - run: echo 'The triggering workflow Deploy failed'
       - run: exit 1
