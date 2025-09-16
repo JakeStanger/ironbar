@@ -138,7 +138,7 @@ tracing-error = { version = "0.2.1", default-features = false }
 tracing-appender = "0.2.3"
 strip-ansi-escapes = "0.2.0"
 color-eyre = "0.6.5"
-serde = { version = "1.0.219", features = ["derive"] }
+serde = { version = "1.0.225", features = ["derive"] }
 indexmap = { version = "2.11.0", features = ["serde"] }
 dirs = "6.0.0"
 walkdir = "2.5.0"
@@ -204,5 +204,5 @@ schemars = { version = "1.0.4", optional = true, features = ["indexmap2"] }
 [build-dependencies]
 clap = { version = "4.5.47", features = ["derive"] }
 clap_complete = "4.5.57"
-serde = { version = "1.0.219", features = ["derive"] }
+serde = { version = "1.0.225", features = ["derive"] }
 serde_json = "1.0.143"
