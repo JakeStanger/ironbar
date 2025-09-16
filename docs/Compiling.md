@@ -16,6 +16,18 @@ It is also recommended to install a [Nerd Font](https://www.nerdfonts.com/#home)
 To build from source, you must have GTK (>= 3.22) and GTK Layer Shell installed.
 You also need rust; only the latest stable version is supported.
 
+### Docker
+
+A docker image is available which includes all the requirements.
+
+<https://github.com/JakeStanger/ironbar/pkgs/container/ironbar-build>
+
+```shell
+docker run -it -v '.:/app' ghcr.io/jakestanger/ironbar-build /bin/bash
+$ cd app
+$ cargo build
+```
+
 ### Arch
 
 ```shell
