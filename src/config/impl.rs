@@ -1,7 +1,9 @@
 use super::{BarConfig, BarPosition, MonitorConfig};
 use color_eyre::{Help, Report};
 use gtk::Orientation;
-use serde::{Deserialize, Deserializer};
+use serde::de::value::{MapAccessDeserializer, SeqAccessDeserializer};
+use serde::{Deserialize, Deserializer, de};
+use std::fmt;
 
 // Manually implement for better untagged enum error handling:
 // currently open pr: https://github.com/serde-rs/serde/pull/1544
@@ -10,28 +12,45 @@ impl<'de> Deserialize<'de> for MonitorConfig {
     where
         D: Deserializer<'de>,
     {
-        let content =
-            <serde::__private::de::Content as serde::Deserialize>::deserialize(deserializer)?;
+        struct V;
+        impl<'de> de::Visitor<'de> for V {
+            type Value = MonitorConfig;
 
-        match <BarConfig as serde::Deserialize>::deserialize(
-            serde::__private::de::ContentRefDeserializer::<D::Error>::new(&content),
-        ) {
-            Ok(config) => Ok(Self::Single(config)),
-            Err(outer) => match <Vec<BarConfig> as serde::Deserialize>::deserialize(
-                serde::__private::de::ContentRefDeserializer::<D::Error>::new(&content),
-            ) {
-                Ok(config) => Ok(Self::Multiple(config)),
-                Err(inner) => {
-                    let report = Report::msg(format!(" multi-bar (c): {inner}").replace("An error occurred when deserializing: ", ""))
-                        .wrap_err(format!("single-bar (b): {outer}").replace("An error occurred when deserializing: ", ""))
-                        .wrap_err("An invalid config was found. The following errors were encountered:")
-                        .note("Both the single-bar (type b / error 1) and multi-bar (type c / error 2) config variants were tried. You can likely ignore whichever of these is not relevant to you.")
-                        .suggestion("Please see https://github.com/JakeStanger/ironbar/wiki/configuration-guide#2-pick-your-use-case for more info on the above");
+            fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
+                f.write_str("single bar config or array of bar configs")
+            }
 
-                    Err(serde::de::Error::custom(format!("{report:?}")))
-                }
-            },
+            fn visit_map<A: de::MapAccess<'de>>(self, map: A) -> Result<Self::Value, A::Error> {
+                let map_de = MapAccessDeserializer::new(map);
+                let single_err = match BarConfig::deserialize(map_de) {
+                    Ok(config) => return Ok(MonitorConfig::Single(config)),
+                    Err(e) => e,
+                };
+                // Map can't be array, so create error with both attempts
+                let r = Report::msg(" multi-bar (c): expected an array".to_string())
+                    .wrap_err(format!("single-bar (b): {single_err}"))
+                    .wrap_err("An invalid config was found. The following errors were encountered:")
+                    .note("Both the single-bar (type b / error 1) and multi-bar (type c / error 2) config variants were tried. You can likely ignore whichever of these is not relevant to you.")
+                    .suggestion("Please see https://github.com/JakeStanger/ironbar/wiki/configuration-guide#2-pick-your-use-case for more info on the above");
+                Err(de::Error::custom(format!("{r:?}")))
+            }
+
+            fn visit_seq<A: de::SeqAccess<'de>>(self, seq: A) -> Result<Self::Value, A::Error> {
+                let seq_de = SeqAccessDeserializer::new(seq);
+                let multi_err = match Vec::<BarConfig>::deserialize(seq_de) {
+                    Ok(config) => return Ok(MonitorConfig::Multiple(config)),
+                    Err(e) => e,
+                };
+                // Seq can't be single bar, so create error with both attempts
+                let r = Report::msg(format!(" multi-bar (c): {multi_err}"))
+                    .wrap_err("single-bar (b): expected an object, got array")
+                    .wrap_err("An invalid config was found. The following errors were encountered:")
+                    .note("Both the single-bar (type b / error 1) and multi-bar (type c / error 2) config variants were tried. You can likely ignore whichever of these is not relevant to you.")
+                    .suggestion("Please see https://github.com/JakeStanger/ironbar/wiki/configuration-guide#2-pick-your-use-case for more info on the above");
+                Err(de::Error::custom(format!("{r:?}")))
+            }
         }
+        deserializer.deserialize_any(V)
     }
 }
 
