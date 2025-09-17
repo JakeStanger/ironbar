@@ -1,8 +1,10 @@
 #![doc = include_str!("../README.md")]
 
 use std::cell::RefCell;
+use std::collections::HashMap;
 use std::env;
 use std::future::Future;
+use std::ops::Index;
 use std::path::PathBuf;
 use std::process::exit;
 use std::rc::Rc;
@@ -232,7 +234,17 @@ impl Ironbar {
                 while let Ok(event) = rx_outputs.recv().await {
                     match event.event_type {
                         OutputEventType::New => {
-                            match load_output_bars(&instance, &app, &event.output) {
+                            let current_outputs = crate::clients::wayland::output_list_get();
+                            let idx = match current_outputs {
+                                Ok(v) => {
+                                    match v.iter().position(|x| x.name == event.output.name) {
+                                        Some(idx) => idx as i32,
+                                        None => 0,
+                                    }
+                                },
+                                Err(_) => 0,
+                            };
+                            match load_output_bars(&instance, &app, &event.output, idx) {
                                 Ok(mut new_bars) => {
                                     instance.bars.borrow_mut().append(&mut new_bars);
                                 }
@@ -386,6 +398,7 @@ fn load_output_bars(
     ironbar: &Rc<Ironbar>,
     app: &Application,
     output: &OutputInfo,
+    idx: i32,
 ) -> Result<Vec<Bar>> {
     let output_size = output.logical_size.unwrap_or_default();
 
@@ -396,11 +409,7 @@ fn load_output_bars(
     let config = ironbar.config.borrow();
 
     let display = get_display();
-
-    let pos = output.logical_position.unwrap_or_default();
-    let monitor = display
-        .monitor_at_point(pos.0, pos.1)
-        .expect("monitor to exist");
+    let monitor = display.monitor(idx).expect("monitor to exist");
 
     let show_default_bar =
         config.bar.start.is_some() || config.bar.center.is_some() || config.bar.end.is_some();

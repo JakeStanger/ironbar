@@ -6,6 +6,8 @@ use tracing::{debug, error};
 use wayland_client::protocol::wl_output::WlOutput;
 use wayland_client::{Connection, QueueHandle};
 
+pub mod list;
+
 #[derive(Debug, Clone)]
 pub struct OutputEvent {
     pub output: OutputInfo,
