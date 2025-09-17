@@ -22,6 +22,8 @@ on:
       - '.github/scripts/ubuntu_setup.sh'
       - 'Dockerfile'
 
+  workflow_dispatch:
+
 env:
   # Use docker.io for Docker Hub if empty
   REGISTRY: ghcr.io
