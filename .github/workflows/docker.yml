@@ -11,6 +11,7 @@ on:
   push:
     branches: [ "master" ]
     paths:
+      - '.github/workflows/docker.yml'
       - '.github/scripts/ubuntu_setup.sh'
       - 'Dockerfile'
     # Publish semver tags as releases.
@@ -19,6 +20,7 @@ on:
   pull_request:
     branches: [ "master" ]
     paths:
+      - '.github/workflows/docker.yml'
       - '.github/scripts/ubuntu_setup.sh'
       - 'Dockerfile'
 
