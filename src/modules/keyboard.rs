@@ -262,38 +262,38 @@ impl Module<gtk::Box> for KeyboardModule {
         let num = IconLabel::new(&self.icons.num_off, self.icon_size, &image_provider);
         let scroll = IconLabel::new(&self.icons.scroll_off, self.icon_size, &image_provider);
 
-        caps.label().set_angle(self.layout.angle(info));
+        // caps.label().set_angle(self.layout.angle(info));
         caps.label().set_justify(self.layout.justify.into());
 
-        num.label().set_angle(self.layout.angle(info));
+        // num.label().set_angle(self.layout.angle(info));
         num.label().set_justify(self.layout.justify.into());
 
-        scroll.label().set_angle(self.layout.angle(info));
+        // scroll.label().set_angle(self.layout.angle(info));
         scroll.label().set_justify(self.layout.justify.into());
 
         let layout_button = IconButton::new("", self.icon_size, image_provider);
 
         if self.show_caps {
-            caps.add_class("key");
-            caps.add_class("caps");
-            container.add(&*caps);
+            caps.add_css_class("key");
+            caps.add_css_class("caps");
+            container.append(&*caps);
         }
 
         if self.show_num {
-            num.add_class("key");
-            num.add_class("num");
-            container.add(&*num);
+            num.add_css_class("key");
+            num.add_css_class("num");
+            container.append(&*num);
         }
 
         if self.show_scroll {
-            scroll.add_class("key");
-            scroll.add_class("scroll");
-            container.add(&*scroll);
+            scroll.add_css_class("key");
+            scroll.add_css_class("scroll");
+            container.append(&*scroll);
         }
 
         if self.show_layout {
-            layout_button.add_class("layout");
-            container.add(&*layout_button);
+            layout_button.add_css_class("layout");
+            container.append(&*layout_button);
         }
 
         {
@@ -330,9 +330,9 @@ impl Module<gtk::Box> for KeyboardModule {
                         label.set_label(Some(input));
 
                         if ev.state {
-                            label.add_class("enabled");
+                            label.add_css_class("enabled");
                         } else {
-                            label.remove_class("enabled");
+                            label.remove_css_class("enabled");
                         }
                     }
                 }

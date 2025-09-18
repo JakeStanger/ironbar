@@ -340,6 +340,15 @@ pub struct BarConfig {
     #[serde(default = "default_popup_gap")]
     pub popup_gap: i32,
 
+    /// Whether to enable autohide behaviour on the popup.
+    ///
+    /// When enabled, clicking outside the popup will close it.
+    /// On some compositors, this may also aggressively steal mouse/keyboard focus.
+    ///
+    /// **Default**: `false`
+    #[serde(default)]
+    pub popup_autohide: bool,
+
     /// Whether the bar should be hidden when Ironbar starts.
     ///
     /// **Default**: `false`, unless `autohide` is set.
@@ -410,6 +419,7 @@ impl Default for BarConfig {
             end,
             anchor_to_edges: default_true(),
             popup_gap: default_popup_gap(),
+            popup_autohide: false,
         }
     }
 }

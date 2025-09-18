@@ -3,13 +3,16 @@ use crate::channels::AsyncSenderExt;
 use crate::clients::wayland::ToplevelInfo;
 use crate::config::{BarPosition, TruncateMode};
 use crate::gtk_helpers::{IronbarGtkExt, IronbarLabelExt};
-use crate::modules::ModuleUpdateEvent;
 use crate::modules::launcher::{ItemEvent, LauncherUpdate};
+use crate::modules::{ModuleUpdateEvent, PopupButton};
 use crate::{image, read_lock};
 use glib::Propagation;
 use gtk::gdk::{BUTTON_MIDDLE, BUTTON_PRIMARY};
 use gtk::prelude::*;
-use gtk::{Align, Button, Image, Justification, Label, Orientation};
+use gtk::{
+    Align, Button, ContentFit, EventControllerMotion, EventSequenceState, GestureClick, IconTheme,
+    Image, Justification, Label, Orientation, Picture,
+};
 use indexmap::IndexMap;
 use std::ops::Deref;
 use std::rc::Rc;
@@ -134,6 +137,7 @@ pub struct MenuState {
     pub num_windows: usize,
 }
 
+#[derive(Clone)]
 pub struct ItemButton {
     pub button: ImageTextButton,
     pub persistent: bool,
@@ -166,7 +170,7 @@ impl ItemButton {
         if appearance.show_names {
             button.label.set_label(&item.name);
             button.label.truncate(appearance.truncate);
-            button.label.set_angle(appearance.angle);
+            // button.label.set_angle(appearance.angle);
             button.label.set_justify(appearance.justify);
         }
 
@@ -180,21 +184,21 @@ impl ItemButton {
             let button = button.clone();
             glib::spawn_future_local(async move {
                 image_provider
-                    .load_into_image_silent(&input, appearance.icon_size, true, &button.image)
+                    .load_into_picture_silent(&input, appearance.icon_size, true, &button.picture)
                     .await;
             });
         }
 
-        button.add_class("item");
+        button.add_css_class("item");
 
         if item.favorite {
-            button.add_class("favorite");
+            button.add_css_class("favorite");
         }
         if item.open_state.is_open() {
-            button.add_class("open");
+            button.add_css_class("open");
         }
         if item.open_state.is_focused() {
-            button.add_class("focused");
+            button.add_css_class("focused");
         }
 
         let menu_state = Rc::new(RwLock::new(MenuState {
@@ -206,59 +210,80 @@ impl ItemButton {
             let tx = controller_tx.clone();
             let menu_state = menu_state.clone();
 
-            button.connect_button_release_event(move |button, event| {
-                if event.button() == BUTTON_PRIMARY {
-                    // lazy check :| TODO: Improve this
-                    let style_context = button.style_context();
-                    if style_context.has_class("open") {
-                        let menu_state = read_lock!(menu_state);
+            let event_controller = GestureClick::new();
+            event_controller.set_button(BUTTON_PRIMARY);
 
-                        if style_context.has_class("focused") && menu_state.num_windows == 1 {
-                            tx.send_spawn(ItemEvent::MinimizeItem(app_id.clone()));
-                        } else {
-                            tx.send_spawn(ItemEvent::FocusItem(app_id.clone()));
-                        }
+            let button2 = button.clone();
+
+            event_controller.connect_pressed(move |gesture, _, _, _| {
+                gesture.set_state(EventSequenceState::Claimed);
+
+                // lazy check :| TODO: Improve this
+                if button2.has_css_class("open") {
+                    let menu_state = read_lock!(menu_state);
+
+                    if button2.has_css_class("focused") && menu_state.num_windows == 1 {
+                        tx.send_spawn(ItemEvent::MinimizeItem(app_id.clone()));
                     } else {
-                        tx.send_spawn(ItemEvent::OpenItem(app_id.clone()));
+                        tx.send_spawn(ItemEvent::FocusItem(app_id.clone()));
                     }
-                } else if event.button() == BUTTON_MIDDLE {
+                } else {
                     tx.send_spawn(ItemEvent::OpenItem(app_id.clone()));
                 }
-
-                Propagation::Proceed
             });
+
+            button.add_controller(event_controller);
         }
+
+        {
+            let app_id = item.app_id.clone();
+            let tx = controller_tx.clone();
+
+            let event_controller = GestureClick::new();
+            event_controller.set_button(BUTTON_MIDDLE);
+            event_controller.connect_released(move |gesture, _, _, _| {
+                gesture.set_state(EventSequenceState::Claimed);
+                tx.send_spawn(ItemEvent::OpenItem(app_id.clone()));
+            });
+
+            button.add_controller(event_controller);
+        }
+
+        let event_controller = EventControllerMotion::new();
 
         {
             let app_id = item.app_id.clone();
             let tx = tx.clone();
             let menu_state = menu_state.clone();
 
-            button.connect_enter_notify_event(move |button, _| {
+            let button = button.clone();
+
+            event_controller.connect_enter(move |_, _, _| {
                 let menu_state = read_lock!(menu_state);
 
                 if menu_state.num_windows > 1 {
                     tx.send_update_spawn(LauncherUpdate::Hover(app_id.clone()));
-                    tx.send_spawn(ModuleUpdateEvent::OpenPopupAt(
-                        button.geometry(bar_position.orientation()),
-                    ));
+                    tx.send_spawn(ModuleUpdateEvent::OpenPopup(button.popup_id()));
                 } else {
                     tx.send_spawn(ModuleUpdateEvent::ClosePopup);
                 }
-
-                Propagation::Proceed
             });
         }
 
         {
             let tx = tx.clone();
+            let button = button.clone();
 
-            button.connect_leave_notify_event(move |button, ev| {
+            event_controller.connect_leave(move |controller| {
                 const THRESHOLD: f64 = 5.0;
+
+                let Some(ev) = controller.current_event() else {
+                    return;
+                };
 
                 let alloc = button.allocation();
 
-                let (x, y) = ev.position();
+                let (x, y) = ev.position().unwrap_or_default();
 
                 let close = match bar_position {
                     BarPosition::Top => y + THRESHOLD < f64::from(alloc.height()),
@@ -270,12 +295,10 @@ impl ItemButton {
                 if close {
                     tx.send_spawn(ModuleUpdateEvent::ClosePopup);
                 }
-
-                Propagation::Proceed
             });
         }
 
-        button.show_all();
+        button.add_controller(event_controller);
 
         Self {
             button,
@@ -299,12 +322,10 @@ impl ItemButton {
 
     /// Adds or removes a class to the button based on `toggle`.
     fn update_class(&self, class: &str, toggle: bool) {
-        let style_context = self.button.style_context();
-
         if toggle {
-            style_context.add_class(class);
+            self.button.add_css_class(class);
         } else {
-            style_context.remove_class(class);
+            self.button.remove_css_class(class);
         }
     }
 }
@@ -313,28 +334,33 @@ impl ItemButton {
 pub struct ImageTextButton {
     pub(crate) button: Button,
     pub(crate) label: Label,
-    image: Image,
+    picture: Picture,
 }
 
 impl ImageTextButton {
     pub(crate) fn new(orientation: Orientation) -> Self {
         let button = Button::new();
+        button.ensure_popup_id(); // all launcher buttons could be used in popups
+
         let container = gtk::Box::new(orientation, 0);
 
         let label = Label::new(None);
-        let image = Image::new();
 
-        container.add(&image);
-        container.add(&label);
+        let picture = Picture::builder()
+            .content_fit(ContentFit::ScaleDown)
+            .build();
 
-        button.add(&container);
+        container.append(&picture);
+        container.append(&label);
+
+        button.set_child(Some(&container));
         container.set_halign(Align::Center);
         container.set_valign(Align::Center);
 
         ImageTextButton {
             button,
             label,
-            image,
+            picture,
         }
     }
 }
