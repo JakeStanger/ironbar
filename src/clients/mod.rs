@@ -234,7 +234,6 @@ impl Clients {
             client.clone()
         } else {
             let client = await_sync(async { tray::Client::new().await })?;
-            let client = Arc::new(client);
             self.tray.replace(client.clone());
             client
         };
