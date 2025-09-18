@@ -167,16 +167,9 @@ There are a couple of tricks which can be used to improve compile times.
 
 ## Linker 
 
-The default GCC linker is *slow* - it takes nearly half of the compile time.
-As an alternative, you can use [mold](https://github.com/rui314/mold).
-
-Install the package for your distro, create/modify the `.cargo/config.toml` file inside the project dir,
-then add the following:
-
-```toml
-[target.x86_64-unknown-linux-gnu]
-rustflags = ["-C", "link-arg=-fuse-ld=mold"]
-```
+Rust versions older than 1.90 use the default GCC `ld` linker. 
+By upgrading to `>=1.90`, the `ldd` linker is used instead.
+This provides a large increase in compliation speeds.
 
 ## Caching
 
