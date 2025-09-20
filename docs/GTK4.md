@@ -39,6 +39,6 @@ All feature flags have been ported and will build/run properly. Known bugs are d
 | Notifications   | ✅      |                                                                                                 |
 | Script          | ✅      |                                                                                                 |
 | SysInfo         | ✅      |                                                                                                 |
-| Tray            | ⚠️     | Some known issues activating menu items in some applications.                                   |
+| Tray            | ✅      |                                                                                                 |
 | Volume          | ✅      |                                                                                                 |
 | Workspaces      | ✅      |                                                                                                 |
