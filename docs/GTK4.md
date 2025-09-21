@@ -20,25 +20,25 @@ All feature flags have been ported and will build/run properly. Known bugs are d
 
 ## Modules
 
-| Module          | Status | Notes                                                                                           |
-|-----------------|--------|-------------------------------------------------------------------------------------------------|
-| Battery         | ✅      |                                                                                                 |
-| Bindmode        | ✅      |                                                                                                 |
-| Bluetooth       | ✅      |                                                                                                 |
-| Cairo           | ✅      |                                                                                                 |
-| Clipboard       | ✅      |                                                                                                 |
-| Clock           | ✅      |                                                                                                 |
-| Custom          | ✅      |                                                                                                 |
-| Focused         | ✅      |                                                                                                 |
-| Keyboard        | ✅      |                                                                                                 |
-| Label           | ✅      |                                                                                                 |
-| Launcher        | ️✅     |                                                                                                 |
-| Menu            | ⚠️     | Buggy. Issues with submenus all showing at once, and setting size options not working properly. |
-| Music           | ✅      |                                                                                                 |
-| Network Manager | ✅      |                                                                                                 |
-| Notifications   | ✅      |                                                                                                 |
-| Script          | ✅      |                                                                                                 |
-| SysInfo         | ✅      |                                                                                                 |
-| Tray            | ✅      |                                                                                                 |
-| Volume          | ✅      |                                                                                                 |
-| Workspaces      | ✅      |                                                                                                 |
+| Module          | Status | Notes                                          |
+|-----------------|--------|------------------------------------------------|
+| Battery         | ✅      |                                                |
+| Bindmode        | ✅      |                                                |
+| Bluetooth       | ✅      |                                                |
+| Cairo           | ✅      |                                                |
+| Clipboard       | ✅      | Issues copying images. Text works as expected. |
+| Clock           | ✅      |                                                |
+| Custom          | ✅      |                                                |
+| Focused         | ✅      |                                                |
+| Keyboard        | ✅      |                                                |
+| Label           | ✅      |                                                |
+| Launcher        | ️✅     |                                                |
+| Menu            | ✅      |                                                |
+| Music           | ✅      |                                                |
+| Network Manager | ✅      |                                                |
+| Notifications   | ✅      |                                                |
+| Script          | ✅      |                                                |
+| SysInfo         | ✅      |                                                |
+| Tray            | ✅      |                                                |
+| Volume          | ✅      |                                                |
+| Workspaces      | ✅      |                                                |
