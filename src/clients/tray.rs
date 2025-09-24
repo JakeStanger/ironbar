@@ -90,7 +90,7 @@ impl Client {
                 self.tx.send_expect(Event::Update(
                     address.to_string(),
                     UpdateEvent::Menu(menu.clone()),
-                ))
+                ));
             }
         }
 

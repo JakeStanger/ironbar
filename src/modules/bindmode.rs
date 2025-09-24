@@ -60,11 +60,10 @@ impl Module<Label> for Bindmode {
     fn into_widget(
         self,
         context: WidgetContext<Self::SendMessage, Self::ReceiveMessage>,
-        info: &ModuleInfo,
+        _info: &ModuleInfo,
     ) -> Result<ModuleParts<Label>> {
         let label = Label::builder()
             .use_markup(true)
-            .angle(self.layout.angle(info))
             .justify(self.layout.justify.into())
             .build();
 
@@ -87,9 +86,9 @@ impl Module<Label> for Bindmode {
             label.set_label_escaped(&mode.name);
 
             if mode.name.is_empty() {
-                label.hide();
+                label.set_visible(false);
             } else {
-                label.show();
+                label.set_visible(true);
             }
         });
 

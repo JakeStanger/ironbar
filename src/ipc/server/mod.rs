@@ -158,7 +158,7 @@ impl Ipc {
             }
             Command::Var(cmd) => ironvar::handle_command(cmd),
             Command::Bar(cmd) => bar::handle_command(&cmd, ironbar),
-            Command::Style(cmd) => style::handle_command(cmd, ironbar, application),
+            Command::Style(cmd) => style::handle_command(cmd, ironbar),
         }
     }
 
