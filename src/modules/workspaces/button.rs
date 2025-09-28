@@ -2,13 +2,17 @@ use super::open_state::OpenState;
 use crate::channels::AsyncSenderExt;
 use crate::image::IconButton;
 use crate::modules::workspaces::WorkspaceItemContext;
+use glib::signal::SignalHandlerId;
 use gtk::Button as GtkButton;
 use gtk::prelude::*;
+use tokio::sync::mpsc;
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct Button {
     button: IconButton,
     workspace_id: i64,
+    conn_id: Option<SignalHandlerId>,
+    tx: mpsc::Sender<i64>,
 }
 
 impl Button {
@@ -21,13 +25,15 @@ impl Button {
 
         let tx = context.tx.clone();
 
-        button.connect_clicked(move |_item| {
+        let conn_id = button.connect_clicked(move |_item| {
             tx.send_spawn(id);
         });
 
         let btn = Self {
             button,
             workspace_id: id,
+            conn_id: Some(conn_id),
+            tx: context.tx.clone(),
         };
 
         btn.set_open_state(open_state);
@@ -72,5 +78,13 @@ impl Button {
 
     pub fn set_workspace_id(&mut self, id: i64) {
         self.workspace_id = id;
+        if let Some(conn_id) = self.conn_id.take() {
+            self.button.disconnect(conn_id);
+        }
+        let tx = self.tx.clone();
+        let conn_id = self.button.connect_clicked(move |_item| {
+            tx.send_spawn(id);
+        });
+        self.conn_id = Some(conn_id);
     }
 }
