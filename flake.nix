@@ -72,12 +72,14 @@
     });
 
     # Apps
-    apps = forAllSystems (pkgs: {
+    apps = forAllSystems (pkgs: let
       ironbar = {
         type = "app";
         program = pkgs.lib.getExe self.packages.${pkgs.hostPlatform.system}.ironbar;
       };
-      default = self.apps.ironbar;
+    in {
+      inherit ironbar;
+      default = ironbar;
     });
 
     homeManagerModules.default = import ./nix/module.nix self;
