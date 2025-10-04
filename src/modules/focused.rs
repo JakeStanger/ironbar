@@ -111,6 +111,7 @@ impl Module<gtk::Box> for FocusedModule {
                         }
                     }
                     ToplevelEvent::New(_) => {}
+                    ToplevelEvent::Buffer(_, _) => {}
                 }
             }
         });

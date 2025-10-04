@@ -1,6 +1,6 @@
 use super::open_state::OpenState;
 use crate::channels::AsyncSenderExt;
-use crate::clients::wayland::ToplevelInfo;
+use crate::clients::wayland::{Buffer, ToplevelInfo};
 use crate::config::{BarPosition, TruncateMode};
 use crate::gtk_helpers::{IronbarGtkExt, IronbarLabelExt, MouseButton};
 use crate::modules::launcher::{ItemEvent, LauncherUpdate};
@@ -76,6 +76,12 @@ impl Item {
         }
     }
 
+    pub fn set_window_buffer(&mut self, window_id: usize, buffer: Option<Buffer>) {
+        if let Some(window) = self.windows.get_mut(&window_id) {
+            window.preview_buffer = buffer;
+        }
+    }
+
     /// Sets this item's open state
     /// to the merged result of its windows' open states
     fn recalculate_open_state(&mut self) {
@@ -116,6 +122,7 @@ pub struct Window {
     pub id: usize,
     pub name: String,
     pub open_state: OpenState,
+    pub preview_buffer: Option<Buffer>,
 }
 
 impl From<ToplevelInfo> for Window {
@@ -126,6 +133,7 @@ impl From<ToplevelInfo> for Window {
             id: info.id,
             name: info.title,
             open_state,
+            preview_buffer: None,
         }
     }
 }
@@ -146,6 +154,7 @@ pub struct ItemButton {
 pub struct AppearanceOptions {
     pub show_names: bool,
     pub show_icons: bool,
+    pub show_previews: bool,
     pub icon_size: i32,
     pub truncate: TruncateMode,
     pub orientation: Orientation,
@@ -243,7 +252,9 @@ impl ItemButton {
             event_controller.connect_enter(move |_, _, _| {
                 let menu_state = read_lock!(menu_state);
 
-                if menu_state.num_windows > 1 {
+                if (appearance.show_previews && menu_state.num_windows > 0)
+                    || menu_state.num_windows > 1
+                {
                     tx.send_update_spawn(LauncherUpdate::Hover(app_id.clone()));
                     tx.send_spawn(ModuleUpdateEvent::OpenPopup(button.popup_id()));
                 } else {
@@ -256,6 +267,7 @@ impl ItemButton {
             let tx = tx.clone();
             let button = button.clone();
 
+            // TODO: Evaluate: do we need this, or can we fix it for edge items?
             event_controller.connect_leave(move |controller| {
                 const THRESHOLD: f64 = 5.0;
 
@@ -316,7 +328,7 @@ impl ItemButton {
 pub struct ImageTextButton {
     pub(crate) button: Button,
     pub(crate) label: Label,
-    picture: Picture,
+    pub(crate) picture: Picture,
 }
 
 impl ImageTextButton {
