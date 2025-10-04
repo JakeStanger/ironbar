@@ -1,86 +1,88 @@
 use crate::config::TruncateMode;
-use glib::{IsA, markup_escape_text};
+use glib::{SignalHandlerId, markup_escape_text};
+use gtk::gdk::{BUTTON_MIDDLE, BUTTON_PRIMARY, BUTTON_SECONDARY};
 use gtk::pango::EllipsizeMode;
 use gtk::prelude::*;
-use gtk::{Label, Orientation, Widget};
+use gtk::{EventSequenceState, GestureClick, Label, Widget};
 
-/// Represents a widget's size
-/// and location relative to the bar's start edge.
-#[derive(Debug, Copy, Clone)]
-pub struct WidgetGeometry {
-    /// Position of the start edge of the widget
-    /// from the start edge of the bar.
-    pub position: i32,
-    /// The length of the widget.
-    pub size: i32,
-    /// The length of the bar.
-    pub bar_size: i32,
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+#[repr(u32)]
+pub enum MouseButton {
+    Any,
+    Primary = BUTTON_PRIMARY,
+    Middle = BUTTON_MIDDLE,
+    Secondary = BUTTON_SECONDARY,
 }
 
 pub trait IronbarGtkExt {
-    /// Adds a new CSS class to the widget.
-    fn add_class(&self, class: &str);
-    /// Removes a CSS class from the widget
-    fn remove_class(&self, class: &str);
-    /// Gets the geometry for the widget
-    fn geometry(&self, orientation: Orientation) -> WidgetGeometry;
-
     /// Gets a data tag on a widget, if it exists.
     fn get_tag<V: 'static>(&self, key: &str) -> Option<&V>;
     /// Sets a data tag on a widget.
     fn set_tag<V: 'static>(&self, key: &str, value: V);
+
+    /// Returns an iterator for the widget's first-level children.
+    fn children(&self) -> ChildIterator;
+
+    /// Adds a `GestureClick` controller with a `connect_pressed` signal callback.
+    /// A mouse button can be specified to filter click events.
+    fn connect_pressed<F>(&self, button: MouseButton, f: F) -> SignalHandlerId
+    where
+        F: Fn() + 'static;
 }
 
 impl<W: IsA<Widget>> IronbarGtkExt for W {
-    fn add_class(&self, class: &str) {
-        self.style_context().add_class(class);
-    }
-
-    fn remove_class(&self, class: &str) {
-        self.style_context().remove_class(class);
-    }
-
-    fn geometry(&self, orientation: Orientation) -> WidgetGeometry {
-        let allocation = self.allocation();
-
-        let widget_size = if orientation == Orientation::Horizontal {
-            allocation.width()
-        } else {
-            allocation.height()
-        };
-
-        let top_level = self.toplevel().expect("Failed to get top-level widget");
-        let top_level_allocation = top_level.allocation();
-
-        let bar_size = if orientation == Orientation::Horizontal {
-            top_level_allocation.width()
-        } else {
-            top_level_allocation.height()
-        };
-
-        let (widget_x, widget_y) = self
-            .translate_coordinates(&top_level, 0, 0)
-            .unwrap_or((0, 0));
-
-        let widget_pos = if orientation == Orientation::Horizontal {
-            widget_x
-        } else {
-            widget_y
-        };
-
-        WidgetGeometry {
-            position: widget_pos,
-            size: widget_size,
-            bar_size,
-        }
-    }
-
     fn get_tag<V: 'static>(&self, key: &str) -> Option<&V> {
         unsafe { self.data(key).map(|val| val.as_ref()) }
     }
 
     fn set_tag<V: 'static>(&self, key: &str, value: V) {
         unsafe { self.set_data(key, value) }
+    }
+
+    fn children(&self) -> ChildIterator {
+        ChildIterator::new(self)
+    }
+
+    fn connect_pressed<F>(&self, button: MouseButton, f: F) -> SignalHandlerId
+    where
+        F: Fn() + 'static,
+    {
+        let controller = GestureClick::new();
+
+        if button != MouseButton::Any {
+            controller.set_button(button as u32);
+        }
+
+        let id = controller.connect_pressed(move |gesture, _, _, _| {
+            gesture.set_state(EventSequenceState::Claimed);
+            f();
+        });
+
+        self.add_controller(controller);
+        id
+    }
+}
+
+pub struct ChildIterator {
+    curr: Option<Widget>,
+}
+
+impl ChildIterator {
+    fn new<W: IsA<Widget>>(parent: &W) -> Self {
+        Self {
+            curr: parent.first_child(),
+        }
+    }
+}
+
+impl Iterator for ChildIterator {
+    type Item = Widget;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let curr = self.curr.clone();
+        let next = curr.as_ref().and_then(WidgetExt::next_sibling);
+        self.curr.clone_from(&next);
+        curr // return current rather than next to include first child
     }
 }
 

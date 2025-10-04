@@ -102,11 +102,10 @@ impl Module<Label> for ScriptModule {
     fn into_widget(
         self,
         context: WidgetContext<Self::SendMessage, Self::ReceiveMessage>,
-        info: &ModuleInfo,
+        _info: &ModuleInfo,
     ) -> Result<ModuleParts<Label>> {
         let label = Label::builder()
             .use_markup(true)
-            .angle(self.layout.angle(info))
             .justify(self.layout.justify.into())
             .build();
 

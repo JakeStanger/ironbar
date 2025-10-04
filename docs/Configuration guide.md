@@ -101,8 +101,14 @@ end: [ ]
 ### b) I want my config to differ across one or more monitors
 
 Create a map/object called `monitors` inside the top-level object.
-Each of the map's keys should be an output name,
+Each of the map's keys should be an output name of description,
 and each value should be an object containing the bar config.
+
+Output names can be supplied in two formats:
+
+  - Connector names (`DP-1`, `HDMI-2`)
+  - Descriptions (`ASUSTek COMPUTER INC PA278QV M4LMQS060475`).
+    A `starts_with` is applied allowing you to omit part of the description if convenient.
 
 You can still define a top-level "default" config to use for unspecified monitors.
 Alternatively, leave the top-level `start`, `center` and `end` keys null to hide bars on unspecified monitors.
@@ -184,6 +190,13 @@ Create a map/object called `monitors` inside the top-level object.
 Each of the map's keys should be an output name.
 If you want the screen to have multiple bars, use an array of bar config objects.
 If you want the screen to have a single bar, use an object.
+
+Output names can be supplied in two formats:
+
+- Connector names (`DP-1`, `HDMI-2`)
+- Descriptions (`ASUSTek COMPUTER INC PA278QV M4LMQS060475`).
+  A `starts_with` is applied allowing you to omit part of the description if convenient.
+
 
 To find your output names, run `wayland-info | grep wl_output -A1`.
 
@@ -310,6 +323,7 @@ The following table lists each of the bar-level bar config options:
 | `layer`           | `background` or `bottom` or `top` or `overlay` | `top`                                    | The layer-shell layer to place the bar on.                                                                                 |
 | `exclusive_zone`  | `boolean`                                      | `true` unless `start_hidden` is enabled. | Whether the bar should reserve an exclusive zone around it.                                                                |
 | `popup_gap`       | `integer`                                      | `5`                                      | The gap between the bar and popup window.                                                                                  |
+| `popup_autohide`  | `boolean`                                      | `false`                                  | Whether to close the popup on outside click. On some compositors, this can aggressively steal kb/m focus.                  |
 | `start_hidden`    | `boolean`                                      | `false`, or `true` if `autohide` set     | Whether the bar should be hidden when the application starts. Enabled by default when `autohide` is set.                   |
 | `autohide`        | `integer`                                      | `null`                                   | The duration in milliseconds before the bar is hidden after the cursor leaves. Leave unset to disable auto-hide behaviour. |
 | `start`           | `Module[]`                                     | `[]`                                     | Array of left or top modules.                                                                                              |
@@ -352,8 +366,8 @@ For information on the `Script` type, and embedding scripts in strings, see [her
 | Name      | Type     | Default | Description                                                                       |
 |-----------|----------|---------|-----------------------------------------------------------------------------------|
 | `tooltip` | `string` | `null`  | Shows this text on hover. Supports embedding scripts between `{{double braces}}`. |
-| `name`    | `string` | `null`  | The unique widget name, allowing you to style it using `#name`.              |
-| `class`   | `string` | `null`  | One or more CSS classes, allowing you to style it using `.class`.            |
+| `name`    | `string` | `null`  | The unique widget name, allowing you to style it using `#name`.                   |
+| `class`   | `string` | `null`  | One or more CSS classes, allowing you to style it using `.class`.                 |
 
 For more information on styling, please see the [styling guide](styling-guide).
 
