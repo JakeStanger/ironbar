@@ -1,11 +1,12 @@
 use crate::desktop_file::DesktopFiles;
+use crate::gtk_helpers::IronbarPaintableExt;
 use crate::{arc_mut, lock};
 use color_eyre::{Help, Report, Result};
 use glib::Bytes;
 use gtk::gdk::{Paintable, Texture};
 use gtk::gdk_pixbuf::Pixbuf;
 use gtk::prelude::*;
-use gtk::{IconLookupFlags, IconTheme, Picture, Snapshot, TextDirection};
+use gtk::{IconLookupFlags, IconTheme, Picture, TextDirection};
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::path::PathBuf;
@@ -262,9 +263,8 @@ impl Provider {
                 let texture = Texture::from_bytes(&bytes)?;
                 Ok(Some(texture.upcast::<Paintable>()))
             }
-            Some(ImageLocation::Local(path)) => {
-                Texture::from_filename(path).map(|t| Self::scale_texture(&t, image_ref.size))
-            }
+            Some(ImageLocation::Local(path)) => Texture::from_filename(path)
+                .map(|t| t.scale(image_ref.size as f64, image_ref.size as f64)),
             Some(ImageLocation::Steam(app_id)) => {
                 const SIZES: [i32; 8] = [16, 24, 32, 48, 64, 96, 128, 256];
                 let size = SIZES
@@ -281,7 +281,8 @@ impl Provider {
                     },
                 )?;
 
-                Texture::from_filename(path).map(|t| Self::scale_texture(&t, image_ref.size))
+                Texture::from_filename(path)
+                    .map(|t| t.scale(image_ref.size as f64, image_ref.size as f64))
             }
             #[cfg(feature = "http")]
             Some(ImageLocation::Remote(uri)) => {
@@ -297,7 +298,8 @@ impl Provider {
                     )))
                 }?;
 
-                Texture::from_bytes(&bytes).map(|t| Self::scale_texture(&t, image_ref.size))
+                Texture::from_bytes(&bytes)
+                    .map(|t| t.scale(image_ref.size as f64, image_ref.size as f64))
             }
             None if use_fallback => Ok(Some(
                 image_ref
@@ -348,11 +350,5 @@ impl Provider {
         } else {
             Some(IconTheme::default())
         };
-    }
-
-    fn scale_texture(texture: &Texture, size: i32) -> Option<Paintable> {
-        let snapshot = Snapshot::new();
-        texture.snapshot(&snapshot, size as f64, size as f64);
-        snapshot.to_paintable(None)
     }
 }
