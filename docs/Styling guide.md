@@ -1,6 +1,6 @@
 Ironbar ships with no styles by default, so will fall back to the default GTK styles.
 
-To style the bar, create a file at `~/.config/ironbar/style.css`.
+To style the bar, create a file at `~/.config/ironbar/style.css`. This default path can be overridden by using the `IRONBAR_CSS` environment variable.
 
 Style changes are hot-loaded so there is no need to reload the bar.
 
