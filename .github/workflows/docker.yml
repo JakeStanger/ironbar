@@ -9,7 +9,7 @@ on:
   schedule:
     - cron: '32 23 * * *'
   push:
-    branches: [ "master", "refactor/gtk-4" ]
+    branches: [ "master" ]
     paths:
       - '.github/workflows/docker.yml'
       - '.github/scripts/ubuntu_setup.sh'
