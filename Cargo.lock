@@ -1888,7 +1888,7 @@ dependencies = [
 
 [[package]]
 name = "ironbar"
-version = "0.17.1"
+version = "0.18.0-pre"
 dependencies = [
  "bluer",
  "cfg-if",
