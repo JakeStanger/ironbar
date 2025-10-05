@@ -4,6 +4,37 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.17.1] - 2025-10-05
+### :sparkles: New Features
+- [`e07d077`](https://github.com/JakeStanger/ironbar/commit/e07d077c7de716d7e8cc03f954c27780b3e7c41a) - **volume**: adjust smoothly as slider is dragged *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+
+### :bug: Bug Fixes
+- [`2aef88a`](https://github.com/JakeStanger/ironbar/commit/2aef88af1467b897526a981d90b58f1aba5e0acc) - **tray**: menu buttons work on single screen only *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`d09ba89`](https://github.com/JakeStanger/ironbar/commit/d09ba89f7988f56dbae6442ae1190845f274502a) - **flake**: correct apps.default to point to ironbar *(commit by [@GavBog](https://github.com/GavBog))*
+
+### :recycle: Refactors
+- [`1fb1b27`](https://github.com/JakeStanger/ironbar/commit/1fb1b27dacc691708d032b59da640a2bd747ed9f) - **config**: serde::__private methods -> custom deserialization *(commit by [@slowsage](https://github.com/slowsage))*
+
+### :memo: Documentation Changes
+- [`7c17195`](https://github.com/JakeStanger/ironbar/commit/7c17195700923980f611e7c6e6c537aff9293122) - **sysinfo**: fix wrong symbol in tokens table *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`ea1f304`](https://github.com/JakeStanger/ironbar/commit/ea1f304d388f35379d93a7590851dca504313c90) - **gtk4**: add bluetooth, menu to port status *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`e419c9e`](https://github.com/JakeStanger/ironbar/commit/e419c9e122d90eba474829d0730e49f97aae4fbb) - **bluetooth**: fix type not interpreted as string *(PR [#1152](https://github.com/JakeStanger/ironbar/pull/1152) by [@benoitlx](https://github.com/benoitlx))*
+- [`b549c22`](https://github.com/JakeStanger/ironbar/commit/b549c2230b0dc6e25b2269c1a29ea8c46436f5fe) - **gtk4**: update port status *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`971eea6`](https://github.com/JakeStanger/ironbar/commit/971eea6a6e6f8e7c06840563b94ee8a883da0937) - **gtk4**: update port status (again) *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`21d7167`](https://github.com/JakeStanger/ironbar/commit/21d71673c9aac407fbead854d1b3c1be7502c9a5) - **gtk4**: mark bindmode, bluetooth as ported *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`926bff8`](https://github.com/JakeStanger/ironbar/commit/926bff881c0c48bf11747f6b1a4e07657dea763b) - **gtk4**: update menu port status and image status *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`6fb1085`](https://github.com/JakeStanger/ironbar/commit/6fb10850fd2faa2d38ee5d2200ac1a4bd902e831) - **gtk4**: update theming port status *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`3d538a0`](https://github.com/JakeStanger/ironbar/commit/3d538a0d2676a692f4ae3483215575f3f2a0f0d0) - **gtk4**: update launcher port status *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`e17ac2a`](https://github.com/JakeStanger/ironbar/commit/e17ac2adad3557a53958ea3d435f729c0a84ea34) - **gtk4**: update tray port status *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`b60dbfe`](https://github.com/JakeStanger/ironbar/commit/b60dbfecfc79cc9e061a2e001d8b15f2e88dc7d5) - **gtk4**: update build info *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`f3c9a2b`](https://github.com/JakeStanger/ironbar/commit/f3c9a2b4c47d33937fc39f9bdd9d992d04f58cd1) - **gtk4**: update IPC port status *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`f26592a`](https://github.com/JakeStanger/ironbar/commit/f26592a295d2f4c84d7fe1f85b654fca41d2b669) - **compiling**: add detail on using docker image *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`42a75e9`](https://github.com/JakeStanger/ironbar/commit/42a75e96f10714f0d99cfcc869339a386942089c) - **compilation**: update linker section *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`2fa4dd0`](https://github.com/JakeStanger/ironbar/commit/2fa4dd0f474e276dbb9dc3bed610a70e279e7204) - **gtk4**: update tray to fully ported *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`baf8d36`](https://github.com/JakeStanger/ironbar/commit/baf8d3650cf17f74701464f94c6143dc61573f86) - **gtk4**: update clipboard, menu port info *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`969b596`](https://github.com/JakeStanger/ironbar/commit/969b596227127aff4eace20605f444c7c52586de) - add IRONBAR_CSS note to Styling guide *(PR [#1185](https://github.com/JakeStanger/ironbar/pull/1185) by [@carrot-sticks](https://github.com/carrot-sticks))*
+
+
 ## [v0.17.0] - 2025-09-07
 ### :boom: BREAKING CHANGES
 - due to [`03136e7`](https://github.com/JakeStanger/ironbar/commit/03136e7c700e545c566eb281c50e6ea343646bc6) - new sorting options *(commit by [@JakeStanger](https://github.com/JakeStanger))*:
@@ -837,3 +868,4 @@ It also requires `lua-lgi` as a runtime dependency.
 [v0.16.0]: https://github.com/JakeStanger/ironbar/compare/v0.15.1...v0.16.0
 [v0.16.1]: https://github.com/JakeStanger/ironbar/compare/v0.16.0...v0.16.1
 [v0.17.0]: https://github.com/JakeStanger/ironbar/compare/v0.16.1...v0.17.0
+[v0.17.1]: https://github.com/JakeStanger/ironbar/compare/v0.17.0...v0.17.1
