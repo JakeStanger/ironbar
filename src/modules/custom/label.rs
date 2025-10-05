@@ -41,12 +41,8 @@ pub struct LabelWidget {
 impl CustomWidget for LabelWidget {
     type Widget = Label;
 
-    fn into_widget(self, context: CustomWidgetContext) -> Self::Widget {
+    fn into_widget(self, _context: CustomWidgetContext) -> Self::Widget {
         let label = build!(self, Self::Widget);
-
-        if !context.is_popup {
-            label.set_angle(self.layout.angle(context.info));
-        }
 
         label.set_justify(self.layout.justify.into());
         label.set_use_markup(true);

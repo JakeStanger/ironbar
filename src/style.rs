@@ -1,9 +1,7 @@
 use crate::channels::{AsyncSenderExt, MpscReceiverExt};
 use crate::spawn;
-use color_eyre::{Help, Report};
 use gtk::ffi::GTK_STYLE_PROVIDER_PRIORITY_USER;
-use gtk::prelude::*;
-use gtk::{Application, CssProvider, StyleContext, gdk, gio};
+use gtk::{CssProvider, gio};
 use notify::event::ModifyKind;
 use notify::{Event, EventKind, RecursiveMode, Result, Watcher, recommended_watcher};
 use std::env;
@@ -18,7 +16,7 @@ use tracing::{debug, error, info};
 ///
 /// Installs a file watcher and reloads CSS when
 /// write changes are detected on the file.
-pub fn load_css(style_path: PathBuf, application: Application) {
+pub fn load_css(style_path: PathBuf) {
     // file watcher requires absolute path
     let style_path = if style_path.is_absolute() {
         style_path
@@ -27,19 +25,15 @@ pub fn load_css(style_path: PathBuf, application: Application) {
     };
 
     let provider = CssProvider::new();
+    provider.load_from_file(&gio::File::for_path(&style_path));
+    debug!("Loaded css from '{}'", style_path.display());
 
-    match provider.load_from_file(&gio::File::for_path(&style_path)) {
-        Ok(()) => debug!("Loaded css from '{}'", style_path.display()),
-        Err(err) => error!("{:?}", Report::new(err)
-                    .wrap_err("Failed to load CSS")
-                    .suggestion("Check the CSS file for errors")
-                    .suggestion("GTK CSS uses a subset of the full CSS spec and many properties are not available. Ensure you are not using any unsupported property.")
-                )
-    }
-
-    let screen = gdk::Screen::default().expect("Failed to get default GTK screen");
-    StyleContext::add_provider_for_screen(
-        &screen,
+    // GTK4 deprecates style contexts and loading custom styles
+    // When GTK5 comes around, this will be gone for good.
+    // For now though, our only option is to use this deprecated method.
+    #[allow(deprecated)]
+    gtk::StyleContext::add_provider_for_display(
+        &crate::get_display(),
         &provider,
         GTK_STYLE_PROVIDER_PRIORITY_USER as u32,
     );
@@ -75,16 +69,6 @@ pub fn load_css(style_path: PathBuf, application: Application) {
 
     rx.recv_glib((), move |(), path| {
         info!("Reloading CSS");
-        if let Err(err) = provider.load_from_file(&gio::File::for_path(path)) {
-            error!("{:?}", Report::new(err)
-                .wrap_err("Failed to load CSS")
-                .suggestion("Check the CSS file for errors")
-                .suggestion("GTK CSS uses a subset of the full CSS spec and many properties are not available. Ensure you are not using any unsupported property.")
-            );
-        } else {
-            for win in application.windows() {
-                win.queue_draw();
-            }
-        }
+        provider.load_from_file(&gio::File::for_path(path));
     });
 }

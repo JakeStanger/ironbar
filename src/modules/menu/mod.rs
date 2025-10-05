@@ -5,10 +5,13 @@ use color_eyre::Result;
 use color_eyre::eyre::Report;
 use config::{CustomEntry, OTHER_LABEL, parse_config};
 use gtk::prelude::*;
-use gtk::{Align, Button, Orientation};
+use gtk::{Align, Button, ContentFit, Label, Orientation};
 use indexmap::IndexMap;
 use serde::Deserialize;
+use std::cmp::max;
+use std::time::Duration;
 use tokio::sync::mpsc;
+use tokio::time::sleep;
 
 use super::{ModuleLocation, PopupButton};
 use crate::channels::{AsyncSenderExt, BroadcastReceiverExt};
@@ -107,35 +110,49 @@ impl Module<Button> for MenuModule {
         info: &ModuleInfo,
     ) -> Result<ModuleParts<Button>> {
         let button = Button::new();
-
-        if let Some(ref label) = self.label {
-            button.set_label(label);
-        }
+        let button_contents = gtk::Box::new(Orientation::Horizontal, 5);
+        button.set_child(Some(&button_contents));
 
         if let Some(ref label_icon) = self.label_icon {
             let image_provider = context.ironbar.image_provider();
 
-            let gtk_image = gtk::Image::new();
-            button.set_image(Some(&gtk_image));
-            button.set_always_show_image(true);
+            let gtk_image = gtk::Picture::builder()
+                .content_fit(ContentFit::ScaleDown)
+                .build();
+            button_contents.append(&gtk_image);
 
             let label_icon = label_icon.clone();
 
             glib::spawn_future_local(async move {
                 image_provider
-                    .load_into_image_silent(&label_icon, self.label_icon_size, true, &gtk_image)
+                    .load_into_picture_silent(&label_icon, self.label_icon_size, true, &gtk_image)
                     .await;
             });
+        }
+
+        if let Some(ref label) = self.label {
+            let label = Label::new(Some(label));
+            button_contents.append(&label);
         }
 
         let tx = context.tx.clone();
         let controller_tx = context.controller_tx.clone();
         button.connect_clicked(move |button| {
-            tx.send_spawn(ModuleUpdateEvent::TogglePopup(button.popup_id()));
+            let popup_id = button.popup_id();
+            tx.send_spawn(ModuleUpdateEvent::TogglePopup(popup_id));
 
             // channel will close after init event
             if !controller_tx.is_closed() {
                 controller_tx.send_spawn(());
+
+                // FIXME: the init event causes the popup to close for an unknown reason.
+                //  We work around this by sending a second open event after a delay
+                //  so that the menu definitely displays, but this is a hacky workaround.
+                let tx = tx.clone();
+                spawn(async move {
+                    sleep(Duration::from_millis(50)).await;
+                    tx.send_expect(ModuleUpdateEvent::OpenPopup(popup_id)).await;
+                });
             }
         });
 
@@ -176,26 +193,26 @@ impl Module<Button> for MenuModule {
         let main_menu = gtk::Box::new(Orientation::Vertical, 0);
         main_menu.set_valign(alignment);
         main_menu.set_vexpand(false);
-        main_menu.add_class("main");
+        main_menu.add_css_class("main");
 
-        if let Some(width) = self.width {
-            main_menu.set_width_request(width / 2);
-        }
+        let max_width = self.width.map(|w| w / 2).unwrap_or(-1);
 
         if let Some(max_height) = self.height {
             container.set_height_request(max_height);
 
             let scrolled = gtk::ScrolledWindow::builder()
                 .max_content_height(max_height)
-                .hscrollbar_policy(gtk::PolicyType::Never)
+                .hscrollbar_policy(gtk::PolicyType::Automatic)
                 .build();
 
-            scrolled.add(&main_menu);
-            container.add(&scrolled);
+            scrolled.set_min_content_width(max(max_width, 200));
+
+            scrolled.set_child(Some(&main_menu));
+            container.append(&scrolled);
         } else {
-            container.add(&main_menu);
+            main_menu.set_width_request(max_width);
+            container.append(&main_menu);
         }
-        container.show_all();
 
         let mut start_entries = parse_config(self.start, &mut sections_by_cat);
         let mut center_entries = parse_config(self.center, &mut sections_by_cat);
@@ -205,9 +222,9 @@ impl Module<Button> for MenuModule {
         let center_section = gtk::Box::new(Orientation::Vertical, 0);
         let end_section = gtk::Box::new(Orientation::Vertical, 0);
 
-        start_section.add_class("main-start");
-        center_section.add_class("main-center");
-        end_section.add_class("main-end");
+        start_section.add_css_class("main-start");
+        center_section.add_css_class("main-center");
+        end_section.add_css_class("main-end");
 
         let truncate_mode = self.truncate;
 
@@ -224,24 +241,24 @@ impl Module<Button> for MenuModule {
                 for application in &applications {
                     let mut inserted = false;
 
-                    for category in &application.categories {
-                        if let Some(section_names) = sections_by_cat.get(category) {
-                            for section_name in section_names {
-                                for entries in
-                                    [&mut start_entries, &mut center_entries, &mut end_entries]
-                                {
-                                    {
-                                        let existing = entries.get_mut(section_name);
-                                        if let Some(MenuEntry::Xdg(existing)) = existing {
-                                            existing.applications.insert_sorted(
-                                                application.label.clone(),
-                                                application.clone(),
-                                            );
-                                        }
-                                    }
-                                }
+                    let section_names = application
+                        .categories
+                        .iter()
+                        .filter_map(|cat| sections_by_cat.get(cat))
+                        .flatten();
+
+                    let mut entries = [&mut start_entries, &mut center_entries, &mut end_entries];
+
+                    for section_name in section_names {
+                        for entries in &mut entries {
+                            let existing = entries.get_mut(section_name);
+                            if let Some(MenuEntry::Xdg(existing)) = existing {
+                                existing
+                                    .applications
+                                    .insert_sorted(application.label.clone(), application.clone());
+
+                                inserted = true;
                             }
-                            inserted = true;
                         }
                     }
 
@@ -255,8 +272,8 @@ impl Module<Button> for MenuModule {
                     }
                 }
 
-                main_menu.foreach(|child| {
-                    main_menu.remove(child);
+                main_menu.children().for_each(|child| {
+                    main_menu.remove(&child);
                 });
 
                 macro_rules! add_entries {
@@ -274,7 +291,7 @@ impl Module<Button> for MenuModule {
 
                             if let Some(sub_menu) = sub_menu.clone() {
                                 sub_menu.set_valign(alignment);
-                                sub_menu.add_class("sub-menu");
+                                sub_menu.add_css_class("sub-menu");
                                 if let Some(width) = self.width {
                                     sub_menu.set_width_request(width / 2);
                                 }
@@ -286,6 +303,7 @@ impl Module<Button> for MenuModule {
                                 sub_menu.as_ref(),
                                 $section,
                                 &container1,
+                                max_width,
                                 self.height,
                             );
                         }
@@ -296,29 +314,29 @@ impl Module<Button> for MenuModule {
                 add_entries!(&center_entries, &center_section);
                 add_entries!(&end_entries, &end_section);
 
-                main_menu.add(start_section);
-                main_menu.add(center_section);
-                main_menu.add(end_section);
+                main_menu.append(start_section);
+                main_menu.append(center_section);
+                main_menu.append(end_section);
             },
         );
 
         {
             let container = container.clone();
-            context.popup.window.connect_hide(move |_| {
-                start_section.foreach(|child| {
-                    child.remove_class("open");
+            context.popup.popover.connect_hide(move |_| {
+                start_section.children().for_each(|child| {
+                    child.remove_css_class("open");
                 });
 
-                center_section.foreach(|child| {
-                    child.remove_class("open");
+                center_section.children().for_each(|child| {
+                    child.remove_css_class("open");
                 });
 
-                end_section.foreach(|child| {
-                    child.remove_class("open");
+                end_section.children().for_each(|child| {
+                    child.remove_css_class("open");
                 });
 
-                container.children().iter().skip(1).for_each(|sub_menu| {
-                    sub_menu.hide();
+                container.children().skip(1).for_each(|sub_menu| {
+                    sub_menu.set_visible(false);
                 });
             });
         }

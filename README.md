@@ -70,7 +70,7 @@ It is also recommended to install a [Nerd Font](https://www.nerdfonts.com/#home)
 Ensure you have the [build dependencies](https://github.com/JakeStanger/ironbar/wiki/compiling#Build-requirements) installed.
 
 ```sh
-cargo install ironbar
+cargo install ironbar --locked
 ```
 
 ### Arch Linux
