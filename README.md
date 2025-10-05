@@ -75,10 +75,12 @@ cargo install ironbar
 
 ### Arch Linux
 
-[aur package](https://aur.archlinux.org/packages/ironbar-git)
+[aur bin package](https://aur.archlinux.org/packages/ironbar-bin) | [aur git package](https://aur.archlinux.org/packages/ironbar-git)
 
 ```sh
 yay -S ironbar-git
+# or 
+yay -S ironbar-bin
 ```
 
 ### Nix
