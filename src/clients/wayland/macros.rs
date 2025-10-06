@@ -99,3 +99,34 @@ macro_rules! delegate_foreign_toplevel_handle {
         );
     };
 }
+
+// --- Hyprland Toplevel Export -- \\
+
+#[macro_export]
+macro_rules! delegate_hyprland_export_manager {
+    ($(@<$( $lt:tt $( : $clt:tt $(+ $dlt:tt )* )? ),+>)? $ty: ty) => {
+        wayland_client::delegate_dispatch!($(@< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)? $ty:
+            [
+                wayland_protocols_hyprland::toplevel_export::v1::client::hyprland_toplevel_export_manager_v1::HyprlandToplevelExportManagerV1: smithay_client_toolkit::globals::GlobalData
+            ] => $crate::clients::wayland::hyprland_toplevel_export::manager::ToplevelManagerState
+        );
+    };
+}
+
+#[macro_export]
+macro_rules! delegate_hyprland_export_frame {
+    ($(@<$( $lt:tt $( : $clt:tt $(+ $dlt:tt )* )? ),+>)? $ty: ty, udata: [$($udata: ty),*$(,)?]) => {
+        wayland_client::delegate_dispatch!($(@< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)? $ty:
+            [
+                wayland_protocols_hyprland::toplevel_export::v1::client::hyprland_toplevel_export_frame_v1::HyprlandToplevelExportFrameV1 : $udata,
+            ] => $crate::clients::wayland::hyprland_toplevel_export::manager::ToplevelManagerState
+        );
+    };
+    ($(@<$( $lt:tt $( : $clt:tt $(+ $dlt:tt )* )? ),+>)? $ty: ty) => {
+        wayland_client::delegate_dispatch!($(@< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)? $ty:
+            [
+                wayland_protocols_hyprland::toplevel_export::v1::client::hyprland_toplevel_export_frame_v1::HyprlandToplevelExportFrameV1 : $crate::clients::wayland::hyprland_toplevel_export::frame::ToplevelFrameData
+            ] => $crate::clients::wayland::hyprland_toplevel_export::manager::ToplevelManagerState
+        );
+    };
+}
