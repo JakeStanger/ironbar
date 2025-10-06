@@ -180,7 +180,7 @@ mpris = { version = "2.0.1", optional = true }
 futures-signals = { version = "0.3.34", optional = true }
 
 # sys_info
-sysinfo = { version = "0.37.1", optional = true }
+sysinfo = { version = "0.37.2", optional = true }
 
 # tray
 system-tray = { version = "0.8.3", optional = true }
