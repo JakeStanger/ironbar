@@ -66,9 +66,10 @@ end:
 
 ## Styling
 
-| Selector      | Description      |
-|---------------|------------------|
-| `.tray`       | Tray widget box  |
-| `.tray .item` | Tray icon button |
+| Selector             | Description                        |
+|----------------------|------------------------------------|
+| `.tray`              | Tray widget box                    |
+| `.tray .item`        | Tray icon button                   |
+| `.tray .item.urgent` | Tray icon button (needs attention) |
 
 For more information on styling, please see the [styling guide](styling-guide).

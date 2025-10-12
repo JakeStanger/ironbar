@@ -9,7 +9,7 @@ use gtk::{
 };
 use gtk::{Button, Image, Label, PopoverMenu};
 use system_tray::client::ActivateRequest;
-use system_tray::item::{IconPixmap, StatusNotifierItem, Tooltip};
+use system_tray::item::{IconPixmap, Status, StatusNotifierItem, Tooltip};
 use system_tray::menu::ToggleState;
 use tokio::sync::mpsc;
 use tracing::{debug, error, trace};
@@ -82,6 +82,12 @@ impl TrayMenu {
 
         popover.set_parent(&widget);
 
+        widget.set_visible(item.status != Status::Passive);
+
+        if item.status == Status::NeedsAttention {
+            widget.add_css_class("urgent");
+        }
+
         Self {
             box_content: content,
             widget,
@@ -100,7 +106,7 @@ impl TrayMenu {
 
     /// Updates the label text, and shows it in favour of the image.
     pub fn set_label(&mut self, text: &str) {
-        if let Some(image) = &self.image_widget {
+        if let Some(image) = self.image_widget.take() {
             image.set_visible(false);
         }
 
@@ -127,7 +133,7 @@ impl TrayMenu {
 
     /// Updates the image, and shows it in favour of the label.
     pub fn set_image(&mut self, image: &Image) {
-        if let Some(label) = &self.label_widget {
+        if let Some(label) = self.label_widget.take() {
             label.set_visible(false);
         }
 
@@ -162,6 +168,16 @@ impl TrayMenu {
 
         if let Some(widget) = &self.label_widget {
             widget.set_tooltip_text(title.as_deref());
+        }
+    }
+
+    pub fn set_status(&self, status: Status) {
+        self.widget.set_visible(status != Status::Passive);
+
+        if status == Status::NeedsAttention {
+            self.widget.add_css_class("urgent");
+        } else {
+            self.widget.remove_css_class("urgent");
         }
     }
 
