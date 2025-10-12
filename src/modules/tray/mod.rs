@@ -210,8 +210,8 @@ fn on_update(
                 UpdateEvent::OverlayIcon(_icon) => {
                     warn!("received unimplemented NewOverlayIcon event");
                 }
-                UpdateEvent::Status(_status) => {
-                    warn!("received unimplemented NewStatus event");
+                UpdateEvent::Status(status) => {
+                    menu_item.set_status(status);
                 }
                 UpdateEvent::Title(title) => {
                     if let Some(label_widget) = menu_item.label_widget() {
