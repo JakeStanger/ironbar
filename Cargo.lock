@@ -3346,9 +3346,9 @@ dependencies = [
 
 [[package]]
 name = "system-tray"
-version = "0.8.3"
+version = "0.8.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e0d3765ed17239bdd18a7fe74406fc61cbfcbac7bc684475215525aab5134ce8"
+checksum = "1c2bb18406dcf33543cbedac3f55c206cb98d7a0140712c46e0c71431589585d"
 dependencies = [
  "cfg-if",
  "futures-lite",
