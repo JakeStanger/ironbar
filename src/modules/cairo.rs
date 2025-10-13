@@ -19,6 +19,7 @@ use tracing::{debug, error};
 
 #[derive(Debug, Clone, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[serde(default)]
 pub struct CairoModule {
     /// The path to the Lua script to load.
     /// This can be absolute, or relative to the working directory.
@@ -31,32 +32,32 @@ pub struct CairoModule {
     /// The number of milliseconds between each draw call.
     ///
     /// **Default**: `200`
-    #[serde(default = "default_frequency")]
     frequency: u64,
 
     /// The canvas width in pixels.
     ///
     /// **Default**: `42`
-    #[serde(default = "default_size")]
     width: u32,
 
     /// The canvas height in pixels.
     ///
     /// **Default**: `42`
-    #[serde(default = "default_size")]
     height: u32,
 
     /// See [common options](module-level-options#common-options).
-    #[serde(flatten)]
     pub common: Option<CommonConfig>,
 }
 
-const fn default_size() -> u32 {
-    42
-}
-
-const fn default_frequency() -> u64 {
-    200
+impl Default for CairoModule {
+    fn default() -> Self {
+        Self {
+            path: PathBuf::default(),
+            frequency: 200,
+            width: 42,
+            height: 42,
+            common: Some(CommonConfig::default()),
+        }
+    }
 }
 
 impl Module<gtk::Box> for CairoModule {

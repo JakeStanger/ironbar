@@ -1,13 +1,14 @@
+use super::{CustomWidget, CustomWidgetContext};
 use crate::build;
+use crate::config::default;
 use crate::dynamic_value::dynamic_string;
 use gtk::prelude::*;
 use gtk::{ContentFit, Picture};
 use serde::Deserialize;
 
-use super::{CustomWidget, CustomWidgetContext};
-
 #[derive(Debug, Deserialize, Clone)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[serde(default)]
 pub struct ImageWidget {
     /// Widget name.
     ///
@@ -30,12 +31,18 @@ pub struct ImageWidget {
     /// Aspect ratio is preserved.
     ///
     /// **Default**: `32`
-    #[serde(default = "default_size")]
     size: i32,
 }
 
-const fn default_size() -> i32 {
-    32
+impl Default for ImageWidget {
+    fn default() -> Self {
+        Self {
+            name: None,
+            class: None,
+            src: String::new(),
+            size: default::IconSize::Normal as i32,
+        }
+    }
 }
 
 impl CustomWidget for ImageWidget {

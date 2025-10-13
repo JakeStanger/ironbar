@@ -195,7 +195,7 @@ impl Module<Button> for MenuModule {
         main_menu.set_vexpand(false);
         main_menu.add_css_class("main");
 
-        let max_width = self.width.map(|w| w / 2).unwrap_or(-1);
+        let max_width = self.width.map_or(-1, |w| w / 2);
 
         if let Some(max_height) = self.height {
             container.set_height_request(max_height);

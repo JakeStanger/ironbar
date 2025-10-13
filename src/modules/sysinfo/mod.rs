@@ -19,6 +19,7 @@ use tokio::time::sleep;
 
 #[derive(Debug, Deserialize, Clone)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[serde(default)]
 pub struct SysInfoModule {
     /// List of strings including formatting tokens.
     /// For available tokens, see [below](#formatting-tokens).
@@ -32,7 +33,6 @@ pub struct SysInfoModule {
     /// or passed as an object to customize the interval per-system.
     ///
     /// **Default**: `5`
-    #[serde(default = "Interval::default")]
     interval: Interval,
 
     /// The orientation by which the labels are laid out.
@@ -44,7 +44,7 @@ pub struct SysInfoModule {
 
     // -- common --
     /// See [layout options](module-level-options#layout)
-    #[serde(default, flatten)]
+    #[serde(flatten)]
     layout: LayoutConfig,
 
     /// See [common options](module-level-options#common-options).
@@ -52,44 +52,64 @@ pub struct SysInfoModule {
     pub common: Option<CommonConfig>,
 }
 
+impl Default for SysInfoModule {
+    fn default() -> Self {
+        Self {
+            format: vec![],
+            interval: Interval::default(),
+            direction: None,
+            layout: LayoutConfig::default(),
+            common: Some(CommonConfig::default()),
+        }
+    }
+}
+
 #[derive(Debug, Deserialize, Copy, Clone)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[serde(default)]
 pub struct Intervals {
     /// The number of seconds between refreshing memory data.
     ///
     /// **Default**: `5`
-    #[serde(default = "default_interval")]
     memory: u64,
 
     /// The number of seconds between refreshing CPU data.
     ///
     /// **Default**: `5`
-    #[serde(default = "default_interval")]
     cpu: u64,
 
     /// The number of seconds between refreshing temperature data.
     ///
     /// **Default**: `5`
-    #[serde(default = "default_interval")]
     temps: u64,
 
     /// The number of seconds between refreshing disk data.
     ///
     /// **Default**: `5`
-    #[serde(default = "default_interval")]
     disks: u64,
 
     /// The number of seconds between refreshing network data.
     ///
     /// **Default**: `5`
-    #[serde(default = "default_interval")]
     networks: u64,
 
     /// The number of seconds between refreshing system data.
     ///
     /// **Default**: `5`
-    #[serde(default = "default_interval")]
     system: u64,
+}
+
+impl Default for Intervals {
+    fn default() -> Self {
+        Self {
+            memory: 5,
+            cpu: 5,
+            temps: 5,
+            disks: 5,
+            networks: 5,
+            system: 5,
+        }
+    }
 }
 
 #[derive(Debug, Deserialize, Copy, Clone)]
@@ -102,7 +122,7 @@ pub enum Interval {
 
 impl Default for Interval {
     fn default() -> Self {
-        Self::All(default_interval())
+        Self::All(5)
     }
 }
 
@@ -148,10 +168,6 @@ impl Interval {
             Self::Individual(intervals) => intervals.system,
         }
     }
-}
-
-const fn default_interval() -> u64 {
-    5
 }
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]

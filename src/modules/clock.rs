@@ -17,6 +17,7 @@ use crate::{module_impl, spawn};
 
 #[derive(Debug, Deserialize, Clone)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[serde(default)]
 pub struct ClockModule {
     /// The format string to use for the date/time shown on the bar.
     /// Pango markup is supported.
@@ -25,7 +26,6 @@ pub struct ClockModule {
     /// <https://docs.rs/chrono/latest/chrono/format/strftime/index.html>
     ///
     /// **Default**: `%d/%m/%Y %H:%M`
-    #[serde(default = "default_format")]
     format: String,
 
     /// The format string to use for the date/time shown in the popup header.
@@ -35,7 +35,6 @@ pub struct ClockModule {
     /// <https://docs.rs/chrono/latest/chrono/format/strftime/index.html>
     ///
     /// **Default**: `%H:%M:%S`
-    #[serde(default = "default_popup_format")]
     format_popup: String,
 
     /// The locale to use when formatting dates.
@@ -46,11 +45,10 @@ pub struct ClockModule {
     /// **Valid options**: See [here](https://docs.rs/pure-rust-locales/0.8.1/pure_rust_locales/enum.Locale.html#variants)
     /// <br>
     /// **Default**: `$LC_TIME` or `$LANG` or `'POSIX'`
-    #[serde(default = "default_locale")]
     locale: String,
 
     /// See [layout options](module-level-options#layout)
-    #[serde(default, flatten)]
+    #[serde(flatten)]
     layout: LayoutConfig,
 
     /// See [common options](module-level-options#common-options).
@@ -61,21 +59,13 @@ pub struct ClockModule {
 impl Default for ClockModule {
     fn default() -> Self {
         ClockModule {
-            format: default_format(),
-            format_popup: default_popup_format(),
+            format: "%d/%m/%Y %H:%M".to_string(),
+            format_popup: "%H:%M:%S".to_string(),
             locale: default_locale(),
             layout: LayoutConfig::default(),
             common: Some(CommonConfig::default()),
         }
     }
-}
-
-fn default_format() -> String {
-    String::from("%d/%m/%Y %H:%M")
-}
-
-fn default_popup_format() -> String {
-    String::from("%H:%M:%S")
 }
 
 fn default_locale() -> String {

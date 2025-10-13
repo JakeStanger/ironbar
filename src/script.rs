@@ -79,23 +79,18 @@ impl ScriptMode {
 
 #[derive(Debug, Deserialize, Clone)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[serde(default)]
 pub struct Script {
-    #[serde(default = "ScriptMode::default")]
     pub(crate) mode: ScriptMode,
     pub cmd: String,
-    #[serde(default = "default_interval")]
     pub(crate) interval: u64,
-}
-
-const fn default_interval() -> u64 {
-    5000
 }
 
 impl Default for Script {
     fn default() -> Self {
         Self {
             mode: ScriptMode::default(),
-            interval: default_interval(),
+            interval: 5000,
             cmd: String::new(),
         }
     }
@@ -344,11 +339,13 @@ mod tests {
 
     #[test]
     fn test_parse_basic() {
+        let default_script = Script::default();
+
         let cmd = "echo 'hello'";
         let script = Script::from(cmd);
 
         assert_eq!(script.cmd, cmd);
-        assert_eq!(script.interval, default_interval());
+        assert_eq!(script.interval, default_script.interval);
         assert_eq!(script.mode, ScriptMode::default());
     }
 
@@ -381,6 +378,8 @@ mod tests {
 
     #[test]
     fn test_parse_mode_and_cmd() {
+        let default_script = Script::default();
+
         let cmd = "echo 'hello'";
         let mode = ScriptMode::Watch;
 
@@ -388,17 +387,19 @@ mod tests {
         let script = Script::from(full_cmd.as_str());
 
         assert_eq!(script.cmd, cmd);
-        assert_eq!(script.interval, default_interval());
+        assert_eq!(script.interval, default_script.interval);
         assert_eq!(script.mode, mode);
     }
 
     #[test]
     fn test_parse_cmd_with_colon() {
+        let default_script = Script::default();
+
         let cmd = "uptime | awk '{print \"Uptime: \" $1}'";
         let script = Script::from(cmd);
 
         assert_eq!(script.cmd, cmd);
-        assert_eq!(script.interval, default_interval());
+        assert_eq!(script.interval, default_script.interval);
         assert_eq!(script.mode, ScriptMode::default());
     }
 

@@ -3,7 +3,7 @@ mod interface;
 
 use crate::channels::{AsyncSenderExt, BroadcastReceiverExt};
 use crate::clients::tray;
-use crate::config::{CommonConfig, ModuleOrientation};
+use crate::config::{CommonConfig, ModuleOrientation, default};
 use crate::modules::{Module, ModuleInfo, ModuleParts, WidgetContext};
 use crate::{lock, module_impl, spawn};
 use color_eyre::{Report, Result};
@@ -19,18 +19,17 @@ use tracing::{debug, error, trace, warn};
 
 #[derive(Debug, Deserialize, Clone)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[serde(default)]
 pub struct TrayModule {
     /// Requests that icons from the theme be used over the item-provided item.
     /// Most items only provide one or the other so this will have no effect in most circumstances.
     ///
     /// **Default**: `true`
-    #[serde(default = "crate::config::default_true")]
     prefer_theme_icons: bool,
 
     /// Size in pixels to display the tray icons as.
     ///
     /// **Default**: `16`
-    #[serde(default = "default_icon_size")]
     icon_size: u32,
 
     /// The direction in which to pack tray icons.
@@ -38,7 +37,6 @@ pub struct TrayModule {
     /// **Valid options**: `horizontal`, `vertical`
     /// <br>
     /// **Default**: `horizontal` for horizontal bars, `vertical` for vertical bars
-    #[serde(default)]
     direction: Option<ModuleOrientation>,
 
     /// See [common options](module-level-options#common-options).
@@ -46,8 +44,15 @@ pub struct TrayModule {
     pub common: Option<CommonConfig>,
 }
 
-const fn default_icon_size() -> u32 {
-    16
+impl Default for TrayModule {
+    fn default() -> Self {
+        Self {
+            prefer_theme_icons: true,
+            icon_size: default::IconSize::Tiny as u32,
+            direction: None,
+            common: Some(CommonConfig::default()),
+        }
+    }
 }
 
 impl Module<gtk::Box> for TrayModule {

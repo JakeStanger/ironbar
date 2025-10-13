@@ -12,6 +12,7 @@ use tracing::error;
 
 #[derive(Debug, Deserialize, Clone)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[serde(default)]
 pub struct ScriptModule {
     /// Path to script to execute.
     ///
@@ -27,18 +28,16 @@ pub struct ScriptModule {
     /// **Valid options**: `poll`, `watch`
     /// <br />
     /// **Default**: `poll`
-    #[serde(default = "default_mode")]
     mode: ScriptMode,
 
     /// Time in milliseconds between executions.
     ///
     /// **Default**: `5000`
-    #[serde(default = "default_interval")]
     interval: u64,
 
     // -- Common --
     /// See [layout options](module-level-options#layout)
-    #[serde(default, flatten)]
+    #[serde(flatten)]
     layout: LayoutConfig,
 
     /// See [common options](module-level-options#common-options).
@@ -46,14 +45,16 @@ pub struct ScriptModule {
     pub common: Option<CommonConfig>,
 }
 
-/// `Mode::Poll`
-const fn default_mode() -> ScriptMode {
-    ScriptMode::Poll
-}
-
-/// 5000ms
-const fn default_interval() -> u64 {
-    5000
+impl Default for ScriptModule {
+    fn default() -> Self {
+        Self {
+            cmd: String::new(),
+            mode: ScriptMode::Poll,
+            interval: 5000,
+            layout: LayoutConfig::default(),
+            common: Some(CommonConfig::default()),
+        }
+    }
 }
 
 impl From<&ScriptModule> for Script {

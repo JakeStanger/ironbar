@@ -16,53 +16,47 @@ use crate::{module_impl, spawn};
 
 #[derive(Debug, Deserialize, Clone)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[serde(default)]
 pub struct KeyboardModule {
     /// Whether to show capslock indicator.
     ///
     /// **Default**: `true`
-    #[serde(default = "crate::config::default_true")]
     show_caps: bool,
 
     /// Whether to show num lock indicator.
     ///
     ///  **Default**: `true`
-    #[serde(default = "crate::config::default_true")]
     show_num: bool,
 
     /// Whether to show scroll lock indicator.
     ///
     ///  **Default**: `true`
-    #[serde(default = "crate::config::default_true")]
     show_scroll: bool,
 
     /// Whether to show the current keyboard layout.
     ///
     ///  **Default**: `true`
-    #[serde(default = "crate::config::default_true")]
     show_layout: bool,
 
     /// Size to render the icons at, in pixels (image icons only).
     ///
     /// **Default** `32`
-    #[serde(default = "default_icon_size")]
     icon_size: i32,
 
     /// Player state icons.
     ///
     /// See [icons](#icons).
-    #[serde(default)]
     icons: Icons,
 
     /// The Wayland seat to attach to.
     /// You almost certainly do not need to change this.
     ///
     /// **Default**: `seat0`
-    #[serde(default = "default_seat")]
     seat: String,
 
     // -- common --
     /// See [layout options](module-level-options#layout)
-    #[serde(default, flatten)]
+    #[serde(flatten)]
     layout: LayoutConfig,
 
     /// See [common options](module-level-options#common-options).
@@ -70,43 +64,54 @@ pub struct KeyboardModule {
     pub common: Option<CommonConfig>,
 }
 
+impl Default for KeyboardModule {
+    fn default() -> Self {
+        Self {
+            show_caps: true,
+            show_num: true,
+            show_scroll: true,
+            show_layout: true,
+            icon_size: 32,
+            icons: Icons::default(),
+            seat: "seat0".to_string(),
+            layout: LayoutConfig::default(),
+            common: Some(CommonConfig::default()),
+        }
+    }
+}
+
 #[derive(Debug, Deserialize, Clone)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[serde(default)]
 struct Icons {
     /// Icon to show when capslock is enabled.
     ///
     /// **Default**: `󰪛`
-    #[serde(default = "default_icon_caps")]
     caps_on: String,
 
     /// Icon to show when capslock is disabled.
     ///
     /// **Default**: `""`
-    #[serde(default)]
     caps_off: String,
 
     /// Icon to show when num lock is enabled.
     ///
     /// **Default**: ``
-    #[serde(default = "default_icon_num")]
     num_on: String,
 
     /// Icon to show when num lock is disabled.
     ///
     /// **Default**: `""`
-    #[serde(default)]
     num_off: String,
 
     /// Icon to show when scroll lock is enabled.
     ///
     /// **Default**: ``
-    #[serde(default = "default_icon_scroll")]
     scroll_on: String,
 
     /// Icon to show when scroll lock is disabled.
     ///
     /// **Default**: `""`
-    #[serde(default)]
     scroll_off: String,
 
     /// Map of icons or labels to show for a particular keyboard layout.
@@ -126,42 +131,21 @@ struct Icons {
     ///   icons.layout_map.Ukrainian = "UA"
     /// }
     /// ```
-    #[serde(default)]
     layout_map: IndexMap<String, String>,
 }
 
 impl Default for Icons {
     fn default() -> Self {
         Self {
-            caps_on: default_icon_caps(),
+            caps_on: "󰪛".to_string(),
             caps_off: String::new(),
-            num_on: default_icon_num(),
+            num_on: "".to_string(),
             num_off: String::new(),
-            scroll_on: default_icon_scroll(),
+            scroll_on: "".to_string(),
             scroll_off: String::new(),
             layout_map: IndexMap::new(),
         }
     }
-}
-
-const fn default_icon_size() -> i32 {
-    32
-}
-
-fn default_seat() -> String {
-    String::from("seat0")
-}
-
-fn default_icon_caps() -> String {
-    String::from("󰪛")
-}
-
-fn default_icon_num() -> String {
-    String::from("")
-}
-
-fn default_icon_scroll() -> String {
-    String::from("")
 }
 
 #[derive(Debug, Clone)]

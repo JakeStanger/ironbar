@@ -21,25 +21,23 @@ use tracing::trace;
 
 #[derive(Debug, Clone, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[serde(default)]
 pub struct VolumeModule {
     /// The format string to use for the widget button label.
     /// For available tokens, see [below](#formatting-tokens).
     ///
     /// **Default**: `{icon} {percentage}%`
-    #[serde(default = "default_format")]
     format: String,
 
     /// Maximum value to allow volume sliders to reach.
     /// Pulse supports values > 100 but this may result in distortion.
     ///
     /// **Default**: `100`
-    #[serde(default = "default_max_volume")]
     max_volume: f64,
 
     /// Volume state icons.
     ///
     /// See [icons](#icons).
-    #[serde(default)]
     icons: Icons,
 
     // -- Common --
@@ -57,36 +55,53 @@ pub struct VolumeModule {
     pub common: Option<CommonConfig>,
 }
 
-fn default_format() -> String {
-    String::from("{icon} {percentage}%")
+impl Default for VolumeModule {
+    fn default() -> Self {
+        Self {
+            format: "{icon} {percentage}%".to_string(),
+            max_volume: 100.0,
+            icons: Icons::default(),
+            truncate: None,
+            layout: LayoutConfig::default(),
+            common: Some(CommonConfig::default()),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[serde(default)]
 pub struct Icons {
     /// Icon to show for high volume levels.
     ///
     /// **Default**: `󰕾`
-    #[serde(default = "default_icon_volume_high")]
     volume_high: String,
 
     /// Icon to show for medium volume levels.
     ///
     /// **Default**: `󰖀`
-    #[serde(default = "default_icon_volume_medium")]
     volume_medium: String,
 
     /// Icon to show for low volume levels.
     ///
     /// **Default**: `󰕿`
-    #[serde(default = "default_icon_volume_low")]
     volume_low: String,
 
     /// Icon to show for muted outputs.
     ///
     /// **Default**: `󰝟`
-    #[serde(default = "default_icon_muted")]
     muted: String,
+}
+
+impl Default for Icons {
+    fn default() -> Self {
+        Self {
+            volume_high: "󰕾".to_string(),
+            volume_medium: "󰖀".to_string(),
+            volume_low: "󰕿".to_string(),
+            muted: "󰝟".to_string(),
+        }
+    }
 }
 
 impl Icons {
@@ -97,37 +112,6 @@ impl Icons {
             67.. => &self.volume_high,
         }
     }
-}
-
-impl Default for Icons {
-    fn default() -> Self {
-        Self {
-            volume_high: default_icon_volume_high(),
-            volume_medium: default_icon_volume_medium(),
-            volume_low: default_icon_volume_low(),
-            muted: default_icon_muted(),
-        }
-    }
-}
-
-const fn default_max_volume() -> f64 {
-    100.0
-}
-
-fn default_icon_volume_high() -> String {
-    String::from("󰕾")
-}
-
-fn default_icon_volume_medium() -> String {
-    String::from("󰖀")
-}
-
-fn default_icon_volume_low() -> String {
-    String::from("󰕿")
-}
-
-fn default_icon_muted() -> String {
-    String::from("󰝟")
 }
 
 #[derive(Debug, Clone)]

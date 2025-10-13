@@ -1,6 +1,6 @@
 use crate::channels::{AsyncSenderExt, BroadcastReceiverExt};
 use crate::clients::wayland::{self, ToplevelEvent};
-use crate::config::{CommonConfig, LayoutConfig, TruncateMode};
+use crate::config::{CommonConfig, LayoutConfig, TruncateMode, default};
 use crate::gtk_helpers::IronbarLabelExt;
 use crate::modules::{Module, ModuleInfo, ModuleParts, WidgetContext};
 use crate::{module_impl, spawn};
@@ -13,22 +13,20 @@ use tracing::debug;
 
 #[derive(Debug, Deserialize, Clone)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[serde(default)]
 pub struct FocusedModule {
     /// Whether to show icon on the bar.
     ///
     /// **Default**: `true`
-    #[serde(default = "crate::config::default_true")]
     show_icon: bool,
     /// Whether to show app name on the bar.
     ///
     /// **Default**: `true`
-    #[serde(default = "crate::config::default_true")]
     show_title: bool,
 
     /// Icon size in pixels.
     ///
     /// **Default**: `32`
-    #[serde(default = "default_icon_size")]
     icon_size: i32,
 
     // -- common --
@@ -38,7 +36,7 @@ pub struct FocusedModule {
     truncate: Option<TruncateMode>,
 
     /// See [layout options](module-level-options#layout)
-    #[serde(default, flatten)]
+    #[serde(flatten)]
     layout: LayoutConfig,
 
     /// See [common options](module-level-options#common-options).
@@ -49,18 +47,14 @@ pub struct FocusedModule {
 impl Default for FocusedModule {
     fn default() -> Self {
         Self {
-            show_icon: crate::config::default_true(),
-            show_title: crate::config::default_true(),
-            icon_size: default_icon_size(),
+            show_icon: true,
+            show_title: true,
+            icon_size: default::IconSize::Normal as i32,
             truncate: None,
             layout: LayoutConfig::default(),
             common: Some(CommonConfig::default()),
         }
     }
-}
-
-const fn default_icon_size() -> i32 {
-    32
 }
 
 impl Module<gtk::Box> for FocusedModule {

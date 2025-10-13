@@ -1,7 +1,7 @@
 use crate::channels::{AsyncSenderExt, BroadcastReceiverExt};
 use crate::clients::upower;
 use crate::clients::upower::BatteryState;
-use crate::config::{CommonConfig, LayoutConfig};
+use crate::config::{CommonConfig, LayoutConfig, default};
 use crate::gtk_helpers::IronbarLabelExt;
 use crate::image::IconLabel;
 use crate::modules::PopupButton;
@@ -26,23 +26,22 @@ const MINUTE: i64 = 60;
 
 #[derive(Debug, Deserialize, Clone)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[serde(default)]
 pub struct BatteryModule {
     /// The format string to use for the widget button label.
     /// For available tokens, see [below](#formatting-tokens).
     ///
     /// **Default**: `{percentage}%`
-    #[serde(default = "default_format")]
     format: String,
 
     /// The size to render the icon at, in pixels.
     ///
     /// **Default**: `24`
-    #[serde(default = "default_icon_size")]
     icon_size: i32,
 
     // -- Common --
     /// See [layout options](module-level-options#layout)
-    #[serde(default, flatten)]
+    #[serde(flatten)]
     layout: LayoutConfig,
 
     /// A map of threshold names to apply as classes,
@@ -70,7 +69,6 @@ pub struct BatteryModule {
     /// Above 20%, no class applies.
     ///
     /// **Default**: `{}`
-    #[serde(default)]
     thresholds: HashMap<Box<str>, f64>,
 
     /// See [common options](module-level-options#common-options).
@@ -78,12 +76,16 @@ pub struct BatteryModule {
     pub common: Option<CommonConfig>,
 }
 
-fn default_format() -> String {
-    String::from("{percentage}%")
-}
-
-const fn default_icon_size() -> i32 {
-    24
+impl Default for BatteryModule {
+    fn default() -> Self {
+        Self {
+            format: "{percentage}%".to_string(),
+            icon_size: default::IconSize::Small as i32,
+            layout: LayoutConfig::default(),
+            thresholds: HashMap::new(),
+            common: Some(CommonConfig::default()),
+        }
+    }
 }
 
 #[derive(Clone, Debug, Default)]

@@ -17,6 +17,7 @@ use crate::{build, spawn};
 
 #[derive(Debug, Deserialize, Clone)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[serde(default)]
 pub struct SliderWidget {
     /// Widget name.
     ///
@@ -54,13 +55,11 @@ pub struct SliderWidget {
     /// Minimum slider value.
     ///
     /// **Default**: `0`
-    #[serde(default = "default_min")]
     min: f64,
 
     /// Maximum slider value.
     ///
     /// **Default**: `100`
-    #[serde(default = "default_max")]
     max: f64,
 
     /// If the increment to change when scrolling with the mousewheel.
@@ -79,16 +78,24 @@ pub struct SliderWidget {
     /// Whether to show the value label above the slider.
     ///
     /// **Default**: `true`
-    #[serde(default = "crate::config::default_true")]
     show_label: bool,
 }
 
-const fn default_min() -> f64 {
-    0.0
-}
-
-const fn default_max() -> f64 {
-    100.0
+impl Default for SliderWidget {
+    fn default() -> Self {
+        Self {
+            name: None,
+            class: None,
+            orientation: ModuleOrientation::default(),
+            value: None,
+            on_change: None,
+            min: 0.0,
+            max: 100.0,
+            step: None,
+            length: None,
+            show_label: true,
+        }
+    }
 }
 
 impl CustomWidget for SliderWidget {

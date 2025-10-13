@@ -7,27 +7,23 @@ use crate::{
 
 #[derive(Debug, Deserialize, Clone)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[serde(default)]
 pub struct BluetoothModule {
-    /// Format strings for on-bar button
-    #[serde(default)]
+    /// Format strings for on-bar button.
     pub format: FormatConfig,
 
-    /// Popup related configuration
-    #[serde(default)]
+    /// Popup related configuration.
     pub popup: PopupConfig,
 
     /// Values of `{adapter_status}` formatting token.
-    #[serde(default)]
     pub adapter_status: AdapterStatus,
 
     /// Values of `{device_status}` formatting token.
-    #[serde(default)]
     pub device_status: DeviceStatus,
 
     /// Size to render the icons at, in pixels (image icons only).
     ///
     /// **Default** `32`
-    #[serde(default = "default_icon_size")]
     pub icon_size: i32,
 
     /// See [common options](module-level-options#common-options).
@@ -35,281 +31,205 @@ pub struct BluetoothModule {
     pub common: Option<CommonConfig>,
 }
 
+impl Default for BluetoothModule {
+    fn default() -> Self {
+        Self {
+            format: FormatConfig::default(),
+            popup: PopupConfig::default(),
+            adapter_status: AdapterStatus::default(),
+            device_status: DeviceStatus::default(),
+            icon_size: 32,
+            common: Some(CommonConfig::default()),
+        }
+    }
+}
+
 #[derive(Debug, Deserialize, Clone)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[serde(default)]
 pub struct FormatConfig {
     /// Format string to use for the widget button when bluetooth adapter not found.
     ///
     /// **Default**: `""`
-    #[serde(default = "default_format_not_found")]
     pub not_found: String,
 
     /// Format string to use for the widget button when bluetooth adapter is disabled.
     ///
     /// **Default**: `" Off"`
-    #[serde(default = "default_format_disabled")]
     pub disabled: String,
 
     /// Format string to use for the widget button when bluetooth adapter is enabled but no devices are connected.
     ///
     /// **Default**: `" On"`
-    #[serde(default = "default_format_enabled")]
     pub enabled: String,
 
     /// Format string to use for the widget button when bluetooth adapter is enabled and a device is connected.
     ///
     /// **Default**: `" {device_alias}"`
-    #[serde(default = "default_format_connected")]
     pub connected: String,
 
     /// Format string to use for the widget button when bluetooth adapter is enabled, a device is connected and `{device_battery_percent}` is available.
     ///
     /// **Default**: `" {device_alias} • {device_battery_percent}%"`
-    #[serde(default = "default_format_connected_battery")]
     pub connected_battery: String,
-}
-
-#[derive(Debug, Deserialize, Clone)]
-#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
-pub struct PopupConfig {
-    /// Whether to make the popup scrollable or stretchable to show all of its content.
-    ///
-    /// **Default**: `true`
-    #[serde(default = "crate::config::default_true")]
-    pub scrollable: bool,
-
-    /// Format string to use for the header of popup window.
-    ///
-    /// **Default**: `" Enable Bluetooth"`
-    #[serde(default = "default_popup_header")]
-    pub header: String,
-
-    /// Format string to use for the message that is displayed when the adapter is not found or disabled.
-    ///
-    /// **Default**: `"{adapter_status}"`
-    #[serde(default = "default_popup_disabled")]
-    pub disabled: String,
-
-    /// Device box related configuration
-    #[serde(default)]
-    pub device: PopupDeviceConfig,
-}
-
-#[derive(Debug, Deserialize, Clone)]
-#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
-pub struct AdapterStatus {
-    /// The value of `{adapter_status}` formatting token when adapter is enabling.
-    ///
-    /// **Default**: `"Enabling Bluetooth..."`
-    #[serde(default = "default_adapter_status_enabling")]
-    pub enabling: String,
-
-    /// The value of `{adapter_status}` formatting token when adapter is enabled.
-    ///
-    /// **Default**: `"Bluetooth enabled"`
-    #[serde(default = "default_adapter_status_enabled")]
-    pub enabled: String,
-
-    /// The value of `{adapter_status}` formatting token when adapter is disabling.
-    ///
-    /// **Default**: `"Disabling Bluetooth..."`
-    #[serde(default = "default_adapter_status_disabling")]
-    pub disabling: String,
-
-    /// The value of `{adapter_status}` formatting token when adapter is disabled.
-    ///
-    /// **Default**: `"Bluetooth disabled"`
-    #[serde(default = "default_adapter_status_disabled")]
-    pub disabled: String,
-
-    /// The value of `{adapter_status}` formatting token when adapter not found.
-    ///
-    /// **Default**: `"No Bluetooth adapters found"`
-    #[serde(default = "default_adapter_status_not_found")]
-    pub not_found: String,
-}
-
-#[derive(Debug, Deserialize, Clone)]
-#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
-pub struct DeviceStatus {
-    /// The value of `{device_status}` formatting token when device is connecting.
-    ///
-    /// **Default**: `"Connecting..."`
-    #[serde(default = "default_device_status_connecting")]
-    pub connecting: String,
-
-    /// The value of `{device_status}` formatting token when device is connected.
-    ///
-    /// **Default**: `"Connected"`
-    #[serde(default = "default_device_status_connected")]
-    pub connected: String,
-
-    /// The value of `{device_status}` formatting token when device is disconnecting.
-    ///
-    /// **Default**: `"Disconnecting..."`
-    #[serde(default = "default_device_status_disconnecting")]
-    pub disconnecting: String,
-
-    /// The value of `{device_status}` formatting token when device is disconnected.
-    ///
-    /// **Default**: `"Disconnect"`
-    #[serde(default = "default_device_status_disconnected")]
-    pub disconnected: String,
-}
-
-#[derive(Debug, Deserialize, Clone)]
-#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
-pub struct PopupDeviceConfig {
-    /// Format string to use for the header of device box.
-    ///
-    /// **Default**: `"{device_alias}"`
-    #[serde(default = "default_device_header")]
-    pub header: String,
-
-    /// Format string to use for the header of device box when `{device_battery_percent}` is available.
-    ///
-    /// **Default**: `"{device_alias}"`
-    #[serde(default = "default_device_header")]
-    pub header_battery: String,
-
-    /// Format string to use for the footer of device box.
-    ///
-    /// **Default**: `"{device_status}"`
-    #[serde(default = "default_device_footer")]
-    pub footer: String,
-
-    /// Format string to use for the footer of device box when `{device_battery_percent}` is available.
-    ///
-    /// **Default**: `"{device_status} • Battery {device_battery_percent}%"`
-    #[serde(default = "default_device_footer_battery")]
-    pub footer_battery: String,
-}
-
-const fn default_icon_size() -> i32 {
-    32
-}
-
-fn default_format_not_found() -> String {
-    String::new()
-}
-
-fn default_format_disabled() -> String {
-    " Off".into()
-}
-
-fn default_format_enabled() -> String {
-    " On".into()
-}
-
-fn default_format_connected() -> String {
-    " {device_alias}".into()
-}
-
-fn default_format_connected_battery() -> String {
-    " {device_alias} • {device_battery_percent}%".into()
-}
-
-fn default_popup_header() -> String {
-    " Enable Bluetooth".into()
-}
-
-fn default_popup_disabled() -> String {
-    "{adapter_status}".into()
-}
-
-fn default_device_header() -> String {
-    "{device_alias}".into()
-}
-
-fn default_device_footer() -> String {
-    "{device_status}".into()
-}
-
-fn default_device_footer_battery() -> String {
-    "{device_status} • Battery {device_battery_percent}%".into()
-}
-
-fn default_adapter_status_enabling() -> String {
-    "Enabling Bluetooth...".into()
-}
-fn default_adapter_status_enabled() -> String {
-    "Bluetooth enabled".into()
-}
-fn default_adapter_status_disabling() -> String {
-    "Disabling Bluetooth...".into()
-}
-fn default_adapter_status_disabled() -> String {
-    "Bluetooth disabled".into()
-}
-fn default_adapter_status_not_found() -> String {
-    "No Bluetooth adapters found".into()
-}
-fn default_device_status_connecting() -> String {
-    "Connecting...".into()
-}
-fn default_device_status_connected() -> String {
-    "Connected".into()
-}
-fn default_device_status_disconnecting() -> String {
-    "Disconnecting...".into()
-}
-fn default_device_status_disconnected() -> String {
-    "Disconnected".into()
 }
 
 impl Default for FormatConfig {
     fn default() -> Self {
         Self {
-            not_found: default_format_not_found(),
-            disabled: default_format_disabled(),
-            enabled: default_format_enabled(),
-            connected: default_format_connected(),
-            connected_battery: default_format_connected_battery(),
+            not_found: String::new(),
+            disabled: " Off".to_string(),
+            enabled: " On".to_string(),
+            connected: " {device_alias}".to_string(),
+            connected_battery: " {device_alias} • {device_battery_percent}%".to_string(),
         }
     }
+}
+
+#[derive(Debug, Deserialize, Clone)]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[serde(default)]
+pub struct PopupConfig {
+    /// Whether to make the popup scrollable or stretchable to show all of its content.
+    ///
+    /// **Default**: `true`
+    pub scrollable: bool,
+
+    /// Format string to use for the header of popup window.
+    ///
+    /// **Default**: `" Enable Bluetooth"`
+    pub header: String,
+
+    /// Format string to use for the message that is displayed when the adapter is not found or disabled.
+    ///
+    /// **Default**: `"{adapter_status}"`
+    pub disabled: String,
+
+    /// Device box related configuration
+    pub device: PopupDeviceConfig,
 }
 
 impl Default for PopupConfig {
     fn default() -> Self {
         Self {
             scrollable: true,
-            header: default_popup_header(),
-            disabled: default_popup_disabled(),
+            header: " Enable Bluetooth".to_string(),
+            disabled: "{adapter_status}".to_string(),
             device: PopupDeviceConfig::default(),
         }
     }
 }
 
+#[derive(Debug, Deserialize, Clone)]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[serde(default)]
+pub struct AdapterStatus {
+    /// The value of `{adapter_status}` formatting token when adapter is enabling.
+    ///
+    /// **Default**: `"Enabling Bluetooth..."`
+    pub enabling: String,
+
+    /// The value of `{adapter_status}` formatting token when adapter is enabled.
+    ///
+    /// **Default**: `"Bluetooth enabled"`
+    pub enabled: String,
+
+    /// The value of `{adapter_status}` formatting token when adapter is disabling.
+    ///
+    /// **Default**: `"Disabling Bluetooth..."`
+    pub disabling: String,
+
+    /// The value of `{adapter_status}` formatting token when adapter is disabled.
+    ///
+    /// **Default**: `"Bluetooth disabled"`
+    pub disabled: String,
+
+    /// The value of `{adapter_status}` formatting token when adapter not found.
+    ///
+    /// **Default**: `"No Bluetooth adapters found"`
+    pub not_found: String,
+}
+
 impl Default for AdapterStatus {
     fn default() -> Self {
         Self {
-            enabling: default_adapter_status_enabling(),
-            enabled: default_adapter_status_enabled(),
-            disabling: default_adapter_status_disabling(),
-            disabled: default_adapter_status_disabled(),
-            not_found: default_adapter_status_not_found(),
+            enabling: "Enabling Bluetooth...".to_string(),
+            enabled: "Bluetooth enabled".to_string(),
+            disabling: "Disabling Bluetooth...".to_string(),
+            disabled: "Bluetooth disabled".to_string(),
+            not_found: "No Bluetooth adapters found".to_string(),
         }
     }
+}
+
+#[derive(Debug, Deserialize, Clone)]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[serde(default)]
+pub struct DeviceStatus {
+    /// The value of `{device_status}` formatting token when device is connecting.
+    ///
+    /// **Default**: `"Connecting..."`
+    pub connecting: String,
+
+    /// The value of `{device_status}` formatting token when device is connected.
+    ///
+    /// **Default**: `"Connected"`
+    pub connected: String,
+
+    /// The value of `{device_status}` formatting token when device is disconnecting.
+    ///
+    /// **Default**: `"Disconnecting..."`
+    pub disconnecting: String,
+
+    /// The value of `{device_status}` formatting token when device is disconnected.
+    ///
+    /// **Default**: `"Disconnect"`
+    pub disconnected: String,
 }
 
 impl Default for DeviceStatus {
     fn default() -> Self {
         Self {
-            connecting: default_device_status_connecting(),
-            connected: default_device_status_connected(),
-            disconnecting: default_device_status_disconnecting(),
-            disconnected: default_device_status_disconnected(),
+            connecting: "Connecting...".to_string(),
+            connected: "Connected".to_string(),
+            disconnecting: "Disconnecting...".to_string(),
+            disconnected: "Disconnected".to_string(),
         }
     }
+}
+
+#[derive(Debug, Deserialize, Clone)]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[serde(default)]
+pub struct PopupDeviceConfig {
+    /// Format string to use for the header of device box.
+    ///
+    /// **Default**: `"{device_alias}"`
+    pub header: String,
+
+    /// Format string to use for the header of device box when `{device_battery_percent}` is available.
+    ///
+    /// **Default**: `"{device_alias}"`
+    pub header_battery: String,
+
+    /// Format string to use for the footer of device box.
+    ///
+    /// **Default**: `"{device_status}"`
+    pub footer: String,
+
+    /// Format string to use for the footer of device box when `{device_battery_percent}` is available.
+    ///
+    /// **Default**: `"{device_status} • Battery {device_battery_percent}%"`
+    pub footer_battery: String,
 }
 
 impl Default for PopupDeviceConfig {
     fn default() -> Self {
         Self {
-            header: default_device_header(),
-            header_battery: default_device_header(),
-            footer: default_device_footer(),
-            footer_battery: default_device_footer_battery(),
+            header: "{device_alias}".to_string(),
+            header_battery: "{device_alias}".to_string(),
+            footer: "{device_status}".to_string(),
+            footer_battery: "{device_status} • Battery {device_battery_percent}%".to_string(),
         }
     }
 }
