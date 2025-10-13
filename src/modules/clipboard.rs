@@ -21,26 +21,24 @@ use tracing::{debug, error};
 
 #[derive(Debug, Deserialize, Clone)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[serde(default)]
 pub struct ClipboardModule {
     /// The icon to show on the bar widget button.
     /// Supports [image](images) icons.
     ///
     /// **Default**: `󰨸`
-    #[serde(default = "default_icon")]
     icon: String,
 
     /// The size to render the icon at.
     /// Note this only applies to image-type icons.
     ///
     /// **Default**: `32`
-    #[serde(default = "default_icon_size")]
     icon_size: i32,
 
     /// The maximum number of items to keep in the history,
     /// and to show in the popup.
     ///
     /// **Default**: `10`
-    #[serde(default = "default_max_items")]
     max_items: usize,
 
     // -- Common --
@@ -58,16 +56,17 @@ pub struct ClipboardModule {
     pub common: Option<CommonConfig>,
 }
 
-fn default_icon() -> String {
-    String::from("󰨸")
-}
-
-const fn default_icon_size() -> i32 {
-    32
-}
-
-const fn default_max_items() -> usize {
-    10
+impl Default for ClipboardModule {
+    fn default() -> Self {
+        Self {
+            icon: "󰨸".to_string(),
+            icon_size: 32,
+            max_items: 10,
+            truncate: None,
+            layout: LayoutConfig::default(),
+            common: Some(CommonConfig::default()),
+        }
+    }
 }
 
 #[derive(Debug, Clone)]

@@ -12,17 +12,16 @@ use tracing::error;
 
 #[derive(Debug, Deserialize, Clone)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[serde(default)]
 pub struct NotificationsModule {
     /// Whether to show the current notification count.
     ///
     /// **Default**: `true`
-    #[serde(default = "crate::config::default_true")]
     show_count: bool,
 
     /// SwayNC state icons.
     ///
     /// See [icons](#icons).
-    #[serde(default)]
     icons: Icons,
 
     /// See [common options](module-level-options#common-options).
@@ -30,83 +29,64 @@ pub struct NotificationsModule {
     pub common: Option<CommonConfig>,
 }
 
+impl Default for NotificationsModule {
+    fn default() -> Self {
+        Self {
+            show_count: true,
+            icons: Icons::default(),
+            common: Some(CommonConfig::default()),
+        }
+    }
+}
+
 #[derive(Debug, Deserialize, Clone)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[serde(default)]
 struct Icons {
     /// Icon to show when the panel is closed, with no notifications.
     ///
     /// **Default**: `󰍥`
-    #[serde(default = "default_icon_closed_none")]
     closed_none: String,
 
     /// Icon to show when the panel is closed, with notifications.
     ///
     /// **Default**: `󱥂`
-    #[serde(default = "default_icon_closed_some")]
     closed_some: String,
 
     /// Icon to show when the panel is closed, with DnD enabled.
     /// Takes higher priority than count-based icons.
     ///
     /// **Default**: `󱅯`
-    #[serde(default = "default_icon_closed_dnd")]
     closed_dnd: String,
 
     /// Icon to show when the panel is open, with no notifications.
     ///
     /// **Default**: `󰍡`
-    #[serde(default = "default_icon_open_none")]
     open_none: String,
 
     /// Icon to show when the panel is open, with notifications.
     ///
     /// **Default**: `󱥁`
-    #[serde(default = "default_icon_open_some")]
     open_some: String,
 
     /// Icon to show when the panel is open, with DnD enabled.
     /// Takes higher priority than count-based icons.
     ///
     /// **Default**: `󱅮`
-    #[serde(default = "default_icon_open_dnd")]
     open_dnd: String,
 }
 
 impl Default for Icons {
     fn default() -> Self {
         Self {
-            closed_none: default_icon_closed_none(),
-            closed_some: default_icon_closed_some(),
-            closed_dnd: default_icon_closed_dnd(),
-            open_none: default_icon_open_none(),
-            open_some: default_icon_open_some(),
-            open_dnd: default_icon_open_dnd(),
+            closed_none: "󰍥".to_string(),
+            closed_some: "󱥂".to_string(),
+            closed_dnd: "󱅯".to_string(),
+            open_none: "󰍡".to_string(),
+            open_some: "󱥁".to_string(),
+            open_dnd: "󱅮".to_string(),
         }
     }
-}
-
-fn default_icon_closed_none() -> String {
-    String::from("󰍥")
-}
-
-fn default_icon_closed_some() -> String {
-    String::from("󱥂")
-}
-
-fn default_icon_closed_dnd() -> String {
-    String::from("󱅯")
-}
-
-fn default_icon_open_none() -> String {
-    String::from("󰍡")
-}
-
-fn default_icon_open_some() -> String {
-    String::from("󱥁")
-}
-
-fn default_icon_open_dnd() -> String {
-    String::from("󱅮")
 }
 
 impl Icons {

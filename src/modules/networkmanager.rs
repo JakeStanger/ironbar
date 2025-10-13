@@ -1,6 +1,6 @@
 use crate::channels::{AsyncSenderExt, BroadcastReceiverExt};
 use crate::clients::networkmanager::{Client, ClientState};
-use crate::config::CommonConfig;
+use crate::config::{CommonConfig, default};
 use crate::modules::{Module, ModuleInfo, ModuleParts, WidgetContext};
 use crate::{module_impl, spawn};
 use color_eyre::Result;
@@ -13,16 +13,21 @@ use tokio::sync::mpsc::Receiver;
 
 #[derive(Debug, Deserialize, Clone)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[serde(default)]
 pub struct NetworkManagerModule {
-    #[serde(default = "default_icon_size")]
     icon_size: i32,
 
     #[serde(flatten)]
     pub common: Option<CommonConfig>,
 }
 
-const fn default_icon_size() -> i32 {
-    24
+impl Default for NetworkManagerModule {
+    fn default() -> Self {
+        Self {
+            icon_size: default::IconSize::Small as i32,
+            common: Some(CommonConfig::default()),
+        }
+    }
 }
 
 impl Module<GtkBox> for NetworkManagerModule {

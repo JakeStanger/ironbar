@@ -1,4 +1,5 @@
 mod common;
+pub mod default;
 mod r#impl;
 mod layout;
 mod truncate;
@@ -232,14 +233,11 @@ impl Default for BarPosition {
 
 #[derive(Debug, Default, Deserialize, Copy, Clone, PartialEq, Eq)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
+#[serde(default)]
 pub struct MarginConfig {
-    #[serde(default)]
     pub bottom: i32,
-    #[serde(default)]
     pub left: i32,
-    #[serde(default)]
     pub right: i32,
-    #[serde(default)]
     pub top: i32,
 }
 
@@ -251,6 +249,7 @@ pub struct MarginConfig {
 ///
 #[derive(Debug, Deserialize, Clone)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
+#[serde(default)]
 pub struct BarConfig {
     /// A unique identifier for the bar, used for controlling it over IPC.
     /// If not set, uses a generated integer suffix.
@@ -263,14 +262,12 @@ pub struct BarConfig {
     /// **Valid options**: `top`, `bottom`, `left`, `right`
     /// <br>
     /// **Default**: `bottom`
-    #[serde(default)]
     pub position: BarPosition,
 
     /// Whether to anchor the bar to the edges of the screen.
     /// Setting to false centers the bar.
     ///
     /// **Default**: `true`
-    #[serde(default = "default_true")]
     pub anchor_to_edges: bool,
 
     /// The bar's height in pixels.
@@ -280,7 +277,6 @@ pub struct BarConfig {
     /// it will automatically expand to fit.
     ///
     /// **Default**: `42`
-    #[serde(default = "default_bar_height")]
     pub height: i32,
 
     /// The margin to use on each side of the bar, in pixels.
@@ -300,7 +296,6 @@ pub struct BarConfig {
     ///     margin.right = 10
     /// }
     /// ```
-    #[serde(default)]
     pub margin: MarginConfig,
 
     /// The layer-shell layer to place the bar on.
@@ -317,10 +312,7 @@ pub struct BarConfig {
     /// **Valid options**: `background`, `bottom`, `top`, `overlay`
     /// <br>
     /// **Default**: `top`
-    #[serde(
-        default = "default_layer",
-        deserialize_with = "r#impl::deserialize_layer"
-    )]
+    #[serde(deserialize_with = "r#impl::deserialize_layer")]
     #[cfg_attr(feature = "schema", schemars(schema_with = "r#impl::schema_layer"))]
     pub layer: gtk_layer_shell::Layer,
 
@@ -330,14 +322,12 @@ pub struct BarConfig {
     /// as the bar, causing them to shift.
     ///
     /// **Default**: `true` unless `start_hidden` is set.
-    #[serde(default)]
     pub exclusive_zone: Option<bool>,
 
     /// The size of the gap in pixels
     /// between the bar and the popup window.
     ///
     /// **Default**: `5`
-    #[serde(default = "default_popup_gap")]
     pub popup_gap: i32,
 
     /// Whether to enable autohide behaviour on the popup.
@@ -346,20 +336,17 @@ pub struct BarConfig {
     /// On some compositors, this may also aggressively steal mouse/keyboard focus.
     ///
     /// **Default**: `false`
-    #[serde(default)]
     pub popup_autohide: bool,
 
     /// Whether the bar should be hidden when Ironbar starts.
     ///
     /// **Default**: `false`, unless `autohide` is set.
-    #[serde(default)]
     pub start_hidden: Option<bool>,
 
     /// The duration in milliseconds before the bar is hidden after the cursor leaves.
     /// Leave unset to disable auto-hide behaviour.
     ///
     /// **Default**: `null`
-    #[serde(default)]
     pub autohide: Option<u64>,
 
     /// An array of modules to append to the start of the bar.
@@ -404,9 +391,9 @@ impl Default for BarConfig {
             position: BarPosition::default(),
             margin: MarginConfig::default(),
             name: None,
-            layer: default_layer(),
+            layer: gtk_layer_shell::Layer::Top,
             exclusive_zone: None,
-            height: default_bar_height(),
+            height: 42,
             start_hidden: None,
             autohide: None,
             #[cfg(feature = "label")]
@@ -417,8 +404,8 @@ impl Default for BarConfig {
             start: None,
             center,
             end,
-            anchor_to_edges: default_true(),
-            popup_gap: default_popup_gap(),
+            anchor_to_edges: true,
+            popup_gap: 5,
             popup_autohide: false,
         }
     }
@@ -426,6 +413,7 @@ impl Default for BarConfig {
 
 #[derive(Debug, Deserialize, Clone, Default)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
+#[serde(default)]
 pub struct Config {
     /// A map of [ironvar](ironvar) keys and values
     /// to initialize Ironbar with on startup.
@@ -479,30 +467,5 @@ pub struct Config {
     /// overriding the app's default icon.
     ///
     /// **Default**: `{}`
-    #[serde(default)]
     pub icon_overrides: HashMap<String, String>,
-}
-
-const fn default_layer() -> gtk_layer_shell::Layer {
-    gtk_layer_shell::Layer::Top
-}
-
-const fn default_bar_height() -> i32 {
-    42
-}
-
-const fn default_popup_gap() -> i32 {
-    5
-}
-
-pub const fn default_false() -> bool {
-    false
-}
-
-pub const fn default_true() -> bool {
-    true
-}
-
-pub fn default_launch_command() -> String {
-    String::from("gtk-launch {app_name}")
 }

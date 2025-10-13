@@ -14,6 +14,7 @@ use crate::{build, spawn};
 
 #[derive(Debug, Deserialize, Clone)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[serde(default)]
 pub struct ProgressWidget {
     /// Widget name.
     ///
@@ -51,7 +52,6 @@ pub struct ProgressWidget {
     /// The maximum progress bar value.
     ///
     /// **Default**: `100`
-    #[serde(default = "default_max")]
     max: f64,
 
     /// The progress bar length, in pixels.
@@ -61,8 +61,18 @@ pub struct ProgressWidget {
     length: Option<i32>,
 }
 
-const fn default_max() -> f64 {
-    100.0
+impl Default for ProgressWidget {
+    fn default() -> Self {
+        Self {
+            name: None,
+            class: None,
+            orientation: ModuleOrientation::default(),
+            label: None,
+            value: None,
+            max: 100.0,
+            length: None,
+        }
+    }
 }
 
 impl CustomWidget for ProgressWidget {

@@ -9,9 +9,7 @@ use super::{
 };
 use crate::channels::{AsyncSenderExt, BroadcastReceiverExt};
 use crate::clients::wayland::{self, ToplevelEvent};
-use crate::config::{
-    CommonConfig, EllipsizeMode, LayoutConfig, TruncateMode, default_launch_command,
-};
+use crate::config::{CommonConfig, EllipsizeMode, LayoutConfig, TruncateMode, default};
 use crate::desktop_file::open_program;
 use crate::gtk_helpers::{IronbarGtkExt, IronbarLabelExt};
 use crate::modules::launcher::item::ImageTextButton;
@@ -28,6 +26,7 @@ use tracing::{debug, error, trace, warn};
 
 #[derive(Debug, Deserialize, Clone)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[serde(default)]
 pub struct LauncherModule {
     /// List of app IDs (or classes) to always show regardless of open state,
     /// in the order specified.
@@ -38,19 +37,16 @@ pub struct LauncherModule {
     /// Whether to show application names on the bar.
     ///
     /// **Default**: `false`
-    #[serde(default = "crate::config::default_false")]
     show_names: bool,
 
     /// Whether to show application icons on the bar.
     ///
     /// **Default**: `true`
-    #[serde(default = "crate::config::default_true")]
     show_icons: bool,
 
     /// Size in pixels to render icon at (image icons only).
     ///
     /// **Default**: `32`
-    #[serde(default = "default_icon_size")]
     icon_size: i32,
 
     /// Whether items should be added from right-to-left
@@ -59,13 +55,11 @@ pub struct LauncherModule {
     /// This includes favourites.
     ///
     /// **Default**: `false`
-    #[serde(default = "crate::config::default_false")]
     reversed: bool,
 
     /// Whether to minimize a window if it is focused when clicked.
     ///
     /// **Default**: `true`
-    #[serde(default = "crate::config::default_true")]
     minimize_focused: bool,
 
     /// The number of items to show on a page.
@@ -78,7 +72,6 @@ pub struct LauncherModule {
     /// by the next widget.
     ///
     /// **Default**: `1000`.
-    #[serde(default = "default_page_size")]
     page_size: usize,
 
     /// Module UI icons (separate from app icons shown for items).
@@ -90,7 +83,6 @@ pub struct LauncherModule {
     /// Size in pixels to render pagination icons at (image icons only).
     ///
     /// **Default**: `16`
-    #[serde(default = "default_icon_size_pagination")]
     pagination_icon_size: i32,
 
     // -- common --
@@ -98,14 +90,12 @@ pub struct LauncherModule {
     /// See [truncate options](module-level-options#truncate-mode).
     ///
     /// **Default**: `Auto (end)`
-    #[serde(default)]
     truncate: TruncateMode,
 
     /// Truncate application names in popups if they get too long.
     /// See [truncate options](module-level-options#truncate-mode).
     ///
     /// **Default**: `{ mode = "middle" max_length = 25 }`
-    #[serde(default = "default_truncate_popup")]
     truncate_popup: TruncateMode,
 
     /// See [layout options](module-level-options#layout)
@@ -115,7 +105,6 @@ pub struct LauncherModule {
     /// Command used to launch applications.
     ///
     /// **Default**: `gtk-launch`
-    #[serde(default = "default_launch_command")]
     launch_command: String,
 
     /// See [common options](module-level-options#common-options).
@@ -123,56 +112,52 @@ pub struct LauncherModule {
     pub common: Option<CommonConfig>,
 }
 
+impl Default for LauncherModule {
+    fn default() -> Self {
+        Self {
+            favorites: None,
+            show_names: false,
+            show_icons: true,
+            icon_size: default::IconSize::Normal as i32,
+            reversed: false,
+            minimize_focused: true,
+            page_size: 1000,
+            icons: Icons::default(),
+            pagination_icon_size: default::IconSize::Tiny as i32,
+            truncate: TruncateMode::default(),
+            truncate_popup: TruncateMode::Length {
+                mode: EllipsizeMode::Middle,
+                length: None,
+                max_length: Some(25),
+            },
+            layout: LayoutConfig::default(),
+            launch_command: default::launch_command(),
+            common: Some(CommonConfig::default()),
+        }
+    }
+}
+
 #[derive(Debug, Deserialize, Clone)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[serde(default)]
 struct Icons {
     /// Icon to show for page back button.
     ///
     /// **Default**: `󰅁`
-    #[serde(default = "default_icon_page_back")]
     page_back: String,
 
     /// Icon to show for page back button.
     ///
     /// **Default**: `>`
-    #[serde(default = "default_icon_page_forward")]
     page_forward: String,
 }
 
 impl Default for Icons {
     fn default() -> Self {
         Self {
-            page_back: default_icon_page_back(),
-            page_forward: default_icon_page_forward(),
+            page_back: "󰅁".to_string(),
+            page_forward: "󰅂".to_string(),
         }
-    }
-}
-
-const fn default_icon_size() -> i32 {
-    32
-}
-
-const fn default_icon_size_pagination() -> i32 {
-    default_icon_size() / 2
-}
-
-const fn default_page_size() -> usize {
-    1000
-}
-
-fn default_icon_page_back() -> String {
-    String::from("󰅁")
-}
-
-fn default_icon_page_forward() -> String {
-    String::from("󰅂")
-}
-
-const fn default_truncate_popup() -> TruncateMode {
-    TruncateMode::Length {
-        mode: EllipsizeMode::Middle,
-        length: None,
-        max_length: Some(25),
     }
 }
 

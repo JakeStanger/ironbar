@@ -1,4 +1,4 @@
-use crate::config::default_launch_command;
+use crate::config::default;
 use crate::config::{CommonConfig, TruncateMode};
 use crate::modules::menu::{MenuEntry, XdgSection};
 use indexmap::IndexMap;
@@ -54,11 +54,11 @@ pub struct CustomEntry {
 
 #[derive(Debug, Deserialize, Clone)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[serde(default)]
 pub struct MenuModule {
     /// Items to add to the start of the main menu.
     ///
     /// **Default**: `[]`
-    #[serde(default)]
     pub(super) start: Vec<MenuConfig>,
 
     /// Items to add to the start of the main menu.
@@ -67,13 +67,11 @@ pub struct MenuModule {
     /// that should cover all common applications.
     ///
     /// **Default**: See `examples/menu/default`
-    #[serde(default = "default_menu")]
     pub(super) center: Vec<MenuConfig>,
 
     /// Items to add to the end of the main menu.
     ///
     /// **Default**: `[]`
-    #[serde(default)]
     pub(super) end: Vec<MenuConfig>,
 
     /// Fixed height of the menu.
@@ -84,7 +82,6 @@ pub struct MenuModule {
     /// Leave null to resize dynamically.
     ///
     /// **Default**: `null`
-    #[serde(default)]
     pub(super) height: Option<i32>,
 
     /// Fixed width of the menu.
@@ -93,23 +90,19 @@ pub struct MenuModule {
     /// to customise how item labels are truncated.
     ///
     /// **Default**: `null`
-    #[serde(default)]
     pub(super) width: Option<i32>,
 
     /// Label to show on the menu button on the bar.
     ///
     /// **Default**: `≡`
-    #[serde(default = "default_menu_popup_label")]
     pub(super) label: Option<String>,
 
     /// Icon to show on the menu button on the bar.
     ///
     /// **Default**: `null`
-    #[serde(default)]
     pub(super) label_icon: Option<String>,
 
     /// Size of the `label_icon` image.
-    #[serde(default = "default_menu_popup_icon_size")]
     pub(super) label_icon_size: i32,
 
     // -- common --
@@ -118,7 +111,6 @@ pub struct MenuModule {
     /// See [truncate options](module-level-options#truncate-mode).
     ///
     /// **Default**: `Auto (end)`
-    #[serde(default)]
     pub(super) truncate: TruncateMode,
 
     /// See [common options](module-level-options#common-options).
@@ -128,7 +120,6 @@ pub struct MenuModule {
     /// Command used to launch applications.
     ///
     /// **Default**: `gtk-launch`
-    #[serde(default = "default_launch_command")]
     pub launch_command: String,
 }
 
@@ -141,12 +132,11 @@ impl Default for MenuModule {
             height: None,
             width: None,
             truncate: TruncateMode::default(),
-            // max_label_length: default_length(),
-            label: default_menu_popup_label(),
+            label: Some("≡".to_string()),
             label_icon: None,
-            label_icon_size: default_menu_popup_icon_size(),
+            label_icon_size: default::IconSize::Tiny as i32,
             common: Some(CommonConfig::default()),
-            launch_command: default_launch_command(),
+            launch_command: default::launch_command(),
         }
     }
 }
@@ -219,14 +209,6 @@ fn default_menu() -> Vec<MenuConfig> {
             categories: vec!["Settings".to_string(), "Screensaver".to_string()],
         }),
     ]
-}
-
-fn default_menu_popup_label() -> Option<String> {
-    Some("≡".to_string())
-}
-
-const fn default_menu_popup_icon_size() -> i32 {
-    16
 }
 
 pub const OTHER_LABEL: &str = "Other";

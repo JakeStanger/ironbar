@@ -5,7 +5,7 @@ mod open_state;
 use self::button::Button;
 use crate::channels::{AsyncSenderExt, BroadcastReceiverExt};
 use crate::clients::compositor::{Workspace, WorkspaceClient, WorkspaceUpdate};
-use crate::config::{CommonConfig, LayoutConfig};
+use crate::config::{CommonConfig, LayoutConfig, default};
 use crate::gtk_helpers::IronbarGtkExt;
 use crate::modules::workspaces::button_map::{ButtonMap, Identifier};
 use crate::modules::workspaces::open_state::OpenState;
@@ -60,6 +60,7 @@ impl Default for Favorites {
 
 #[derive(Debug, Deserialize, Clone)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[serde(default)]
 pub struct WorkspacesModule {
     /// Map of actual workspace names to custom names.
     ///
@@ -107,7 +108,6 @@ pub struct WorkspacesModule {
     /// When false, only shows workspaces on the current monitor.
     ///
     /// **Default**: `false`
-    #[serde(default = "crate::config::default_false")]
     all_monitors: bool,
 
     /// The method used for sorting workspaces.
@@ -125,7 +125,6 @@ pub struct WorkspacesModule {
     /// The size to render icons at (image icons only).
     ///
     /// **Default**: `32`
-    #[serde(default = "default_icon_size")]
     icon_size: i32,
 
     // -- Common --
@@ -138,8 +137,19 @@ pub struct WorkspacesModule {
     pub common: Option<CommonConfig>,
 }
 
-const fn default_icon_size() -> i32 {
-    32
+impl Default for WorkspacesModule {
+    fn default() -> Self {
+        Self {
+            name_map: HashMap::default(),
+            favorites: Favorites::default(),
+            hidden: vec![],
+            all_monitors: false,
+            sort: SortOrder::default(),
+            icon_size: default::IconSize::Normal as i32,
+            layout: LayoutConfig::default(),
+            common: Some(CommonConfig::default()),
+        }
+    }
 }
 
 #[derive(Debug, Clone)]

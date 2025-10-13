@@ -60,7 +60,7 @@ pub struct Client {
 
 impl Client {
     pub(crate) async fn new() -> Result<Self> {
-        let (tx, _rx) = watch::channel(BluetoothState::NotFound);
+        let (tx, rx) = watch::channel(BluetoothState::NotFound);
         let session = bluer::Session::new().await?;
         {
             let tx = tx.clone();
@@ -102,7 +102,11 @@ impl Client {
             });
         }
 
-        Ok(Self { session, tx, _rx })
+        Ok(Self {
+            session,
+            tx,
+            _rx: rx,
+        })
     }
 
     pub(crate) fn subscribe(&self) -> watch::Receiver<BluetoothState> {
