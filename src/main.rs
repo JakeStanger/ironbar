@@ -61,13 +61,11 @@ pub const APP_ID: &str = "dev.jstanger.ironbar";
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 
 fn main() {
-    let _guard = logging::install_logging();
-
     cfg_if! {
         if #[cfg(feature = "cli")] {
             run_with_args();
         } else {
-            start_ironbar();
+            start_ironbar(false);
         }
     }
 }
@@ -110,7 +108,7 @@ fn run_with_args() {
                 }
             });
         }
-        None => start_ironbar(),
+        None => start_ironbar(args.debug),
     }
 }
 
@@ -316,7 +314,9 @@ impl Ironbar {
     }
 }
 
-fn start_ironbar() {
+fn start_ironbar(debug: bool) {
+    let _guard = logging::install_logging(debug);
+
     let ironbar = Ironbar::new();
     ironbar.start();
 }

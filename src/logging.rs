@@ -29,7 +29,7 @@ impl<'a> MakeWriter<'a> for MakeFileWriter {
     }
 }
 
-pub fn install_logging() -> Result<WorkerGuard> {
+pub fn install_logging(debug: bool) -> Result<WorkerGuard> {
     // Disable backtraces by default
     if env::var("RUST_LIB_BACKTRACE").is_err() {
         // as this is the very first thing we do (before runtimes are set up)
@@ -41,7 +41,7 @@ pub fn install_logging() -> Result<WorkerGuard> {
 
     // keep guard in scope
     // otherwise file logging drops
-    let guard = install_tracing()?;
+    let guard = install_tracing(debug)?;
 
     let hook_builder = color_eyre::config::HookBuilder::default();
     let (panic_hook, eyre_hook) = hook_builder.into_hooks();
@@ -60,13 +60,14 @@ pub fn install_logging() -> Result<WorkerGuard> {
 ///
 /// The returned `WorkerGuard` must remain in scope
 /// for the lifetime of the application for logging to file to work.
-fn install_tracing() -> Result<WorkerGuard> {
-    const DEFAULT_LOG: &str = "info";
+fn install_tracing(debug: bool) -> Result<WorkerGuard> {
     const DEFAULT_FILE_LOG: &str = "warn";
+
+    let default_log = if debug { "debug" } else { "info" };
 
     let fmt_layer = fmt::layer().with_target(true).with_line_number(true);
     let filter_layer =
-        EnvFilter::try_from_env("IRONBAR_LOG").or_else(|_| EnvFilter::try_new(DEFAULT_LOG))?;
+        EnvFilter::try_from_env("IRONBAR_LOG").or_else(|_| EnvFilter::try_new(default_log))?;
 
     let file_filter_layer = EnvFilter::try_from_env("IRONBAR_FILE_LOG")
         .or_else(|_| EnvFilter::try_new(DEFAULT_FILE_LOG))?;

@@ -2,7 +2,7 @@ use crate::channels::{AsyncSenderExt, BroadcastReceiverExt};
 use crate::clients::swaync;
 use crate::config::CommonConfig;
 use crate::image::IconButton;
-use crate::modules::{Module, ModuleInfo, ModuleParts, WidgetContext};
+use crate::modules::{Module, ModuleInfo, ModuleParts, ModuleUpdateEvent, WidgetContext};
 use crate::{module_impl, spawn};
 use gtk::prelude::*;
 use gtk::{Align, Label, Overlay};
@@ -144,10 +144,14 @@ impl Module<Overlay> for NotificationsModule {
             });
         }
 
+        let tx = context.tx.clone();
         spawn(async move {
             while let Some(event) = rx.recv().await {
                 match event {
-                    UiEvent::ToggleVisibility => client.toggle_visibility().await,
+                    UiEvent::ToggleVisibility => {
+                        client.toggle_visibility().await;
+                        tx.send_expect(ModuleUpdateEvent::ClosePopup).await;
+                    }
                 }
             }
         });

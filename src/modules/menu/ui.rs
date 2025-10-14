@@ -47,6 +47,7 @@ where
     if let MenuEntry::Xdg(_) = entry {
         let right_arrow = Label::new(Some("🢒"));
         right_arrow.set_halign(Align::End);
+        right_arrow.set_hexpand(true);
         button_container.append(&right_arrow);
     }
 
@@ -179,7 +180,17 @@ pub fn add_entries(
             container.append(sub_menu);
             let sub_menu1 = sub_menu.clone();
 
-            button.connect_clicked(move |_button| {
+            button.connect_clicked(move |button| {
+                button
+                    .parent()
+                    .expect("button parent should exist")
+                    .downcast::<gtk::Box>()
+                    .expect("button container should be gtk::Box")
+                    .children()
+                    .for_each(|child| child.remove_css_class("open"));
+
+                button.add_css_class("open");
+
                 container1.children().skip(1).for_each(|sub_menu| {
                     if sub_menu.get_visible() {
                         sub_menu.set_visible(false);
