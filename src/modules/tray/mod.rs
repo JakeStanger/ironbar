@@ -120,9 +120,7 @@ impl Module<gtk::Box> for TrayModule {
 
         // We use a `Box` here instead of the (supposedly correct) `MenuBar`
         // as the latter has issues on Sway with menus focus-stealing from the bar.
-        //
-        // Each widget is wrapped in an EventBox, copying what Waybar does here.
-        let container = gtk::Box::new(orientation, 10);
+        let container = gtk::Box::new(orientation, 0);
 
         {
             let container = container.clone();
