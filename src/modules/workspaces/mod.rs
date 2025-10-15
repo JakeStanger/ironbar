@@ -356,7 +356,7 @@ impl Module<gtk::Box> for WorkspacesModule {
 
                         has_initialized = true;
                     }
-                    WorkspaceUpdate::Add(workspace) => {
+                    WorkspaceUpdate::Add(workspace) if has_initialized => {
                         if !self.hidden.contains(&workspace.name)
                             && (self.all_monitors || workspace.monitor == output_name)
                         {
@@ -366,7 +366,7 @@ impl Module<gtk::Box> for WorkspacesModule {
                         reorder!();
                     }
                     WorkspaceUpdate::Remove(id) => remove_workspace(id, &mut button_map),
-                    WorkspaceUpdate::Move(workspace) => {
+                    WorkspaceUpdate::Move(workspace) if has_initialized => {
                         if self.all_monitors {
                             return;
                         }
@@ -380,7 +380,7 @@ impl Module<gtk::Box> for WorkspacesModule {
                             remove_workspace(workspace.id, &mut button_map);
                         }
                     }
-                    WorkspaceUpdate::Focus { old, new } => {
+                    WorkspaceUpdate::Focus { old, new } if has_initialized => {
                         // Open states are calculated here rather than using the workspace visibility
                         // as that seems to come back wrong, at least on Hyprland.
                         // Likely a deeper issue that needs exploring.
@@ -401,7 +401,7 @@ impl Module<gtk::Box> for WorkspacesModule {
                             button.set_open_state(OpenState::Focused);
                         }
                     }
-                    WorkspaceUpdate::Rename { id, name } => {
+                    WorkspaceUpdate::Rename { id, name } if has_initialized => {
                         if let Some(button) = button_map
                             .get(&Identifier::Id(id))
                             .or_else(|| button_map.get(&Identifier::Name(name.clone())))
@@ -413,7 +413,7 @@ impl Module<gtk::Box> for WorkspacesModule {
                             button.set_widget_name(&name);
                         }
                     }
-                    WorkspaceUpdate::Urgent { id, urgent } => {
+                    WorkspaceUpdate::Urgent { id, urgent } if has_initialized => {
                         if let Some(button) = button_map
                             .get(&Identifier::Id(id))
                             .or_else(|| button_map.find_button_by_id(id))
@@ -421,7 +421,14 @@ impl Module<gtk::Box> for WorkspacesModule {
                             button.set_urgent(urgent);
                         }
                     }
-                    WorkspaceUpdate::Unknown => warn!("received unknown type workspace event"),
+                    WorkspaceUpdate::Unknown if has_initialized => {
+                        warn!("received unknown type workspace event")
+                    }
+                    // Avoids race conditions where e.g. we process workspace moves fired _before_
+                    // we could send the WorkspaceUpdate::Init() event, resulting in duplicate
+                    // workspaces.
+                    // https://github.com/JakeStanger/ironbar/issues/1196#issuecomment-3407036546
+                    _ => warn!("ignoring workspace event received before initialization"),
                 });
         }
 
