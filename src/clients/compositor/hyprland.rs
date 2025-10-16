@@ -203,22 +203,27 @@ impl Client {
             event_listener.add_workspace_moved_handler(move |event_data| {
                 let _lock = lock!(lock);
                 let workspace_type = event_data.name;
-                debug!("Received workspace move: {workspace_type:?}");
 
                 let mut prev_workspace = lock!(active);
+                debug!(
+                    "Received workspace move: {:?} -> {workspace_type:?}",
+                    prev_workspace.as_ref().map(|w| &w.name)
+                );
 
                 let workspace_name = get_workspace_name(workspace_type);
                 let workspace = Self::get_workspace(&workspace_name, prev_workspace.as_ref());
 
                 match workspace {
-                    Ok(Some(workspace)) if !workspace.visibility.is_focused() => {
-                        Self::send_focus_change(&mut prev_workspace, workspace, &tx);
+                    Ok(Some(workspace)) => {
+                        tx.send_expect(WorkspaceUpdate::Move(workspace.clone()));
+                        if !workspace.visibility.is_focused() {
+                            Self::send_focus_change(&mut prev_workspace, workspace, &tx);
+                        }
                     }
                     Ok(None) => {
                         error!("Unable to locate workspace");
                     }
                     Err(e) => error!("Failed to get workspace: {e:#}"),
-                    _ => {}
                 }
             });
         }
