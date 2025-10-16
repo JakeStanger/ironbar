@@ -40,6 +40,13 @@ pub struct Bar {
     inner: Inner,
 }
 
+impl Drop for Bar {
+    fn drop(&mut self) {
+        self.window.close();
+        self.window.destroy();
+    }
+}
+
 impl Bar {
     pub fn new(
         app: &Application,
