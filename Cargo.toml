@@ -21,6 +21,7 @@ default = [
     "custom",
     "focused",
     "http",
+    "inhibit",
     "ipc",
     "keyboard+all",
     "launcher",
@@ -76,6 +77,8 @@ clock = ["chrono"]
 custom = []
 
 focused = []
+
+inhibit = ["zbus", "futures-lite", "chrono", "humantime"]
 
 keyboard = ["dep:colpetto", "dep:evdev-rs", "dep:rustix", "futures-lite"]
 "keyboard+all" = ["keyboard", "keyboard+sway", "keyboard+hyprland"]
@@ -144,6 +147,7 @@ dirs = "6.0.0"
 walkdir = "2.5.0"
 notify = { version = "8.2.0", default-features = false }
 wayland-client = "0.31.1"
+wayland-protocols = { version = "0.32.9", features = ["client", "unstable"] }
 wayland-protocols-wlr = { version = "0.3.9", features = ["client"] }
 smithay-client-toolkit = { version = "0.20.0", default-features = false, features = [
     "calloop",
@@ -189,8 +193,9 @@ system-tray = { version = "0.8.4", optional = true }
 libpulse-binding = { version = "2.30.1", optional = true }
 
 # shared
-futures-lite = { version = "2.6.1", optional = true } # battery, network_manager, workspaces, keyboard
-zbus = { version = "5.11.0", default-features = false, features = ["tokio"], optional = true } # battery, network_manager, notifications
+futures-lite = { version = "2.6.1", optional = true } # battery, network_manager, workspaces, keyboard, inhibit
+zbus = { version = "5.11.0", default-features = false, features = ["tokio"], optional = true } # battery, network_manager, notifications, inhibit
+humantime = { version = "2.1.0", optional = true } # inhibit
 swayipc-async = { version = "2.1.1", optional = true } # workspaces, keyboard
 hyprland = { version = "0.4.0-beta.3", optional = true } # workspaces, keyboard
 rustix = { version = "1.1.2", default-features = false, features = ["std", "fs", "pipe", "event"], optional = true } # clipboard, input
