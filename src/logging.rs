@@ -48,10 +48,10 @@ pub fn install_logging(debug: bool) -> Result<WorkerGuard> {
 
     eyre_hook.install()?;
 
-    // custom hook allows tracing_appender to capture panics
-    panic::set_hook(Box::new(move |panic_info| {
-        error!("{}", panic_hook.panic_report(panic_info));
-    }));
+    // // custom hook allows tracing_appender to capture panics
+    // panic::set_hook(Box::new(move |panic_info| {
+    //     error!("{}", panic_hook.panic_report(panic_info));
+    // }));
 
     Ok(guard)
 }

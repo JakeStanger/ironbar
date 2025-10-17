@@ -8,19 +8,24 @@ use super::{
     Module, ModuleInfo, ModuleParts, ModulePopup, ModuleUpdateEvent, PopupButton, WidgetContext,
 };
 use crate::channels::{AsyncSenderExt, BroadcastReceiverExt};
-use crate::clients::wayland::{self, ToplevelEvent};
+use crate::clients::wayland::{self, Buffer, ToplevelEvent};
 use crate::config::{CommonConfig, EllipsizeMode, LayoutConfig, TruncateMode, default};
 use crate::desktop_file::open_program;
-use crate::gtk_helpers::{IronbarGtkExt, IronbarLabelExt};
+use crate::gtk_helpers::{IronbarGtkExt, IronbarLabelExt, IronbarPaintableExt};
 use crate::modules::launcher::item::ImageTextButton;
 use crate::modules::launcher::pagination::{IconContext, Pagination};
 use crate::{arc_mut, lock, module_impl, rc_mut, spawn, write_lock};
 use color_eyre::Report;
+use gtk::gdk::Texture;
 use gtk::prelude::*;
-use gtk::{Button, Orientation};
+use gtk::{Button, EventControllerMotion, Orientation};
 use indexmap::IndexMap;
 use serde::Deserialize;
+use std::cell::RefCell;
+use std::cmp::min;
+use std::rc::Rc;
 use std::sync::Arc;
+use std::time::Duration;
 use tokio::sync::mpsc;
 use tracing::{debug, error, trace, warn};
 
@@ -48,6 +53,24 @@ pub struct LauncherModule {
     ///
     /// **Default**: `32`
     icon_size: i32,
+
+    /// Whether to show window previews when hovering icons.
+    ///
+    /// **Default**: `true`
+    show_previews: bool,
+
+    /// Target width for a window preview.
+    /// Aspect ratio is preserved.
+    ///
+    /// **Default**: `256`
+    ///
+    preview_size: f64,
+
+    /// Target framerate for window preview updates.
+    ///
+    /// **Default**: `60`
+    /// **Max**: `999`
+    preview_fps: u64,
 
     /// Whether items should be added from right-to-left
     /// instead of left-to-right.
@@ -119,6 +142,9 @@ impl Default for LauncherModule {
             show_names: false,
             show_icons: true,
             icon_size: default::IconSize::Normal as i32,
+            show_previews: true,
+            preview_size: 256.0,
+            preview_fps: 60,
             reversed: false,
             minimize_focused: true,
             page_size: 1000,
@@ -171,12 +197,14 @@ pub enum LauncherUpdate {
     RemoveItem(String),
     /// Removes window from item with `app_id`.
     RemoveWindow(String, usize),
-    /// Sets title for `app_id`
+    /// Sets title for `app_id` -> `toplevel_id`
     Title(String, usize, String),
     /// Marks the item with `app_id` as focused or not focused
     Focus(String, bool),
     /// Declares the item with `app_id` has been hovered over
     Hover(String),
+    /// Sets the preview buffer for `app_id` -> `toplevel_id`
+    Buffer(String, usize, Buffer),
 }
 
 #[derive(Debug)]
@@ -185,6 +213,7 @@ pub enum ItemEvent {
     FocusWindow(usize),
     OpenItem(String),
     MinimizeItem(String),
+    UpdateItemBuffers(String),
 }
 
 enum ItemOrWindow {
@@ -232,6 +261,9 @@ impl Module<gtk::Box> for LauncherModule {
 
         let wl = context.client::<wayland::Client>();
         let desktop_files = context.ironbar.desktop_files();
+
+        let show_previews = self.show_previews;
+
         spawn(async move {
             let items = items2;
             let tx = tx2;
@@ -262,12 +294,30 @@ impl Module<gtk::Box> for LauncherModule {
             let handles = wl.toplevel_info_all();
 
             for info in handles {
+                let id = info.id;
+
+                let buffer = if show_previews {
+                    wl.toplevel_buffer(id)
+                } else {
+                    None
+                };
+
                 let mut items = lock!(items);
                 let app_id = resolve_app_id(&info.app_id);
+
                 if let Some(item) = items.get_mut(&app_id) {
                     item.merge_toplevel(info.clone());
+
+                    if show_previews {
+                        item.set_window_buffer(id, buffer)
+                    }
                 } else {
                     let mut item = Item::from(info.clone());
+
+                    if show_previews {
+                        item.set_window_buffer(id, buffer)
+                    }
+
                     item.app_id.clone_from(&app_id);
                     items.insert(app_id, item);
                 }
@@ -378,6 +428,16 @@ impl Module<gtk::Box> for LauncherModule {
                             None => {}
                         }
                     }
+                    ToplevelEvent::Buffer(info, buffer) => {
+                        let app_id = resolve_app_id(&info.app_id);
+
+                        if let Some(item) = lock!(items).get_mut(&app_id) {
+                            // TODO: This is only set to send initially - refactor out
+                            item.set_window_buffer(info.id, Some(buffer.clone()));
+                        }
+
+                        send_update(LauncherUpdate::Buffer(app_id, info.id, buffer)).await?;
+                    }
                 }
             }
 
@@ -401,6 +461,12 @@ impl Module<gtk::Box> for LauncherModule {
                         Ok(None) => warn!("Could not find applications file for {}", app_id),
                         Err(err) => error!("Failed to find parse file for {}: {}", app_id, err),
                     }
+                } else if let ItemEvent::UpdateItemBuffers(app_id) = event {
+                    if let Some(item) = lock!(items).get(&app_id) {
+                        item.windows
+                            .iter()
+                            .for_each(|(&id, _)| wl.toplevel_buffer_update(id));
+                    }
                 } else {
                     tx.send_expect(ModuleUpdateEvent::ClosePopup).await;
 
@@ -417,7 +483,7 @@ impl Module<gtk::Box> for LauncherModule {
                             })
                         }
                         ItemEvent::FocusWindow(id) => Some(id),
-                        ItemEvent::OpenItem(_) => unreachable!(),
+                        ItemEvent::UpdateItemBuffers(_) | ItemEvent::OpenItem(_) => unreachable!(), // handled above
                     };
 
                     if let Some(id) = id
@@ -466,6 +532,7 @@ impl Module<gtk::Box> for LauncherModule {
             let appearance_options = AppearanceOptions {
                 show_names: self.show_names,
                 show_icons: self.show_icons,
+                show_previews: self.show_previews,
                 icon_size: self.icon_size,
                 truncate: self.truncate,
                 orientation: self.layout.orientation(info),
@@ -580,7 +647,7 @@ impl Module<gtk::Box> for LauncherModule {
                                 button.button.label.set_label(&name);
                             }
                         }
-                        LauncherUpdate::Hover(_) => {}
+                        LauncherUpdate::Hover(_) | LauncherUpdate::Buffer(_, _, _) => {}
                     }
                 },
             );
@@ -609,18 +676,36 @@ impl Module<gtk::Box> for LauncherModule {
     ) -> Option<gtk::Box> {
         const MAX_WIDTH: i32 = 250;
 
-        let container = gtk::Box::new(Orientation::Vertical, 0);
+        let orientation = if self.show_previews {
+            Orientation::Horizontal
+        } else {
+            Orientation::Vertical
+        };
+
+        let container = gtk::Box::new(orientation, 0);
 
         // we need some content to force the container to have a size
         let placeholder = Button::with_label("PLACEHOLDER");
         placeholder.set_width_request(MAX_WIDTH);
         container.append(&placeholder);
 
+        let controller = EventControllerMotion::new();
+        let popup = context.popup.clone();
+        controller.connect_leave(move |_| {
+            // visible check is required to avoid segfault
+            if popup.visible() {
+                popup.hide();
+            }
+        });
+        container.add_controller(controller);
+
+        // let curr_app = Rc::new(RwLock::new(None));
+        let curr_app = Rc::new(RefCell::new(None));
         let mut buttons = IndexMap::<String, IndexMap<usize, ImageTextButton>>::new();
 
-        context
-            .subscribe()
-            .recv_glib(&container, move |container, event| {
+        context.subscribe().recv_glib(
+            (&container, &curr_app, &context.controller_tx.clone()),
+            move |(container, curr_app, controller_tx), event| {
                 match event {
                     LauncherUpdate::AddItem(item) => {
                         let app_id = item.app_id.clone();
@@ -630,14 +715,34 @@ impl Module<gtk::Box> for LauncherModule {
                             .windows
                             .into_iter()
                             .map(|(_, win)| {
-                                // TODO: Currently has a useless image
-                                let button = ImageTextButton::new(Orientation::Horizontal);
+                                let orientation = if self.show_previews {
+                                    Orientation::Vertical
+                                } else {
+                                    Orientation::Horizontal
+                                };
+
+                                let button = ImageTextButton::new(orientation);
                                 button.set_height_request(40);
                                 button.label.set_label(&win.name);
                                 button.label.truncate(self.truncate_popup);
 
+                                if self.show_previews
+                                    && let Some(buffer) = win.preview_buffer
                                 {
-                                    let tx = context.controller_tx.clone();
+                                    let width = buffer.width;
+                                    let height = buffer.height;
+                                    let ratio = height as f64 / width as f64;
+
+                                    if let Ok(texture) = Texture::try_from(buffer) {
+                                        let texture = texture
+                                            .scale(self.preview_size, self.preview_size * ratio);
+
+                                        button.picture.set_paintable(texture.as_ref());
+                                    }
+                                }
+
+                                {
+                                    let tx = controller_tx.clone();
                                     button.connect_clicked(move |_| {
                                         tx.send_spawn(ItemEvent::FocusWindow(win.id));
                                     });
@@ -657,13 +762,27 @@ impl Module<gtk::Box> for LauncherModule {
 
                         if let Some(buttons) = buttons.get_mut(&app_id) {
                             // TODO: Currently has a useless image
-                            let button = ImageTextButton::new(Orientation::Horizontal);
+                            let button = ImageTextButton::new(Orientation::Vertical);
                             button.set_height_request(40);
                             button.label.set_label(&win.name);
                             button.label.truncate(self.truncate_popup);
 
+                            if self.show_previews
+                                && let Some(buffer) = win.preview_buffer
                             {
-                                let tx = context.controller_tx.clone();
+                                let width = buffer.width;
+                                let height = buffer.height;
+                                let ratio = height as f64 / width as f64;
+
+                                if let Ok(texture) = Texture::try_from(buffer) {
+                                    let texture =
+                                        texture.scale(self.preview_size, self.preview_size * ratio);
+                                    button.picture.set_paintable(texture.as_ref());
+                                }
+                            }
+
+                            {
+                                let tx = controller_tx.clone();
                                 button.connect_clicked(move |_button| {
                                     tx.send_spawn(ItemEvent::FocusWindow(win.id));
                                 });
@@ -706,10 +825,55 @@ impl Module<gtk::Box> for LauncherModule {
                             container.set_visible(true);
                             container.set_width_request(MAX_WIDTH);
                         }
+
+                        *curr_app.borrow_mut() = Some(app_id)
+                    }
+                    LauncherUpdate::Buffer(app_id, win_id, buffer) => {
+                        if self.show_previews
+                            && let Some(buttons) = buttons.get_mut(&app_id)
+                            && let Some(button) = buttons.get(&win_id)
+                        {
+                            let width = buffer.width;
+                            let height = buffer.height;
+                            let ratio = height as f64 / width as f64;
+
+                            if let Ok(texture) = Texture::try_from(buffer) {
+                                let texture =
+                                    texture.scale(self.preview_size, self.preview_size * ratio);
+
+                                button.picture.set_paintable(texture.as_ref());
+                            }
+                        }
                     }
                     _ => {}
                 }
+            },
+        );
+
+        if self.show_previews {
+            {
+                let curr_app = curr_app.clone();
+                context.popup.popover.connect_closed(move |_| {
+                    *curr_app.borrow_mut() = None;
+                });
+            }
+
+            // preview update loop - only runs when a preview window is open
+            let controller_tx = context.controller_tx.clone();
+            glib::spawn_future_local(async move {
+                loop {
+                    let app_id = curr_app.borrow().clone();
+                    if let Some(app_id) = app_id {
+                        controller_tx
+                            .send_expect(ItemEvent::UpdateItemBuffers(app_id))
+                            .await;
+                    }
+
+                    let fps = min(self.preview_fps, 999);
+                    glib::timeout_future(Duration::from_millis(1000 / fps)).await;
+                }
             });
+        }
 
         Some(container)
     }

@@ -1,16 +1,20 @@
+mod dmabuf;
+mod ext_image_copy_capture;
+mod hyprland_toplevel_export;
 mod macros;
 mod wl_output;
 mod wl_seat;
 
-use crate::error::{ERR_CHANNEL_RECV, ExitCode};
-use crate::{arc_mut, lock, register_client, spawn, spawn_blocking};
-use std::process::exit;
-use std::sync::{Arc, Mutex};
-
 use crate::channels::SyncSenderExt;
+use crate::error::{ERR_CHANNEL_RECV, ExitCode};
+use crate::{
+    arc_mut, delegate_hyprland_export_frame, delegate_hyprland_export_manager, lock,
+    register_client, spawn, spawn_blocking,
+};
 use calloop_channel::Event::Msg;
 use cfg_if::cfg_if;
 use color_eyre::{Help, Report};
+use smithay_client_toolkit::dmabuf::DmabufState;
 use smithay_client_toolkit::output::OutputState;
 use smithay_client_toolkit::reexports::calloop::EventLoop;
 use smithay_client_toolkit::reexports::calloop::channel as calloop_channel;
@@ -18,9 +22,14 @@ use smithay_client_toolkit::reexports::calloop_wayland_source::WaylandSource;
 use smithay_client_toolkit::registry::{ProvidesRegistryState, RegistryState};
 use smithay_client_toolkit::seat::SeatState;
 use smithay_client_toolkit::{
-    delegate_output, delegate_registry, delegate_seat, registry_handlers,
+    delegate_dmabuf, delegate_output, delegate_registry, delegate_seat, registry_handlers,
 };
+use std::collections::HashMap;
+use std::fs::File;
+use std::process::exit;
+use std::sync::{Arc, Mutex};
 use tokio::sync::{broadcast, mpsc};
+use tracing::log::warn;
 use tracing::{debug, error, trace};
 use wayland_client::globals::registry_queue_init;
 use wayland_client::{Connection, QueueHandle};
@@ -56,6 +65,10 @@ cfg_if! {
     }
 }
 
+use hyprland_toplevel_export::manager::ToplevelManagerHandler;
+
+pub use hyprland_toplevel_export::Buffer;
+
 #[derive(Debug)]
 pub enum Event {
     Output(OutputEvent),
@@ -83,6 +96,9 @@ pub enum Request {
     CopyToClipboard(ClipboardItem),
     #[cfg(feature = "clipboard")]
     ClipboardItem,
+
+    ToplevelBuffer(usize),
+    ToplevelBufferUpdate(usize),
 }
 
 #[derive(Debug)]
@@ -98,6 +114,8 @@ pub enum Response {
 
     #[cfg(feature = "clipboard")]
     ClipboardItem(Option<ClipboardItem>),
+
+    ToplevelBuffer(Option<Buffer>),
 }
 
 #[derive(Debug)]
@@ -171,6 +189,7 @@ impl Client {
             toplevel_channel: toplevel_channel.into(),
             #[cfg(feature = "clipboard")]
             clipboard_channel: clipboard_channel.into(),
+            // buffer_channel: buffer_channel.into(),
         }
     }
 
@@ -215,6 +234,15 @@ pub struct Environment {
     // local state
     #[cfg(feature = "clipboard")]
     clipboard: Arc<Mutex<Option<ClipboardItem>>>,
+
+    hyprland_toplevel_export_manager_state:
+        Option<hyprland_toplevel_export::manager::ToplevelManagerState>,
+
+    dmabuf_state: DmabufState,
+    dmabuf_formats: HashMap<u32, Vec<u64>>,
+    gbm_device: Option<gbm::Device<File>>,
+
+    toplevel_buffers: HashMap<usize, Buffer>,
 }
 
 delegate_registry!(Environment);
@@ -237,6 +265,10 @@ cfg_if! {
         delegate_data_control_source!(Environment);
     }
 }
+
+delegate_dmabuf!(Environment);
+delegate_hyprland_export_manager!(Environment);
+delegate_hyprland_export_frame!(Environment);
 
 impl Environment {
     pub fn spawn(
@@ -263,6 +295,25 @@ impl Environment {
 
         let output_state = OutputState::new(&globals, &qh);
         let seat_state = SeatState::new(&globals, &qh);
+
+        let dmabuf_state = DmabufState::new(&globals, &qh);
+        let mut dmabuf_formats = HashMap::new();
+        match dmabuf_state.version() {
+            None => panic!("TODO"),
+            Some(0..=2) => unreachable!(),
+            Some(3) => {
+                for format in dmabuf_state.modifiers() {
+                    dmabuf_formats
+                        .entry(format.format)
+                        .or_insert_with(Vec::new)
+                        .push(format.modifier);
+                }
+            }
+            Some(4..) => {
+                dmabuf_state.get_default_feedback(&qh).unwrap();
+            }
+        }
+
         #[cfg(any(feature = "focused", feature = "launcher"))]
         if let Err(err) = ToplevelManagerState::bind(&globals, &qh) {
             error!("{:?}",
@@ -289,6 +340,19 @@ impl Environment {
             }
         };
 
+        let hyprland_toplevel_export_manager_state =
+            match hyprland_toplevel_export::manager::ToplevelManagerState::bind(&globals, &qh) {
+                Ok(state) => Some(state),
+                Err(err) => {
+                    warn!("{:?}",
+                Report::new(err)
+                    .wrap_err("Failed to bind to hyprland_toplevel_export_frame_v1 global")
+                    .note("This is likely a due to the current compositor not supporting the required protocol")
+            );
+                    None
+                }
+            };
+
         let mut env = Self {
             registry_state,
             output_state,
@@ -307,6 +371,13 @@ impl Environment {
             copy_paste_sources: vec![],
             #[cfg(feature = "clipboard")]
             clipboard: arc_mut!(None),
+
+            hyprland_toplevel_export_manager_state,
+            dmabuf_state,
+            dmabuf_formats,
+            gbm_device: None,
+
+            toplevel_buffers: HashMap::new(), // buffer_chain: DoubleBuffer::default(),
         };
 
         loop_handle
@@ -331,15 +402,15 @@ impl Environment {
     fn on_request(event: calloop_channel::Event<Request>, _metadata: &mut (), env: &mut Self) {
         trace!("Request: {event:?}");
 
-        match event {
+        let res = match event {
             Msg(Request::Roundtrip) => {
                 debug!("received roundtrip request");
-                env.response_tx.send_expect(Response::Ok);
+                Response::Ok
             }
             #[cfg(feature = "ipc")]
             Msg(Request::OutputInfoAll) => {
                 let infos = env.output_info_all();
-                env.response_tx.send_expect(Response::OutputInfoAll(infos));
+                Response::OutputInfoAll(infos)
             }
             #[cfg(any(feature = "focused", feature = "launcher"))]
             Msg(Request::ToplevelInfoAll) => {
@@ -349,8 +420,7 @@ impl Environment {
                     .filter_map(ToplevelHandle::info)
                     .collect();
 
-                env.response_tx
-                    .send_expect(Response::ToplevelInfoAll(infos));
+                Response::ToplevelInfoAll(infos)
             }
             #[cfg(feature = "launcher")]
             Msg(Request::ToplevelFocus(id)) => {
@@ -364,7 +434,7 @@ impl Environment {
                     handle.focus(&seat);
                 }
 
-                env.response_tx.send_expect(Response::Ok);
+                Response::Ok
             }
             #[cfg(feature = "launcher")]
             Msg(Request::ToplevelMinimize(id)) => {
@@ -377,20 +447,43 @@ impl Environment {
                     handle.minimize();
                 }
 
-                env.response_tx.send_expect(Response::Ok);
+                Response::Ok
             }
             #[cfg(feature = "clipboard")]
             Msg(Request::CopyToClipboard(item)) => {
                 env.copy_to_clipboard(item);
-                env.response_tx.send_expect(Response::Ok);
+                Response::Ok
             }
             #[cfg(feature = "clipboard")]
             Msg(Request::ClipboardItem) => {
                 let item = lock!(env.clipboard).clone();
-                env.response_tx.send_expect(Response::ClipboardItem(item));
+                Response::ClipboardItem(item)
             }
-            calloop_channel::Event::Closed => error!("request channel unexpectedly closed"),
-        }
+
+            Msg(Request::ToplevelBuffer(usize)) => {
+                let buffer = env.toplevel_buffers.get(&usize).cloned();
+                Response::ToplevelBuffer(buffer)
+            }
+            Msg(Request::ToplevelBufferUpdate(id)) => {
+                let handle = env
+                    .handles
+                    .iter()
+                    .find(|handle| handle.info().is_some_and(|info| info.id == id));
+
+                if let Some(handle) = handle {
+                    env.capture(handle);
+                }
+
+                Response::Ok
+            }
+
+            calloop_channel::Event::Closed => {
+                error!("request channel unexpectedly closed");
+                return;
+            }
+        };
+
+        env.response_tx.send_expect(res);
     }
 }
 

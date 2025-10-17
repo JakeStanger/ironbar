@@ -3,12 +3,13 @@ pub mod manager;
 
 use self::handle::ToplevelHandleHandler;
 use self::manager::ToplevelManagerHandler;
-use super::{Client, Environment, Event, Request, Response};
+use super::{Buffer, Client, Environment, Event, Request, Response};
 use tokio::sync::broadcast;
 use tracing::{debug, error, trace};
 use wayland_client::{Connection, QueueHandle};
 
 use crate::channels::AsyncSenderExt;
+use crate::clients::wayland::hyprland_toplevel_export::manager::ToplevelManagerHandler as HyprlandToplevelManagerHandler;
 pub use handle::{ToplevelHandle, ToplevelInfo};
 
 #[derive(Debug, Clone)]
@@ -16,6 +17,8 @@ pub enum ToplevelEvent {
     New(ToplevelInfo),
     Update(ToplevelInfo),
     Remove(ToplevelInfo),
+
+    Buffer(ToplevelInfo, Buffer),
 }
 
 impl Client {
@@ -74,6 +77,8 @@ impl ToplevelHandleHandler for Environment {
                     self.event_tx
                         .send_spawn(Event::Toplevel(ToplevelEvent::New(info)));
                 }
+
+                self.capture(&handle);
             }
             None => {
                 error!("Handle is missing information!");
