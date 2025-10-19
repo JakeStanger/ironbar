@@ -375,24 +375,6 @@ pub struct BarConfig {
 
 impl Default for BarConfig {
     fn default() -> Self {
-        cfg_if! {
-            if #[cfg(feature = "clock")] {
-                let end = Some(vec![ModuleConfig::Clock(Box::default())]);
-            }
-            else {
-                let end = None;
-            }
-        }
-
-        cfg_if! {
-            if #[cfg(feature = "focused")] {
-                let center = Some(vec![ModuleConfig::Focused(Box::default())]);
-            }
-            else {
-                let center = None;
-            }
-        }
-
         Self {
             position: BarPosition::default(),
             margin: MarginConfig::default(),
@@ -402,14 +384,9 @@ impl Default for BarConfig {
             height: 42,
             start_hidden: None,
             autohide: None,
-            #[cfg(feature = "label")]
-            start: Some(vec![ModuleConfig::Label(
-                LabelModule::new("ℹ️ Using default config".to_string()).into(),
-            )]),
-            #[cfg(not(feature = "label"))]
             start: None,
-            center,
-            end,
+            center: None,
+            end: None,
             anchor_to_edges: true,
             popup_gap: 5,
             popup_autohide: false,
