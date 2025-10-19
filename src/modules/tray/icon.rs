@@ -1,11 +1,13 @@
+use crate::gtk_helpers::IronbarPaintableExt;
 use crate::modules::tray::interface::TrayMenu;
 use color_eyre::{Report, Result};
 use glib::ffi::g_strfreev;
 use glib::translate::ToGlibPtr;
 use gtk::ffi::gtk_icon_theme_get_search_path;
-use gtk::gdk_pixbuf::{Colorspace, InterpType, Pixbuf};
+use gtk::gdk::Texture;
+use gtk::gdk_pixbuf::{Colorspace, Pixbuf};
 use gtk::prelude::WidgetExt;
-use gtk::{IconLookupFlags, IconTheme, Image, TextDirection};
+use gtk::{ContentFit, IconLookupFlags, IconTheme, Picture, TextDirection};
 use std::collections::HashSet;
 use std::ffi::CStr;
 use std::os::raw::{c_char, c_int};
@@ -17,7 +19,7 @@ pub fn get_image(
     size: u32,
     prefer_icons: bool,
     icon_theme: &IconTheme,
-) -> Result<Image> {
+) -> Result<Picture> {
     if !prefer_icons && item.icon_pixmap.is_some() {
         get_image_from_pixmap(item.icon_pixmap.as_deref(), size)
     } else {
@@ -28,7 +30,7 @@ pub fn get_image(
 
 /// Attempts to get a GTK `Image` component
 /// for the status notifier item's icon.
-fn get_image_from_icon_name(item: &TrayMenu, size: u32, icon_theme: &IconTheme) -> Result<Image> {
+fn get_image_from_icon_name(item: &TrayMenu, size: u32, icon_theme: &IconTheme) -> Result<Picture> {
     if let Some(path) = item.icon_theme_path.as_ref()
         && !path.is_empty()
         && !get_icon_theme_search_paths(icon_theme).contains(path)
@@ -36,7 +38,8 @@ fn get_image_from_icon_name(item: &TrayMenu, size: u32, icon_theme: &IconTheme) 
         icon_theme.add_search_path(path);
     }
 
-    let image = Image::new();
+    let picture = Picture::new();
+    picture.set_content_fit(ContentFit::ScaleDown);
 
     let paintable = item
         .icon_name
@@ -47,15 +50,15 @@ fn get_image_from_icon_name(item: &TrayMenu, size: u32, icon_theme: &IconTheme) 
                 icon_name,
                 &[],
                 size as i32,
-                image.scale_factor(),
+                picture.scale_factor(),
                 TextDirection::None,
                 IconLookupFlags::empty(),
             )
         });
 
     if let Some(paintable) = paintable {
-        image.set_paintable(Some(&paintable));
-        Ok(image)
+        picture.set_paintable(Some(&paintable));
+        Ok(picture)
     } else {
         Err(Report::msg("could not find icon"))
     }
@@ -67,7 +70,7 @@ fn get_image_from_icon_name(item: &TrayMenu, size: u32, icon_theme: &IconTheme) 
 /// which has 8 bits per sample and a bit stride of `4*width`.
 /// The Pixbuf expects RGBA32 format, so some channel shuffling
 /// is required.
-fn get_image_from_pixmap(item: Option<&[IconPixmap]>, size: u32) -> Result<Image> {
+fn get_image_from_pixmap(item: Option<&[IconPixmap]>, size: u32) -> Result<Picture> {
     const BITS_PER_SAMPLE: i32 = 8;
 
     let pixmap = item
@@ -101,13 +104,13 @@ fn get_image_from_pixmap(item: Option<&[IconPixmap]>, size: u32) -> Result<Image
         row_stride,
     );
 
-    let pixbuf = pixbuf
-        .scale_simple(size as i32, size as i32, InterpType::Bilinear)
-        .unwrap_or(pixbuf);
+    let texture = Texture::for_pixbuf(&pixbuf).scale(size as f64, size as f64);
 
-    let image = Image::new();
-    image.set_from_pixbuf(Some(&pixbuf));
-    Ok(image)
+    let picture = Picture::new();
+    picture.set_content_fit(ContentFit::ScaleDown);
+    picture.set_paintable(texture.as_ref());
+
+    Ok(picture)
 }
 
 /// Gets the GTK icon theme search paths by calling the FFI function.
