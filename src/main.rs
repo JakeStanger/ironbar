@@ -3,7 +3,6 @@
 use std::cell::RefCell;
 use std::env;
 use std::future::Future;
-use std::path::PathBuf;
 use std::process::exit;
 use std::rc::Rc;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
@@ -12,28 +11,25 @@ use std::sync::{Arc, OnceLock, mpsc};
 use cfg_if::cfg_if;
 #[cfg(feature = "cli")]
 use clap::Parser;
-use color_eyre::Report;
-use color_eyre::eyre::Result;
-use dirs::config_dir;
+use color_eyre::{Report, Result};
 use gtk::Application;
 use gtk::gdk::{Display, Monitor};
 use gtk::prelude::*;
 use smithay_client_toolkit::output::OutputInfo;
 use tokio::runtime::Runtime;
 use tokio::task::{JoinHandle, block_in_place};
-use tracing::{debug, error, info, warn};
-use universal_config::ConfigLoader;
+use tracing::{debug, error, info};
 
 use crate::bar::{Bar, create_bar};
 use crate::channels::SyncSenderExt;
 use crate::clients::Clients;
 use crate::clients::outputs::MonitorState;
-use crate::config::{Config, MonitorConfig};
+use crate::config::{Config, ConfigLocation, MonitorConfig};
 use crate::desktop_file::DesktopFiles;
 use crate::error::ExitCode;
 #[cfg(feature = "ipc")]
-use crate::ironvar::{VariableManager, WritableNamespace};
-use crate::style::load_css;
+use crate::ironvar::VariableManager;
+use crate::style::{CssSource, load_css};
 
 mod bar;
 mod channels;
@@ -65,7 +61,8 @@ fn main() {
         if #[cfg(feature = "cli")] {
             run_with_args();
         } else {
-            start_ironbar(false);
+            let config_location = ConfigLocation::from_env("IRONBAR_CONFIG").unwrap_or_default();
+            start_ironbar(false, config_location, ConfigLocation::from_env("IRONBAR_CSS"));
         }
     }
 }
@@ -123,7 +120,7 @@ fn run_with_args() {
                 }
             });
         }
-        None => start_ironbar(args.debug),
+        None => start_ironbar(args.debug, args.config.unwrap_or_default(), args.theme),
     }
 }
 
@@ -132,25 +129,29 @@ pub struct Ironbar {
     bars: Rc<RefCell<Vec<Bar>>>,
     clients: Rc<RefCell<Clients>>,
     config: Rc<RefCell<Config>>,
-    config_dir: PathBuf,
+    css_source: Rc<CssSource>,
+    config_location: ConfigLocation,
+    css_location: Option<ConfigLocation>,
 
     desktop_files: DesktopFiles,
     image_provider: image::Provider,
 }
 
 impl Ironbar {
-    fn new() -> Self {
-        let (mut config, config_dir) = load_config();
+    fn new(config_location: ConfigLocation, css_location: Option<ConfigLocation>) -> Self {
+        let (mut config, css_source) = Config::load(config_location.clone(), css_location.clone());
 
         let desktop_files = DesktopFiles::new();
         let image_provider =
             image::Provider::new(desktop_files.clone(), &mut config.icon_overrides);
 
         Self {
-            bars: Rc::new(RefCell::new(vec![])),
-            clients: Rc::new(RefCell::new(Clients::new())),
-            config: Rc::new(RefCell::new(config)),
-            config_dir,
+            bars: rc_mut!(vec![]),
+            clients: rc_mut!(Clients::new()),
+            config: rc_mut!(config),
+            css_source: Rc::new(css_source),
+            config_location,
+            css_location,
             desktop_files,
             image_provider,
         }
@@ -166,6 +167,8 @@ impl Ironbar {
 
         // cannot use `oneshot` as `connect_activate` is not `FnOnce`.
         let (activate_tx, activate_rx) = mpsc::channel();
+
+        let css_source = self.css_source.clone();
 
         let instance = Rc::new(self);
         let instance2 = instance.clone();
@@ -189,23 +192,7 @@ impl Ironbar {
                 }
             }
 
-            let style_path = env::var("IRONBAR_CSS").ok().map_or_else(
-                || {
-                    config_dir().map_or_else(
-                        || {
-                            let report = Report::msg("Failed to locate user config dir");
-                            error!("{:?}", report);
-                            exit(ExitCode::CreateBars as i32);
-                        },
-                        |dir| dir.join("ironbar").join("style.css"),
-                    )
-                },
-                PathBuf::from,
-            );
-
-            if style_path.exists() {
-                load_css(style_path);
-            }
+            load_css(&css_source);
 
             let (tx, rx) = mpsc::channel();
 
@@ -338,63 +325,20 @@ impl Ironbar {
     /// Note this does *not* reload bars, which must be performed separately.
     #[cfg(feature = "ipc")]
     fn reload_config(&self) {
-        self.config.replace(load_config().0);
+        self.config
+            .replace(Config::load(self.config_location.clone(), self.css_location.clone()).0);
     }
 }
 
-fn start_ironbar(debug: bool) {
+fn start_ironbar(
+    debug: bool,
+    config_location: ConfigLocation,
+    css_location: Option<ConfigLocation>,
+) {
     let _guard = logging::install_logging(debug);
 
-    let ironbar = Ironbar::new();
+    let ironbar = Ironbar::new(config_location, css_location);
     ironbar.start();
-}
-
-/// Loads the config file from disk.
-fn load_config() -> (Config, PathBuf) {
-    let config_path = env::var("IRONBAR_CONFIG");
-
-    let (config, directory) = if let Ok(config_path) = config_path {
-        let path = PathBuf::from(config_path);
-        (
-            ConfigLoader::load(&path),
-            path.parent()
-                .map(PathBuf::from)
-                .ok_or_else(|| Report::msg("Specified path has no parent")),
-        )
-    } else {
-        let config_loader = ConfigLoader::new("ironbar");
-        (
-            config_loader.find_and_load(),
-            config_loader.config_dir().map_err(Report::new),
-        )
-    };
-
-    let mut config = config.unwrap_or_else(|err| {
-        error!("Failed to load config: {}", err);
-        warn!("Falling back to the default config");
-        info!("If this is your first time using Ironbar, you should create a config in ~/.config/ironbar/");
-        info!("More info here: https://github.com/JakeStanger/ironbar/wiki/configuration-guide");
-
-        Config::default()
-    });
-
-    let directory = directory
-        .and_then(|dir| dir.canonicalize().map_err(Report::new))
-        .unwrap_or_else(|_| env::current_dir().expect("to have current working directory"));
-
-    debug!("Loaded config file");
-
-    #[cfg(feature = "ipc")]
-    if let Some(ironvars) = config.ironvar_defaults.take() {
-        let variable_manager = Ironbar::variable_manager();
-        for (k, v) in ironvars {
-            if variable_manager.set(&k, v).is_err() {
-                warn!("Ignoring invalid ironvar: '{k}'");
-            }
-        }
-    }
-
-    (config, directory)
 }
 
 /// Gets the GDK `Display` instance.

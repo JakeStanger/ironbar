@@ -1,3 +1,4 @@
+use crate::config::ConfigLocation;
 use crate::error::ExitCode;
 use crate::ipc::{Command, Response};
 use clap::{Parser, ValueEnum};
@@ -25,6 +26,13 @@ pub struct Args {
     /// Print debug information to stderr.
     #[arg(long)]
     pub debug: bool,
+
+    /// Specify the path to the config file to use.
+    #[arg(short('c'), long, env = "IRONBAR_CONFIG")]
+    pub config: Option<ConfigLocation>,
+
+    #[arg(short('t'), long, env = "IRONBAR_CSS")]
+    pub theme: Option<ConfigLocation>,
 
     /// Format to output the response as.
     #[arg(short, long)]
