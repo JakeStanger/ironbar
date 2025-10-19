@@ -5,8 +5,7 @@ Pango markup is supported.
 
 Options can be provided in a token to specify operations, units and formatting.
 
-![Screenshot showing sys-info module with widgets for all of the types of formatting tokens](https://user-images.githubusercontent.com/5057870/196059090-4056d083-69f0-4e6f-9673-9e35dc29d9f0.png)
-
+![Screenshot showing sys-info module with widgets for CPU and memory usage percentages](https://f.jstanger.dev/github/ironbar/modules/sysinfo.png)
 
 ## Configuration
 

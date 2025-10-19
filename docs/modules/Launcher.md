@@ -7,7 +7,10 @@ Left clicking an icon/popup item focuses the program if it has any open instance
 Middle clicking an icon always launches a new instance of the program.
 Optionally displays a launchable set of favourites.
 
-![Screenshot showing several open applications, including a popup showing multiple terminal windows.](https://f.jstanger.dev/github/ironbar/launcher.png)
+![Screenshot showing several open applications, including a popup showing Ironbar open in Rustrover.](https://f.jstanger.dev/github/ironbar/modules/launcher.png)
+
+> [!TIP]
+> Window previews are [experimental](https://github.com/JakeStanger/ironbar/pull/1189) and have not been merged yet!
 
 ## Configuration
 
@@ -19,7 +22,7 @@ Optionally displays a launchable set of favourites.
 | `show_names`                | `boolean`                                   | `false`                 | Whether to show app names on the button label. Names will still show on tooltips when set to false.                                                       |
 | `show_icons`                | `boolean`                                   | `true`                  | Whether to show app icons on the button.                                                                                                                  |
 | `icon_size`                 | `integer`                                   | `32`                    | Size to render icon at (image icons only).                                                                                                                |
-| `launch_command`            | `string`                                    | `gtk-launch {app_name}` | Command used to launch applications.                                                                                                                  |
+| `launch_command`            | `string`                                    | `gtk-launch {app_name}` | Command used to launch applications.                                                                                                                      |
 | `reversed`                  | `boolean`                                   | `false`                 | Whether to reverse the order of favorites/items                                                                                                           |
 | `minimize_focused`          | `boolean`                                   | `true`                  | Whether to minimize a focused window when its icon is clicked. Only minimizes single windows.                                                             |
 | `truncate.mode`             | `'start'` or `'middle'` or `'end'` or `off` | `end`                   | Location of the ellipses and where to truncate text from. Applies to application names when `show_names` is enabled.                                      |

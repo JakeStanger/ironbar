@@ -1,12 +1,12 @@
 > [!NOTE]
-> This module requires a `wlroots-based` compositor. It will not work without the [wlr data control](https://wayland.app/protocols/wlr-data-control-unstable-v1) protocol.
+> This module requires the [wlr data control](https://wayland.app/protocols/wlr-data-control-unstable-v1) protocol.
 
 Shows recent clipboard items, allowing you to switch between them to re-copy previous values.
 Clicking the icon button opens the popup containing all functionality.
 
 Supports plain text and images.
 
-![Screenshot of clipboard popup open, with two textual values and an image copied. Several other unrelated widgets are visible on the bar.](https://f.jstanger.dev/github/ironbar/clipboard.png?raw)
+![Screenshot of clipboard popup open, with two textual values and an image copied. Several other unrelated widgets are visible on the bar.](https://f.jstanger.dev/github/ironbar/modules/clipboard.png)
 
 ## Configuration
 

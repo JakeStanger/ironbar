@@ -1,0 +1,67 @@
+:root {
+    --color-dark-primary: #1c1c1c;
+    --color-dark-secondary: #2d2d2d;
+    --color-white: #fff;
+    --color-active: #6699cc;
+    --color-urgent: #8f0a0a;
+
+    --margin-lg: 1em;
+    --margin-sm: 0.5em;
+}
+
+* {
+    border-radius: 0;
+    border: none;
+    box-shadow: none;
+    font-family: monospace;
+}
+
+#bar, popover, popover contents, calendar {
+    background-color: var(--color-dark-primary);
+}
+
+box, button, label {
+    background-color: #0000;
+}
+
+button {
+    padding-left: var(--margin-sm);
+    padding-right: var(--margin-sm);
+}
+
+button:hover, button:active {
+    background-color: var(--color-dark-secondary);
+}
+
+#end > * + * {
+    margin-left: var(--margin-lg);
+}
+
+.sysinfo > * + * {
+    margin-left: var(--margin-sm);
+}
+
+.clock {
+    font-weight: bold;
+}
+
+.popup-clock .calendar-clock {
+    font-size: 2.0em;
+}
+
+.popup-clock .calendar .today {
+    background-color: var(--color-active);
+}
+
+.workspaces .item.visible {
+    box-shadow: inset 0 -1px var(--color-white);
+}
+
+.workspaces .item.focused {
+    box-shadow: inset 0 -1px var(--color-active);
+    background-color: var(--color-dark-secondary);
+}
+
+.workspaces .item.urgent {
+    background-color: var(--color-urgent);
+}

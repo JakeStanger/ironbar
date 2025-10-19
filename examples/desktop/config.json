@@ -1,0 +1,108 @@
+{
+  "icon_theme": "Paper",
+  "start": [
+    {
+      "type": "menu",
+      "label": "󱓞"
+    },
+    {
+      "type": "workspaces"
+    },
+    {
+      "type": "launcher",
+      "favorites": [
+        "firefox"
+      ],
+      "truncate": {
+        "mode": "end",
+        "max_length": 30
+      }
+    }
+  ],
+  "center": [
+    {
+      "type": "music",
+      "player_type": "mpd"
+    }
+  ],
+  "end": [
+    {
+      "type": "battery",
+      "show_if": "[ -f /sys/class/power_supply/BAT0 ]"
+    },
+    {
+      "type": "sys_info",
+      "format": [
+        "{cpu_percent}% ",
+        "{memory_percent}% "
+      ],
+      "interval": {
+        "cpu": 1
+      }
+    },
+    {
+      "type": "clipboard",
+      "max_items": 5,
+      "truncate": {
+        "mode": "end",
+        "length": 30
+      }
+    },
+    {
+      "type": "volume"
+    },
+    {
+      "type": "custom",
+      "name": "power-menu",
+      "class": "power-menu",
+      "bar": [
+        {
+          "type": "button",
+          "name": "power-btn",
+          "label": "",
+          "on_click": "popup:toggle"
+        }
+      ],
+      "popup": [
+        {
+          "type": "box",
+          "orientation": "vertical",
+          "widgets": [
+            {
+              "type": "label",
+              "name": "header",
+              "label": "Power menu"
+            },
+            {
+              "type": "box",
+              "name": "buttons",
+              "widgets": [
+                {
+                  "type": "button",
+                  "class": "power-btn",
+                  "label": "<span>󰐥</span>",
+                  "on_click": "!shutdown now"
+                },
+                {
+                  "type": "button",
+                  "class": "power-btn",
+                  "label": "<span>󰜉</span>",
+                  "on_click": "!reboot"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "tray"
+    },
+    {
+      "type": "clock"
+    },
+    {
+      "type": "notifications"
+    }
+  ]
+}

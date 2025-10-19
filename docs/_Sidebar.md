@@ -15,8 +15,8 @@
 
 # Examples
 
-- [Config](config)
-- [Stylesheet](https://github.com/JakeStanger/ironbar/blob/master/examples/style.css)
+- [Minimal](https://github.com/jakestanger/ironbar/blob/master/examples/minimal)
+- [Desktop](https://github.com/jakestanger/ironbar/blob/master/examples/desktop)
 
 ## Custom
 

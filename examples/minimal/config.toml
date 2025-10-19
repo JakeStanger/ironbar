@@ -1,0 +1,30 @@
+position = "top"
+height = 24
+
+[[start]]
+type = "workspaces"
+
+[[center]]
+type = "focused"
+icon_size = 16
+
+[[end]]
+type = "battery"
+show_if = "[ -f /sys/class/power_supply/BAT0 ]"
+
+[[end]]
+type = "sys_info"
+format = [
+    "{cpu_percent}% ",
+    "{memory_percent}% ",
+]
+
+[end.interval]
+cpu = 1
+
+[[end]]
+type = "tray"
+
+[[end]]
+type = "clock"
+

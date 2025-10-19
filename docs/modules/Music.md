@@ -5,7 +5,7 @@ and playback controls.
 
 in MPRIS mode, the widget will listen to all players and automatically detect/display the active one.
 
-![Screenshot showing MPD widget with track playing with popout open](https://f.jstanger.dev/github/ironbar/music.png)
+![Screenshot showing MPD widget with track playing with popout open](https://f.jstanger.dev/github/ironbar/modules/music.png)
 
 ## Configuration
 
