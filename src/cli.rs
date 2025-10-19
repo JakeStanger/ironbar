@@ -10,14 +10,19 @@ pub struct Args {
     #[command(subcommand)]
     pub command: Option<Command>,
 
-    /// Prints the config JSON schema to `stdout`
-    /// and exits.
-    #[cfg(feature = "schema")]
+    /// Print the config JSON schema to `stdout`
+    /// and exit.
+    #[cfg(feature = "extras")]
     #[arg(long("print-schema"))]
     pub print_schema: bool,
 
-    /// Print debug information to stderr
-    /// TODO: Make bar follow this too
+    /// Print shell completions to `stdout`
+    /// and exit.
+    #[cfg(feature = "extras")]
+    #[arg(long("print-completions"))]
+    pub print_completions: Option<Shell>,
+
+    /// Print debug information to stderr.
     #[arg(long)]
     pub debug: bool,
 
@@ -31,11 +36,34 @@ pub struct Args {
     sway_bar_id: Option<String>,
 }
 
-#[derive(Debug, Serialize, Deserialize, Default, ValueEnum, Clone, Copy)]
+#[derive(Debug, Serialize, Deserialize, Default, ValueEnum, Clone, Copy, Eq, PartialEq)]
 pub enum Format {
     #[default]
     Plain,
     Json,
+}
+
+#[cfg(feature = "extras")]
+#[derive(Debug, Serialize, Deserialize, ValueEnum, Clone, Copy, Eq, PartialEq)]
+pub enum Shell {
+    Bash,
+    Elvish,
+    Zsh,
+    Fish,
+    Powershell,
+}
+
+#[cfg(feature = "extras")]
+impl From<Shell> for clap_complete::Shell {
+    fn from(value: Shell) -> Self {
+        match value {
+            Shell::Bash => Self::Bash,
+            Shell::Elvish => Self::Elvish,
+            Shell::Zsh => Self::Zsh,
+            Shell::Fish => Self::Fish,
+            Shell::Powershell => Self::PowerShell,
+        }
+    }
 }
 
 pub fn handle_response(response: Response, format: Format) {

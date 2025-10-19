@@ -18,7 +18,7 @@ use tokio::sync::mpsc;
 use tokio::time::sleep;
 
 #[derive(Debug, Deserialize, Clone)]
-#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
 #[serde(default)]
 pub struct SysInfoModule {
     /// List of strings including formatting tokens.
@@ -65,7 +65,7 @@ impl Default for SysInfoModule {
 }
 
 #[derive(Debug, Deserialize, Copy, Clone)]
-#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
 #[serde(default)]
 pub struct Intervals {
     /// The number of seconds between refreshing memory data.
@@ -114,7 +114,7 @@ impl Default for Intervals {
 
 #[derive(Debug, Deserialize, Copy, Clone)]
 #[serde(untagged)]
-#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
 pub enum Interval {
     All(u64),
     Individual(Intervals),

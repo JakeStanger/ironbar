@@ -9,7 +9,7 @@ use crate::dynamic_value::dynamic_string;
 use crate::gtk_helpers::IronbarLabelExt;
 
 #[derive(Debug, Deserialize, Clone)]
-#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
 pub struct LabelWidget {
     /// Widget name.
     ///

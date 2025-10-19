@@ -7,7 +7,7 @@ use serde::Deserialize;
 
 #[derive(Debug, Deserialize, Clone)]
 #[serde(rename_all = "lowercase")]
-#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
 pub enum ModuleAlignment {
     /// Align widget to the start (left for horizontal, top for vertical).
     Start,
@@ -31,7 +31,7 @@ impl From<ModuleAlignment> for gtk::Align {
 }
 
 #[derive(Debug, Deserialize, Clone)]
-#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
 pub struct BoxWidget {
     /// Widget name.
     ///

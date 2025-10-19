@@ -25,7 +25,7 @@ use tokio::sync::mpsc;
 use tracing::{debug, error, trace, warn};
 
 #[derive(Debug, Deserialize, Clone)]
-#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
 #[serde(default)]
 pub struct LauncherModule {
     /// List of app IDs (or classes) to always show regardless of open state,
@@ -138,7 +138,7 @@ impl Default for LauncherModule {
 }
 
 #[derive(Debug, Deserialize, Clone)]
-#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
 #[serde(default)]
 struct Icons {
     /// Icon to show for page back button.

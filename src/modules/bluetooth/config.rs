@@ -6,7 +6,7 @@ use crate::{
 };
 
 #[derive(Debug, Deserialize, Clone)]
-#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
 #[serde(default)]
 pub struct BluetoothModule {
     /// Format strings for on-bar button.
@@ -45,7 +45,7 @@ impl Default for BluetoothModule {
 }
 
 #[derive(Debug, Deserialize, Clone)]
-#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
 #[serde(default)]
 pub struct FormatConfig {
     /// Format string to use for the widget button when bluetooth adapter not found.
@@ -87,7 +87,7 @@ impl Default for FormatConfig {
 }
 
 #[derive(Debug, Deserialize, Clone)]
-#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
 #[serde(default)]
 pub struct PopupConfig {
     /// Whether to make the popup scrollable or stretchable to show all of its content.
@@ -121,7 +121,7 @@ impl Default for PopupConfig {
 }
 
 #[derive(Debug, Deserialize, Clone)]
-#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
 #[serde(default)]
 pub struct AdapterStatus {
     /// The value of `{adapter_status}` formatting token when adapter is enabling.
@@ -163,7 +163,7 @@ impl Default for AdapterStatus {
 }
 
 #[derive(Debug, Deserialize, Clone)]
-#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
 #[serde(default)]
 pub struct DeviceStatus {
     /// The value of `{device_status}` formatting token when device is connecting.
@@ -199,7 +199,7 @@ impl Default for DeviceStatus {
 }
 
 #[derive(Debug, Deserialize, Clone)]
-#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
 #[serde(default)]
 pub struct PopupDeviceConfig {
     /// Format string to use for the header of device box.

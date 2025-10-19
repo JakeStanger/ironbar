@@ -20,7 +20,7 @@ use tokio::sync::mpsc;
 use tracing::trace;
 
 #[derive(Debug, Clone, Deserialize)]
-#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
 #[serde(default)]
 pub struct VolumeModule {
     /// The format string to use for the widget button label.
@@ -69,7 +69,7 @@ impl Default for VolumeModule {
 }
 
 #[derive(Debug, Clone, Deserialize)]
-#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
 #[serde(default)]
 pub struct Icons {
     /// Icon to show for high volume levels.

@@ -12,7 +12,7 @@ use serde::Deserialize;
 use tokio::sync::mpsc::Receiver;
 
 #[derive(Debug, Deserialize, Clone)]
-#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
 #[serde(default)]
 pub struct NetworkManagerModule {
     icon_size: i32,

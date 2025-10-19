@@ -70,7 +70,7 @@ where
     })
 }
 
-#[cfg(feature = "schema")]
+#[cfg(feature = "extras")]
 pub fn schema_layer(_generator: &mut schemars::SchemaGenerator) -> schemars::Schema {
     schemars::json_schema!({
         "type": "string",

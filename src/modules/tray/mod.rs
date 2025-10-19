@@ -18,7 +18,7 @@ use tokio::sync::mpsc;
 use tracing::{debug, error, trace, warn};
 
 #[derive(Debug, Deserialize, Clone)]
-#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
 #[serde(default)]
 pub struct TrayModule {
     /// Requests that icons from the theme be used over the item-provided item.

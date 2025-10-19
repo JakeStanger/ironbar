@@ -6,7 +6,7 @@ use serde::Deserialize;
 
 /// An individual entry in the main menu section.
 #[derive(Debug, Deserialize, Clone)]
-#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum MenuConfig {
     /// Contains all applications matching the configured `categories`.
@@ -18,7 +18,7 @@ pub enum MenuConfig {
 }
 
 #[derive(Debug, Deserialize, Clone)]
-#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
 pub struct XdgEntry {
     /// Text to display on the button.
     #[serde(default)]
@@ -35,7 +35,7 @@ pub struct XdgEntry {
 
 /// Individual shell command entry.
 #[derive(Debug, Deserialize, Clone)]
-#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
 pub struct CustomEntry {
     /// Text to display on the button.
     #[serde(default)]
@@ -53,7 +53,7 @@ pub struct CustomEntry {
 }
 
 #[derive(Debug, Deserialize, Clone)]
-#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
 #[serde(default)]
 pub struct MenuModule {
     /// Items to add to the start of the main menu.
