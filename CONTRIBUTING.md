@@ -1,7 +1,9 @@
 I welcome contributions of any kind with open arms. That said, please do stick to some basics:
 
 - For code contributions:
-  - Fix any `cargo clippy` warnings, using at least the default configuration.
+  - Ensure your code builds when using `--no-default-features`.
+  - Fix any `cargo clippy` warnings, using at least the default feature set.
+    - Where features are disabled, some unused code warnings are allowed.
   - Make sure your code is formatted using `cargo fmt`.
   - Keep any documentation up to date.
   - Please use [conventional commit](https://www.conventionalcommits.org/en/v1.0.0/) messages.
