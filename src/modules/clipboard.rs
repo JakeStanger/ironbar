@@ -3,14 +3,13 @@ use crate::clients::clipboard::{self, ClipboardEvent};
 use crate::clients::wayland::{ClipboardItem, ClipboardValue};
 use crate::config::{CommonConfig, LayoutConfig, TruncateMode};
 use crate::gtk_helpers::IronbarLabelExt;
+use crate::gtk_helpers::IronbarPaintableExt;
 use crate::image::IconButton;
 use crate::modules::{
     Module, ModuleInfo, ModuleParts, ModulePopup, ModuleUpdateEvent, PopupButton, WidgetContext,
 };
 use crate::{module_impl, spawn};
-use gtk::gdk::BUTTON_PRIMARY;
-use gtk::gdk_pixbuf::Pixbuf;
-use gtk::gio::{Cancellable, MemoryInputStream};
+use gtk::gdk::{BUTTON_PRIMARY, Texture};
 use gtk::prelude::*;
 use gtk::{Button, CheckButton, ContentFit, GestureClick, Label, Orientation, Picture, Widget};
 use serde::Deserialize;
@@ -41,6 +40,16 @@ pub struct ClipboardModule {
     /// **Default**: `10`
     max_items: usize,
 
+    /// The maximum width to render copied images at.
+    ///
+    /// **Default**: `256.0`
+    image_max_width: f64,
+
+    /// The maximum height to render copied images at.
+    ///
+    /// **Default**: `64.0`
+    image_max_height: f64,
+
     // -- Common --
     /// See [truncate options](module-level-options#truncate-mode).
     ///
@@ -62,6 +71,8 @@ impl Default for ClipboardModule {
             icon: "󰨸".to_string(),
             icon_size: 32,
             max_items: 10,
+            image_max_width: 256.0,
+            image_max_height: 64.0,
             truncate: None,
             layout: LayoutConfig::default(),
             common: Some(CommonConfig::default()),
@@ -205,35 +216,27 @@ impl Module<Button> for ClipboardModule {
                                 button.add_css_class("text");
                                 button
                             }
-                            ClipboardValue::Image(bytes) => {
-                                let stream = MemoryInputStream::from_bytes(bytes);
-                                let pixbuf = Pixbuf::from_stream_at_scale(
-                                    &stream,
-                                    128,
-                                    64,
-                                    true,
-                                    Some(&Cancellable::new()),
-                                );
+                            ClipboardValue::Image(bytes) => match Texture::from_bytes(bytes) {
+                                Ok(texture) => {
+                                    let texture =
+                                        texture.scale(self.image_max_width, self.image_max_height);
 
-                                match pixbuf {
-                                    Ok(pixbuf) => {
-                                        let image = Picture::new();
-                                        image.set_content_fit(ContentFit::ScaleDown);
-                                        image.set_pixbuf(Some(&pixbuf));
+                                    let image = Picture::new();
+                                    image.set_content_fit(ContentFit::ScaleDown);
+                                    image.set_paintable(texture.as_ref());
 
-                                        let button =
-                                            CheckButton::builder().group(hidden_option).build();
-                                        button.set_child(Some(&image));
-                                        button.add_css_class("image");
+                                    let button =
+                                        CheckButton::builder().group(hidden_option).build();
+                                    button.set_child(Some(&image));
+                                    button.add_css_class("image");
 
-                                        button
-                                    }
-                                    Err(err) => {
-                                        error!("{err:?}");
-                                        return;
-                                    }
+                                    button
                                 }
-                            }
+                                Err(err) => {
+                                    error!("{err:?}");
+                                    return;
+                                }
+                            },
                             ClipboardValue::Other => unreachable!(),
                         };
 
