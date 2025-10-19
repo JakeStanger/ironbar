@@ -5,7 +5,7 @@ use std::path::PathBuf;
 
 #[derive(Debug, Deserialize, Clone, Copy)]
 #[serde(rename_all = "snake_case")]
-#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
 pub enum PlayerType {
     #[cfg(feature = "music+mpd")]
     Mpd,
@@ -28,7 +28,7 @@ impl Default for PlayerType {
 }
 
 #[derive(Debug, Deserialize, Clone)]
-#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
 #[serde(default)]
 pub struct MusicModule {
     /// Type of player to connect to
@@ -130,7 +130,7 @@ impl Default for MusicModule {
 }
 
 #[derive(Debug, Deserialize, Clone)]
-#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
 #[serde(default)]
 pub struct Icons {
     /// Icon to display when playing.

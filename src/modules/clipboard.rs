@@ -19,7 +19,7 @@ use tokio::sync::mpsc;
 use tracing::{debug, error};
 
 #[derive(Debug, Deserialize, Clone)]
-#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
 #[serde(default)]
 pub struct ClipboardModule {
     /// The icon to show on the bar widget button.

@@ -25,7 +25,7 @@ const HOUR: i64 = 60 * 60;
 const MINUTE: i64 = 60;
 
 #[derive(Debug, Deserialize, Clone)]
-#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
 #[serde(default)]
 pub struct BatteryModule {
     /// The format string to use for the widget button label.

@@ -48,7 +48,7 @@ use crate::modules::workspaces::WorkspacesModule;
 use crate::modules::{AnyModuleFactory, ModuleFactory, ModuleInfo, ModuleRef};
 use cfg_if::cfg_if;
 use color_eyre::Result;
-#[cfg(feature = "schema")]
+#[cfg(feature = "extras")]
 use schemars::JsonSchema;
 use serde::Deserialize;
 use std::collections::HashMap;
@@ -59,7 +59,7 @@ pub use self::truncate::{EllipsizeMode, TruncateMode};
 
 #[derive(Debug, Deserialize, Clone)]
 #[serde(tag = "type", rename_all = "snake_case")]
-#[cfg_attr(feature = "schema", derive(JsonSchema))]
+#[cfg_attr(feature = "extras", derive(JsonSchema))]
 pub enum ModuleConfig {
     #[cfg(feature = "battery")]
     Battery(Box<BatteryModule>),
@@ -209,7 +209,7 @@ impl ModuleConfig {
 }
 
 #[derive(Debug, Clone)]
-#[cfg_attr(feature = "schema", derive(JsonSchema))]
+#[cfg_attr(feature = "extras", derive(JsonSchema))]
 pub enum MonitorConfig {
     Single(BarConfig),
     Multiple(Vec<BarConfig>),
@@ -217,7 +217,7 @@ pub enum MonitorConfig {
 
 #[derive(Debug, Deserialize, Copy, Clone, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
-#[cfg_attr(feature = "schema", derive(JsonSchema))]
+#[cfg_attr(feature = "extras", derive(JsonSchema))]
 pub enum BarPosition {
     Top,
     Bottom,
@@ -232,7 +232,7 @@ impl Default for BarPosition {
 }
 
 #[derive(Debug, Default, Deserialize, Copy, Clone, PartialEq, Eq)]
-#[cfg_attr(feature = "schema", derive(JsonSchema))]
+#[cfg_attr(feature = "extras", derive(JsonSchema))]
 #[serde(default)]
 pub struct MarginConfig {
     pub bottom: i32,
@@ -248,7 +248,7 @@ pub struct MarginConfig {
 /// depending on your [use-case](#2-pick-your-use-case).
 ///
 #[derive(Debug, Deserialize, Clone)]
-#[cfg_attr(feature = "schema", derive(JsonSchema))]
+#[cfg_attr(feature = "extras", derive(JsonSchema))]
 #[serde(default)]
 pub struct BarConfig {
     /// A unique identifier for the bar, used for controlling it over IPC.
@@ -313,7 +313,7 @@ pub struct BarConfig {
     /// <br>
     /// **Default**: `top`
     #[serde(deserialize_with = "r#impl::deserialize_layer")]
-    #[cfg_attr(feature = "schema", schemars(schema_with = "r#impl::schema_layer"))]
+    #[cfg_attr(feature = "extras", schemars(schema_with = "r#impl::schema_layer"))]
     pub layer: gtk_layer_shell::Layer,
 
     /// Whether the bar should reserve an exclusive zone around it.
@@ -412,7 +412,7 @@ impl Default for BarConfig {
 }
 
 #[derive(Debug, Deserialize, Clone, Default)]
-#[cfg_attr(feature = "schema", derive(JsonSchema))]
+#[cfg_attr(feature = "extras", derive(JsonSchema))]
 #[serde(default)]
 pub struct Config {
     /// A map of [ironvar](ironvar) keys and values

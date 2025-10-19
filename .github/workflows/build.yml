@@ -130,7 +130,7 @@ jobs:
           - workspaces+sway
           - workspaces+hyprland
           - workspaces+niri
-          - schema
+          - extras
 
     steps:
       - uses: actions/checkout@v4

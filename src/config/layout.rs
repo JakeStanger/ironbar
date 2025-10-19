@@ -3,7 +3,7 @@ use crate::modules::ModuleInfo;
 use serde::Deserialize;
 
 #[derive(Clone, Debug, Deserialize, Default)]
-#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
 pub struct LayoutConfig {
     /// The orientation to display the widget contents.
     /// Setting to vertical will rotate text 90 degrees.

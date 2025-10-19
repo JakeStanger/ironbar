@@ -127,6 +127,11 @@ in
     '';
 
     postInstall = ''
+      mkdir -p target/completions
+      target/release/ironbar --print-completions bash > target/completions/ironbar.bash
+      target/release/ironbar --print-completions zsh > target/completions/_ironbar
+      target/release/ironbar --print-completions fish > target/completions/ironbar.fish
+
       installShellCompletion --cmd ironbar \
         --bash target/completions/ironbar.bash \
         --fish target/completions/ironbar.fish \

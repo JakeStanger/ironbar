@@ -12,7 +12,7 @@ use tokio::sync::mpsc;
 use tracing::{info, trace};
 
 #[derive(Debug, Deserialize, Clone)]
-#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
 pub struct Bindmode {
     // -- Common --
     /// See [truncate options](module-level-options#truncate-mode).

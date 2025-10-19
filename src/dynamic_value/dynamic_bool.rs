@@ -9,7 +9,7 @@ use tokio::sync::mpsc;
 
 #[derive(Debug, Deserialize, Clone)]
 #[serde(untagged)]
-#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
 pub enum DynamicBool {
     /// Either a script or variable, to be determined.
     Unknown(String),

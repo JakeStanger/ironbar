@@ -16,7 +16,7 @@ use crate::modules::{
 use crate::{module_impl, spawn};
 
 #[derive(Debug, Deserialize, Clone)]
-#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
 #[serde(default)]
 pub struct ClockModule {
     /// The format string to use for the date/time shown on the bar.

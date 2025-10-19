@@ -3,7 +3,7 @@ use serde::Deserialize;
 
 #[derive(Debug, Deserialize, Clone, Copy, Default)]
 #[serde(rename_all = "snake_case")]
-#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
 pub enum EllipsizeMode {
     None,
     Start,
@@ -33,7 +33,7 @@ impl From<EllipsizeMode> for GtkEllipsizeMode {
 ///
 #[derive(Debug, Deserialize, Clone, Copy)]
 #[serde(untagged)]
-#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
 pub enum TruncateMode {
     /// Do not truncate content.
     ///

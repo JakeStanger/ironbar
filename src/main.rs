@@ -74,12 +74,27 @@ fn main() {
 fn run_with_args() {
     let args = cli::Args::parse();
 
-    #[cfg(feature = "schema")]
+    #[cfg(feature = "extras")]
     if args.print_schema {
         let schema = schemars::schema_for!(Config);
         println!(
             "{}",
             serde_json::to_string_pretty(&schema).expect("to be serializable")
+        );
+        return;
+    }
+
+    #[cfg(feature = "extras")]
+    if let Some(shell) = args.print_completions {
+        use clap::CommandFactory;
+
+        let mut cmd = cli::Args::command();
+        let name = cmd.get_name().to_string();
+        clap_complete::generate(
+            clap_complete::Shell::from(shell),
+            &mut cmd,
+            name,
+            &mut std::io::stdout(),
         );
         return;
     }
