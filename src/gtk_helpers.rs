@@ -1,9 +1,9 @@
 use crate::config::TruncateMode;
 use glib::{SignalHandlerId, markup_escape_text};
-use gtk::gdk::{BUTTON_MIDDLE, BUTTON_PRIMARY, BUTTON_SECONDARY};
+use gtk::gdk::{BUTTON_MIDDLE, BUTTON_PRIMARY, BUTTON_SECONDARY, Paintable};
 use gtk::pango::EllipsizeMode;
 use gtk::prelude::*;
-use gtk::{EventSequenceState, GestureClick, Label, Widget};
+use gtk::{EventSequenceState, GestureClick, Label, Snapshot, Widget};
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 #[repr(u32)]
@@ -116,5 +116,32 @@ impl IronbarLabelExt for Label {
         if let Some(length) = mode.max_length() {
             self.set_max_width_chars(length);
         }
+    }
+}
+
+pub trait IronbarPaintableExt {
+    /// Scales a `Paintable`. to the requested size,
+    /// returning a new `Paintable`.
+    ///
+    /// Aspect ratio is preserved.
+    fn scale(self, target_width: f64, target_height: f64) -> Option<Paintable>;
+}
+
+impl<T> IronbarPaintableExt for T
+where
+    T: IsA<Paintable>,
+{
+    fn scale(self, target_width: f64, target_height: f64) -> Option<Paintable> {
+        let ratio = self.intrinsic_aspect_ratio();
+
+        let (width, height) = if ratio > 1.0 {
+            (target_width, target_width / ratio)
+        } else {
+            (target_height * ratio, target_height)
+        };
+
+        let snapshot = Snapshot::new();
+        self.snapshot(&snapshot, width, height);
+        snapshot.to_paintable(None)
     }
 }
