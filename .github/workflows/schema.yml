@@ -27,10 +27,10 @@ jobs:
         name: Cache dependencies
 
       - name: Build
-        run: cargo build --features schema
+        run: cargo build
 
       - name: Print schema
-        run: cargo run --features schema -- --print-schema > target/schema.json
+        run: cargo run -- --print-schema > target/schema.json
 
       - name: Copy file via SSH
         uses: appleboy/scp-action@v0.1.7
