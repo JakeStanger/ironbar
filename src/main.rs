@@ -452,10 +452,9 @@ pub fn load_output_bars(ironbar: &Rc<Ironbar>, app: &Application) {
     let wl = ironbar.clients.borrow_mut().wayland();
     let outputs = wl.output_info_all();
 
-    ironbar.reload_config();
-
     let display = crate::get_display();
     let monitors = display.monitors();
+
     for output in outputs {
         let Some(monitor_name) = &output.name else {
             warn!("Output missing monitor name");

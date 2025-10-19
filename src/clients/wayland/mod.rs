@@ -69,7 +69,6 @@ pub enum Event {
 pub enum Request {
     Roundtrip,
 
-    #[cfg(feature = "ipc")]
     OutputInfoAll,
 
     #[cfg(any(feature = "focused", feature = "launcher"))]
@@ -90,7 +89,6 @@ pub enum Response {
     /// An empty success response
     Ok,
 
-    #[cfg(feature = "ipc")]
     OutputInfoAll(Vec<smithay_client_toolkit::output::OutputInfo>),
 
     #[cfg(any(feature = "focused", feature = "launcher"))]
@@ -336,7 +334,6 @@ impl Environment {
                 debug!("received roundtrip request");
                 env.response_tx.send_expect(Response::Ok);
             }
-            #[cfg(feature = "ipc")]
             Msg(Request::OutputInfoAll) => {
                 let infos = env.output_info_all();
                 env.response_tx.send_expect(Response::OutputInfoAll(infos));

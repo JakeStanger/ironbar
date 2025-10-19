@@ -142,6 +142,8 @@ impl Ipc {
                     window.close();
                 }
 
+                ironbar.reload_config();
+
                 crate::load_output_bars(ironbar, application);
                 Response::Ok
             }
