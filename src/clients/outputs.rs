@@ -4,64 +4,88 @@ use std::sync::{Arc, Mutex};
 
 use crate::channels::SyncSenderExt;
 use crate::clients::wayland;
-use crate::{Ironbar, arc_mut, debug, get_display};
+use crate::{Ironbar, arc_mut, debug, get_display, info, lock, register_client};
 use gtk::gdk::Monitor;
 use gtk::gdk::prelude::*;
 use smithay_client_toolkit::output::OutputInfo;
-use tokio::sync::broadcast;
+use tokio::sync::broadcast::{self, Sender};
 
-/// There are two ways in which we are notified of output events:
-/// 1. Through a wayland client event
-/// 2. Through a GDK event
-///
-/// We need to collate both events before we can call `load_output_bars`.
 #[derive(Debug, Clone)]
 pub enum MonitorState {
     Disconnected,
-    WaylandConnected(OutputInfo),
-    GdkConnected(glib::SendWeakRef<Monitor>),
-    BothConnected(OutputInfo, glib::SendWeakRef<Monitor>),
+    Connected(OutputInfo, glib::SendWeakRef<Monitor>),
 }
 
 #[derive(Debug, Clone)]
 pub struct MonitorEvent {
     pub connector: String,
     pub state: MonitorState,
-    tx: broadcast::Sender<MonitorEvent>,
 }
 
-impl MonitorEvent {
-    fn send(&self) {
-        debug!("Monitor event: {self:?}");
-        self.tx.send_expect(self.clone());
+/// There are two ways in which we are notified of output events:
+/// 1. Through a wayland client event
+/// 2. Through a GDK event
+///
+/// We need to collate both events before we can call `load_output_bars`.
+enum InternalMonitorState {
+    Disconnected,
+    WaylandConnected(OutputInfo),
+    GdkConnected(glib::SendWeakRef<Monitor>),
+    BothConnected(OutputInfo, glib::SendWeakRef<Monitor>),
+}
+
+struct MonitorProxy {
+    pub connector: String,
+    state: InternalMonitorState,
+}
+
+impl MonitorProxy {
+    fn disconnect(&mut self) -> &mut Self {
+        self.state = InternalMonitorState::Disconnected;
+
+        self
     }
 
-    fn disconnect(&mut self) {
-        self.state = MonitorState::Disconnected;
-
-        self.send();
-    }
-
-    fn connect_wayland(&mut self, wl_monitor: &OutputInfo) {
+    fn connect_wayland(&mut self, wl_monitor: &OutputInfo) -> &mut Self {
         self.state = match &self.state {
-            MonitorState::GdkConnected(gdk_monitor) => {
-                MonitorState::BothConnected(wl_monitor.clone(), gdk_monitor.clone())
+            InternalMonitorState::GdkConnected(gdk_monitor) => {
+                InternalMonitorState::BothConnected(wl_monitor.clone(), gdk_monitor.clone())
             }
-            _ => MonitorState::WaylandConnected(wl_monitor.clone()),
+            _ => InternalMonitorState::WaylandConnected(wl_monitor.clone()),
         };
 
-        self.send();
+        self
     }
 
-    fn connect_gdk(&mut self, gdk_monitor: glib::SendWeakRef<Monitor>) {
+    fn connect_gdk(&mut self, gdk_monitor: glib::SendWeakRef<Monitor>) -> &mut Self {
         self.state = match &self.state {
-            MonitorState::WaylandConnected(wl_monitor) => {
-                MonitorState::BothConnected(wl_monitor.clone(), gdk_monitor)
+            InternalMonitorState::WaylandConnected(wl_monitor) => {
+                InternalMonitorState::BothConnected(wl_monitor.clone(), gdk_monitor)
             }
-            _ => MonitorState::GdkConnected(gdk_monitor),
+            _ => InternalMonitorState::GdkConnected(gdk_monitor),
         };
 
-        self.send();
+        self
+    }
+
+    fn maybe_send(&self, tx: &Sender<MonitorEvent>) {
+        match &self.state {
+            InternalMonitorState::Disconnected => {
+                info!("Monitor {} disconnected", self.connector);
+                tx.send_expect(MonitorEvent {
+                    connector: self.connector.clone(),
+                    state: MonitorState::Disconnected,
+                })
+            }
+            InternalMonitorState::BothConnected(wl_output, gdk_output) => {
+                info!("Monitor {} connected", self.connector);
+                tx.send_expect(MonitorEvent {
+                    connector: self.connector.clone(),
+                    state: MonitorState::Connected(wl_output.clone(), gdk_output.clone()),
+                })
+            }
+            _ => {}
+        }
     }
 }
 
@@ -76,37 +100,44 @@ impl<T> From<(broadcast::Sender<T>, broadcast::Receiver<T>)> for BroadcastChanne
 }
 
 #[derive(Debug)]
-pub struct Service {
+pub struct Client {
     // Associates a connector ID (e.g. HDMI-1) to a state
     output_channel: BroadcastChannel<MonitorEvent>,
 }
 
-impl Service {
-    pub(crate) fn new(ironbar: &Rc<Ironbar>) -> Self {
-        let output_channel = broadcast::channel(32);
+impl Client {
+    pub(crate) fn new() -> Self {
+        Self {
+            output_channel: broadcast::channel(8).into(),
+        }
+    }
 
+    pub(crate) fn start(&self, ironbar: &Rc<Ironbar>) {
         let mut rx_wl_outputs = ironbar.clients.borrow_mut().wayland().subscribe_outputs();
 
-        let monitors = Arc::new(Mutex::new(HashMap::new()));
+        let monitors = arc_mut!(HashMap::new());
 
         // listen to wayland events
         {
             let monitors = monitors.clone();
-            let output_tx = output_channel.0.clone();
+            let output_tx = self.output_channel.0.clone();
 
             glib::spawn_future_local(async move {
                 while let Ok(event) = rx_wl_outputs.recv().await {
                     debug!("Wayland output event: {event:?}");
                     if let Some(name) = &event.output.name {
-                        let mut guard = monitors.lock().unwrap();
-                        let entry = guard.entry(name.clone()).or_insert_with(|| MonitorEvent {
+                        let mut guard = lock!(monitors);
+                        let entry = guard.entry(name.clone()).or_insert_with(|| MonitorProxy {
                             connector: name.clone(),
-                            state: MonitorState::Disconnected,
-                            tx: output_tx.clone(),
+                            state: InternalMonitorState::Disconnected,
                         });
                         match event.event_type {
-                            wayland::OutputEventType::New => entry.connect_wayland(&event.output),
-                            wayland::OutputEventType::Destroyed => entry.disconnect(),
+                            wayland::OutputEventType::New => {
+                                entry.connect_wayland(&event.output).maybe_send(&output_tx)
+                            }
+                            wayland::OutputEventType::Destroyed => {
+                                entry.disconnect().maybe_send(&output_tx)
+                            }
                             wayland::OutputEventType::Update => {}
                         };
                     }
@@ -116,7 +147,7 @@ impl Service {
 
         // listen to GDK events
         {
-            let output_tx = output_channel.0.clone();
+            let output_tx = self.output_channel.0.clone();
             let monitors = monitors.clone();
 
             let display = get_display();
@@ -137,27 +168,21 @@ impl Service {
                              */
                             monitor.connect_notify(Some("connector"), move |m, _| {
                                 if let Some(connector) = m.connector() {
-                                    monitors
-                                        .lock()
-                                        .unwrap()
+                                    lock!(monitors)
                                         .entry(connector.to_string())
-                                        .or_insert_with(|| MonitorEvent {
+                                        .or_insert_with(|| MonitorProxy {
                                             connector: connector.to_string(),
-                                            state: MonitorState::Disconnected,
-                                            tx: output_tx.clone(),
+                                            state: InternalMonitorState::Disconnected,
                                         })
-                                        .connect_gdk(glib::SendWeakRef::from(
-                                            ObjectExt::downgrade(m),
-                                        ));
+                                        .connect_gdk(glib::SendWeakRef::from(ObjectExt::downgrade(
+                                            m,
+                                        )))
+                                        .maybe_send(&output_tx);
                                 }
                             });
                         }
                     }
                 });
-        }
-
-        Self {
-            output_channel: output_channel.into(),
         }
     }
 
@@ -166,3 +191,5 @@ impl Service {
         self.output_channel.0.subscribe()
     }
 }
+
+register_client!(Client, outputs);

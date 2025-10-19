@@ -27,6 +27,7 @@ use universal_config::ConfigLoader;
 use crate::bar::{Bar, create_bar};
 use crate::channels::SyncSenderExt;
 use crate::clients::Clients;
+use crate::clients::outputs::MonitorState;
 use crate::config::{Config, MonitorConfig};
 use crate::desktop_file::DesktopFiles;
 use crate::error::ExitCode;
@@ -52,7 +53,6 @@ mod ironvar;
 mod logging;
 mod macros;
 mod modules;
-mod outputs;
 mod popup;
 mod script;
 mod style;
@@ -227,21 +227,29 @@ impl Ironbar {
                     .set_icon_theme(instance.config.borrow().icon_theme.as_deref());
 
                 // Load initial bars
-                load_output_bars(&instance.clone(), &app);
+                match load_output_bars(&instance.clone(), &app) {
+                    Ok(_) => {}
+                    Err(report) => {
+                        error!("{:?}", report);
+                        exit(ExitCode::CreateBars as i32);
+                    }
+                };
 
-                let outputs = outputs::Service::new(&instance.clone());
+                let outputs = instance.clients.borrow_mut().outputs();
                 let mut rx_outputs = outputs.subscribe();
+
+                outputs.start(&instance.clone());
 
                 // Listen for monitor events
                 while let Ok(event) = rx_outputs.recv().await {
                     match event.state {
-                        outputs::MonitorState::Disconnected => {
+                        MonitorState::Disconnected => {
                             instance
                                 .bars
                                 .borrow_mut()
                                 .retain(|bar| bar.monitor_name() != event.connector);
                         }
-                        outputs::MonitorState::BothConnected(wl_output, gdk_output) => {
+                        MonitorState::Connected(wl_output, gdk_output) => {
                             if let Some(gdk_output) = gdk_output.upgrade() {
                                 match load_output_bars_for(&instance, &app, &wl_output, &gdk_output)
                                 {
@@ -252,7 +260,6 @@ impl Ironbar {
                                 }
                             }
                         }
-                        _ => {}
                     }
                 }
             });
@@ -448,7 +455,7 @@ fn load_output_bars_for(
     Ok(bars)
 }
 
-pub fn load_output_bars(ironbar: &Rc<Ironbar>, app: &Application) {
+pub fn load_output_bars(ironbar: &Rc<Ironbar>, app: &Application) -> Result<()> {
     let wl = ironbar.clients.borrow_mut().wayland();
     let outputs = wl.output_info_all();
 
@@ -457,8 +464,7 @@ pub fn load_output_bars(ironbar: &Rc<Ironbar>, app: &Application) {
 
     for output in outputs {
         let Some(monitor_name) = &output.name else {
-            warn!("Output missing monitor name");
-            continue;
+            return Err(Report::msg("Output missing monitor name"));
         };
         let monitor_desc = &output.description.clone().unwrap_or_default();
         let find_monitor = || {
@@ -487,6 +493,8 @@ pub fn load_output_bars(ironbar: &Rc<Ironbar>, app: &Application) {
             Err(err) => error!("{err:?}"),
         }
     }
+
+    Ok(())
 }
 
 fn create_runtime() -> Runtime {
