@@ -123,7 +123,7 @@ extras = ["dep:schemars", "dep:clap_complete"]
 gtk = { package = "gtk4", version = "0.10.0", features = ["v4_10"] }
 gtk-layer-shell = { package = "gtk4-layer-shell", version = "0.6.3" }
 glib = "0.21.1"
-tokio = { version = "1.47.1", features = [
+tokio = { version = "1.48.0", features = [
     "macros",
     "rt-multi-thread",
     "time",
