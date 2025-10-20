@@ -477,9 +477,9 @@ checksum = "5b63caa9aa9397e2d9480a9b13673856c78d8ac123288526c37d7839f2a86990"
 
 [[package]]
 name = "colpetto"
-version = "0.6.0"
+version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a9bac489a5240c777561cb744407f9fd4b42c5218241ad39c28c6396dcf08c9f"
+checksum = "7b084fbcef934893d2623f4cf1d1db1442f468db1813c15f8d100155eda512a7"
 dependencies = [
  "cc",
  "devil",
