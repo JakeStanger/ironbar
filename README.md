@@ -38,7 +38,8 @@ Ironbar is designed to support anything from a lightweight bar to a full desktop
 
 ---
 
-![Screenshot of fully configured bar with MPD widget open](https://f.jstanger.dev/github/ironbar/bar.png?raw)
+![Screenshot of minimal theme with clock popup widget open](https://f.jstanger.dev/github/ironbar/themes/minimal.png?raw)
+![Screenshot of desktop theme with MPD popup open](https://f.jstanger.dev/github/ironbar/themes/desktop.png?raw)
 
 ✨ Looking for a starting point, or want to show off? Head to [Show and tell](https://github.com/JakeStanger/ironbar/discussions/categories/show-and-tell) ✨
 
