@@ -151,7 +151,7 @@ smithay-client-toolkit = { version = "0.20.0", default-features = false, feature
 ] }
 universal-config = { version = "0.5.1", default-features = false }
 ctrlc = "3.5.0"
-cfg-if = "1.0.3"
+cfg-if = "1.0.4"
 
 # bluetooth
 bluer = { version = "0.17.4", optional = true, features = ["bluetoothd"] }
