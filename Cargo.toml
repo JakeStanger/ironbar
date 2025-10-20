@@ -170,7 +170,7 @@ mlua = { version = "0.11.4", optional = true, features = ["luajit", "send"] }
 chrono = { version = "0.4.42", optional = true, default-features = false, features = ["clock", "unstable-locales"] }
 
 # keyboard
-colpetto = { version = "0.6.0", features = ["tokio", "tracing"], optional = true }
+colpetto = { version = "0.7.0", features = ["tokio", "tracing"], optional = true }
 evdev-rs = { version = "0.6.3", optional = true }
 
 # music
