@@ -100,7 +100,6 @@ jobs:
           - config+yaml
           - config+toml
           - config+corn
-          - config+ron
           - battery
           - bindmode+all
           - bindmode+sway

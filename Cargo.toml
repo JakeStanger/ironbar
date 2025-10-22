@@ -49,14 +49,12 @@ config = []
     "config+json",
     "config+yaml",
     "config+toml",
-    "config+corn",
-    "config+ron",
+    "config+corn"
 ]
 "config+json" = ["config", "config/json"]
 "config+yaml" = ["config", "config/yaml"]
 "config+toml" = ["config", "config/toml"]
 "config+corn" = ["config", "config/corn"]
-"config+ron" = ["config", "config/ron"]
 
 # -- module features --
 
