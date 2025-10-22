@@ -1,9 +1,11 @@
 > [!IMPORTANT]
-> This module is currently only supported on Sway, Hyprland and Niri**
+> This module is currently only supported on Sway, Hyprland and Niri.
 
 Shows all current workspaces. Clicking a workspace changes focus to it.
 
 ![Screenshot showing workspaces widget using custom icons with browser workspace focused](https://user-images.githubusercontent.com/5057870/184540156-26cfe4ec-ab8d-4e0f-a883-8b641025366b.png)
+
+![Screenshot showing workspaces widget using default names with workspace 4 focused](https://f.jstanger.dev/github/ironbar/modules/workspaces.png)
 
 ## Configuration
 

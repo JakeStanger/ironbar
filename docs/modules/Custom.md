@@ -9,7 +9,9 @@ this provides a powerful declarative interface for constructing your own interfa
 If you only intend to run a single script, prefer the [script](script) module, 
 or [label](label) if you only need a single text label.
 
-![Custom module with a button on the bar, and the popup open. The popup contains a header, shutdown button and restart button.](https://f.jstanger.dev/github/ironbar/custom-power-menu.png?raw)
+![Custom module with a button on the bar, and the popup open. The popup contains a header, shutdown button and restart button.](https://f.jstanger.dev/github/ironbar/modules/custom/power-menu.png)
+
+![Custom module with a button on the bar, and the popup open. The popup contains a header, shutdown button and restart button.](https://f.jstanger.dev/github/ironbar/modules/custom/weather.png)
 
 ## Configuration
 

@@ -45,17 +45,23 @@ use crate::modules::volume::VolumeModule;
 #[cfg(feature = "workspaces")]
 use crate::modules::workspaces::WorkspacesModule;
 
-use crate::modules::{AnyModuleFactory, ModuleFactory, ModuleInfo, ModuleRef};
-use cfg_if::cfg_if;
-use color_eyre::Result;
-#[cfg(feature = "extras")]
-use schemars::JsonSchema;
-use serde::Deserialize;
-use std::collections::HashMap;
-
 pub use self::common::{CommonConfig, ModuleJustification, ModuleOrientation, TransitionType};
 pub use self::layout::LayoutConfig;
 pub use self::truncate::{EllipsizeMode, TruncateMode};
+use crate::Ironbar;
+use crate::modules::{AnyModuleFactory, ModuleFactory, ModuleInfo, ModuleRef};
+use crate::style::CssSource;
+use cfg_if::cfg_if;
+use color_eyre::Result;
+use config::FileFormat;
+#[cfg(feature = "extras")]
+use schemars::JsonSchema;
+use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
+use std::convert::Infallible;
+use std::path::PathBuf;
+use std::str::FromStr;
+use tracing::{error, warn};
 
 #[derive(Debug, Deserialize, Clone)]
 #[serde(tag = "type", rename_all = "snake_case")]
@@ -369,24 +375,6 @@ pub struct BarConfig {
 
 impl Default for BarConfig {
     fn default() -> Self {
-        cfg_if! {
-            if #[cfg(feature = "clock")] {
-                let end = Some(vec![ModuleConfig::Clock(Box::default())]);
-            }
-            else {
-                let end = None;
-            }
-        }
-
-        cfg_if! {
-            if #[cfg(feature = "focused")] {
-                let center = Some(vec![ModuleConfig::Focused(Box::default())]);
-            }
-            else {
-                let center = None;
-            }
-        }
-
         Self {
             position: BarPosition::default(),
             margin: MarginConfig::default(),
@@ -396,14 +384,9 @@ impl Default for BarConfig {
             height: 42,
             start_hidden: None,
             autohide: None,
-            #[cfg(feature = "label")]
-            start: Some(vec![ModuleConfig::Label(
-                LabelModule::new("ℹ️ Using default config".to_string()).into(),
-            )]),
-            #[cfg(not(feature = "label"))]
             start: None,
-            center,
-            end,
+            center: None,
+            end: None,
             anchor_to_edges: true,
             popup_gap: 5,
             popup_autohide: false,
@@ -468,4 +451,144 @@ pub struct Config {
     ///
     /// **Default**: `{}`
     pub icon_overrides: HashMap<String, String>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(untagged)]
+pub enum ConfigLocation {
+    Minimal,
+    Desktop,
+    Custom(PathBuf),
+}
+
+impl FromStr for ConfigLocation {
+    type Err = Infallible;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "minimal" => Ok(ConfigLocation::Minimal),
+            "desktop" => Ok(ConfigLocation::Desktop),
+            _ => Ok(ConfigLocation::Custom(PathBuf::from(s))),
+        }
+    }
+}
+
+impl Default for ConfigLocation {
+    fn default() -> Self {
+        Self::Custom(Self::default_path())
+    }
+}
+
+impl ConfigLocation {
+    pub fn default_path() -> PathBuf {
+        dirs::config_dir()
+            .unwrap_or_default()
+            .to_path_buf()
+            .join("ironbar/config")
+    }
+
+    #[cfg(not(feature = "cli"))]
+    pub fn from_env(key: &str) -> Option<Self> {
+        std::env::var(key).map(PathBuf::from).ok().map(Self::Custom)
+    }
+}
+
+impl Config {
+    #[cfg(feature = "config")]
+    pub fn load(
+        config_location: ConfigLocation,
+        css_location: Option<ConfigLocation>,
+    ) -> (Config, CssSource) {
+        cfg_if! {
+            if #[cfg(feature = "config+corn")] {
+                const CONFIG_MINIMAL: (&str, FileFormat) = (include_str!("../../examples/minimal/config.corn"), FileFormat::Corn);
+                const CONFIG_DESKTOP: (&str, FileFormat) = (include_str!("../../examples/desktop/config.corn"), FileFormat::Corn);
+            } else if #[cfg(feature = "config+json")] {
+                const CONFIG_MINIMAL: (&str, FileFormat) = (include_str!("../../examples/minimal/config.json"), FileFormat::Json);
+                const CONFIG_DESKTOP: (&str, FileFormat) = (include_str!("../../examples/desktop/config.json"), FileFormat::Json);
+            } else if #[cfg(feature = "config+yaml")] {
+                const CONFIG_MINIMAL: (&str, FileFormat) = (include_str!("../../examples/minimal/config.yaml"), FileFormat::Yaml);
+                const CONFIG_DESKTOP: (&str, FileFormat) = (include_str!("../../examples/desktop/config.yaml"), FileFormat::Yaml);
+            } else if #[cfg(feature = "config+toml")] {
+                const CONFIG_MINIMAL: (&str, FileFormat) = (include_str!("../../examples/minimal/config.toml"), FileFormat::Toml);
+                const CONFIG_DESKTOP: (&str, FileFormat) = (include_str!("../../examples/desktop/config.toml"), FileFormat::Toml);
+            }
+        }
+
+        const CSS_MINIMAL: CssSource =
+            CssSource::String(include_str!("../../examples/minimal/style.css"));
+
+        const CSS_DESKTOP: CssSource =
+            CssSource::String(include_str!("../../examples/desktop/style.css"));
+
+        let config_builder = config::Config::builder();
+
+        let css_source = match css_location.unwrap_or_else(|| config_location.clone()) {
+            ConfigLocation::Minimal => CSS_MINIMAL,
+            ConfigLocation::Desktop => CSS_DESKTOP,
+            ConfigLocation::Custom(mut path) => {
+                if path.is_dir() {
+                    path = path.join("style.css")
+                } else if !path.ends_with(".css") {
+                    path = path.parent().unwrap_or(&path).join("style.css");
+                };
+
+                if path.exists() {
+                    CssSource::File(path)
+                } else {
+                    error!(
+                        "styles at '{}' not found, falling back to minimal theme",
+                        path.display()
+                    );
+                    CSS_MINIMAL
+                }
+            }
+        };
+
+        let config_builder = match config_location {
+            ConfigLocation::Minimal => config_builder
+                .add_source(config::File::from_str(CONFIG_MINIMAL.0, CONFIG_MINIMAL.1)),
+            ConfigLocation::Desktop => config_builder
+                .add_source(config::File::from_str(CONFIG_DESKTOP.0, CONFIG_DESKTOP.1)),
+            ConfigLocation::Custom(path) => config_builder.add_source(config::File::from(path)),
+        };
+
+        let mut config: Config = config_builder
+            .add_source(config::Environment::with_prefix("IRONBAR_"))
+            .build()
+            .and_then(|conf| conf.try_deserialize())
+            .unwrap_or_else(|err| {
+                error!("Error loading config: {err:?}");
+                config::Config::builder()
+                    .add_source(config::File::from_str(CONFIG_MINIMAL.0, CONFIG_MINIMAL.1))
+                    .build()
+                    .expect("should be a valid config")
+                    .try_deserialize()
+                    .expect("should be a valid config")
+            });
+
+        #[cfg(feature = "ipc")]
+        if let Some(ironvars) = config.ironvar_defaults.take() {
+            use crate::ironvar::WritableNamespace;
+
+            let variable_manager = Ironbar::variable_manager();
+            for (k, v) in ironvars {
+                if variable_manager.set(&k, v).is_err() {
+                    warn!("Ignoring invalid ironvar: '{k}'");
+                }
+            }
+        }
+
+        (config, css_source)
+    }
+
+    #[cfg(not(feature = "config"))]
+    pub fn load(
+        config_location: ConfigLocation,
+        css_location: Option<ConfigLocation>,
+    ) -> (Config, CssSource) {
+        panic!(
+            "Ironbar has been configured without config support. This won't work. Please reconfigure with at least one `config` feature flag enabled."
+        )
+    }
 }

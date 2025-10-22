@@ -45,7 +45,7 @@ jobs:
         run: cargo clippy --no-default-features --features config+json
         env:
           # Allow some warnings through as we'll never get it perfect in a zero-feature situation
-          RUSTFLAGS: '-A unused-imports -A unused-variables -A unused-mut -A dead-code'
+          RUSTFLAGS: '-DWarnings -A unused-imports -A unused-variables -A unused-mut -A dead-code'
 
 
   clippy-all:
@@ -61,7 +61,7 @@ jobs:
       - name: Clippy
         run: cargo clippy --all-targets --all-features
         env:
-          RUSTFLAGS: '-W clippy::unwrap_used'
+          RUSTFLAGS: '-DWarnings -W clippy::unwrap_used'
 
 
   build:
@@ -100,7 +100,6 @@ jobs:
           - config+yaml
           - config+toml
           - config+corn
-          - config+ron
           - battery
           - bindmode+all
           - bindmode+sway
@@ -142,4 +141,4 @@ jobs:
         run: cargo check --no-default-features --features ${{ matrix.feature }}
         env:
           # Allow some warnings through as we'll never get it perfect
-          RUSTFLAGS: '-A unused-imports -A unused-variables -A unused-mut -A dead-code'
+          RUSTFLAGS: '-DWarnings -A unused-imports -A unused-variables -A unused-mut -A dead-code'

@@ -7,6 +7,7 @@ use std::time::Duration;
 
 use color_eyre::Result;
 use glib::Propagation;
+use gtk::gdk::Paintable;
 use gtk::prelude::*;
 use gtk::{Button, ContentFit, EventSequenceState, GestureClick, Label, Orientation, Scale};
 use tokio::sync::mpsc;
@@ -441,12 +442,12 @@ impl Module<Button> for MusicModule {
                                 };
 
                                 if !success {
-                                    album_image.set_pixbuf(None);
+                                    album_image.set_paintable(None::<&Paintable>);
                                     album_image.set_visible(false);
                                 }
                             });
                         } else {
-                            album_image.set_pixbuf(None);
+                            album_image.set_paintable(None::<&Paintable>);
                             album_image.set_visible(false);
                         }
                     }

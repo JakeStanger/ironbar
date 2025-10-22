@@ -263,14 +263,12 @@ impl ItemButton {
                     return;
                 };
 
-                let alloc = button.allocation();
-
                 let (x, y) = ev.position().unwrap_or_default();
 
                 let close = match bar_position {
-                    BarPosition::Top => y + THRESHOLD < f64::from(alloc.height()),
+                    BarPosition::Top => y + THRESHOLD < f64::from(button.height()),
                     BarPosition::Bottom => y > THRESHOLD,
-                    BarPosition::Left => x + THRESHOLD < f64::from(alloc.width()),
+                    BarPosition::Left => x + THRESHOLD < f64::from(button.width()),
                     BarPosition::Right => x > THRESHOLD,
                 };
 

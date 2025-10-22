@@ -3,7 +3,7 @@
 
 Displays the title and/or icon of the currently focused window.
 
-![Screenshot of focused widget, showing this page open on firefox](https://user-images.githubusercontent.com/5057870/184714118-c1fb1c67-cd8c-4cc0-b5cd-6faccff818ac.png)
+![Screenshot of focused widget, showing an Ironbar file currently open in RustRover](https://f.jstanger.dev/github/ironbar/modules/focused.png)
 
 
 ## Configuration

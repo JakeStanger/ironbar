@@ -1,7 +1,7 @@
 Displays the current date and time. 
 Clicking on the widget opens a popup with the time and a calendar.
 
-![Screenshot of clock widget with popup open](https://user-images.githubusercontent.com/5057870/184540521-2278bdec-9742-46f0-9ac2-58a7b6f6ea1d.png)
+![Screenshot of clock widget with popup open](https://f.jstanger.dev/github/ironbar/modules/clock.png)
 
 
 ## Configuration

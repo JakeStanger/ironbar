@@ -1,5 +1,5 @@
 use crate::channels::{AsyncSenderExt, BroadcastReceiverExt};
-use crate::config::CommonConfig;
+use crate::config::{CommonConfig, ConfigLocation};
 use crate::modules::{Module, ModuleInfo, ModuleParts, WidgetContext};
 use crate::{module_impl, spawn};
 use glib::translate::ToGlibPtr;
@@ -129,11 +129,15 @@ impl Module<gtk::Box> for CairoModule {
 
         let area = DrawingArea::new();
 
-        let lua = context
-            .ironbar
-            .clients
-            .borrow_mut()
-            .lua(&context.ironbar.config_dir);
+        let config_dir = match &context.ironbar.config_location {
+            ConfigLocation::Minimal | ConfigLocation::Desktop => {
+                let path = ConfigLocation::default_path();
+                path.parent().unwrap_or(&path).to_path_buf()
+            }
+            ConfigLocation::Custom(path) => path.parent().unwrap_or(path).to_path_buf(),
+        };
+
+        let lua = context.ironbar.clients.borrow_mut().lua(&config_dir);
 
         // this feels kinda dirty,
         // but it keeps draw functions separate in the global scope

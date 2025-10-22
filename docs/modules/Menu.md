@@ -6,7 +6,7 @@ Clicking on any application category will open a sub-menu with any installed app
 
 It is also possible to add custom categories and actions into the menu.
 
-![Screenshot of open menu showing applications inside Office category](https://f.jstanger.dev/github/ironbar/menu.png)
+![Screenshot of open menu showing applications inside Office category](https://f.jstanger.dev/github/ironbar/modules/menu.png)
 
 ## Configuration
 

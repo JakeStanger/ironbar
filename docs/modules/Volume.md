@@ -5,7 +5,7 @@ Use `truncate` option to control the display of application titles in the volume
 
 This requires PulseAudio to function (`pipewire-pulse` is supported).
 
-![The volume widget, with its popup open. A single stream is playing audio.](https://f.jstanger.dev/github/ironbar/volume.png)
+![The volume widget, with its popup open. A single stream is playing audio.](https://f.jstanger.dev/github/ironbar/modules/volume.png)
 
 ## Configuration
 

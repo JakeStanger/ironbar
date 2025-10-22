@@ -4,10 +4,10 @@ use glib::{Bytes, VariantTy};
 use gtk::gdk::Texture;
 use gtk::gio::{Icon, Menu, MenuModel, SimpleAction, SimpleActionGroup};
 use gtk::{
-    Box as GtkBox, Orientation, Shortcut, ShortcutAction, ShortcutController, ShortcutTrigger,
-    prelude::*,
+    Box as GtkBox, Orientation, Picture, Shortcut, ShortcutAction, ShortcutController,
+    ShortcutTrigger, prelude::*,
 };
-use gtk::{Button, Image, Label, PopoverMenu};
+use gtk::{Button, Label, PopoverMenu};
 use system_tray::client::ActivateRequest;
 use system_tray::item::{IconPixmap, Status, StatusNotifierItem, Tooltip};
 use system_tray::menu::ToggleState;
@@ -19,7 +19,7 @@ pub(crate) struct TrayMenu {
     pub box_content: GtkBox,
     pub widget: Button,
     pub popover: PopoverMenu,
-    image_widget: Option<Image>,
+    image_widget: Option<Picture>,
     label_widget: Option<Label>,
     activated_channel: mpsc::Sender<ActivateRequest>,
     path: Option<String>,
@@ -132,7 +132,7 @@ impl TrayMenu {
     }
 
     /// Updates the image, and shows it in favour of the label.
-    pub fn set_image(&mut self, image: &Image) {
+    pub fn set_image(&mut self, image: &Picture) {
         if let Some(label) = self.label_widget.take() {
             label.set_visible(false);
         }

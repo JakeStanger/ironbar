@@ -44,18 +44,17 @@ ipc = ["dep:serde_json", "dep:clap"]
 
 http = ["dep:reqwest"]
 
+config = []
 "config+all" = [
     "config+json",
     "config+yaml",
     "config+toml",
-    "config+corn",
-    "config+ron",
+    "config+corn"
 ]
-"config+json" = ["universal-config/json"]
-"config+yaml" = ["universal-config/yaml"]
-"config+toml" = ["universal-config/toml"]
-"config+corn" = ["universal-config/corn"]
-"config+ron" = ["universal-config/ron"]
+"config+json" = ["config", "config/json"]
+"config+yaml" = ["config", "config/yaml"]
+"config+toml" = ["config", "config/toml"]
+"config+corn" = ["config", "config/corn"]
 
 # -- module features --
 
@@ -120,7 +119,7 @@ extras = ["dep:schemars", "dep:clap_complete"]
 
 [dependencies]
 # core
-gtk = { package = "gtk4", version = "0.10.0", features = ["v4_10"] }
+gtk = { package = "gtk4", version = "0.10.0", features = ["v4_12"] }
 gtk-layer-shell = { package = "gtk4-layer-shell", version = "0.6.3" }
 glib = "0.21.1"
 tokio = { version = "1.48.0", features = [
@@ -149,7 +148,7 @@ wayland-protocols-wlr = { version = "0.3.9", features = ["client"] }
 smithay-client-toolkit = { version = "0.20.0", default-features = false, features = [
     "calloop",
 ] }
-universal-config = { version = "0.5.1", default-features = false }
+config = { version = "0.15.18", default-features = false }
 ctrlc = "3.5.0"
 cfg-if = "1.0.4"
 
@@ -157,7 +156,7 @@ cfg-if = "1.0.4"
 bluer = { version = "0.17.4", optional = true, features = ["bluetoothd"] }
 
 # cli
-clap = { version = "4.5.48", optional = true, features = ["derive"] }
+clap = { version = "4.5.49", optional = true, features = ["derive", "env"] }
 
 # http
 reqwest = { version = "0.12.24", default-features = false, features = ["default-tls", "http2"], optional = true }

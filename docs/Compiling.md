@@ -13,7 +13,7 @@ It is also recommended to install a [Nerd Font](https://www.nerdfonts.com/#home)
 
 ## Build requirements
 
-To build from source, you must have GTK (>= 4.10) and GTK Layer Shell installed.
+To build from source, you must have GTK (>= 4.12) and GTK Layer Shell installed.
 You also need rust; only the latest stable version is supported.
 
 ### Docker
@@ -102,7 +102,6 @@ cargo build --release --no-default-features \
 | config+yaml         | Enables configuration support for YAML.                                                                              |
 | config+toml         | Enables configuration support for TOML.                                                                              |
 | config+corn         | Enables configuration support for [Corn](https://github.com/jakestanger/corn).                                       |
-| config+ron          | Enables configuration support for [Ron](https://github.com/ron-rs/ron).                                              |
 | **Modules**         |                                                                                                                      |
 | battery             | Enables the `battery` module.                                                                                        |
 | bindmode            | Enables the `bindmode` module.                                                                                       |

@@ -1,0 +1,18 @@
+let {
+    $workspaces = { type = "workspaces" }
+
+    $focused = { type = "focused" icon_size = 16 }
+
+    $battery = { type = "battery" show_if = "[ -f /sys/class/power_supply/BAT0 ]" }
+    $sys_info = { type = "sys_info" format = ["{cpu_percent}% " "{memory_percent}% "] interval.cpu = 1 }
+    $tray = { type = "tray" }
+    $clock = { type = "clock" }
+
+} in {
+    position = "top"
+    height = 24
+
+    start = [ $workspaces ]
+    center = [ $focused ]
+    end = [ $battery $sys_info $tray $clock ]
+}

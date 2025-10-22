@@ -1,5 +1,12 @@
 #!/usr/bin/env bash
 
-corn examples/config.corn -t json > examples/config.json
-corn examples/config.corn -t toml > examples/config.toml
-corn examples/config.corn -t yaml > examples/config.yaml
+shopt -s extglob
+
+for dir in examples/*;
+do
+  echo "$dir"
+  corn "$dir/config.corn" -t json > "$dir/config.json"
+  corn "$dir/config.corn" -t toml > "$dir/config.toml"
+  corn "$dir/config.corn" -t yaml > "$dir/config.yaml"
+done
+

@@ -1,6 +1,6 @@
-Displays a fully interactive icon tray using the KDE `libappindicator` protocol.
+Displays a fully interactive icon tray using the KDE `libappindicator` and `com.canonical.dbusmenu` protocols.
 
-![Screenshot showing icon tray widget](https://user-images.githubusercontent.com/5057870/184540135-78ffd79d-f802-4c79-b09a-05a733dadc55.png)
+![Screenshot showing icon tray widget](https://f.jstanger.dev/github/ironbar/modules/tray.png)
 
 ## Configuration
 
