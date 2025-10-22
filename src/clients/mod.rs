@@ -16,6 +16,8 @@ pub mod clipboard;
     feature = "workspaces",
 ))]
 pub mod compositor;
+#[cfg(feature = "inhibit")]
+pub mod gtk_wayland;
 #[cfg(feature = "keyboard")]
 pub mod libinput;
 #[cfg(feature = "cairo")]
@@ -67,6 +69,8 @@ pub struct Clients {
     network_manager: Option<Arc<networkmanager::Client>>,
     #[cfg(feature = "notifications")]
     notifications: Option<Arc<swaync::Client>>,
+    #[cfg(feature = "inhibit")]
+    gtk_wayland: Option<Arc<gtk_wayland::Client>>,
     #[cfg(feature = "sys_info")]
     sys_info: Option<Arc<sysinfo::Client>>,
     #[cfg(feature = "tray")]
@@ -220,6 +224,13 @@ impl Clients {
         };
 
         Ok(client)
+    }
+
+    #[cfg(feature = "inhibit")]
+    pub fn gtk_wayland(&mut self) -> Arc<gtk_wayland::Client> {
+        self.gtk_wayland
+            .get_or_insert_with(|| Arc::new(gtk_wayland::Client::new()))
+            .clone()
     }
 
     #[cfg(feature = "sys_info")]

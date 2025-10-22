@@ -21,6 +21,7 @@ default = [
     "custom",
     "focused",
     "http",
+    "inhibit",
     "ipc",
     "keyboard+all",
     "launcher",
@@ -77,6 +78,8 @@ custom = []
 
 focused = []
 
+inhibit = ["gdk4-wayland", "chrono", "wayland-protocols"]
+
 keyboard = ["dep:colpetto", "dep:evdev-rs", "dep:rustix", "futures-lite"]
 "keyboard+all" = ["keyboard", "keyboard+sway", "keyboard+hyprland"]
 "keyboard+sway" = ["keyboard", "sway"]
@@ -120,6 +123,7 @@ extras = ["dep:schemars", "dep:clap_complete"]
 [dependencies]
 # core
 gtk = { package = "gtk4", version = "0.10.0", features = ["v4_12"] }
+gdk4-wayland = { version = "0.10.0", features = ["v4_12", "wayland_crate"], optional = true }
 gtk-layer-shell = { package = "gtk4-layer-shell", version = "0.6.3" }
 glib = "0.21.1"
 tokio = { version = "1.48.0", features = [
@@ -144,6 +148,7 @@ dirs = "6.0.0"
 walkdir = "2.5.0"
 notify = { version = "8.2.0", default-features = false }
 wayland-client = "0.31.1"
+wayland-protocols = { version = "0.32.9", features = ["client", "unstable"], optional = true }
 wayland-protocols-wlr = { version = "0.3.9", features = ["client"] }
 smithay-client-toolkit = { version = "0.20.0", default-features = false, features = [
     "calloop",
@@ -164,9 +169,6 @@ reqwest = { version = "0.12.24", default-features = false, features = ["default-
 # cairo
 lua-src = { version = "548.1.2", optional = true }
 mlua = { version = "0.11.4", optional = true, features = ["luajit", "send"] }
-
-# clock
-chrono = { version = "0.4.42", optional = true, default-features = false, features = ["clock", "unstable-locales"] }
 
 # keyboard
 colpetto = { version = "0.7.0", features = ["tokio", "tracing"], optional = true }
@@ -191,6 +193,7 @@ libpulse-binding = { version = "2.30.1", optional = true }
 # shared
 futures-lite = { version = "2.6.1", optional = true } # battery, network_manager, workspaces, keyboard
 zbus = { version = "5.12.0", default-features = false, features = ["tokio"], optional = true } # battery, network_manager, notifications
+chrono = { version = "0.4.42", optional = true, default-features = false, features = ["clock", "unstable-locales"] } # clock, inhibit
 swayipc-async = { version = "2.1.1", optional = true } # workspaces, keyboard
 hyprland = { version = "0.4.0-beta.3", optional = true } # workspaces, keyboard
 rustix = { version = "1.1.2", default-features = false, features = ["std", "fs", "pipe", "event"], optional = true } # clipboard, input
