@@ -24,6 +24,7 @@ pub mod lua;
 pub mod music;
 #[cfg(feature = "network_manager")]
 pub mod networkmanager;
+pub mod outputs;
 #[cfg(feature = "sway")]
 pub mod sway;
 #[cfg(feature = "notifications")]
@@ -43,6 +44,7 @@ pub mod wayland;
 #[derive(Debug, Default)]
 pub struct Clients {
     wayland: Option<Arc<wayland::Client>>,
+    outputs: Option<Arc<outputs::Client>>,
     #[cfg(feature = "workspaces")]
     workspaces: Option<Arc<dyn compositor::WorkspaceClient>>,
     #[cfg(feature = "sway")]
@@ -87,6 +89,12 @@ impl Clients {
     pub fn wayland(&mut self) -> Arc<wayland::Client> {
         self.wayland
             .get_or_insert_with(|| Arc::new(wayland::Client::new()))
+            .clone()
+    }
+
+    pub fn outputs(&mut self) -> Arc<outputs::Client> {
+        self.outputs
+            .get_or_insert_with(|| Arc::new(outputs::Client::new()))
             .clone()
     }
 

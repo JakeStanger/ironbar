@@ -21,7 +21,6 @@ pub enum OutputEventType {
 
 impl Client {
     /// Gets the information for all outputs.
-    #[cfg(feature = "ipc")]
     pub fn output_info_all(&self) -> Vec<OutputInfo> {
         use super::{Request, Response};
         match self.send_request(Request::OutputInfoAll) {
@@ -37,7 +36,6 @@ impl Client {
 }
 
 impl Environment {
-    #[cfg(feature = "ipc")]
     pub fn output_info_all(&mut self) -> Vec<OutputInfo> {
         self.output_state
             .outputs()

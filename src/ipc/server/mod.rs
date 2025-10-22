@@ -142,18 +142,12 @@ impl Ipc {
                     window.close();
                 }
 
-                let wl = ironbar.clients.borrow_mut().wayland();
-                let outputs = wl.output_info_all();
-
                 ironbar.reload_config();
 
-                for output in outputs {
-                    match crate::load_output_bars(ironbar, application, &output) {
-                        Ok(mut bars) => ironbar.bars.borrow_mut().append(&mut bars),
-                        Err(err) => error!("{err:?}"),
-                    }
+                match crate::load_output_bars(ironbar, application) {
+                    Ok(_) => {}
+                    Err(err) => error!("{err:?}"),
                 }
-
                 Response::Ok
             }
             Command::Var(cmd) => ironvar::handle_command(cmd),
