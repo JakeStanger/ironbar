@@ -2,14 +2,16 @@
   <configuration default="false" name="Clippy" type="CargoCommandRunConfiguration" factoryName="Cargo Command">
     <option name="command" value="clippy" />
     <option name="workingDirectory" value="file://$PROJECT_DIR$" />
+    <envs>
+      <env name="RUSTFLAGS" value="-W clippy::unwrap_used" />
+    </envs>
+    <option name="emulateTerminal" value="false" />
     <option name="channel" value="DEFAULT" />
     <option name="requiredFeatures" value="false" />
     <option name="allFeatures" value="false" />
-    <option name="emulateTerminal" value="false" />
     <option name="withSudo" value="false" />
     <option name="buildTarget" value="REMOTE" />
     <option name="backtrace" value="SHORT" />
-    <envs />
     <option name="isRedirectInput" value="false" />
     <option name="redirectInputPath" value="" />
     <method v="2">
