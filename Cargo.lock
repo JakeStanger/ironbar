@@ -815,6 +815,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "dlib"
+version = "0.5.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "330c60081dcc4c72131f8eb70510f1ac07223e5d4163db481a04a0befcffa412"
+dependencies = [
+ "libloading",
+]
+
+[[package]]
 name = "downcast-rs"
 version = "1.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1195,6 +1204,33 @@ dependencies = [
  "libc",
  "pango-sys",
  "pkg-config",
+ "system-deps",
+]
+
+[[package]]
+name = "gdk4-wayland"
+version = "0.10.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "de4b85ee26265dc5ffcad9627944ceb21935a02cf775c88b5a4340c9fffd997f"
+dependencies = [
+ "gdk4",
+ "gdk4-wayland-sys",
+ "gio",
+ "glib",
+ "libc",
+ "wayland-backend",
+ "wayland-client",
+ "wayland-protocols",
+]
+
+[[package]]
+name = "gdk4-wayland-sys"
+version = "0.10.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e8aa299e52b5364b14b877a02778dfc193fa112d22da80a5b6722a8ea088a4e8"
+dependencies = [
+ "glib-sys",
+ "libc",
  "system-deps",
 ]
 
@@ -1943,6 +1979,7 @@ dependencies = [
  "evdev-rs",
  "futures-lite",
  "futures-signals",
+ "gdk4-wayland",
  "glib",
  "gtk4",
  "gtk4-layer-shell",
@@ -1971,6 +2008,7 @@ dependencies = [
  "tracing-subscriber",
  "walkdir",
  "wayland-client",
+ "wayland-protocols",
  "wayland-protocols-wlr",
  "zbus",
 ]
@@ -2056,6 +2094,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "06085512b750d640299b79be4bad3d2fa90a9c00b1fd9e1b46364f66f0485c72"
 dependencies = [
  "pkg-config",
+]
+
+[[package]]
+name = "libloading"
+version = "0.8.9"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d7c4b02199fee7c5d21a5ae7d8cfa79a6ef5bb2fc834d6e9058e89c825efdc55"
+dependencies = [
+ "cfg-if",
+ "windows-link 0.2.0",
 ]
 
 [[package]]
@@ -2968,6 +3016,12 @@ dependencies = [
  "serde_derive_internals",
  "syn 2.0.106",
 ]
+
+[[package]]
+name = "scoped-tls"
+version = "1.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e1cf6437eb19a8f4a6cc0f7dca544973b0b78843adbfeb3683d1a94a0024a294"
 
 [[package]]
 name = "scopeguard"
@@ -4020,6 +4074,7 @@ dependencies = [
  "cc",
  "downcast-rs",
  "rustix 1.1.2",
+ "scoped-tls",
  "smallvec",
  "wayland-sys",
 ]
@@ -4126,6 +4181,8 @@ version = "0.31.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "34949b42822155826b41db8e5d0c1be3a2bd296c747577a43a3e6daefc296142"
 dependencies = [
+ "dlib",
+ "log",
  "pkg-config",
 ]
 
