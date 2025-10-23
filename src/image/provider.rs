@@ -343,12 +343,16 @@ impl Provider {
     pub fn set_icon_theme(&self, theme: Option<&str>) {
         trace!("Setting icon theme to {:?}", theme);
 
-        *self.icon_theme.borrow_mut() = if theme.is_some() {
+        let icon_theme = if theme.is_some() {
             let icon_theme = IconTheme::new();
             icon_theme.set_theme_name(theme);
-            Some(icon_theme)
+            icon_theme
         } else {
-            Some(IconTheme::default())
+            IconTheme::default()
         };
+
+        icon_theme.set_display(Some(crate::get_display()).as_ref());
+
+        *self.icon_theme.borrow_mut() = Some(icon_theme);
     }
 }
