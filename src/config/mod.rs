@@ -20,6 +20,8 @@ use crate::modules::clock::ClockModule;
 use crate::modules::custom::CustomModule;
 #[cfg(feature = "focused")]
 use crate::modules::focused::FocusedModule;
+#[cfg(feature = "inhibit")]
+use crate::modules::inhibit::InhibitModule;
 #[cfg(feature = "keyboard")]
 use crate::modules::keyboard::KeyboardModule;
 #[cfg(feature = "label")]
@@ -83,6 +85,8 @@ pub enum ModuleConfig {
     Custom(Box<CustomModule>),
     #[cfg(feature = "focused")]
     Focused(Box<FocusedModule>),
+    #[cfg(feature = "inhibit")]
+    Inhibit(Box<InhibitModule>),
     #[cfg(feature = "keyboard")]
     Keyboard(Box<KeyboardModule>),
     #[cfg(feature = "label")]
@@ -139,6 +143,8 @@ impl ModuleConfig {
             Self::Custom(module) => create!(module),
             #[cfg(feature = "focused")]
             Self::Focused(module) => create!(module),
+            #[cfg(feature = "inhibit")]
+            Self::Inhibit(module) => create!(module),
             #[cfg(feature = "keyboard")]
             Self::Keyboard(module) => create!(module),
             #[cfg(feature = "label")]
@@ -182,6 +188,8 @@ impl ModuleConfig {
             ModuleConfig::Custom(_) => "Custom",
             #[cfg(feature = "focused")]
             ModuleConfig::Focused(_) => "Focused",
+            #[cfg(feature = "inhibit")]
+            ModuleConfig::Inhibit(_) => "Inhibit",
             #[cfg(feature = "keyboard")]
             ModuleConfig::Keyboard(_) => "Keyboard",
             #[cfg(feature = "label")]
