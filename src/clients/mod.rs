@@ -16,6 +16,8 @@ pub mod clipboard;
     feature = "workspaces",
 ))]
 pub mod compositor;
+#[cfg(feature = "inhibit")]
+pub mod inhibit;
 #[cfg(feature = "keyboard")]
 pub mod libinput;
 #[cfg(feature = "cairo")]
@@ -55,6 +57,8 @@ pub struct Clients {
     bindmode: Option<Arc<dyn compositor::BindModeClient>>,
     #[cfg(feature = "clipboard")]
     clipboard: Option<Arc<clipboard::Client>>,
+    #[cfg(feature = "inhibit")]
+    inhibit: Option<Arc<inhibit::Client>>,
     #[cfg(feature = "keyboard")]
     libinput: HashMap<Box<str>, Arc<libinput::Client>>,
     #[cfg(feature = "keyboard")]
@@ -104,6 +108,13 @@ impl Clients {
 
         self.clipboard
             .get_or_insert_with(|| Arc::new(clipboard::Client::new(wayland)))
+            .clone()
+    }
+
+    #[cfg(feature = "inhibit")]
+    pub fn inhibit(&mut self) -> Arc<inhibit::Client> {
+        self.inhibit
+            .get_or_insert_with(|| Arc::new(inhibit::Client::new()))
             .clone()
     }
 

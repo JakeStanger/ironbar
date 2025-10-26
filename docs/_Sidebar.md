@@ -33,6 +33,7 @@
 - [Clock](clock)
 - [Custom](custom)
 - [Focused](focused)
+- [Inhibit](inhibit)
 - [Keyboard](keyboard)
 - [Label](label)
 - [Launcher](launcher)
