@@ -1,9 +1,10 @@
 mod macros;
 mod wl_output;
 mod wl_seat;
+mod ext_workspace;
 
 use crate::error::{ERR_CHANNEL_RECV, ExitCode};
-use crate::{arc_mut, lock, register_client, spawn, spawn_blocking};
+use crate::{arc_mut, delegate_workspace_group_handle, delegate_workspace_handle, delegate_workspace_manager, lock, register_client, spawn, spawn_blocking};
 use std::process::exit;
 use std::sync::{Arc, Mutex};
 
@@ -25,6 +26,7 @@ use tracing::{debug, error, trace};
 use wayland_client::globals::registry_queue_init;
 use wayland_client::{Connection, QueueHandle};
 pub use wl_output::{OutputEvent, OutputEventType};
+use crate::clients::wayland::ext_workspace::manager::WorkspaceManagerState;
 
 cfg_if! {
     if #[cfg(any(feature = "focused", feature = "launcher"))] {
@@ -210,6 +212,9 @@ pub struct Environment {
     #[cfg(feature = "clipboard")]
     copy_paste_sources: Vec<CopyPasteSource>,
 
+    // -- workspaces
+    workspace_manager_state: Option<WorkspaceManagerState>,
+
     // local state
     #[cfg(feature = "clipboard")]
     clipboard: Arc<Mutex<Option<ClipboardItem>>>,
@@ -235,6 +240,10 @@ cfg_if! {
         delegate_data_control_source!(Environment);
     }
 }
+
+delegate_workspace_manager!(Environment);
+delegate_workspace_group_handle!(Environment);
+delegate_workspace_handle!(Environment);
 
 impl Environment {
     pub fn spawn(
@@ -287,12 +296,26 @@ impl Environment {
             }
         };
 
+        let workspace_manager_state = match WorkspaceManagerState::bind(&globals, &qh) {
+            Ok(state) => Some(state),
+            Err(err) => {
+                error!("{:?}",
+                    Report::new(err)
+                        .wrap_err("Failed to bind to ext_workspace_manager global")
+                        .note("This is likely a due to the current compositor not supporting the required protocol")
+                        .note("workspace module will not work")
+                    );
+                None
+            }
+        };
+
         let mut env = Self {
             registry_state,
             output_state,
             seat_state,
             #[cfg(feature = "clipboard")]
             data_control_device_manager_state,
+            workspace_manager_state,
             queue_handle: qh,
             event_tx,
             response_tx,
