@@ -31,13 +31,13 @@ making it better suited to mouse-oriented users.
 This configuration is baked into Ironbar and can be used out of the box:
 
 ```shell
-ironbar --config minimal
+ironbar --config desktop
 ```
 
 It is also possible to use the provided theme with another configuration:
 
 ```shell
-ironbar --theme minimal
+ironbar --theme desktop
 ```
 
 Alternatively, copy the config file of your preferred format, and the `style.css` into `~/.config/ironbar`.
