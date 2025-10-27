@@ -67,7 +67,7 @@ The project strives to stay true to these key philosophies:
 - **Easy to configure**: The config schema should be as intuitive and as standardized as possible. 
   Each module should work the same way on every compositor with no additional configuration.
 - **A middle-ground**: Ironbar should provide more customization and a richer UI than a light-weight bar,
-    but should not strive to step on the toes of full custom shell solutions.
+  but should not strive to step on the toes of full custom shell solutions.
 - **Multithreaded async design**: Scripts should run in the background. 
   If one module or service blocks or crashes, the rest of the bar should continue to run smoothly.
 
