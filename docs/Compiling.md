@@ -30,6 +30,8 @@ $ cargo build
 
 ### Arch
 
+Build:
+
 ```shell
 pacman -S gtk4 gtk4-layer-shell dbus pkg-config
 # for http support
@@ -42,7 +44,16 @@ pacman -S libinput
 pacman -S luajit lua51-lgi
 ```
 
+Runtime:
+
+```shell
+# for lua/cairo support
+pacman -S lua51-lgi
+```
+
 ### Ubuntu/Debian
+
+Build:
 
 ```shell
 apt install build-essential libgtk-4-dev libgtk4-layer-shell-dev libdbus-1-dev
@@ -53,10 +64,20 @@ apt install libpulse-dev
 # for keyboard support
 apt install libinput-dev
 # for lua/cairo support
-apt install luajit-dev lua-lgi
+apt install libluajit-5.1-dev
+```
+
+Runtime:
+
+```shell
+apt install gtk4 gtk4-layer-shell
+# for lua/cairo support
+apt install luajit lua-lgi
 ```
 
 ### Fedora
+
+Build:
 
 ```shell
 dnf install gtk4-devel gtk4-layer-shell-devel dbus-devel pkgconf-pkg-config
@@ -67,7 +88,15 @@ dnf install pulseaudio-libs-devel
 # for keyboard support
 dnf install libinput-devel
 # for lua/cairo support
-dnf install luajit-devel lua-lgi
+dnf install luajit-devel
+```
+
+Runtime:
+
+```shell
+dnf install gtk4 gtk4-layer-shell
+# for lua/cairo support
+apt install luajit lua-lgi
 ```
 
 ## Features
