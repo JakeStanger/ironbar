@@ -210,9 +210,9 @@ impl Bar {
     fn setup_autohide(window: &ApplicationWindow, hotspot_window: &Window, timeout: u64) {
         hotspot_window.set_visible(false);
 
-        hotspot_window.set_opacity(0.0);
+        hotspot_window.set_opacity(0.01);
         hotspot_window.set_decorated(false);
-        hotspot_window.set_size_request(0, 1);
+        hotspot_window.set_default_size(0, 1);
 
         let timeout_id = rc_mut!(None);
 
