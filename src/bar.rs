@@ -126,14 +126,25 @@ impl Bar {
             monitor,
         );
 
-        if let Some(autohide) = config.autohide {
+        let autohide = config.autohide;
+        let anchor_to_edges = config.anchor_to_edges;
+        let margin = config.margin;
+
+        let load_result = self.load_modules(config, monitor);
+
+        if let Some(autohide) = autohide {
             let hotspot_window = Window::new();
-            Self::setup_autohide(&self.window, &hotspot_window, autohide);
+            Self::setup_autohide(
+                &self.window,
+                &hotspot_window,
+                load_result.popup.clone(),
+                autohide,
+            );
             self.setup_layer_shell(
                 &hotspot_window,
                 false,
-                config.anchor_to_edges,
-                config.margin,
+                anchor_to_edges,
+                margin,
                 gtk_layer_shell::Layer::Top,
                 monitor,
             );
@@ -142,8 +153,6 @@ impl Bar {
                 hotspot_window.set_visible(true);
             }
         }
-
-        let load_result = self.load_modules(config, monitor);
 
         self.show(!start_hidden);
 
@@ -207,12 +216,17 @@ impl Bar {
         );
     }
 
-    fn setup_autohide(window: &ApplicationWindow, hotspot_window: &Window, timeout: u64) {
+    fn setup_autohide(
+        window: &ApplicationWindow,
+        hotspot_window: &Window,
+        popup: Rc<Popup>,
+        timeout: u64,
+    ) {
         hotspot_window.set_visible(false);
 
-        hotspot_window.set_opacity(0.0);
+        hotspot_window.set_opacity(0.01);
         hotspot_window.set_decorated(false);
-        hotspot_window.set_size_request(0, 1);
+        hotspot_window.set_default_size(0, 1);
 
         let timeout_id = rc_mut!(None);
 
@@ -231,12 +245,16 @@ impl Bar {
                     let win = win.clone();
                     let hotspot_window = hotspot_window.clone();
                     let tid = timeout_id.clone();
+                    let popup = popup.clone();
 
                     *timeout_id.borrow_mut() = Some(glib::timeout_add_local_once(
                         Duration::from_millis(timeout),
                         move || {
-                            win.set_visible(false);
-                            hotspot_window.set_visible(true);
+                            if !popup.visible() {
+                                win.set_visible(false);
+                                hotspot_window.set_visible(true);
+                            }
+
                             *tid.borrow_mut() = None;
                         },
                     ));
