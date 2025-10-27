@@ -57,6 +57,20 @@ Ironbar is designed to support anything from a lightweight bar to a full desktop
 - Easy to configure anything from a single bar across all monitors, to multiple different unique bars per monitor 
 - Support for multiple config languages
 
+---
+
+Ironbar was born out of my [frustrations with existing alternatives](https://github.com/JakeStanger/ironbar/issues/965#issuecomment-2868780449):
+I wanted an experience similar to that of a full desktop panel,
+and I wanted that without requiring a lot of configuration for the end-user.
+The project strives to stay true to these key philosophies:
+
+- **Easy to configure**: The config schema should be as intuitive and as standardized as possible. 
+  Each module should work the same way on every compositor with no additional configuration.
+- **A middle-ground**: Ironbar should provide more customization and a richer UI than a light-weight bar,
+    but should not strive to step on the toes of full custom shell solutions.
+- **Multithreaded async design**: Scripts should run in the background. 
+  If one module or service blocks or crashes, the rest of the bar should continue to run smoothly.
+
 ## Installation
 
 [![Packaging status](https://repology.org/badge/vertical-allrepos/ironbar.svg)](https://repology.org/project/ironbar/versions)
