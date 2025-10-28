@@ -157,6 +157,11 @@ impl Popup {
         }
     }
 
+    /// Attempts to show the popup, parented on a particular button.
+    /// This relies on the `widget_id` existing in the cache,
+    /// otherwise this is a no-op.
+    ///
+    /// Returns whether the popup is shown.
     pub fn show_for(&self, widget_id: usize, button: &Button) -> bool {
         self.clear_window();
 

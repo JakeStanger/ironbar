@@ -236,6 +236,34 @@ impl Bar {
 
             let event_controller = EventControllerMotion::new();
 
+            // TODO: Lots of repeated code and reference cloning going on -
+            //  can we try and tidy this up?
+
+            {
+                let win = window.clone();
+                let hotspot_window = hotspot_window.clone();
+                let timeout_id = timeout_id.clone();
+
+                popup.popover.connect_hide(move |popover| {
+                    let win = win.clone();
+                    let hotspot_window = hotspot_window.clone();
+                    let tid = timeout_id.clone();
+                    let popover = popover.clone();
+
+                    *timeout_id.borrow_mut() = Some(glib::timeout_add_local_once(
+                        Duration::from_millis(timeout),
+                        move || {
+                            if !popover.is_visible() {
+                                win.set_visible(false);
+                                hotspot_window.set_visible(true);
+                            }
+
+                            *tid.borrow_mut() = None;
+                        },
+                    ));
+                });
+            }
+
             {
                 let win = window.clone();
                 let hotspot_window = hotspot_window.clone();
