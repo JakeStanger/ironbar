@@ -8,7 +8,7 @@
   glib,
   shared-mime-info,
   gsettings-desktop-schemas,
-  wrapGAppsHook,
+  wrapGAppsHook4,
   gtk4-layer-shell,
   gnome,
   libxkbcommon,
@@ -90,7 +90,7 @@ in
 
     nativeBuildInputs = [
       pkg-config
-      wrapGAppsHook
+      wrapGAppsHook4
       gobject-introspection
       installShellFiles
     ];
