@@ -71,6 +71,7 @@ impl From<&Workspace> for IronWorkspace {
 pub enum Event {
     WorkspacesChanged { workspaces: Vec<Workspace> },
     WorkspaceActivated { id: u64, focused: bool },
+    WorkspaceUrgencyChanged { id: u64, urgent: bool },
     Other,
 }
 

@@ -163,6 +163,12 @@ impl Client {
                             vec![]
                         }
                     }
+                    Ok(Event::WorkspaceUrgencyChanged { id, urgent }) => {
+                        vec![WorkspaceUpdate::Urgent {
+                            id: id as i64,
+                            urgent,
+                        }]
+                    }
                     Ok(Event::Other) => {
                         vec![]
                     }
