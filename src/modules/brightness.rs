@@ -1,5 +1,5 @@
 use crate::channels::{AsyncSenderExt, BroadcastReceiverExt};
-use crate::clients::backlight;
+use crate::clients::brightness;
 use crate::config::{CommonConfig, LayoutConfig, TruncateMode};
 use crate::modules::{Module, ModuleInfo, ModuleParts, WidgetContext};
 use crate::{module_impl, spawn};
@@ -12,7 +12,7 @@ use tokio::time::sleep;
 
 #[derive(Debug, Clone, Deserialize)]
 #[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
-pub enum BacklightDataSource {
+pub enum BrightnessDataSource {
     /// using the keyboard dbus. Note: this only works for keyboards, not for screen brightness.
     Keyboard,
     /// using the login1 dbus and fs for reading. This works for keyboard and screen brightness, but needs the filesystem for reading the data and dbus for adjusting.
@@ -32,7 +32,7 @@ pub enum BacklightDataSource {
 #[derive(Debug, Clone, Deserialize)]
 #[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
 #[serde(default)]
-pub struct BacklightModule {
+pub struct BrightnessModule {
     /// The format string to use for the widget button label.
     /// For available tokens, see [below](#formatting-tokens).
     ///
@@ -44,7 +44,7 @@ pub struct BacklightModule {
     /// See [icons](#icons).
     icons: Icons,
 
-    /// Where to get the backlight data from
+    /// Where to get the brightness data from
     ///
     /// **Default**:
     /// ```
@@ -52,7 +52,7 @@ pub struct BacklightModule {
     /// subsystem = "backlight"
     /// name = "amdgpu_bl1"
     /// ```
-    datasource: BacklightDataSource,
+    datasource: BrightnessDataSource,
 
     /// The number of milliseconds between refreshing memory data.
     ///
@@ -74,12 +74,12 @@ pub struct BacklightModule {
     pub common: Option<CommonConfig>,
 }
 
-impl Default for BacklightModule {
+impl Default for BrightnessModule {
     fn default() -> Self {
         Self {
             format: "{icon} {percentage}%".to_string(),
             icons: Icons::default(),
-            datasource: BacklightDataSource::default(),
+            datasource: BrightnessDataSource::default(),
             interval: 5000,
             truncate: None,
             layout: LayoutConfig::default(),
@@ -88,9 +88,9 @@ impl Default for BacklightModule {
     }
 }
 
-impl Default for BacklightDataSource {
+impl Default for BrightnessDataSource {
     fn default() -> Self {
-        BacklightDataSource::Login1Fs {
+        BrightnessDataSource::Login1Fs {
             subsystem: "backlight".to_string(),
             name: "amdgpu_bl1".to_string(),
         }
@@ -141,23 +141,23 @@ impl Icons {
 }
 
 #[derive(Clone, Debug, Default)]
-pub struct BacklightProperties {
+pub struct BrightnessProperties {
     screen_brightness: f64,
     icon_name: String,
 }
 
-impl BacklightModule {
+impl BrightnessModule {
     async fn read_percentage(
-        client: &backlight::Client,
-        datasource: &BacklightDataSource,
+        client: &brightness::Client,
+        datasource: &BrightnessDataSource,
     ) -> Result<(f64, i32, i32)> {
         let (current, max): (i32, i32) = match &datasource {
-            BacklightDataSource::Keyboard => {
+            BrightnessDataSource::Keyboard => {
                 let brightness_kbd = client.keyboard().get_brightness().await?;
                 let max_brightness_kbd = client.keyboard().get_max_brightness().await?;
                 (brightness_kbd, max_brightness_kbd)
             }
-            BacklightDataSource::Login1Fs { subsystem, name } => {
+            BrightnessDataSource::Login1Fs { subsystem, name } => {
                 let brightness_screen = client.screen_reader().get_brightness(subsystem, name)?;
                 let max_brightness_screen =
                     client.screen_reader().get_max_brightness(subsystem, name)?;
@@ -171,11 +171,11 @@ impl BacklightModule {
     }
 }
 
-impl Module<Button> for BacklightModule {
-    type SendMessage = BacklightProperties;
+impl Module<Button> for BrightnessModule {
+    type SendMessage = BrightnessProperties;
     type ReceiveMessage = ();
 
-    module_impl!("backlight");
+    module_impl!("brightness");
 
     fn spawn_controller(
         &self,
@@ -184,7 +184,7 @@ impl Module<Button> for BacklightModule {
         _rx: mpsc::Receiver<Self::ReceiveMessage>,
     ) -> Result<()> {
         let tx = context.tx.clone();
-        let client = context.try_client::<backlight::Client>()?;
+        let client = context.try_client::<brightness::Client>()?;
         let icons = self.icons.clone();
         let datasource = self.datasource.clone();
         let interval = self.interval;
@@ -193,7 +193,7 @@ impl Module<Button> for BacklightModule {
             loop {
                 match Self::read_percentage(&client, &datasource).await {
                     Ok((percent, _, _)) => {
-                        tx.send_update(BacklightProperties {
+                        tx.send_update(BrightnessProperties {
                             icon_name: icons.brightness_icon(percent).to_string(),
                             screen_brightness: percent,
                         })
@@ -225,7 +225,7 @@ impl Module<Button> for BacklightModule {
         button.set_child(Some(&button_label));
 
         let tx = context.tx.clone();
-        let client = context.try_client::<backlight::Client>()?;
+        let client = context.try_client::<brightness::Client>()?;
         let icons = self.icons.clone();
         let datasource = self.datasource.clone();
 
@@ -253,19 +253,19 @@ impl Module<Button> for BacklightModule {
                         let new_cur = new_cur.max(0).min(max); // not using .clamp to avoid panic in case max is ever < 0
                         let percent: f64 = cur as f64 / (max as f64) * 100.0;
 
-                        tx.send_update(BacklightProperties {
+                        tx.send_update(BrightnessProperties {
                             icon_name: icons.brightness_icon(percent).to_string(),
                             screen_brightness: percent,
                         })
                         .await;
 
                         match &datasource {
-                            BacklightDataSource::Keyboard => {
+                            BrightnessDataSource::Keyboard => {
                                 if let Err(e) = client.keyboard().set_brightness(new_cur).await {
                                     tracing::error!(?e, "Could not change brightness");
                                 }
                             }
-                            BacklightDataSource::Login1Fs { subsystem, name } => {
+                            BrightnessDataSource::Login1Fs { subsystem, name } => {
                                 if let Err(e) = client
                                     .screen_writer()
                                     .set_brightness(
