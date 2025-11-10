@@ -16,14 +16,14 @@ use gtk::{Application, Button, Orientation, Revealer, Widget};
 use tokio::sync::{broadcast, mpsc};
 use tracing::{debug, trace};
 
-#[cfg(feature = "backlight")]
-pub mod backlight;
 #[cfg(feature = "battery")]
 pub mod battery;
 #[cfg(feature = "bindmode")]
 pub mod bindmode;
 #[cfg(feature = "bluetooth")]
 pub mod bluetooth;
+#[cfg(feature = "brightness")]
+pub mod brightness;
 #[cfg(feature = "cairo")]
 pub mod cairo;
 #[cfg(feature = "clipboard")]

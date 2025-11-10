@@ -5,14 +5,14 @@ mod layout;
 mod marquee;
 mod truncate;
 
-#[cfg(feature = "backlight")]
-use crate::modules::backlight::BacklightModule;
 #[cfg(feature = "battery")]
 use crate::modules::battery::BatteryModule;
 #[cfg(feature = "bindmode")]
 use crate::modules::bindmode::Bindmode;
 #[cfg(feature = "bluetooth")]
 use crate::modules::bluetooth::BluetoothModule;
+#[cfg(feature = "brightness")]
+use crate::modules::brightness::BrightnessModule;
 #[cfg(feature = "cairo")]
 use crate::modules::cairo::CairoModule;
 #[cfg(feature = "clipboard")]
@@ -112,14 +112,14 @@ use tracing::{error, warn};
 #[serde(tag = "type", rename_all = "snake_case")]
 #[cfg_attr(feature = "extras", derive(JsonSchema))]
 pub enum ModuleConfig {
-    #[cfg(feature = "backlight")]
-    Backlight(Box<BacklightModule>),
     #[cfg(feature = "battery")]
     Battery(Box<BatteryModule>),
     #[cfg(feature = "bindmode")]
     Bindmode(Box<Bindmode>),
     #[cfg(feature = "bluetooth")]
     Bluetooth(Box<BluetoothModule>),
+    #[cfg(feature = "brightness")]
+    Brightness(Box<BrightnessModule>),
     #[cfg(feature = "cairo")]
     Cairo(Box<CairoModule>),
     #[cfg(feature = "clipboard")]
@@ -172,14 +172,14 @@ impl ModuleConfig {
         }
 
         match self {
-            #[cfg(feature = "backlight")]
-            Self::Backlight(module) => create!(module),
             #[cfg(feature = "battery")]
             Self::Battery(module) => create!(module),
             #[cfg(feature = "bindmode")]
             Self::Bindmode(module) => create!(module),
             #[cfg(feature = "bluetooth")]
             Self::Bluetooth(module) => create!(module),
+            #[cfg(feature = "brightness")]
+            Self::Brightness(module) => create!(module),
             #[cfg(feature = "cairo")]
             Self::Cairo(module) => create!(module),
             #[cfg(feature = "clipboard")]
@@ -221,12 +221,12 @@ impl ModuleConfig {
 
     pub fn name(&self) -> String {
         match self {
-            #[cfg(feature = "backlight")]
-            ModuleConfig::Backlight(_) => "Backlight",
             #[cfg(feature = "battery")]
             ModuleConfig::Battery(_) => "Battery",
             #[cfg(feature = "bindmode")]
             ModuleConfig::Bindmode(_) => "Bindmode",
+            #[cfg(feature = "brightness")]
+            ModuleConfig::Brightness(_) => "Brightness",
             #[cfg(feature = "cairo")]
             ModuleConfig::Cairo(_) => "Cario",
             #[cfg(feature = "clipboard")]
