@@ -6,6 +6,8 @@ mod marquee;
 mod profiles;
 mod truncate;
 
+#[cfg(feature = "backlight")]
+use crate::modules::backlight::BacklightModule;
 #[cfg(feature = "battery")]
 use crate::modules::battery::BatteryModule;
 #[cfg(feature = "bindmode")]
@@ -112,6 +114,8 @@ use tracing::{error, warn};
 #[serde(tag = "type", rename_all = "snake_case")]
 #[cfg_attr(feature = "extras", derive(JsonSchema))]
 pub enum ModuleConfig {
+    #[cfg(feature = "backlight")]
+    Backlight(Box<BacklightModule>),
     #[cfg(feature = "battery")]
     Battery(Box<BatteryModule>),
     #[cfg(feature = "bindmode")]
@@ -170,6 +174,8 @@ impl ModuleConfig {
         }
 
         match self {
+            #[cfg(feature = "backlight")]
+            Self::Backlight(module) => create!(module),
             #[cfg(feature = "battery")]
             Self::Battery(module) => create!(module),
             #[cfg(feature = "bindmode")]
@@ -217,6 +223,8 @@ impl ModuleConfig {
 
     pub fn name(&self) -> String {
         match self {
+            #[cfg(feature = "backlight")]
+            ModuleConfig::Backlight(_) => "Backlight",
             #[cfg(feature = "battery")]
             ModuleConfig::Battery(_) => "Battery",
             #[cfg(feature = "bindmode")]

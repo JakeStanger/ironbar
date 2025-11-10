@@ -5,6 +5,8 @@ use std::path::Path;
 use std::rc::Rc;
 use std::sync::Arc;
 
+#[cfg(feature = "backlight")]
+pub mod backlight;
 #[cfg(feature = "bluetooth")]
 pub mod bluetooth;
 #[cfg(feature = "clipboard")]
@@ -75,6 +77,8 @@ pub struct Clients {
     sys_info: Option<Arc<sysinfo::Client>>,
     #[cfg(feature = "tray")]
     tray: Option<Arc<tray::Client>>,
+    #[cfg(feature = "backlight")]
+    backlight: Option<Arc<backlight::Client>>,
     #[cfg(feature = "battery")]
     upower: Option<Arc<upower::Client>>,
     #[cfg(feature = "volume")]
@@ -254,6 +258,23 @@ impl Clients {
         } else {
             let client = await_sync(async { tray::Client::new().await })?;
             self.tray.replace(client.clone());
+            client
+        };
+
+        Ok(client)
+    }
+
+    #[cfg(feature = "backlight")]
+    pub fn backlight(&mut self) -> ClientResult<backlight::Client> {
+        let client = if let Some(client) = &self.backlight {
+            client.clone()
+        } else {
+            let client = await_sync(async { backlight::Client::new().await })?;
+
+            #[cfg(feature = "ipc")]
+            Ironbar::variable_manager().register_namespace("backlight", client.clone());
+
+            self.backlight.replace(client.clone());
             client
         };
 
