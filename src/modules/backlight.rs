@@ -1,0 +1,320 @@
+use crate::channels::{AsyncSenderExt, BroadcastReceiverExt};
+use crate::clients::backlight;
+use crate::config::{CommonConfig, LayoutConfig, TruncateMode};
+use crate::modules::{Module, ModuleInfo, ModuleParts, WidgetContext};
+use crate::{module_impl, spawn};
+use color_eyre::Result;
+use gtk::{Button, Label};
+use gtk::{EventControllerScroll, EventControllerScrollFlags, prelude::*};
+use serde::Deserialize;
+use std::collections::HashMap;
+use tokio::sync::mpsc;
+use tokio::time::sleep;
+use zbus::zvariant::OwnedValue;
+
+#[derive(Debug, Clone, Deserialize)]
+#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
+pub enum BacklightDataSource {
+    /// using the keyboard dbus. Note: this only works for keyboards, not for screen brightness.
+    Keyboard,
+    /// using the login1 dbus and fs for reading. This works for keyboard and screen brightness, but needs the filesystem for reading the data and dbus for adjusting.
+    Login1Fs {
+        /// The subsystem to take the data from, e.g. `backlight` or `leds`.
+        ///
+        /// **Default**: `backlight`
+        subsystem: String,
+
+        /// The name of the resource, see `/sys/class/<subsystem>` for available resources.
+        ///
+        /// **Default**: `amdgpu_bl1`
+        name: String,
+    },
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
+#[serde(default)]
+pub struct BacklightModule {
+    /// The format string to use for the widget button label.
+    /// For available tokens, see [below](#formatting-tokens).
+    ///
+    /// **Default**: `{icon} {percentage}%`
+    format: String,
+
+    /// Brightness state icons.
+    ///
+    /// See [icons](#icons).
+    icons: Icons,
+
+    /// Where to get the backlight data from
+    ///
+    /// **Default**:
+    /// ```
+    /// [data_source.Login1Fs]
+    /// subsystem = "backlight"
+    /// name = "amdgpu_bl1"
+    /// ```
+    datasource: BacklightDataSource,
+
+    /// The number of milliseconds between refreshing memory data.
+    ///
+    /// **Default**: `5000`
+    interval: u64,
+
+    // -- Common --
+    /// See [truncate options](module-level-options#truncate-mode).
+    ///
+    /// **Default**: `null`
+    pub(crate) truncate: Option<TruncateMode>,
+
+    /// See [layout options](module-level-options#layout)
+    #[serde(default, flatten)]
+    layout: LayoutConfig,
+
+    /// See [common options](module-level-options#common-options).
+    #[serde(flatten)]
+    pub common: Option<CommonConfig>,
+}
+
+impl Default for BacklightModule {
+    fn default() -> Self {
+        Self {
+            format: "{icon} {percentage}%".to_string(),
+            icons: Icons::default(),
+            datasource: BacklightDataSource::default(),
+            interval: 5000,
+            truncate: None,
+            layout: LayoutConfig::default(),
+            common: Some(CommonConfig::default()),
+        }
+    }
+}
+
+impl Default for BacklightDataSource {
+    fn default() -> Self {
+        BacklightDataSource::Login1Fs {
+            subsystem: "backlight".to_string(),
+            name: "amdgpu_bl1".to_string(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
+#[serde(default)]
+pub struct Icons {
+    /// Icon to show for respective brightness levels. Needs to be sorted.
+    ///
+    /// **Default**: `[(0, ""), (12, ""), (24, ""), (36, ""), (48, ""), (60,""), (72, ""), (84, ""), (100, "")]`
+    brightness: Vec<(u32, String)>,
+}
+
+impl Default for Icons {
+    fn default() -> Self {
+        Self {
+            brightness: [
+                (0, ""),
+                (12, ""),
+                (24, ""),
+                (36, ""),
+                (48, ""),
+                (60, ""),
+                (72, ""),
+                (84, ""),
+                (100, ""),
+            ]
+            .into_iter()
+            .map(|(b, i)| (b, i.to_string()))
+            .collect(),
+        }
+    }
+}
+
+impl Icons {
+    fn brightness_icon(&self, percent: f64) -> String {
+        let percent = percent as u32;
+        self.brightness
+            .iter()
+            .rev() // iterate from the end
+            .find(|&&(v, _)| percent >= v) // find the first where value >= num
+            .map(|(_, label)| label.clone())
+            .unwrap_or("".to_string())
+    }
+}
+
+#[derive(Clone, Debug, Default)]
+pub struct BacklightProperties {
+    screen_brightness: f64,
+    icon_name: String,
+}
+
+impl BacklightModule {
+    async fn read_percentage(
+        client: &backlight::Client,
+        datasource: &BacklightDataSource,
+    ) -> Result<(f64, i32, i32)> {
+        let (current, max): (i32, i32) = match &datasource {
+            BacklightDataSource::Keyboard => {
+                let brightness_kbd = client.keyboard().get_brightness().await?;
+                let max_brightness_kbd = client.keyboard().get_max_brightness().await?;
+                (brightness_kbd, max_brightness_kbd)
+            }
+            BacklightDataSource::Login1Fs { subsystem, name } => {
+                let brightness_screen = client.screen_reader().get_brightness(subsystem, name)?;
+                let max_brightness_screen =
+                    client.screen_reader().get_max_brightness(subsystem, name)?;
+                (brightness_screen, max_brightness_screen)
+            }
+        };
+
+        let percent: f64 = current as f64 / (max as f64) * 100.0;
+
+        Ok((percent, current, max))
+    }
+}
+
+impl Module<Button> for BacklightModule {
+    type SendMessage = BacklightProperties;
+    type ReceiveMessage = ();
+
+    module_impl!("backlight");
+
+    fn spawn_controller(
+        &self,
+        _info: &ModuleInfo,
+        context: &WidgetContext<Self::SendMessage, Self::ReceiveMessage>,
+        _rx: mpsc::Receiver<Self::ReceiveMessage>,
+    ) -> Result<()> {
+        let tx = context.tx.clone();
+        let client = context.try_client::<backlight::Client>()?;
+        let icons = self.icons.clone();
+        let datasource = self.datasource.clone();
+        let interval = self.interval;
+
+        spawn(async move {
+            loop {
+                match Self::read_percentage(&client, &datasource).await {
+                    Ok((percent, _, _)) => {
+                        tx.send_update(BacklightProperties {
+                            icon_name: icons.brightness_icon(percent).to_string(),
+                            screen_brightness: percent,
+                        })
+                        .await;
+                    }
+                    Err(e) => tracing::error!(?e, "Could not retrieve brightness levels"),
+                }
+                sleep(tokio::time::Duration::from_millis(interval)).await;
+            }
+        });
+
+        Ok(())
+    }
+
+    fn into_widget(
+        self,
+        context: WidgetContext<Self::SendMessage, Self::ReceiveMessage>,
+        _: &ModuleInfo,
+    ) -> color_eyre::Result<ModuleParts<Button>>
+    where
+        <Self as Module<Button>>::SendMessage: Clone,
+    {
+        let button_label = Label::builder()
+            .use_markup(true)
+            .justify(self.layout.justify.into())
+            .build();
+
+        let button = Button::new();
+        button.set_child(Some(&button_label));
+
+        let tx = context.tx.clone();
+        let client = context.try_client::<backlight::Client>()?;
+        let icons = self.icons.clone();
+        let datasource = self.datasource.clone();
+
+        {
+            let scroll_controller =
+                EventControllerScroll::new(EventControllerScrollFlags::VERTICAL);
+
+            scroll_controller.connect_scroll(move |_, _, dy| {
+                let tx = tx.clone();
+                let client = client.clone();
+                let icons = icons.clone();
+                let datasource = datasource.clone();
+
+                spawn(async move {
+                    if let Ok((_, cur, max)) = Self::read_percentage(&client, &datasource).await {
+                        let step = ((max as f64 / 100.0) as i32).max(1); // at least modify by 1 if max < 100
+                        let new_cur = if dy > 0.0 {
+                            cur - step
+                        } else if dy < 0.0 {
+                            cur + step
+                        } else {
+                            return;
+                        };
+
+                        let new_cur = new_cur.max(0).min(max); // not using .clamp to avoid panic in case max is ever < 0
+                        let percent: f64 = cur as f64 / (max as f64) * 100.0;
+
+                        tx.send_update(BacklightProperties {
+                            icon_name: icons.brightness_icon(percent).to_string(),
+                            screen_brightness: percent,
+                        })
+                        .await;
+
+                        match &datasource {
+                            BacklightDataSource::Keyboard => {
+                                if let Err(e) = client.keyboard().set_brightness(new_cur).await {
+                                    tracing::error!(?e, "Could not change brightness");
+                                }
+                            }
+                            BacklightDataSource::Login1Fs { subsystem, name } => {
+                                if let Err(e) = client
+                                    .screen_writer()
+                                    .set_brightness(
+                                        subsystem.to_string(),
+                                        name.to_string(),
+                                        new_cur as u32,
+                                    )
+                                    .await
+                                {
+                                    tracing::error!(?e, "Could not change brightness");
+                                }
+                            }
+                        };
+                    }
+                });
+
+                glib::Propagation::Proceed
+            });
+
+            button.add_controller(scroll_controller);
+        }
+
+        let rx = context.subscribe();
+
+        rx.recv_glib(
+            (&self.icons, &self.format),
+            move |(_, format), properties| {
+                let percentage = properties.screen_brightness;
+                let format = format
+                    .replace("{icon}", &properties.icon_name)
+                    .replace("{percentage}", &percentage.round().to_string());
+
+                button_label.set_label(&format);
+            },
+        );
+
+        Ok(ModuleParts::new(button, None))
+    }
+}
+
+impl TryFrom<HashMap<String, OwnedValue>> for BacklightProperties {
+    type Error = zbus::zvariant::Error;
+
+    fn try_from(properties: HashMap<String, OwnedValue>) -> std::result::Result<Self, Self::Error> {
+        Ok(BacklightProperties {
+            screen_brightness: properties["Percentage"].downcast_ref::<f64>()?,
+            icon_name: properties["IconName"].downcast_ref::<&str>()?.to_string(),
+        })
+    }
+}

@@ -16,6 +16,8 @@ use crate::config::{BarPosition, CommonConfig, TransitionType};
 use crate::gtk_helpers::IronbarGtkExt;
 use crate::popup::{ButtonFinder, Popup};
 
+#[cfg(feature = "backlight")]
+pub mod backlight;
 #[cfg(feature = "battery")]
 pub mod battery;
 #[cfg(feature = "bindmode")]
