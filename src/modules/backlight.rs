@@ -7,10 +7,8 @@ use color_eyre::Result;
 use gtk::{Button, Label};
 use gtk::{EventControllerScroll, EventControllerScrollFlags, prelude::*};
 use serde::Deserialize;
-use std::collections::HashMap;
 use tokio::sync::mpsc;
 use tokio::time::sleep;
-use zbus::zvariant::OwnedValue;
 
 #[derive(Debug, Clone, Deserialize)]
 #[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
@@ -305,16 +303,5 @@ impl Module<Button> for BacklightModule {
         );
 
         Ok(ModuleParts::new(button, None))
-    }
-}
-
-impl TryFrom<HashMap<String, OwnedValue>> for BacklightProperties {
-    type Error = zbus::zvariant::Error;
-
-    fn try_from(properties: HashMap<String, OwnedValue>) -> std::result::Result<Self, Self::Error> {
-        Ok(BacklightProperties {
-            screen_brightness: properties["Percentage"].downcast_ref::<f64>()?,
-            icon_name: properties["IconName"].downcast_ref::<&str>()?.to_string(),
-        })
     }
 }
