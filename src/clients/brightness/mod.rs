@@ -4,8 +4,8 @@ mod fs_brightness;
 
 use crate::await_sync;
 use crate::clients::ClientResult;
-use crate::clients::backlight::dbus_login1::Login1SessionProxy;
-use crate::clients::backlight::fs_brightness::FsLogin1Session;
+use crate::clients::brightness::dbus_login1::Login1SessionProxy;
+use crate::clients::brightness::fs_brightness::FsLogin1Session;
 use crate::register_fallible_client;
 use dbus_keyboard::KbdBacklightProxy;
 use std::collections::HashMap;
@@ -90,4 +90,4 @@ impl crate::ironvar::Namespace for Client {
     }
 }
 
-register_fallible_client!(Client, backlight);
+register_fallible_client!(Client, brightness);

@@ -10,10 +10,10 @@ keywords = ["gtk", "bar", "wayland", "wlroots", "gtk-layer-shell"]
 
 [features]
 default = [
-    "backlight",
     "battery",
     "bindmode+all",
     "bluetooth",
+    "brightness",
     "cli",
     "cairo",
     "clipboard",
@@ -60,8 +60,6 @@ config = []
 
 # -- module features --
 
-backlight = ["zbus"]
-
 battery = ["zbus", "futures-lite"]
 
 bindmode = []
@@ -70,6 +68,8 @@ bindmode = []
 "bindmode+hyprland" = ["bindmode", "hyprland"]
 
 bluetooth = ["dep:bluer"]
+
+brightness = ["zbus"]
 
 cairo = ["lua-src", "mlua"]
 
@@ -197,7 +197,7 @@ libpulse-binding = { version = "2.30.1", optional = true }
 
 # shared
 futures-lite = { version = "2.6.1", optional = true } # battery, network_manager, workspaces, keyboard
-zbus = { version = "5.13.2", default-features = false, features = ["tokio"], optional = true } # backlight, battery, network_manager, notifications
+zbus = { version = "5.13.2", default-features = false, features = ["tokio"], optional = true } # brightness, battery, network_manager, notifications
 swayipc-async = { version = "3.0.0", optional = true } # workspaces, keyboard
 chrono = { version = "0.4.43", optional = true, default-features = false, features = ["clock", "unstable-locales"] } # clock, inhibit
 hyprland = { version = "0.4.0-beta.3", optional = true } # workspaces, keyboard
