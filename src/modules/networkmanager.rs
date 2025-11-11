@@ -24,7 +24,7 @@ pub struct NetworkManagerModule {
 
     /// The configuraiton for the icons used to represent network devices.
     #[serde(default)]
-    icons: config::IconsConfig,
+    icons: config::Icons,
 
     /// Any device with a type in this list will not be shown. The type is a string matching
     /// [`DeviceType`] variants (e.g. `"Wifi"`, `"Ethernet", etc.).
@@ -162,7 +162,7 @@ impl Default for NetworkManagerModule {
         Self {
             icon_size: default::IconSize::Small as i32,
             common: Some(CommonConfig::default()),
-            icons: config::IconsConfig::default(),
+            icons: config::Icons::default(),
             types_blacklist: Vec::new(),
             types_whitelist: Vec::new(),
             interface_blacklist: Vec::new(),
