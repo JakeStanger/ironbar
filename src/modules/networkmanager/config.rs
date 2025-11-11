@@ -12,15 +12,15 @@ macro_rules! default_function {
 
 #[derive(Debug, Deserialize, Clone, Default)]
 #[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
-pub struct IconsConfig {
+pub struct Icons {
     #[serde(default)]
-    pub wired: IconsConfigWired,
+    pub wired: IconsWired,
     #[serde(default)]
-    pub wifi: IconsConfigWifi,
+    pub wifi: IconsWifi,
     #[serde(default)]
-    pub cellular: IconsConfigCellular,
+    pub cellular: IconsCellular,
     #[serde(default)]
-    pub vpn: IconsConfigVpn,
+    pub vpn: IconsVpn,
 
     #[serde(default = "default_unknown")]
     pub unknown: String,
@@ -28,7 +28,7 @@ pub struct IconsConfig {
 
 #[derive(Debug, Deserialize, Clone)]
 #[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
-pub struct IconsConfigWired {
+pub struct IconsWired {
     #[serde(default = "default_wired_connected")]
     pub connected: String,
     #[serde(default = "default_wired_acquiring")]
@@ -36,7 +36,7 @@ pub struct IconsConfigWired {
     #[serde(default = "default_wired_disconnected")]
     pub disconnected: String,
 }
-impl Default for IconsConfigWired {
+impl Default for IconsWired {
     fn default() -> Self {
         Self {
             connected: default_wired_connected(),
@@ -48,7 +48,7 @@ impl Default for IconsConfigWired {
 
 #[derive(Debug, Deserialize, Clone)]
 #[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
-pub struct IconsConfigWifi {
+pub struct IconsWifi {
     #[serde(default = "default_wifi_levels")]
     pub levels: Vec<String>,
     #[serde(default = "default_wifi_acquiring")]
@@ -57,7 +57,7 @@ pub struct IconsConfigWifi {
     pub disconnected: String,
 }
 
-impl Default for IconsConfigWifi {
+impl Default for IconsWifi {
     fn default() -> Self {
         Self {
             levels: default_wifi_levels(),
@@ -69,7 +69,7 @@ impl Default for IconsConfigWifi {
 
 #[derive(Debug, Deserialize, Clone)]
 #[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
-pub struct IconsConfigCellular {
+pub struct IconsCellular {
     #[serde(default = "default_cellular_connected")]
     pub connected: String,
     #[serde(default = "default_cellular_acquiring")]
@@ -77,7 +77,7 @@ pub struct IconsConfigCellular {
     #[serde(default = "default_cellular_disconnected")]
     pub disconnected: String,
 }
-impl Default for IconsConfigCellular {
+impl Default for IconsCellular {
     fn default() -> Self {
         Self {
             connected: default_cellular_connected(),
@@ -89,7 +89,7 @@ impl Default for IconsConfigCellular {
 
 #[derive(Debug, Deserialize, Clone)]
 #[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
-pub struct IconsConfigVpn {
+pub struct IconsVpn {
     #[serde(default = "default_vpn_connected")]
     pub connected: String,
     #[serde(default = "default_vpn_acquiring")]
@@ -97,7 +97,7 @@ pub struct IconsConfigVpn {
     #[serde(default = "default_vpn_disconnected")]
     pub disconnected: String,
 }
-impl Default for IconsConfigVpn {
+impl Default for IconsVpn {
     fn default() -> Self {
         Self {
             connected: default_vpn_connected(),
