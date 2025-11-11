@@ -27,6 +27,15 @@ disconnected).
 | `icons.vpn.disconnected`      | `string`   | `""`                                       | Icon for disconnected VPN device.                                                   |
 | `unkown`                      | `string`   | `icon:dialog-question-symbolic`            | Icon for device in unkown state.                                                    |
 
+**Device Types:** The device types used in `types_whitelist` and
+`types_blacklists` are the same as those used by NetworkManager. You can find
+the type of the devices on your system by running `nmcli device status` in a
+terminal. The possible device types are: `unknown`, `ethernet`, `wifi`, `bt`,
+`olpc_mesh`, `wimax`, `modem`, `infiniband`, `bond`, `vlan`, `adsl`, `bridge`,
+`generic`, `team`, `tun`, `ip_tunnel`, `macvlan`, `vxlan`, `veth`, `macsec`,
+`dummy`, `ppp`, `ovs_interface`, `ovs_port`, `ovs_bridge`, `wpan`, `six_lowpan`,
+`wireguard`, `wifi_p2p`, `vrf`, `loopback`, `hsr` and `ipvlan`.
+
 **Default `icons.wifi.levels`:** they contain the 5 GTK symbolic icons for wireless signal strength:
 - `"icon:network-wireless-signal-none-symbolic"`
 - `"icon:network-wireless-signal-weak-symbolic"`
