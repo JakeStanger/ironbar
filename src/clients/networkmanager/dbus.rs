@@ -204,7 +204,7 @@ pub enum DeviceType {
 }
 
 /// See: https://people.freedesktop.org/~lkundrak/nm-docs/nm-dbus-types.html#NMDeviceState
-#[derive(Clone, Debug, OwnedValue, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, OwnedValue, PartialEq, Eq)]
 #[repr(u32)]
 pub enum DeviceState {
     /// The device's state is unknown
