@@ -123,44 +123,87 @@ pub trait Ip4ConfigDbus {
     fn address_data(&self) -> Result<Vec<HashMap<String, OwnedValue>>>;
 }
 
+/// Indicate the type of hardware represented by a device object.
+///
+/// See: https://networkmanager.dev/docs/api/latest/nm-dbus-types.html#NMDeviceType
 #[derive(Clone, Copy, Debug, OwnedValue, PartialEq, Deserialize)]
 #[repr(u32)]
+#[serde(rename_all = "snake_case")]
 #[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
 pub enum DeviceType {
+    /// unknown device
     Unknown = 0,
+    /// a wired ethernet device
     Ethernet = 1,
+    /// an 802.11 Wi-Fi device
     Wifi = 2,
-    Bluetooth = 5,
+    /// not used
+    Unused1 = 3,
+    /// not used
+    Unused2 = 4,
+    /// a Bluetooth device supporting PAN or DUN access protocols
+    Bt = 5,
+    /// an OLPC XO mesh networking device
     OlpcMesh = 6,
+    /// an 802.16e Mobile WiMAX broadband device
     Wimax = 7,
+    /// a modem supporting analog telephone, CDMA/EVDO, GSM/UMTS, or LTE network access protocols
     Modem = 8,
+    /// an IP-over-InfiniBand device
     Infiniband = 9,
+    /// a bond controller interface
     Bond = 10,
+    /// an 802.1Q VLAN interface
     Vlan = 11,
+    /// ADSL modem
     Adsl = 12,
+    /// a bridge controller interface
     Bridge = 13,
+    /// generic support for unrecognized device types
+    Generic = 14,
+    /// a team controller interface
     Team = 15,
+    /// a TUN or TAP interface
     Tun = 16,
+    /// an IP tunnel interface
     IpTunnel = 17,
+    /// a MACVLAN interface
     Macvlan = 18,
+    /// a VXLAN interface
     Vxlan = 19,
+    /// a VETH interface
     Veth = 20,
+    /// a MACsec interface
     Macsec = 21,
+    /// a dummy interface
     Dummy = 22,
+    /// a PPP interface
     Ppp = 23,
+    /// an Open vSwitch interface
     OvsInterface = 24,
+    /// an Open vSwitch port
     OvsPort = 25,
+    /// an Open vSwitch bridge
     OvsBridge = 26,
+    /// a IEEE 802.15.4 (WPAN) MAC Layer Device
     Wpan = 27,
-    Lowpan = 28,
+    /// 6LoWPAN interface
+    SixLowpan = 28,
+    /// a WireGuard interface
     Wireguard = 29,
+    /// an 802.11 Wi-Fi P2P device
     WifiP2p = 30,
+    /// a VRF (Virtual Routing and Forwarding) interface
     Vrf = 31,
+    /// a loopback interface
     Loopback = 32,
+    /// a HSR/PRP device
     Hsr = 33,
+    /// an IPVLAN device
+    Ipvlan = 34,
 }
 
-// https://people.freedesktop.org/~lkundrak/nm-docs/nm-dbus-types.html#NMDeviceState
+/// See: https://people.freedesktop.org/~lkundrak/nm-docs/nm-dbus-types.html#NMDeviceState
 #[derive(Clone, Debug, OwnedValue, PartialEq, Eq)]
 #[repr(u32)]
 pub enum DeviceState {
