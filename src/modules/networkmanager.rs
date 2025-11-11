@@ -120,9 +120,15 @@ impl NetworkManagerModule {
                             tooltip.push('\n');
                             tooltip.push_str(&String::from_utf8_lossy(&connection.ssid));
 
-                            let level =
-                                strengh_to_level(connection.strength, self.icons.wifi.levels.len());
-                            self.icons.wifi.levels[level].as_str()
+                            if self.icons.wifi.levels.is_empty() {
+                                ""
+                            } else {
+                                let level = strengh_to_level(
+                                    connection.strength,
+                                    self.icons.wifi.levels.len(),
+                                );
+                                self.icons.wifi.levels[level].as_str()
+                            }
                         }
                         None => self.icons.wifi.disconnected.as_str(),
                     },
@@ -291,7 +297,14 @@ const fn strengh_to_level(strength: u8, number_of_levels: usize) -> usize {
     if strength < 5 {
         return 0;
     }
-    (strength as usize - 5) * (number_of_levels - 1) / 100 + 1
+
+    let i = (strength as usize - 5) * (number_of_levels - 1) / 100 + 1;
+
+    if i >= number_of_levels {
+        number_of_levels - 1
+    } else {
+        i
+    }
 }
 
 // Just to make sure my implementation still follow the original logic
