@@ -182,6 +182,8 @@ impl Module<GtkBox> for NetworkManagerModule {
     type SendMessage = NetworkManagerUpdate;
     type ReceiveMessage = ();
 
+    module_impl!("networkmanager");
+
     fn spawn_controller(
         &self,
         _: &ModuleInfo,
@@ -269,8 +271,6 @@ impl Module<GtkBox> for NetworkManagerModule {
 
         Ok(ModuleParts::new(container_clone, None))
     }
-
-    module_impl!("networkmanager");
 }
 
 /// Convert strength level (from 0-100), to a level (from 0 to `number_of_levels-1`).
