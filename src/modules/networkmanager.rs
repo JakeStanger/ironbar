@@ -15,6 +15,33 @@ use tokio::sync::mpsc::Receiver;
 
 mod config;
 
+/// A simplified version of [`DeviceState`] used for icon selection.
+enum State {
+    Disconnected,
+    Acquiring,
+    Connected,
+}
+
+impl From<DeviceState> for State {
+    fn from(state: DeviceState) -> Self {
+        match state {
+            DeviceState::Unknown
+            | DeviceState::Unmanaged
+            | DeviceState::Unavailable
+            | DeviceState::Deactivating
+            | DeviceState::Failed
+            | DeviceState::Disconnected => State::Disconnected,
+            DeviceState::Prepare
+            | DeviceState::Config
+            | DeviceState::NeedAuth
+            | DeviceState::IpConfig
+            | DeviceState::IpCheck
+            | DeviceState::Secondaries => State::Acquiring,
+            DeviceState::Activated => State::Connected,
+        }
+    }
+}
+
 #[derive(Debug, Deserialize, Clone)]
 #[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
 #[serde(default)]
@@ -54,24 +81,7 @@ impl NetworkManagerModule {
         device: &crate::clients::networkmanager::state::Device,
         icon: &Picture,
     ) {
-        let mut disconnected = false;
-        let mut acquiring = false;
-        let mut connected = false;
-        match device.state {
-            DeviceState::Unknown
-            | DeviceState::Unmanaged
-            | DeviceState::Unavailable
-            | DeviceState::Deactivating
-            | DeviceState::Failed
-            | DeviceState::Disconnected => disconnected = true,
-            DeviceState::Prepare
-            | DeviceState::Config
-            | DeviceState::NeedAuth
-            | DeviceState::IpConfig
-            | DeviceState::IpCheck
-            | DeviceState::Secondaries => acquiring = true,
-            DeviceState::Activated => connected = true,
-        }
+        let state = State::from(device.state);
 
         if !self.types_whitelist.is_empty()
             && !self
@@ -101,10 +111,10 @@ impl NetworkManagerModule {
         }
 
         let icon_name = match device.device_type {
-            DeviceType::Wifi => match () {
-                _ if acquiring => self.icons.wifi.acquiring.as_str(),
-                _ if disconnected => self.icons.wifi.disconnected.as_str(),
-                _ => match &device.device_type_data {
+            DeviceType::Wifi => match state {
+                State::Acquiring => self.icons.wifi.acquiring.as_str(),
+                State::Disconnected => self.icons.wifi.disconnected.as_str(),
+                State::Connected => match &device.device_type_data {
                     DeviceTypeData::Wireless(wireless) => match &wireless.active_access_point {
                         Some(connection) => {
                             tooltip.push('\n');
@@ -119,27 +129,24 @@ impl NetworkManagerModule {
                     _ => self.icons.unknown.as_str(),
                 },
             },
-            DeviceType::Modem | DeviceType::Wimax => match () {
-                _ if acquiring => self.icons.cellular.acquiring.as_ref(),
-                _ if disconnected => self.icons.cellular.disconnected.as_ref(),
-                _ if connected => self.icons.cellular.connected.as_ref(),
-                _ => self.icons.unknown.as_ref(),
+            DeviceType::Modem | DeviceType::Wimax => match state {
+                State::Acquiring => self.icons.cellular.acquiring.as_ref(),
+                State::Disconnected => self.icons.cellular.disconnected.as_ref(),
+                State::Connected => self.icons.cellular.connected.as_ref(),
             },
             DeviceType::Wireguard
             | DeviceType::Tun
             | DeviceType::IpTunnel
             | DeviceType::Vxlan
-            | DeviceType::Macsec => match () {
-                _ if acquiring => self.icons.vpn.acquiring.as_ref(),
-                _ if disconnected => self.icons.vpn.disconnected.as_ref(),
-                _ if connected => self.icons.vpn.connected.as_ref(),
-                _ => self.icons.unknown.as_ref(),
+            | DeviceType::Macsec => match state {
+                State::Acquiring => self.icons.vpn.acquiring.as_ref(),
+                State::Disconnected => self.icons.vpn.disconnected.as_ref(),
+                State::Connected => self.icons.vpn.connected.as_ref(),
             },
-            _ => match () {
-                _ if acquiring => self.icons.wired.acquiring.as_ref(),
-                _ if disconnected => self.icons.wired.disconnected.as_ref(),
-                _ if connected => self.icons.wired.connected.as_ref(),
-                _ => self.icons.unknown.as_ref(),
+            _ => match state {
+                State::Acquiring => self.icons.wired.acquiring.as_ref(),
+                State::Disconnected => self.icons.wired.disconnected.as_ref(),
+                State::Connected => self.icons.wired.connected.as_ref(),
             },
         };
 
