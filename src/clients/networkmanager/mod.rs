@@ -24,7 +24,7 @@ pub enum NetworkManagerUpdate {
     Devices(Vec<state::Device>),
     /// Update a single device.
     ///
-    /// The `usize` is the index of the device in the list of devices, receive in the previous
+    /// The `usize` is the index of the device in the list of devices received in the previous
     /// `Devices` update.
     Device(usize, state::Device),
 }
