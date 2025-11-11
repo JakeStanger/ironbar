@@ -1,80 +1,104 @@
-Displays the current network connection state of NetworkManager.
-Supports wired ethernet, wifi, cellular data and VPN connections among others.
-
-> [!NOTE]
-> This module is currently a basic skeleton implementation and only offers the most basic functionality currently. 
-> It uses NetworkManager's so-called primary connection, 
-> and therefore inherits its limitation of only being able to display the "top-level" connection.
-> For example, if we have a VPN connection over a wifi connection it will only display the former, 
-> until it is disconnected, at which point it will display the latter.
-> A solution to this is currently in the works.
+Displays the state of each network device managed by NetworkManager. Each device
+type will show an icon representing its current state (connected, acquiring,
+disconnected).
 
 ## Configuration
 
-> Type: `network_manager`
+> Type: `networkmanager`
 
-| Name        | Type      | Default | Description             |
-|-------------|-----------|---------|-------------------------|
-| `icon_size` | `integer` | `24`    | Size to render icon at. |
+| Name                          | Type       | Default                                    | Description                                                                         |
+| ----------------------------- | ---------- | ------------------------------------------ | ----------------------------------------------------------------------------------- |
+| `icon_size`                   | `integer`  | `24`                                       | Size to render icon at.                                                             |
+| `types_blacklist`             | `string[]` | `[]`                                       | Any device with a type in this list will not be shown.                              |
+| `types_whitelist`             | `string[]` | `[]`                                       | If not empty, only devices with a type in this list will be shown.                  |
+| `interface_blacklist`         | `string[]` | `[]`                                       | Any device whose interface name is in this list will not be shown.                  |
+| `interface_whitelist`         | `string[]` | `[]`                                       | If not empty, only devices whose interface name is in this list will be shown.      |
+| `icons.wired.connected`       | `string`   | `icon:network-wired-symbolic`              | Icon for connected wired device.                                                    |
+| `icons.wired.acquiring`       | `string`   | `icon:network-wired-acquiring-symbolic`    | Icon for acquiring wired device.                                                    |
+| `icons.wired.disconnected`    | `string`   | `""`                                       | Icon for disconnected wired device.                                                 |
+| `icons.wifi.levels`           | `string[]` | See below                                  | Icon for each strengh level of a connected wifi connection, from lowest to highest. |
+| `icons.wifi.acquiring`        | `string`   | `icon:network-wireless-acquiring-symbolic` | Icon for acquiring wifi device.                                                     |
+| `icons.wifi.disconnected`     | `string`   | `""`                                       | Icon for disconnected wifi connection.                                              |
+| `icons.cellular.connected`    | `string`   | `icon:network-cellular-connected-symbolic` | Icon for connected cellular device.                                                 |
+| `icons.cellular.acquiring`    | `string`   | `icon:network-cellular-acquiring-symbolic` | Icon for acquiring cellular device.                                                 |
+| `icons.cellular.disconnected` | `string`   | `""`                                       | Icon for disconnected cellular device.                                              |
+| `icons.vpn.connected`         | `string`   | `icon:network-vpn-symbolic`                | Icon for connected VPN device.                                                      |
+| `icons.vpn.acquiring`         | `string`   | `icon:network-vpn-acquiring-symbolic`      | Icon for acquiring VPN device.                                                      |
+| `icons.vpn.disconnected`      | `string`   | `""`                                       | Icon for disconnected VPN device.                                                   |
+| `unkown`                      | `string`   | `icon:dialog-question-symbolic`            | Icon for device in unkown state.                                                    |
 
-> [!NOTE]
-> This module does not support module-level [layout options](module-level-options#layout).
+**Default `icons.wifi.levels`:** they contain the 5 GTK symbolic icons for wireless signal strength:
+- `"icon:network-wireless-signal-none-symbolic"`
+- `"icon:network-wireless-signal-weak-symbolic"`
+- `"icon:network-wireless-signal-ok-symbolic"`
+- `"icon:network-wireless-signal-good-symbolic"`
+- `"icon:network-wireless-signal-excellent-symbolic"`
 
 <details>
-  <summary>JSON</summary>
+<summary>JSON</summary>
 
-  ```json
-  {
-    "end": [
-      {
-        "type": "network_manager",
-        "icon_size": 32
-      }
-    ]
-  }
-  ```
+```json
+{
+  "end": [
+    {
+      "type": "networkmanager",
+      "icon_size": 24
+      types_blacklist: ["loopback", "bridge"]
+    }
+  ]
+}
+```
+
 </details>
 
 <details>
-  <summary>TOML</summary>
+<summary>TOML</summary>
 
-  ```toml
-  [[end]]
-  type = "network_manager"
-  icon_size = 32
-  ```
+```toml
+[[end]]
+type = "networkmanager"
+icon_size = 24
+types_blacklist = ["loopback", "bridge"]
+```
+
 </details>
 
 <details>
-  <summary>YAML</summary>
+<summary>YAML</summary>
 
-  ```yaml
-  end:
-    - type: "network_manager"
-      icon_size: 32
-  ```
+```yaml
+end:
+  - type: "networkmanager"
+    icon_size: 24
+    types_blacklist:
+      - loopback
+      - bridge
+```
+
 </details>
 
 <details>
-  <summary>Corn</summary>
+<summary>Corn</summary>
 
-  ```corn
-  {
-    end = [
-      {
-        type = "network_manager"
-        icon_size = 32
-      }
-    ]
-  }
-  ```
+```corn
+{
+  end = [
+    {
+      type = "networkmanager"
+      icon_size = 24
+      types_blacklist = ["loopback", "bridge"]
+    }
+  ]
+}
+```
+
 </details>
 
 ## Styling
 
-| Selector                 | Description                      |
-|--------------------------|----------------------------------|
-| `.network_manager`       | NetworkManager widget container. |
-| `.network_manager .icon` | NetworkManager widget icon.      |
+| Selector               | Description                      |
+| ---------------------- | -------------------------------- |
+| `.networkmanager`      | NetworkManager widget container. |
+| `.networkmanger .icon` | NetworkManager widget icons.     |
 
 For more information on styling, please see the [styling guide](styling-guide).
