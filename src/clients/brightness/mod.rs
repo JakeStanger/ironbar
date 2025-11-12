@@ -11,6 +11,8 @@ use dbus_keyboard::KbdBacklightProxy;
 use std::collections::HashMap;
 use std::sync::Arc;
 
+pub use fs_brightness::default_resource_name;
+
 #[derive(Debug)]
 pub struct Client {
     keyboard: KbdBacklightProxy<'static>,
