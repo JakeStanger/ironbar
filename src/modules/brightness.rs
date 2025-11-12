@@ -145,6 +145,7 @@ impl BrightnessModule {
     async fn read_percentage(
         client: &brightness::Client,
         datasource: &BrightnessDataSource,
+        default_resource_name: &Option<String>,
     ) -> Result<(f64, i32, i32)> {
         let (current, max): (i32, i32) = match &datasource {
             BrightnessDataSource::Keyboard => {
@@ -155,7 +156,7 @@ impl BrightnessModule {
             BrightnessDataSource::Login1Fs { subsystem, name } => {
                 let name = name
                     .clone()
-                    .or_else(|| default_resource_name(subsystem))
+                    .or_else(|| default_resource_name.clone())
                     .expect(
                         "Could not get resource name, consider explicit setting datasource.name",
                     );
@@ -170,11 +171,48 @@ impl BrightnessModule {
 
         Ok((percent, current, max))
     }
+
+    async fn write_brightness(
+        client: &brightness::Client,
+        datasource: &BrightnessDataSource,
+        default_resource_name: &Option<String>,
+        brightness: i32,
+    ) {
+        match &datasource {
+            BrightnessDataSource::Keyboard => {
+                if let Err(e) = client.keyboard().set_brightness(brightness).await {
+                    tracing::error!(?e, "Could not change brightness");
+                }
+            }
+            BrightnessDataSource::Login1Fs { subsystem, name } => {
+                let name = name
+                    .clone()
+                    .or_else(|| default_resource_name.clone())
+                    .expect(
+                        "Could not get resource name, consider explicit setting datasource.name",
+                    );
+                if let Err(e) = client
+                    .screen_writer()
+                    .set_brightness(subsystem.to_string(), name, brightness as u32)
+                    .await
+                {
+                    tracing::error!(?e, "Could not change brightness");
+                }
+            }
+        };
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+pub enum UiEvent {
+    AdjustBrightnessScroll(f64),
+    /// Does nothing more than force a fresh of the brightness
+    Refresh,
 }
 
 impl Module<Button> for BrightnessModule {
     type SendMessage = BrightnessProperties;
-    type ReceiveMessage = ();
+    type ReceiveMessage = UiEvent;
 
     module_impl!("brightness");
 
@@ -182,27 +220,63 @@ impl Module<Button> for BrightnessModule {
         &self,
         _info: &ModuleInfo,
         context: &WidgetContext<Self::SendMessage, Self::ReceiveMessage>,
-        _rx: mpsc::Receiver<Self::ReceiveMessage>,
+        mut rx: mpsc::Receiver<Self::ReceiveMessage>,
     ) -> Result<()> {
         let tx = context.tx.clone();
+        let ctx = context.controller_tx.clone();
         let client = context.try_client::<brightness::Client>()?;
         let icons = self.icons.clone();
         let datasource = self.datasource.clone();
-        let interval = self.interval;
+        let duration = tokio::time::Duration::from_millis(self.interval);
+        let default_resource_name =
+            if let BrightnessDataSource::Login1Fs { subsystem, .. } = &datasource {
+                default_resource_name(subsystem)
+            } else {
+                None
+            };
 
         spawn(async move {
+            // make sure we have a value on startup and not have to wait for 1 interval
+            let _ = ctx.send(UiEvent::Refresh).await;
+
             loop {
-                match Self::read_percentage(&client, &datasource).await {
-                    Ok((percent, _, _)) => {
-                        tx.send_update(BrightnessProperties {
-                            icon_name: icons.brightness_icon(percent).to_string(),
-                            screen_brightness: percent,
-                        })
+                let event = tokio::select! {
+                    v = rx.recv() => v,
+                    _ = sleep(duration) => None,
+                };
+
+                let (mut percent, cur, max) =
+                    match Self::read_percentage(&client, &datasource, &default_resource_name).await
+                    {
+                        Ok(d) => d,
+                        Err(e) => {
+                            tracing::error!(?e, "Could not retrieve brightness levels");
+                            continue;
+                        }
+                    };
+
+                if let Some(UiEvent::AdjustBrightnessScroll(dy)) = event {
+                    let step = ((max as f64 / 100.0) as i32).max(1); // at least modify by 1 if max < 100
+                    let new_cur = if dy > 0.0 {
+                        cur - step
+                    } else if dy < 0.0 {
+                        cur + step
+                    } else {
+                        continue;
+                    };
+
+                    let new_cur = new_cur.max(0).min(max); // not using .clamp to avoid panic in case max is ever < 0
+                    percent = new_cur as f64 / (max as f64) * 100.0;
+
+                    Self::write_brightness(&client, &datasource, &default_resource_name, new_cur)
                         .await;
-                    }
-                    Err(e) => tracing::error!(?e, "Could not retrieve brightness levels"),
                 }
-                sleep(tokio::time::Duration::from_millis(interval)).await;
+
+                tx.send_update(BrightnessProperties {
+                    icon_name: icons.brightness_icon(percent).to_string(),
+                    screen_brightness: percent,
+                })
+                .await;
             }
         });
 
@@ -225,70 +299,16 @@ impl Module<Button> for BrightnessModule {
         let button = Button::new();
         button.set_child(Some(&button_label));
 
-        let tx = context.tx.clone();
-        let client = context.try_client::<brightness::Client>()?;
-        let icons = self.icons.clone();
-        let datasource = self.datasource.clone();
+        let ctx = context.controller_tx.clone();
 
-        {
-            let scroll_controller =
-                EventControllerScroll::new(EventControllerScrollFlags::VERTICAL);
+        let scroll_controller = EventControllerScroll::new(EventControllerScrollFlags::VERTICAL);
+        scroll_controller.connect_scroll(move |_, _, dy| {
+            let ctx = ctx.clone();
+            spawn(async move { ctx.send(UiEvent::AdjustBrightnessScroll(dy)).await });
 
-            scroll_controller.connect_scroll(move |_, _, dy| {
-                let tx = tx.clone();
-                let client = client.clone();
-                let icons = icons.clone();
-                let datasource = datasource.clone();
-
-                spawn(async move {
-                    if let Ok((_, cur, max)) = Self::read_percentage(&client, &datasource).await {
-                        let step = ((max as f64 / 100.0) as i32).max(1); // at least modify by 1 if max < 100
-                        let new_cur = if dy > 0.0 {
-                            cur - step
-                        } else if dy < 0.0 {
-                            cur + step
-                        } else {
-                            return;
-                        };
-
-                        let new_cur = new_cur.max(0).min(max); // not using .clamp to avoid panic in case max is ever < 0
-                        let percent: f64 = cur as f64 / (max as f64) * 100.0;
-
-                        tx.send_update(BrightnessProperties {
-                            icon_name: icons.brightness_icon(percent).to_string(),
-                            screen_brightness: percent,
-                        })
-                        .await;
-
-                        match &datasource {
-                            BrightnessDataSource::Keyboard => {
-                                if let Err(e) = client.keyboard().set_brightness(new_cur).await {
-                                    tracing::error!(?e, "Could not change brightness");
-                                }
-                            }
-                            BrightnessDataSource::Login1Fs { subsystem, name } => {
-                                let name = name.clone().or_else(|| default_resource_name(subsystem)).expect("Could not get resource name, consider explicit setting datasource.name");
-                                if let Err(e) = client
-                                    .screen_writer()
-                                    .set_brightness(
-                                        subsystem.to_string(),
-                                        name,
-                                        new_cur as u32,
-                                    )
-                                    .await
-                                {
-                                    tracing::error!(?e, "Could not change brightness");
-                                }
-                            }
-                        };
-                    }
-                });
-
-                glib::Propagation::Proceed
-            });
-
-            button.add_controller(scroll_controller);
-        }
+            glib::Propagation::Proceed
+        });
+        button.add_controller(scroll_controller);
 
         let rx = context.subscribe();
 
