@@ -1,5 +1,5 @@
 use crate::channels::{AsyncSenderExt, BroadcastReceiverExt};
-use crate::clients::brightness;
+use crate::clients::brightness::{self, default_resource_name};
 use crate::config::{CommonConfig, LayoutConfig, TruncateMode};
 use crate::modules::{Module, ModuleInfo, ModuleParts, WidgetContext};
 use crate::{module_impl, spawn};
@@ -22,10 +22,10 @@ pub enum BrightnessDataSource {
         /// **Default**: `backlight`
         subsystem: String,
 
-        /// The name of the resource, see `/sys/class/<subsystem>` for available resources.
+        /// The name of the resource, see `/sys/class/<subsystem>` for available resources. If empty, ironbar will try to resolve it via a hardcoded list of common resources
         ///
-        /// **Default**: `amdgpu_bl1`
-        name: String,
+        /// **Default**: `None`
+        name: Option<String>,
     },
 }
 
@@ -46,12 +46,7 @@ pub struct BrightnessModule {
 
     /// Where to get the brightness data from
     ///
-    /// **Default**:
-    /// ```
-    /// [data_source.Login1Fs]
-    /// subsystem = "backlight"
-    /// name = "amdgpu_bl1"
-    /// ```
+    /// See [BrightnessDataSource].
     datasource: BrightnessDataSource,
 
     /// The number of milliseconds between refreshing memory data.
@@ -92,7 +87,7 @@ impl Default for BrightnessDataSource {
     fn default() -> Self {
         BrightnessDataSource::Login1Fs {
             subsystem: "backlight".to_string(),
-            name: "amdgpu_bl1".to_string(),
+            name: None,
         }
     }
 }
@@ -158,9 +153,15 @@ impl BrightnessModule {
                 (brightness_kbd, max_brightness_kbd)
             }
             BrightnessDataSource::Login1Fs { subsystem, name } => {
-                let brightness_screen = client.screen_reader().get_brightness(subsystem, name)?;
+                let name = name
+                    .clone()
+                    .or_else(|| default_resource_name(subsystem))
+                    .expect(
+                        "Could not get resource name, consider explicit setting datasource.name",
+                    );
+                let brightness_screen = client.screen_reader().brightness(subsystem, &name)?;
                 let max_brightness_screen =
-                    client.screen_reader().get_max_brightness(subsystem, name)?;
+                    client.screen_reader().max_brightness(subsystem, &name)?;
                 (brightness_screen, max_brightness_screen)
             }
         };
@@ -266,11 +267,12 @@ impl Module<Button> for BrightnessModule {
                                 }
                             }
                             BrightnessDataSource::Login1Fs { subsystem, name } => {
+                                let name = name.clone().or_else(|| default_resource_name(subsystem)).expect("Could not get resource name, consider explicit setting datasource.name");
                                 if let Err(e) = client
                                     .screen_writer()
                                     .set_brightness(
                                         subsystem.to_string(),
-                                        name.to_string(),
+                                        name,
                                         new_cur as u32,
                                     )
                                     .await
@@ -290,17 +292,14 @@ impl Module<Button> for BrightnessModule {
 
         let rx = context.subscribe();
 
-        rx.recv_glib(
-            (&self.icons, &self.format),
-            move |(_, format), properties| {
-                let percentage = properties.screen_brightness;
-                let format = format
-                    .replace("{icon}", &properties.icon_name)
-                    .replace("{percentage}", &percentage.round().to_string());
+        rx.recv_glib(&self.format, move |format, properties| {
+            let percentage = properties.screen_brightness;
+            let format = format
+                .replace("{icon}", &properties.icon_name)
+                .replace("{percentage}", &percentage.round().to_string());
 
-                button_label.set_label(&format);
-            },
-        );
+            button_label.set_label(&format);
+        });
 
         Ok(ModuleParts::new(button, None))
     }
