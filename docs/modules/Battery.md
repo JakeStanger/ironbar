@@ -47,7 +47,7 @@ Displays system power information such as the battery percentage, and estimated 
 type = "battery"
 format = "{percentage}%"
 
-[[end.thresholds]]
+[end.thresholds]
 warning = 20
 critical = 5
 ```
