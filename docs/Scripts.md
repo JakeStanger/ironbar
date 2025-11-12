@@ -22,8 +22,8 @@ type.
 ## Writing script configs
 
 There are two available config formats for scripts: shorthand, as a string, or longhand, as an object.
-Shorthand can be used in all cases, but there are some cases (such as embedding scripts inside strings) where longhand
-cannot be used.
+There are some cases (such as embedding scripts inside strings) where longhand cannot be used.
+Shorthand can be used in all cases.
 
 In both formats, `mode` is one of `poll` or `watch` and `interval` is the number of milliseconds to wait between
 spawning the script.
