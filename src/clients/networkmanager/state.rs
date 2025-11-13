@@ -23,7 +23,10 @@ pub struct Device {
     ///
     /// The general type of the network device; ie Ethernet, WiFi, etc.
     pub device_type: DeviceType,
+    /// Device data specific to the device type.
     pub device_type_data: DeviceTypeData,
+    //
+    // # Unmapped properties:
     // Udi                   readable   s
     // IpInterface           readable   s
     // Driver                readable   s
@@ -56,6 +59,8 @@ pub struct Ip4Config {
     /// Array of IP address data objects. All addresses will include "address" (an IP address
     /// string), and "prefix" (a uint). Some addresses may include additional attributes.
     pub address_data: Vec<AddressData>,
+    //
+    // # Unmapped properties:
     // Addresses    readable   aau
     // Gateway      readable   s
     // Routes       readable   aau
@@ -88,6 +93,8 @@ pub struct DeviceWireless {
     ///
     /// Object path of the access point currently used by the wireless device.
     pub active_access_point: Option<AccessPoint>,
+    //
+    // # Unmapped properties:
     // HwAddress             readable   s
     // PermHwAddress         readable   s
     // Mode                  readable   u
@@ -108,6 +115,8 @@ pub struct AccessPoint {
     ///
     /// The current signal quality of the access point, in percent.
     pub strength: u8,
+    //
+    // # Unmapped properties:
     // Frequency   readable   u
     // HwAddress   readable   s
     // Mode        readable   u
