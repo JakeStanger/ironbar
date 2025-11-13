@@ -247,7 +247,7 @@ impl Module<GtkBox> for NetworkManagerModule {
                             this.update_icon(
                                 &image_provider,
                                 device,
-                                widget.downcast_ref::<Picture>().unwrap(),
+                                widget.downcast_ref::<Picture>().expect("should be Picture"),
                             )
                             .await;
                         }
@@ -262,7 +262,7 @@ impl Module<GtkBox> for NetworkManagerModule {
                             this.update_icon(
                                 &image_provider,
                                 &device,
-                                widget.downcast_ref::<Picture>().unwrap(),
+                                widget.downcast_ref::<Picture>().expect("should be Picture"),
                             )
                             .await;
                         } else {
