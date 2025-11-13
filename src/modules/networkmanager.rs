@@ -81,20 +81,16 @@ impl NetworkManagerModule {
         device: &crate::clients::networkmanager::state::Device,
         icon: &Picture,
     ) {
-        let state = State::from(device.state);
+        fn whitelisted<T: PartialEq>(list: &[T], x: &T) -> bool {
+            list.is_empty() || list.contains(x)
+        }
 
-        if !self.types_whitelist.is_empty()
-            && !self
-                .types_whitelist
-                .iter()
-                .any(|t| t == &device.device_type)
-            || self.types_blacklist.contains(&device.device_type)
-            || !self.interface_whitelist.is_empty()
-                && !self
-                    .interface_whitelist
-                    .iter()
-                    .any(|n| n == &device.interface)
-            || self.interface_blacklist.contains(&device.interface)
+        let type_whitelisted = whitelisted(&self.types_whitelist, &device.device_type);
+        let interface_whitelisted = whitelisted(&self.interface_whitelist, &device.interface);
+        let type_blacklisted = self.types_blacklist.contains(&device.device_type);
+        let interface_blacklisted = self.interface_blacklist.contains(&device.interface);
+
+        if !type_whitelisted || !interface_whitelisted || type_blacklisted || interface_blacklisted
         {
             icon.set_visible(false);
             return;
@@ -109,6 +105,8 @@ impl NetworkManagerModule {
                 tooltip.push_str(&x.prefix.to_string());
             }
         }
+
+        let state = State::from(device.state);
 
         let icon_name = match device.device_type {
             DeviceType::Wifi => match state {
