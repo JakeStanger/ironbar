@@ -54,6 +54,12 @@ pub struct BrightnessModule {
     /// **Default**: `5000`
     interval: u64,
 
+    /// A multiplier from to control the speed of smooth scrolling on trackpad.
+    /// Choose a negative number to swap scrolling direction.
+    ///
+    /// **Default**: `1.0`
+    smooth_scroll_speed: f64,
+
     // -- Common --
     /// See [truncate options](module-level-options#truncate-mode).
     ///
@@ -76,6 +82,7 @@ impl Default for BrightnessModule {
             icons: Icons::default(),
             datasource: BrightnessDataSource::default(),
             interval: 5000,
+            smooth_scroll_speed: 1.0,
             truncate: None,
             layout: LayoutConfig::default(),
             common: Some(CommonConfig::default()),
@@ -227,6 +234,7 @@ impl Module<Button> for BrightnessModule {
         let client = context.try_client::<brightness::Client>()?;
         let icons = self.icons.clone();
         let datasource = self.datasource.clone();
+        let scroll_speed = self.smooth_scroll_speed;
         let duration = tokio::time::Duration::from_millis(self.interval);
         let default_resource_name =
             if let BrightnessDataSource::Login1Fs { subsystem, .. } = &datasource {
@@ -238,6 +246,8 @@ impl Module<Button> for BrightnessModule {
         spawn(async move {
             // make sure we have a value on startup and not have to wait for 1 interval
             let _ = ctx.send(UiEvent::Refresh).await;
+
+            let mut partial_scroll: f64 = 0.0;
 
             loop {
                 let event = tokio::select! {
@@ -256,20 +266,27 @@ impl Module<Button> for BrightnessModule {
                     };
 
                 if let Some(UiEvent::AdjustBrightnessScroll(dy)) = event {
-                    let step = ((max as f64 / 100.0) as i32).max(1); // at least modify by 1 if max < 100
-                    let new_cur = if dy > 0.0 {
-                        cur - step
-                    } else if dy < 0.0 {
-                        cur + step
-                    } else {
-                        continue;
-                    };
+                    partial_scroll += dy * scroll_speed;
 
-                    let new_cur = new_cur.max(0).min(max); // not using .clamp to avoid panic in case max is ever < 0
-                    percent = new_cur as f64 / (max as f64) * 100.0;
+                    if partial_scroll.abs() >= 1.0 {
+                        let no_steps = partial_scroll.floor() as i32;
+                        partial_scroll -= partial_scroll.floor();
 
-                    Self::write_brightness(&client, &datasource, &default_resource_name, new_cur)
+                        let step_len = ((max as f64 / 100.0) as i32).max(1); // at least modify by 1 if max < 100
+
+                        let new_cur = cur - no_steps * step_len;
+
+                        let new_cur = new_cur.max(0).min(max); // not using .clamp to avoid panic in case max is ever < 0
+                        percent = new_cur as f64 / (max as f64) * 100.0;
+
+                        Self::write_brightness(
+                            &client,
+                            &datasource,
+                            &default_resource_name,
+                            new_cur,
+                        )
                         .await;
+                    }
                 }
 
                 tx.send_update(BrightnessProperties {
