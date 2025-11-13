@@ -36,7 +36,7 @@ terminal. The possible device types are: `unknown`, `ethernet`, `wifi`, `bt`,
 `dummy`, `ppp`, `ovs_interface`, `ovs_port`, `ovs_bridge`, `wpan`, `six_lowpan`,
 `wireguard`, `wifi_p2p`, `vrf`, `loopback`, `hsr` and `ipvlan`.
 
-**Default `icons.wifi.levels`:** they contain the 5 GTK symbolic icons for wireless signal strength:
+**Default `icons.wifi.levels`:** Contains the 5 GTK symbolic icons for wireless signal strength:
 - `"icon:network-wireless-signal-none-symbolic"`
 - `"icon:network-wireless-signal-weak-symbolic"`
 - `"icon:network-wireless-signal-ok-symbolic"`
@@ -51,8 +51,8 @@ terminal. The possible device types are: `unknown`, `ethernet`, `wifi`, `bt`,
   "end": [
     {
       "type": "networkmanager",
-      "icon_size": 24
-      types_blacklist: ["loopback", "bridge"]
+      "icon_size": 24,
+      "types_blacklist": ["loopback", "bridge"]
     }
   ]
 }
@@ -95,7 +95,7 @@ end:
     {
       type = "networkmanager"
       icon_size = 24
-      types_blacklist = ["loopback", "bridge"]
+      types_blacklist = [ loopback bridge ]
     }
   ]
 }
