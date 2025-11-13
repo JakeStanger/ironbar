@@ -8,9 +8,9 @@ Three types of scripts exist: polling, oneshot and watching:
 - **Polling** scripts will run and wait for exit.
   Normally they will repeat this at an interval, hence the name, although in some cases they may only run on a user
   event.
-  If the script exited code 0, the `stdout` will be used. Otherwise, `stderr` will be printed to the log.
+  If the script exited with code 0, the `stdout` will be used. Otherwise, `stderr` will be printed to the log.
 - **Oneshot** scripts are a variant of polling scripts. 
-  They wait for script to exit, and may do something with the output, but are only fired by user events instead of the interval.
+  They wait for the script to exit, and may do something with the output, but are only fired by user events instead of the interval.
   Generally options that accept oneshot scripts do not support the other types.
 - **Watching** scripts start a long-running process. Every time the process writes to `stdout`, the last line is captured
   and used.
@@ -21,9 +21,9 @@ type.
 
 ## Writing script configs
 
-There are two available config formats for scripts, shorthand as a string, or longhand as an object.
-Shorthand can be used in all cases, but there are some cases (such as embedding scripts inside strings) where longhand
-cannot be used.
+There are two available config formats for scripts: shorthand, as a string, or longhand, as an object.
+There are some cases (such as embedding scripts inside strings) where longhand cannot be used.
+Shorthand can be used in all cases.
 
 In both formats, `mode` is one of `poll` or `watch` and `interval` is the number of milliseconds to wait between
 spawning the script.
@@ -85,7 +85,7 @@ cmd: "uptime -p | cut -d ' ' -f2-"
 </details>
 
 <details>
-<summary>YAML</summary>
+<summary>TOML</summary>
 
 ```toml
 mode = "poll"
