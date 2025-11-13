@@ -121,7 +121,7 @@ impl NetworkManagerModule {
                             if self.icons.wifi.levels.is_empty() {
                                 ""
                             } else {
-                                let level = strengh_to_level(
+                                let level = strength_to_level(
                                     connection.strength,
                                     self.icons.wifi.levels.len(),
                                 );
@@ -278,7 +278,7 @@ impl Module<GtkBox> for NetworkManagerModule {
 }
 
 /// Convert strength level (from 0-100), to a level (from 0 to `number_of_levels-1`).
-const fn strengh_to_level(strength: u8, number_of_levels: usize) -> usize {
+fn strength_to_level(strength: u8, levels: usize) -> usize {
     // Strength levels based for the one show by [`nmcli dev wifi list`](https://github.com/NetworkManager/NetworkManager/blob/83a259597000a88217f3ccbdfe71c8114242e7a6/src/libnmc-base/nm-client-utils.c#L700-L727):
     // match strength {
     //     0..=4 => 0,
@@ -288,36 +288,54 @@ const fn strengh_to_level(strength: u8, number_of_levels: usize) -> usize {
     //     80.. => 4,
     // }
 
-    // to make it work with a custom number of levels, we approach the logic above with the logic
-    // below (0 for < 5, and a linear interpolation for 5 to 105).
-    // TODO: if there are more than 20 levels, the last level will be out of scale, and never be
-    // reach.
-    if strength < 5 {
+    // to make it work with a custom number of levels, we approach the logic above with a
+    // piece-wise linear interpolation:
+    // - 0 to 5 -> 0 to 0.2
+    // - 5 to 80 -> 0.2 to 0.8
+    // - 80 to 100 -> 0.8 to 1.0
+
+    if levels <= 1 {
         return 0;
     }
 
-    let i = (strength as usize - 5) * (number_of_levels - 1) / 100 + 1;
+    let strength = strength.clamp(0, 100);
 
-    if i >= number_of_levels {
-        number_of_levels - 1
+    let pos = if strength < 5 {
+        // Linear interpolation between 0..5
+        (strength as f32 / 5.0) * 0.2
+    } else if strength < 80 {
+        // Linear interpolation between 5..80
+        0.2 + ((strength - 5) as f32 / 75.0) * 0.6
     } else {
-        i
-    }
+        // Linear interpolation between 80..100
+        0.8 + ((strength as f32 - 80.0) / 20.0) * 0.2
+    };
+
+    // Scale to discrete levels
+    let level = (pos * levels as f32).floor() as usize;
+    level.min(levels - 1)
 }
 
-// Just to make sure my implementation still follow the original logic
+// Just to make sure the implementation still follow the reference logic
 #[cfg(test)]
 #[test]
 fn test_strength_to_level() {
-    assert_eq!(strengh_to_level(0, 5), 0);
-    assert_eq!(strengh_to_level(4, 5), 0);
-    assert_eq!(strengh_to_level(5, 5), 1);
-    assert_eq!(strengh_to_level(6, 5), 1);
-    assert_eq!(strengh_to_level(29, 5), 1);
-    assert_eq!(strengh_to_level(30, 5), 2);
-    assert_eq!(strengh_to_level(54, 5), 2);
-    assert_eq!(strengh_to_level(55, 5), 3);
-    assert_eq!(strengh_to_level(79, 5), 3);
-    assert_eq!(strengh_to_level(80, 5), 4);
-    assert_eq!(strengh_to_level(100, 5), 4);
+    for levels in 0..=10 {
+        println!("Levels: {}", levels);
+        for strength in (0..=100).step_by(5) {
+            let level = strength_to_level(strength, levels);
+            println!("  Strength: {:3} => Level: {}", strength, level);
+        }
+    }
+    assert_eq!(strength_to_level(0, 5), 0);
+    assert_eq!(strength_to_level(4, 5), 0);
+    assert_eq!(strength_to_level(5, 5), 1);
+    assert_eq!(strength_to_level(6, 5), 1);
+    assert_eq!(strength_to_level(29, 5), 1);
+    assert_eq!(strength_to_level(30, 5), 2);
+    assert_eq!(strength_to_level(54, 5), 2);
+    assert_eq!(strength_to_level(55, 5), 3);
+    assert_eq!(strength_to_level(79, 5), 3);
+    assert_eq!(strength_to_level(80, 5), 4);
+    assert_eq!(strength_to_level(100, 5), 4);
 }
