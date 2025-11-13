@@ -20,8 +20,10 @@ impl fmt::Display for ReadParseError {
 
 impl std::error::Error for ReadParseError {}
 
-const SYS_PATH: &str = "/sys/class";
+pub(super) const SYS_PATH: &str = "/sys/class";
 
+// We are not using notify crate here, as /sys directly maps into the kernel
+// and the inotify support is limited and might depend on driver, event and kernel.
 impl FsLogin1Session {
     pub fn brightness(&self, subsystem: &str, name: &str) -> Result<i32, ReadParseError> {
         let mut path = PathBuf::from(SYS_PATH);
