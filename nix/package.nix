@@ -8,7 +8,7 @@
   glib,
   shared-mime-info,
   gsettings-desktop-schemas,
-  wrapGAppsHook,
+  wrapGAppsHook4,
   gtk4-layer-shell,
   gnome,
   libxkbcommon,
@@ -26,6 +26,7 @@
   version ? "git",
   features ? [],
   naersk,
+  dbus,
 }: let
   hasFeature = f: features == [] || builtins.elem f features;
   flags = let
@@ -90,7 +91,7 @@ in
 
     nativeBuildInputs = [
       pkg-config
-      wrapGAppsHook
+      wrapGAppsHook4
       gobject-introspection
       installShellFiles
     ];
@@ -107,6 +108,7 @@ in
         hicolor-icon-theme
         gsettings-desktop-schemas
         libxkbcommon
+        dbus
       ]
       ++ lib.optionals (hasFeature "http") [openssl]
       ++ lib.optionals (hasFeature "volume") [libpulseaudio]
