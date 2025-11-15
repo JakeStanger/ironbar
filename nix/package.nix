@@ -26,6 +26,7 @@
   version ? "git",
   features ? [],
   naersk,
+  dbus,
 }: let
   hasFeature = f: features == [] || builtins.elem f features;
   flags = let
@@ -107,6 +108,7 @@ in
         hicolor-icon-theme
         gsettings-desktop-schemas
         libxkbcommon
+        dbus
       ]
       ++ lib.optionals (hasFeature "http") [openssl]
       ++ lib.optionals (hasFeature "volume") [libpulseaudio]
