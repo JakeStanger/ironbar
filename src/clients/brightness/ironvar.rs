@@ -1,6 +1,5 @@
-use super::fs_brightness;
+use super::{brightness, fs_reader::available_resource_names, max_brightness};
 use crate::await_sync;
-use std::path::PathBuf;
 use std::sync::Arc;
 
 const KDB_NAMESPACE: &str = "kbd_backlight";
@@ -18,7 +17,6 @@ pub(super) struct KbdBacklight {
 
 #[derive(Debug)]
 pub(super) struct FsBacklight {
-    screen_reader: Arc<super::FsLogin1Session>,
     subsystem: String,
     property: Property,
 }
@@ -62,33 +60,15 @@ impl crate::ironvar::Namespace for KbdBacklight {
 impl crate::ironvar::Namespace for FsBacklight {
     fn get(&self, key: &str) -> Option<String> {
         match self.property {
-            Property::Brightness => self.screen_reader.brightness(&self.subsystem, key),
-            Property::MaxBrightness => self.screen_reader.max_brightness(&self.subsystem, key),
+            Property::Brightness => brightness(&self.subsystem, key),
+            Property::MaxBrightness => max_brightness(&self.subsystem, key),
         }
         .ok()
         .map(|v| v.to_string())
     }
 
     fn list(&self) -> Vec<String> {
-        let mut entries = Vec::new();
-
-        let mut subsystem_path = PathBuf::from(fs_brightness::SYS_PATH);
-        subsystem_path.push(&self.subsystem);
-
-        if let Ok(resource_entries) = std::fs::read_dir(&subsystem_path) {
-            for resource_entry in resource_entries.flatten() {
-                let resource_path = resource_entry.path();
-                let name = resource_path
-                    .file_name()
-                    .and_then(|p| p.to_str())
-                    .map(|p| p.to_string());
-                if let Some(name) = name {
-                    entries.push(name);
-                }
-            }
-        }
-
-        entries
+        available_resource_names(&self.subsystem)
     }
 
     fn namespaces(&self) -> Vec<String> {
@@ -125,22 +105,18 @@ impl crate::ironvar::Namespace for super::Client {
                 keyboard: self.keyboard.clone(),
             })),
             BACKLIGHT_CURRENT_NAMESPACE => Some(Arc::new(FsBacklight {
-                screen_reader: self.screen_reader.clone(),
                 subsystem: "backlight".to_string(),
                 property: Property::Brightness,
             })),
             BACKLIGHT_MAX_NAMESPACE => Some(Arc::new(FsBacklight {
-                screen_reader: self.screen_reader.clone(),
                 subsystem: "backlight".to_string(),
                 property: Property::MaxBrightness,
             })),
             LEDS_CURRENT_NAMESPACE => Some(Arc::new(FsBacklight {
-                screen_reader: self.screen_reader.clone(),
                 subsystem: "leds".to_string(),
                 property: Property::Brightness,
             })),
             LEDS_MAX_NAMESPACE => Some(Arc::new(FsBacklight {
-                screen_reader: self.screen_reader.clone(),
                 subsystem: "leds".to_string(),
                 property: Property::MaxBrightness,
             })),

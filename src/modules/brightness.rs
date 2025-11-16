@@ -1,5 +1,5 @@
 use crate::channels::{AsyncSenderExt, BroadcastReceiverExt};
-use crate::clients::brightness::{self, default_resource_name};
+use crate::clients::brightness::{self, brightness, default_resource_name, max_brightness};
 use crate::config::{CommonConfig, LayoutConfig, TruncateMode};
 use crate::modules::{Module, ModuleInfo, ModuleParts, WidgetContext};
 use crate::{module_impl, spawn};
@@ -17,7 +17,7 @@ pub enum BrightnessDataSource {
     Keyboard,
     /// using the login1 dbus and fs for reading. This works for keyboard and screen brightness, but needs the filesystem for reading the data and dbus for adjusting.
     Login1Fs {
-        /// The subsystem to take the data from, e.g. `backlight` or `leds`.
+        /// The subsystem to read the data from, e.g. `backlight` or `leds`. Subsystem refers to the directory within `/sys/class/`.
         ///
         /// **Default**: `backlight`
         subsystem: String,
@@ -51,7 +51,7 @@ pub struct BrightnessModule {
 
     /// The number of milliseconds between refreshing memory data.
     ///
-    /// **Default**: `5000`
+    /// **Default**: `1000`
     interval: u64,
 
     /// A multiplier from to control the speed of smooth scrolling on trackpad.
@@ -81,7 +81,7 @@ impl Default for BrightnessModule {
             format: "{icon} {percentage}%".to_string(),
             icons: Icons::default(),
             datasource: BrightnessDataSource::default(),
-            interval: 5000,
+            interval: 1000,
             smooth_scroll_speed: 1.0,
             truncate: None,
             layout: LayoutConfig::default(),
@@ -135,10 +135,10 @@ impl Icons {
         let percent = percent as u32;
         self.brightness
             .iter()
-            .rev() // iterate from the end
-            .find(|&&(v, _)| percent >= v) // find the first where value >= num
+            .rev()
+            .find(|&&(v, _)| percent >= v)
             .map(|(_, label)| label.clone())
-            .unwrap_or("".to_string())
+            .unwrap_or_default()
     }
 }
 
@@ -148,12 +148,18 @@ pub struct BrightnessProperties {
     icon_name: String,
 }
 
+struct BrightnessData {
+    percent: f64,
+    current: i32,
+    max: i32,
+}
+
 impl BrightnessModule {
-    async fn read_percentage(
+    async fn get_brightness(
         client: &brightness::Client,
         datasource: &BrightnessDataSource,
         default_resource_name: &Option<String>,
-    ) -> Result<(f64, i32, i32)> {
+    ) -> Result<BrightnessData> {
         let (current, max): (i32, i32) = match &datasource {
             BrightnessDataSource::Keyboard => {
                 let brightness_kbd = client.keyboard().get_brightness().await?;
@@ -167,19 +173,22 @@ impl BrightnessModule {
                     .expect(
                         "Could not get resource name, consider explicit setting datasource.name",
                     );
-                let brightness_screen = client.screen_reader().brightness(subsystem, &name)?;
-                let max_brightness_screen =
-                    client.screen_reader().max_brightness(subsystem, &name)?;
+                let brightness_screen = brightness(subsystem, &name)?;
+                let max_brightness_screen = max_brightness(subsystem, &name)?;
                 (brightness_screen, max_brightness_screen)
             }
         };
 
         let percent: f64 = current as f64 / (max as f64) * 100.0;
 
-        Ok((percent, current, max))
+        Ok(BrightnessData {
+            percent,
+            current,
+            max,
+        })
     }
 
-    async fn write_brightness(
+    async fn set_brightness(
         client: &brightness::Client,
         datasource: &BrightnessDataSource,
         default_resource_name: &Option<String>,
@@ -213,7 +222,6 @@ impl BrightnessModule {
 #[derive(Debug, Clone, Copy)]
 pub enum UiEvent {
     AdjustBrightnessScroll(f64),
-    /// Does nothing more than force a fresh of the brightness
     Refresh,
 }
 
@@ -255,35 +263,35 @@ impl Module<Button> for BrightnessModule {
                     _ = sleep(duration) => None,
                 };
 
-                let (mut percent, cur, max) =
-                    match Self::read_percentage(&client, &datasource, &default_resource_name).await
-                    {
-                        Ok(d) => d,
-                        Err(e) => {
-                            tracing::error!(?e, "Could not retrieve brightness levels");
-                            continue;
-                        }
-                    };
+                let BrightnessData {
+                    mut percent,
+                    current,
+                    max,
+                } = match Self::get_brightness(&client, &datasource, &default_resource_name).await {
+                    Ok(d) => d,
+                    Err(e) => {
+                        tracing::error!(?e, "Could not retrieve brightness levels");
+                        continue;
+                    }
+                };
 
                 if let Some(UiEvent::AdjustBrightnessScroll(dy)) = event {
                     partial_scroll += dy * scroll_speed;
 
                     if partial_scroll.abs() >= 1.0 {
-                        let no_steps = partial_scroll.floor() as i32;
+                        let num_steps = partial_scroll.floor() as i32;
                         partial_scroll -= partial_scroll.floor();
 
-                        let step_len = ((max as f64 / 100.0) as i32).max(1); // at least modify by 1 if max < 100
+                        let step_len = (max / 100).max(1); // ensure step_len is at least 1, otherwise the div by i32 might produce a step_len of 0 due to truncing
 
-                        let new_cur = cur - no_steps * step_len;
+                        let new_brightness = (current - num_steps * step_len).max(0).min(max); // not using .clamp to avoid panic in case max is ever < 0
+                        percent = new_brightness as f64 / (max as f64) * 100.0;
 
-                        let new_cur = new_cur.max(0).min(max); // not using .clamp to avoid panic in case max is ever < 0
-                        percent = new_cur as f64 / (max as f64) * 100.0;
-
-                        Self::write_brightness(
+                        Self::set_brightness(
                             &client,
                             &datasource,
                             &default_resource_name,
-                            new_cur,
+                            new_brightness,
                         )
                         .await;
                     }
@@ -316,12 +324,12 @@ impl Module<Button> for BrightnessModule {
         let button = Button::new();
         button.set_child(Some(&button_label));
 
-        let ctx = context.controller_tx.clone();
+        let controller_tx = context.controller_tx.clone();
 
         let scroll_controller = EventControllerScroll::new(EventControllerScrollFlags::VERTICAL);
         scroll_controller.connect_scroll(move |_, _, dy| {
-            let ctx = ctx.clone();
-            spawn(async move { ctx.send(UiEvent::AdjustBrightnessScroll(dy)).await });
+            let ctx = controller_tx.clone();
+            ctx.send_spawn(UiEvent::AdjustBrightnessScroll(dy));
 
             glib::Propagation::Proceed
         });
