@@ -64,10 +64,10 @@ pub(super) fn available_resource_names(subsystem: &str) -> Vec<String> {
 pub fn default_resource_name(subsystem: &str) -> Option<String> {
     let possible_files = available_resource_names(subsystem);
 
-    let prefered = match subsystem {
+    match subsystem {
         "backlight" => {
             // harded list of common names
-            let to_check = [
+            const TO_CHECK: [&str; 9] = [
                 "amdgpu_bl0",
                 "amdgpu_bl1",
                 "intel_backlight",
@@ -79,20 +79,17 @@ pub fn default_resource_name(subsystem: &str) -> Option<String> {
                 "acpi_video1",
             ];
 
-            to_check
+            TO_CHECK
                 .iter()
                 .find(|item| possible_files.iter().any(|v| v == **item))
                 .map(|s| s.to_string())
         }
         "leds" => {
-            // almost all leds have a specific postfix
-            let common_postfix = ["::kdb_backlight"];
-            common_postfix
-                .iter()
-                .find(|item| possible_files.iter().any(|v| v.ends_with(*item)))
-                .map(|s| s.to_string())
+            // almost all leds have the same postfix
+            possible_files
+                .into_iter()
+                .find(|v| v.ends_with("::kdb_backlight"))
         }
         _ => None,
-    };
-    prefered.or_else(|| possible_files.into_iter().next())
+    }
 }

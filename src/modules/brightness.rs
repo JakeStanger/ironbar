@@ -12,9 +12,11 @@ use tokio::time::sleep;
 
 #[derive(Debug, Clone, Deserialize)]
 #[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
+#[serde(tag = "type", rename_all = "snake_case")]
 pub enum BrightnessDataSource {
     /// using the keyboard dbus. Note: this only works for keyboards, not for screen brightness.
     Keyboard,
+    #[serde(rename = "login1")]
     /// using the login1 dbus and fs for reading. This works for keyboard and screen brightness, but needs the filesystem for reading the data and dbus for adjusting.
     Login1Fs {
         /// The subsystem to read the data from, e.g. `backlight` or `leds`. Subsystem refers to the directory within `/sys/class/`.
@@ -47,7 +49,7 @@ pub struct BrightnessModule {
     /// Where to get the brightness data from
     ///
     /// See [BrightnessDataSource].
-    datasource: BrightnessDataSource,
+    mode: BrightnessDataSource,
 
     /// The number of milliseconds between refreshing memory data.
     ///
@@ -80,7 +82,7 @@ impl Default for BrightnessModule {
         Self {
             format: "{icon} {percentage}%".to_string(),
             icons: Icons::default(),
-            datasource: BrightnessDataSource::default(),
+            mode: BrightnessDataSource::default(),
             interval: 1000,
             smooth_scroll_speed: 1.0,
             truncate: None,
@@ -238,10 +240,10 @@ impl Module<Button> for BrightnessModule {
         mut rx: mpsc::Receiver<Self::ReceiveMessage>,
     ) -> Result<()> {
         let tx = context.tx.clone();
-        let ctx = context.controller_tx.clone();
+        let controller_tx = context.controller_tx.clone();
         let client = context.try_client::<brightness::Client>()?;
         let icons = self.icons.clone();
-        let datasource = self.datasource.clone();
+        let datasource = self.mode.clone();
         let scroll_speed = self.smooth_scroll_speed;
         let duration = tokio::time::Duration::from_millis(self.interval);
         let default_resource_name =
@@ -253,7 +255,7 @@ impl Module<Button> for BrightnessModule {
 
         spawn(async move {
             // make sure we have a value on startup and not have to wait for 1 interval
-            let _ = ctx.send(UiEvent::Refresh).await;
+            controller_tx.send_expect(UiEvent::Refresh).await;
 
             let mut partial_scroll: f64 = 0.0;
 
