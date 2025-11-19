@@ -1,7 +1,7 @@
 use color_eyre::eyre::Report;
 use std::collections::HashMap;
 use std::sync::Arc;
-use tokio::sync::{RwLock, broadcast};
+use tokio::sync::{RwLock as AsyncRwLock, broadcast};
 
 use color_eyre::Result;
 use zbus::Connection;
@@ -51,9 +51,9 @@ pub struct Client {
     dbus_connection: Connection,
     root_object: &'static DbusProxy<'static>,
     tx: broadcast::Sender<NetworkManagerUpdate>,
-    device_map: Arc<RwLock<HashMap<ObjectPath<'static>, ClientDevice>>>,
-    ip4config_map: Arc<RwLock<PathMap<'static, ClientIp4Config>>>,
-    access_point_map: Arc<RwLock<PathMap<'static, ClientAccessPoint>>>,
+    device_map: Arc<AsyncRwLock<HashMap<ObjectPath<'static>, ClientDevice>>>,
+    ip4config_map: Arc<AsyncRwLock<PathMap<'static, ClientIp4Config>>>,
+    access_point_map: Arc<AsyncRwLock<PathMap<'static, ClientAccessPoint>>>,
 }
 impl Client {
     async fn new() -> Result<Client> {
@@ -72,9 +72,9 @@ impl Client {
             root_object,
             dbus_connection,
             tx,
-            device_map: Arc::new(RwLock::new(HashMap::new())),
-            ip4config_map: Arc::new(RwLock::new(HashMap::new())),
-            access_point_map: Arc::new(RwLock::new(HashMap::new())),
+            device_map: Arc::new(AsyncRwLock::new(HashMap::new())),
+            ip4config_map: Arc::new(AsyncRwLock::new(HashMap::new())),
+            access_point_map: Arc::new(AsyncRwLock::new(HashMap::new())),
         })
     }
 
