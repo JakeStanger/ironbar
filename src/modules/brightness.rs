@@ -16,9 +16,8 @@ use tokio::time::sleep;
 pub enum BrightnessDataSource {
     /// using the keyboard dbus. Note: this only works for keyboards, not for screen brightness.
     Keyboard,
-    #[serde(rename = "login1")]
     /// using the login1 dbus and fs for reading. This works for keyboard and screen brightness, but needs the filesystem for reading the data and dbus for adjusting.
-    Login1Fs {
+    Systemd {
         /// The subsystem to read the data from, e.g. `backlight` or `leds`. Subsystem refers to the directory within `/sys/class/`.
         ///
         /// **Default**: `backlight`
@@ -51,11 +50,6 @@ pub struct BrightnessModule {
     /// See [BrightnessDataSource].
     mode: BrightnessDataSource,
 
-    /// The number of milliseconds between refreshing memory data.
-    ///
-    /// **Default**: `1000`
-    interval: u64,
-
     /// A multiplier from to control the speed of smooth scrolling on trackpad.
     /// Choose a negative number to swap scrolling direction.
     ///
@@ -83,7 +77,6 @@ impl Default for BrightnessModule {
             format: "{icon} {percentage}%".to_string(),
             icons: Icons::default(),
             mode: BrightnessDataSource::default(),
-            interval: 1000,
             smooth_scroll_speed: 1.0,
             truncate: None,
             layout: LayoutConfig::default(),
@@ -94,7 +87,7 @@ impl Default for BrightnessModule {
 
 impl Default for BrightnessDataSource {
     fn default() -> Self {
-        BrightnessDataSource::Login1Fs {
+        BrightnessDataSource::Systemd {
             subsystem: "backlight".to_string(),
             name: None,
         }
@@ -156,6 +149,24 @@ struct BrightnessData {
     max: i32,
 }
 
+#[derive(Debug)]
+enum SystemdError {
+    NoResourceName,
+}
+
+impl std::fmt::Display for SystemdError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            SystemdError::NoResourceName => write!(
+                f,
+                "No Resource name was provided and no resource name could be resolved for your subsystem"
+            ),
+        }
+    }
+}
+
+impl std::error::Error for SystemdError {}
+
 impl BrightnessModule {
     async fn get_brightness(
         client: &brightness::Client,
@@ -168,13 +179,11 @@ impl BrightnessModule {
                 let max_brightness_kbd = client.keyboard().get_max_brightness().await?;
                 (brightness_kbd, max_brightness_kbd)
             }
-            BrightnessDataSource::Login1Fs { subsystem, name } => {
+            BrightnessDataSource::Systemd { subsystem, name } => {
                 let name = name
                     .clone()
                     .or_else(|| default_resource_name.clone())
-                    .expect(
-                        "Could not get resource name, consider explicit setting datasource.name",
-                    );
+                    .ok_or(SystemdError::NoResourceName)?;
                 let brightness_screen = brightness(subsystem, &name)?;
                 let max_brightness_screen = max_brightness(subsystem, &name)?;
                 (brightness_screen, max_brightness_screen)
@@ -195,29 +204,23 @@ impl BrightnessModule {
         datasource: &BrightnessDataSource,
         default_resource_name: &Option<String>,
         brightness: i32,
-    ) {
+    ) -> Result<()> {
         match &datasource {
             BrightnessDataSource::Keyboard => {
-                if let Err(e) = client.keyboard().set_brightness(brightness).await {
-                    tracing::error!(?e, "Could not change brightness");
-                }
+                client.keyboard().set_brightness(brightness).await?;
             }
-            BrightnessDataSource::Login1Fs { subsystem, name } => {
+            BrightnessDataSource::Systemd { subsystem, name } => {
                 let name = name
                     .clone()
                     .or_else(|| default_resource_name.clone())
-                    .expect(
-                        "Could not get resource name, consider explicit setting datasource.name",
-                    );
-                if let Err(e) = client
+                    .ok_or(SystemdError::NoResourceName)?;
+                client
                     .screen_writer()
                     .set_brightness(subsystem.to_string(), name, brightness as u32)
-                    .await
-                {
-                    tracing::error!(?e, "Could not change brightness");
-                }
+                    .await?;
             }
         };
+        Ok(())
     }
 }
 
@@ -239,15 +242,15 @@ impl Module<Button> for BrightnessModule {
         context: &WidgetContext<Self::SendMessage, Self::ReceiveMessage>,
         mut rx: mpsc::Receiver<Self::ReceiveMessage>,
     ) -> Result<()> {
+        const POLL_INTERVAL: std::time::Duration = std::time::Duration::from_millis(50);
         let tx = context.tx.clone();
         let controller_tx = context.controller_tx.clone();
         let client = context.try_client::<brightness::Client>()?;
         let icons = self.icons.clone();
         let datasource = self.mode.clone();
         let scroll_speed = self.smooth_scroll_speed;
-        let duration = tokio::time::Duration::from_millis(self.interval);
         let default_resource_name =
-            if let BrightnessDataSource::Login1Fs { subsystem, .. } = &datasource {
+            if let BrightnessDataSource::Systemd { subsystem, .. } = &datasource {
                 default_resource_name(subsystem)
             } else {
                 None
@@ -262,7 +265,7 @@ impl Module<Button> for BrightnessModule {
             loop {
                 let event = tokio::select! {
                     v = rx.recv() => v,
-                    _ = sleep(duration) => None,
+                    _ = sleep(POLL_INTERVAL) => None,
                 };
 
                 let BrightnessData {
@@ -271,10 +274,19 @@ impl Module<Button> for BrightnessModule {
                     max,
                 } = match Self::get_brightness(&client, &datasource, &default_resource_name).await {
                     Ok(d) => d,
-                    Err(e) => {
-                        tracing::error!(?e, "Could not retrieve brightness levels");
-                        continue;
-                    }
+                    Err(err) => match err.downcast::<SystemdError>() {
+                        Ok(err) => {
+                            tracing::error!(
+                                ?err,
+                                "Could not retrieve brightness levels. Error is unrecoverable, fix the config! Stopping brightness module"
+                            );
+                            break;
+                        }
+                        Err(err) => {
+                            tracing::error!(?err, "Could not retrieve brightness levels");
+                            continue;
+                        }
+                    },
                 };
 
                 if let Some(UiEvent::AdjustBrightnessScroll(dy)) = event {
@@ -289,13 +301,16 @@ impl Module<Button> for BrightnessModule {
                         let new_brightness = (current - num_steps * step_len).max(0).min(max); // not using .clamp to avoid panic in case max is ever < 0
                         percent = new_brightness as f64 / (max as f64) * 100.0;
 
-                        Self::set_brightness(
+                        if let Err(err) = Self::set_brightness(
                             &client,
                             &datasource,
                             &default_resource_name,
                             new_brightness,
                         )
-                        .await;
+                        .await
+                        {
+                            tracing::error!(?err, "Could not change brightness");
+                        };
                     }
                 }
 
@@ -321,6 +336,7 @@ impl Module<Button> for BrightnessModule {
         let button_label = Label::builder()
             .use_markup(true)
             .justify(self.layout.justify.into())
+            .css_classes(["label"])
             .build();
 
         let button = Button::new();
