@@ -95,7 +95,7 @@ end:
     {
       type = "network_manager"
       icon_size = 24
-      types_blacklist = [ loopback bridge ]
+      types_blacklist = [ "loopback" "bridge" ]
     }
   ]
 }
