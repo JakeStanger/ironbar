@@ -5,6 +5,7 @@
   - [Images](images)
 - [Styling guide](styling-guide)
 - [Migrating to GTK4](gtk4)
+- [Development guide](development-guide)
 
 # Dynamic content
 
