@@ -50,7 +50,7 @@ terminal. The possible device types are: `unknown`, `ethernet`, `wifi`, `bt`,
 {
   "end": [
     {
-      "type": "networkmanager",
+      "type": "network_manager",
       "icon_size": 24,
       "types_blacklist": ["loopback", "bridge"]
     }
@@ -65,7 +65,7 @@ terminal. The possible device types are: `unknown`, `ethernet`, `wifi`, `bt`,
 
 ```toml
 [[end]]
-type = "networkmanager"
+type = "network_manager"
 icon_size = 24
 types_blacklist = ["loopback", "bridge"]
 ```
@@ -77,7 +77,7 @@ types_blacklist = ["loopback", "bridge"]
 
 ```yaml
 end:
-  - type: "networkmanager"
+  - type: "network_manager"
     icon_size: 24
     types_blacklist:
       - loopback
@@ -93,7 +93,7 @@ end:
 {
   end = [
     {
-      type = "networkmanager"
+      type = "network_manager"
       icon_size = 24
       types_blacklist = [ loopback bridge ]
     }

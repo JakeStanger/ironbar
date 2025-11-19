@@ -186,7 +186,7 @@ impl Module<GtkBox> for NetworkManagerModule {
     type SendMessage = NetworkManagerUpdate;
     type ReceiveMessage = ();
 
-    module_impl!("networkmanager");
+    module_impl!("network_manager");
 
     fn spawn_controller(
         &self,
