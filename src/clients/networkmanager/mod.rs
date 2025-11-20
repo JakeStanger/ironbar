@@ -160,7 +160,7 @@ impl Client {
             match self.fetch_access_point(&active_access_point_path).await {
                 Ok(x) => Some(x),
                 Err(e) => {
-                    tracing::error!("fail fetch access point: {e}");
+                    tracing::error!("failed to fetch access point: {e}");
                     None
                 }
             }
