@@ -4,7 +4,7 @@ disconnected).
 
 ## Configuration
 
-> Type: `networkmanager`
+> Type: `network_manager`
 
 | Name                          | Type       | Default                                    | Description                                                                         |
 | ----------------------------- | ---------- | ------------------------------------------ | ----------------------------------------------------------------------------------- |
@@ -37,6 +37,7 @@ terminal. The possible device types are: `unknown`, `ethernet`, `wifi`, `bt`,
 `wireguard`, `wifi_p2p`, `vrf`, `loopback`, `hsr` and `ipvlan`.
 
 **Default `icons.wifi.levels`:** Contains the 5 GTK symbolic icons for wireless signal strength:
+
 - `"icon:network-wireless-signal-none-symbolic"`
 - `"icon:network-wireless-signal-weak-symbolic"`
 - `"icon:network-wireless-signal-ok-symbolic"`
@@ -105,9 +106,9 @@ end:
 
 ## Styling
 
-| Selector               | Description                      |
-| ---------------------- | -------------------------------- |
-| `.networkmanager`      | NetworkManager widget container. |
-| `.networkmanger .icon` | NetworkManager widget icons.     |
+| Selector                 | Description                      |
+| ------------------------ | -------------------------------- |
+| `.network_manager`       | NetworkManager widget container. |
+| `.network_manager .icon` | NetworkManager widget icons.     |
 
 For more information on styling, please see the [styling guide](styling-guide).
