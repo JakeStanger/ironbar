@@ -33,17 +33,17 @@ pub enum NetworkManagerUpdate {
 struct ClientDevice {
     state: state::Device,
     index: usize,
-    _state_handle: tokio::task::JoinHandle<()>,
+    state_handle: tokio::task::JoinHandle<()>,
 }
 
 #[derive(Debug)]
 struct ClientIp4Config {
-    _state_handle: tokio::task::JoinHandle<()>,
+    state_handle: tokio::task::JoinHandle<()>,
 }
 
 #[derive(Debug)]
 struct ClientAccessPoint {
-    _state_handle: tokio::task::JoinHandle<()>,
+    state_handle: tokio::task::JoinHandle<()>,
 }
 
 #[derive(Clone, Debug)]
@@ -218,7 +218,7 @@ impl Client {
                                 ClientDevice {
                                     state: device.clone(),
                                     index,
-                                    _state_handle: client_device._state_handle,
+                                    state_handle: client_device.state_handle,
                                 },
                             );
                         }
@@ -228,7 +228,7 @@ impl Client {
                             let v = ClientDevice {
                                 state: device.clone(),
                                 index,
-                                _state_handle: spawn(async move {
+                                state_handle: spawn(async move {
                                     this.watch_device_change(path2).await
                                 }),
                             };
@@ -254,7 +254,7 @@ impl Client {
                                 let device_path = path.to_owned();
                                 let path2 = ip4config.path.to_owned();
                                 let v = ClientIp4Config {
-                                    _state_handle: spawn(async move {
+                                    state_handle: spawn(async move {
                                         this.watch_ip4config_change(device_path, path2).await
                                     }),
                                 };
@@ -294,7 +294,7 @@ impl Client {
                                         }
                                     };
                                     let v = ClientAccessPoint {
-                                        _state_handle: spawn(async move {
+                                        state_handle: spawn(async move {
                                             this.watch_access_point_change(
                                                 device_path,
                                                 access_point_object,
@@ -310,15 +310,15 @@ impl Client {
                 }
 
                 for device in device_map.values() {
-                    device._state_handle.abort();
+                    device.state_handle.abort();
                 }
 
                 for ipconfig in ip4config_map.values() {
-                    ipconfig._state_handle.abort();
+                    ipconfig.state_handle.abort();
                 }
 
                 for ap in access_point_map.values() {
-                    ap._state_handle.abort();
+                    ap.state_handle.abort();
                 }
 
                 *device_map = new_device_map;
