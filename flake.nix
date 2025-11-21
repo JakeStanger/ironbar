@@ -35,6 +35,7 @@
             cargo
             clippy
             rustfmt
+            dbus
             gtk4
             gtk4-layer-shell
             gcc
