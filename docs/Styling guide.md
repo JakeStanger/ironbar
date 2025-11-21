@@ -7,6 +7,12 @@ Style changes are hot-loaded so there is no need to reload the bar.
 Since the bar is GTK-based, it uses [GTK's implementation of CSS](https://docs.gtk.org/gtk4/css-overview.html),
 which only includes a subset of the full web spec (plus a few non-standard properties).
 
+> [!TIP]
+> The use of GTK4 does not imply the use of `libadwaita`.
+> Many GTK4 apps do use the library, so this can be confusing.
+> Any `libadwaita` based themes or configuration will not apply to Ironbar.
+> GTK4 themes will apply to Ironbar.
+
 The below table describes the selectors provided by the bar itself.
 Information on styling individual modules can be found on their pages in the sidebar.
 
