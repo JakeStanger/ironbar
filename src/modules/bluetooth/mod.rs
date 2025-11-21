@@ -336,6 +336,7 @@ impl Module<Button> for BluetoothModule {
             let icon_size = self.icon_size;
 
             let popup_header = self.popup.header;
+            let popup_grow_height_until = self.popup.grow_height_until;
             let popup_disabled = self.popup.disabled;
             let device_strings = self.popup.device;
             let device_status = self.device_status;
@@ -353,6 +354,8 @@ impl Module<Button> for BluetoothModule {
                 }
 
                 devices.set_visible(state.is_enabled());
+                //ensure the content is at least some basic height to see at least 2 devices, everything else can be done per css: min-height
+                devices.set_min_content_height(devices_box.height().min(popup_grow_height_until));
 
                 disabled.set_visible(!state.is_enabled());
                 disabled_spinner.set_visible(

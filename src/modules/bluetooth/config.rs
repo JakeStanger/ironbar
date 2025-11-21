@@ -95,6 +95,11 @@ pub struct PopupConfig {
     /// **Default**: `true`
     pub scrollable: bool,
 
+    /// Grow the size of the popup dynamically up till the provided maximum
+    ///
+    /// **Default**: `250`
+    pub grow_height_until: i32,
+
     /// Format string to use for the header of popup window.
     ///
     /// **Default**: `" Enable Bluetooth"`
@@ -113,6 +118,7 @@ impl Default for PopupConfig {
     fn default() -> Self {
         Self {
             scrollable: true,
+            grow_height_until: 250,
             header: " Enable Bluetooth".to_string(),
             disabled: "{adapter_status}".to_string(),
             device: PopupDeviceConfig::default(),
