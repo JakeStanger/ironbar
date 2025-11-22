@@ -4,7 +4,7 @@ use gtk::prelude::*;
 use indexmap::IndexMap;
 use serde::Deserialize;
 use tokio::sync::mpsc;
-use tracing::{debug, trace};
+use tracing::{debug, error, trace};
 
 use super::{Module, ModuleInfo, ModuleParts, WidgetContext};
 use crate::channels::{AsyncSenderExt, BroadcastReceiverExt};
@@ -189,45 +189,49 @@ impl Module<gtk::Box> for KeyboardModule {
             }
         });
 
-        let client = context.try_client::<dyn compositor::KeyboardLayoutClient>()?;
-        {
-            let client = client.clone();
-            let tx = context.tx.clone();
-            spawn(async move {
-                let mut srx = client.subscribe();
+        match context.try_client::<dyn compositor::KeyboardLayoutClient>() {
+            Ok(client) => {
+                {
+                    let client = client.clone();
+                    let tx = context.tx.clone();
+                    spawn(async move {
+                        let mut srx = client.subscribe();
 
-                trace!("Set up keyboard_layout subscription");
+                        trace!("Set up keyboard_layout subscription");
 
-                loop {
-                    match srx.recv().await {
-                        Ok(payload) => {
-                            debug!("Received update: {payload:?}");
-                            tx.send_update(KeyboardUpdate::Layout(payload)).await;
+                        loop {
+                            match srx.recv().await {
+                                Ok(payload) => {
+                                    debug!("Received update: {payload:?}");
+                                    tx.send_update(KeyboardUpdate::Layout(payload)).await;
+                                }
+                                Err(tokio::sync::broadcast::error::RecvError::Lagged(count)) => {
+                                    tracing::warn!(
+                                        "Channel lagged behind by {count}, this may result in unexpected or broken behaviour"
+                                    );
+                                }
+                                Err(err) => {
+                                    error!("{err:?}");
+                                    break;
+                                }
+                            }
                         }
-                        Err(tokio::sync::broadcast::error::RecvError::Lagged(count)) => {
-                            tracing::warn!(
-                                "Channel lagged behind by {count}, this may result in unexpected or broken behaviour"
-                            );
-                        }
-                        Err(err) => {
-                            tracing::error!("{err:?}");
-                            break;
-                        }
-                    }
+                    });
                 }
-            });
-        }
 
-        // Change keyboard layout
-        spawn(async move {
-            trace!("Setting up keyboard_layout UI event handler");
+                // Change keyboard layout
+                spawn(async move {
+                    trace!("Setting up keyboard_layout UI event handler");
 
-            while let Some(()) = rx.recv().await {
-                client.set_next_active();
+                    while let Some(()) = rx.recv().await {
+                        client.set_next_active();
+                    }
+
+                    Ok::<(), Report>(())
+                });
             }
-
-            Ok::<(), Report>(())
-        });
+            Err(err) => error!("Failed to spawn keyboard layout client: {err:?}"),
+        }
 
         Ok(())
     }
