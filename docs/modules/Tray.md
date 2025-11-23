@@ -15,6 +15,8 @@ Displays a fully interactive icon tray using the KDE `libappindicator` and `com.
 | `on_click_right`         | `string`                                                   | `'menu'`                | Action to perform on right-click. See [Click Actions](#click-actions) below.                                                                                        |
 | `on_click_middle`        | `string`                                                   | `'none'`                | Action to perform on middle-click. See [Click Actions](#click-actions) below.                                                                                       |
 | `on_click_left_double`   | `string`                                                   | `'none'`                | Action to perform on double-left-click. See [Click Actions](#click-actions) below.                                                                                  |
+| `on_click_right_double`  | `string`                                                   | `'none'`                | Action to perform on double-right-click. See [Click Actions](#click-actions) below.                                                                                 |
+| `on_click_middle_double` | `string`                                                   | `'none'`                | Action to perform on double-middle-click. See [Click Actions](#click-actions) below.                                                                                |
 
 ### Click Actions
 

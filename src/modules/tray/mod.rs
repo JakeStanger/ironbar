@@ -89,6 +89,20 @@ pub struct TrayClickHandlers {
     /// <br>
     /// **Default**: `none`
     on_click_left_double: TrayClickAction,
+
+    /// Action to perform on double-right-click.
+    ///
+    /// **Valid options**: `menu`, `default`, `secondary`, `none`, or any custom shell command
+    /// <br>
+    /// **Default**: `none`
+    on_click_right_double: TrayClickAction,
+
+    /// Action to perform on double-middle-click.
+    ///
+    /// **Valid options**: `menu`, `default`, `secondary`, `none`, or any custom shell command
+    /// <br>
+    /// **Default**: `none`
+    on_click_middle_double: TrayClickAction,
 }
 
 impl Default for TrayClickHandlers {
@@ -98,6 +112,8 @@ impl Default for TrayClickHandlers {
             on_click_right: TrayClickAction::Reserved(ReservedTrayAction::Menu),
             on_click_middle: TrayClickAction::Reserved(ReservedTrayAction::None),
             on_click_left_double: TrayClickAction::Reserved(ReservedTrayAction::None),
+            on_click_right_double: TrayClickAction::Reserved(ReservedTrayAction::None),
+            on_click_middle_double: TrayClickAction::Reserved(ReservedTrayAction::None),
         }
     }
 }
