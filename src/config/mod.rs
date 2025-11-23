@@ -48,6 +48,45 @@ use crate::modules::workspaces::WorkspacesModule;
 pub use self::common::{CommonConfig, ModuleJustification, ModuleOrientation, TransitionType};
 pub use self::layout::LayoutConfig;
 pub use self::truncate::{EllipsizeMode, TruncateMode};
+
+use gtk::prelude::ObjectExt;
+use std::sync::OnceLock;
+
+/// Global double-click time setting
+static DOUBLE_CLICK_TIME: OnceLock<DoubleClickTime> = OnceLock::new();
+
+/// Track if we've set GTK's setting yet
+static GTK_SETTING_INITIALIZED: OnceLock<()> = OnceLock::new();
+
+/// Initialize the global double-click time setting
+pub fn set_double_click_time(time: DoubleClickTime) {
+    let _ = DOUBLE_CLICK_TIME.set(time);
+}
+
+/// Get the configured double-click time in milliseconds
+pub fn get_double_click_time_ms() -> u64 {
+    // Initialize GTK's setting once (after GTK is initialized)
+    GTK_SETTING_INITIALIZED.get_or_init(|| {
+        if let (Some(DoubleClickTime::Ms(ms)), Some(settings)) =
+            (DOUBLE_CLICK_TIME.get(), gtk::Settings::default())
+        {
+            settings.set_property("gtk-double-click-time", *ms as i32);
+        }
+    });
+
+    DOUBLE_CLICK_TIME
+        .get()
+        .map(|t| match t {
+            DoubleClickTime::Ms(ms) => *ms,
+            DoubleClickTime::Keyword(DoubleClickTimeKeyword::Gtk) => {
+                // Read from GTK settings
+                gtk::Settings::default()
+                    .map(|settings| settings.property::<i32>("gtk-double-click-time") as u64)
+                    .unwrap_or(400) // GTK default fallback
+            }
+        })
+        .expect("double_click_time should be initialized during config load")
+}
 use crate::Ironbar;
 use crate::modules::{AnyModuleFactory, ModuleFactory, ModuleInfo, ModuleRef};
 use crate::style::CssSource;
@@ -394,7 +433,7 @@ impl Default for BarConfig {
     }
 }
 
-#[derive(Debug, Deserialize, Clone, Default)]
+#[derive(Debug, Deserialize, Clone)]
 #[cfg_attr(feature = "extras", derive(JsonSchema))]
 #[serde(default)]
 pub struct Config {
@@ -451,6 +490,48 @@ pub struct Config {
     ///
     /// **Default**: `{}`
     pub icon_overrides: HashMap<String, String>,
+
+    /// The time in milliseconds to wait for a double-click.
+    /// Can be set to a number (e.g., `250`) or `"gtk"` to use GTK's setting.
+    ///
+    /// **Default**: `250`
+    #[serde(default = "default_double_click_time")]
+    pub double_click_time: DoubleClickTime,
+}
+
+fn default_double_click_time() -> DoubleClickTime {
+    DoubleClickTime::Ms(250)
+}
+
+impl Default for Config {
+    fn default() -> Self {
+        Self {
+            ironvar_defaults: None,
+            bar: BarConfig::default(),
+            monitors: None,
+            icon_theme: None,
+            icon_overrides: HashMap::new(),
+            double_click_time: default_double_click_time(),
+        }
+    }
+}
+
+/// Double-click time configuration
+#[derive(Debug, Clone, Deserialize)]
+#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
+#[serde(untagged)]
+pub enum DoubleClickTime {
+    /// Milliseconds
+    Ms(u64),
+    /// Use GTK's gtk-double-click-time setting
+    Keyword(DoubleClickTimeKeyword),
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
+#[serde(rename_all = "lowercase")]
+pub enum DoubleClickTimeKeyword {
+    Gtk,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -578,6 +659,10 @@ impl Config {
                 }
             }
         }
+
+        // Store the double-click time globally
+        // GTK's setting will be set lazily on first use (after GTK is initialized)
+        set_double_click_time(config.double_click_time.clone());
 
         (config, css_source)
     }

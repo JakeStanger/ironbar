@@ -143,7 +143,9 @@ impl TrayMenu {
         };
 
         // Set up left-click handler with optional double-click support
-        if click_handlers.on_click_left.is_actionable() || click_handlers.on_click_left_double.is_actionable() {
+        if click_handlers.on_click_left.is_actionable()
+            || click_handlers.on_click_left_double.is_actionable()
+        {
             let on_single = make_handler(&click_handlers.on_click_left);
             let on_double = if click_handlers.on_click_left_double.is_actionable() {
                 Some(make_handler(&click_handlers.on_click_left_double))
@@ -155,7 +157,9 @@ impl TrayMenu {
         }
 
         // Set up right-click handler with optional double-click support
-        if click_handlers.on_click_right.is_actionable() || click_handlers.on_click_right_double.is_actionable() {
+        if click_handlers.on_click_right.is_actionable()
+            || click_handlers.on_click_right_double.is_actionable()
+        {
             let on_single = make_handler(&click_handlers.on_click_right);
             let on_double = if click_handlers.on_click_right_double.is_actionable() {
                 Some(make_handler(&click_handlers.on_click_right_double))
@@ -167,7 +171,9 @@ impl TrayMenu {
         }
 
         // Set up middle-click handler with optional double-click support
-        if click_handlers.on_click_middle.is_actionable() || click_handlers.on_click_middle_double.is_actionable() {
+        if click_handlers.on_click_middle.is_actionable()
+            || click_handlers.on_click_middle_double.is_actionable()
+        {
             let on_single = make_handler(&click_handlers.on_click_middle);
             let on_double = if click_handlers.on_click_middle_double.is_actionable() {
                 Some(make_handler(&click_handlers.on_click_middle_double))
