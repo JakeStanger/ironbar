@@ -17,6 +17,44 @@ use system_tray::client::{ActivateRequest, UpdateEvent};
 use tokio::sync::mpsc;
 use tracing::{debug, error, trace, warn};
 
+/// Action to perform when clicking on a tray icon
+#[derive(Debug, Clone, PartialEq, Eq)]
+#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
+pub enum TrayClickAction {
+    /// Open the tray icon's popup menu
+    OpenMenu,
+    /// Trigger the tray icon's default (primary) action
+    TriggerDefault,
+    /// Trigger the tray icon's secondary action
+    TriggerSecondary,
+    /// Do nothing
+    None,
+    /// Run a custom shell command
+    Custom(String),
+}
+
+impl Default for TrayClickAction {
+    fn default() -> Self {
+        Self::None
+    }
+}
+
+impl<'de> Deserialize<'de> for TrayClickAction {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let s = String::deserialize(deserializer)?;
+        Ok(match s.as_str() {
+            "open_menu" => Self::OpenMenu,
+            "trigger_default" => Self::TriggerDefault,
+            "trigger_secondary" => Self::TriggerSecondary,
+            "none" => Self::None,
+            _ => Self::Custom(s),
+        })
+    }
+}
+
 #[derive(Debug, Deserialize, Clone)]
 #[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
 #[serde(default)]
@@ -39,6 +77,48 @@ pub struct TrayModule {
     /// **Default**: `horizontal` for horizontal bars, `vertical` for vertical bars
     direction: Option<ModuleOrientation>,
 
+    /// Action to perform on left-click.
+    ///
+    /// **Valid options**: `open_menu`, `trigger_default`, `trigger_secondary`, `none`, or any custom shell command
+    /// <br>
+    /// **Default**: `trigger_default` (current behavior, for backwards compatibility)
+    ///
+    /// Custom commands support the following placeholders:
+    /// - `{name}` - The tray item's identifier/name
+    /// - `{title}` - The tray item's title (if available)
+    /// - `{icon}` - The tray item's icon name (if available)
+    /// - `{address}` - The tray item's internal address
+    ///
+    /// # Example
+    ///
+    /// ```corn
+    /// { on_click_left = "open_menu" }
+    /// { on_click_left = "notify-send 'Clicked {name}'" }
+    /// { on_click_left = "if [ '{name}' = 'copyq' ]; then copyq toggle; fi" }
+    /// ```
+    on_click_left: TrayClickAction,
+
+    /// Action to perform on right-click.
+    ///
+    /// **Valid options**: `open_menu`, `trigger_default`, `trigger_secondary`, `none`, or any custom shell command
+    /// <br>
+    /// **Default**: `open_menu`
+    on_click_right: TrayClickAction,
+
+    /// Action to perform on middle-click.
+    ///
+    /// **Valid options**: `open_menu`, `trigger_default`, `trigger_secondary`, `none`, or any custom shell command
+    /// <br>
+    /// **Default**: `none`
+    on_click_middle: TrayClickAction,
+
+    /// Action to perform on double-left-click.
+    ///
+    /// **Valid options**: `open_menu`, `trigger_default`, `trigger_secondary`, `none`, or any custom shell command
+    /// <br>
+    /// **Default**: `none`
+    on_click_left_double: TrayClickAction,
+
     /// See [common options](module-level-options#common-options).
     #[serde(flatten)]
     pub common: Option<CommonConfig>,
@@ -50,6 +130,10 @@ impl Default for TrayModule {
             prefer_theme_icons: true,
             icon_size: default::IconSize::Tiny as u32,
             direction: None,
+            on_click_left: TrayClickAction::TriggerDefault,
+            on_click_right: TrayClickAction::OpenMenu,
+            on_click_middle: TrayClickAction::None,
+            on_click_left_double: TrayClickAction::None,
             common: Some(CommonConfig::default()),
         }
     }
@@ -131,6 +215,11 @@ impl Module<gtk::Box> for TrayModule {
             let icon_theme = provider.icon_theme();
 
             // listen for UI updates
+            let on_click_left = self.on_click_left.clone();
+            let on_click_right = self.on_click_right.clone();
+            let on_click_middle = self.on_click_middle.clone();
+            let on_click_left_double = self.on_click_left_double.clone();
+
             context.subscribe().recv_glib((), move |(), update| {
                 on_update(
                     update,
@@ -140,6 +229,10 @@ impl Module<gtk::Box> for TrayModule {
                     self.icon_size,
                     self.prefer_theme_icons,
                     &activated_channel,
+                    on_click_left.clone(),
+                    on_click_right.clone(),
+                    on_click_middle.clone(),
+                    on_click_left_double.clone(),
                 );
             });
         };
@@ -153,6 +246,7 @@ impl Module<gtk::Box> for TrayModule {
 
 /// Handles UI updates as callback,
 /// getting the diff since the previous update and applying it to the menu.
+#[allow(clippy::too_many_arguments)]
 fn on_update(
     update: Event,
     container: &gtk::Box,
@@ -161,12 +255,24 @@ fn on_update(
     icon_size: u32,
     prefer_icons: bool,
     activated_channel: &mpsc::Sender<ActivateRequest>,
+    on_click_left: TrayClickAction,
+    on_click_right: TrayClickAction,
+    on_click_middle: TrayClickAction,
+    on_click_left_double: TrayClickAction,
 ) {
     match update {
         Event::Add(address, item) => {
             debug!("Received new tray item at '{address}': {item:?}");
 
-            let mut menu_item = TrayMenu::new(&address, *item, activated_channel.clone());
+            let mut menu_item = TrayMenu::new(
+                &address,
+                *item,
+                activated_channel.clone(),
+                on_click_left,
+                on_click_right,
+                on_click_middle,
+                on_click_left_double,
+            );
 
             let x: Option<&gtk::Widget> = None;
             container.insert_child_after(&menu_item.widget, x);
