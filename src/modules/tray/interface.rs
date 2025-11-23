@@ -1,5 +1,8 @@
 use crate::channels::AsyncSenderExt;
 use crate::gtk_helpers::{IronbarGtkExt, MouseButton};
+use crate::modules::tray::{ReservedTrayAction, TrayClickAction, TrayClickHandlers};
+use crate::script::Script;
+use crate::spawn;
 use glib::{Bytes, VariantTy};
 use gtk::gdk::Texture;
 use gtk::gio::{Icon, Menu, MenuModel, SimpleAction, SimpleActionGroup};
@@ -36,29 +39,11 @@ impl TrayMenu {
         address: &str,
         item: StatusNotifierItem,
         activated_channel: mpsc::Sender<ActivateRequest>,
+        click_handlers: &TrayClickHandlers,
     ) -> Self {
         let popover = PopoverMenu::builder().build(); // no `new` and we do not have a model yet
         let widget = Button::new();
         let content = GtkBox::new(Orientation::Horizontal, 0);
-
-        let a = address.to_owned();
-        let tx = activated_channel.clone();
-
-        widget.connect_pressed(MouseButton::Primary, move || {
-            trace!("pressed");
-            let tx = tx.clone();
-            let address = a.clone();
-
-            tx.send_spawn(ActivateRequest::Default {
-                address: address.clone(),
-                x: 0,
-                y: 0,
-            });
-        });
-
-        let a = address.to_owned();
-        let tx = activated_channel.clone();
-        let pe = popover.clone();
 
         let has_menu = item.menu.is_some();
 
