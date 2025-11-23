@@ -63,7 +63,7 @@ end:
   end = [
     {
       type = "label"
-      label = "random num: {{500:echo $RANDOM}}"
+      label = "random num: {{500:echo \$RANDOM}}"
     }
   ]
 }

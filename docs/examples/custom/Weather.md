@@ -395,8 +395,6 @@ const location = "Canterbury";
 const weekday = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
 
 // bar logic
-
-
 const data = await fetch(`https://wttr.in/${location}?format=%c %t|%m %t|%S|%s`)
   .then(r => r.text());
 

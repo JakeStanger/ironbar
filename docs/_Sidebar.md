@@ -13,6 +13,7 @@
 - [Dynamic values](dynamic-values)
 - [Scripts](scripts)
 - [Ironvars](ironvars)
+- [IPC Specification](ipc)
 
 # Examples
 
@@ -29,20 +30,23 @@
 - [Battery](battery)
 - [Bindmode](bindmode)
 - [Bluetooth](bluetooth)
-- [Cairo](cairo)
 - [Clipboard](clipboard)
 - [Clock](clock)
-- [Custom](custom)
 - [Focused](focused)
 - [Keyboard](keyboard)
-- [Label](label)
 - [Launcher](launcher)
 - [Menu](menu)
 - [Music](music)
 - [Network Manager](network-manager)
 - [Notifications](notifications)
-- [Script](script)
 - [Sys_Info](sys-info)
 - [Tray](tray)
 - [Volume](volume)
 - [Workspaces](workspaces)
+
+## Custom
+
+- [Cairo](cairo)
+- [Custom](custom)
+- [Label](label)
+- [Script](script)
