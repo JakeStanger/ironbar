@@ -293,12 +293,13 @@ Check [here](config) for an example config file for a fully configured bar in ea
 
 The following table lists each of the top-level bar config options:
 
-| Name               | Type                                    | Default | Description                                                                                                                    |
-|--------------------|-----------------------------------------|---------|--------------------------------------------------------------------------------------------------------------------------------|
-| `ironvar_defaults` | `Map<string, string>`                   | `{}`    | Map of [ironvar](ironvars) keys against their default values.                                                                  |
-| `monitors`         | `Map<string, BarConfig or BarConfig[]>` | `null`  | Map of monitor names against bar configs.                                                                                      |
-| `icon_theme`       | `string`                                | `null`  | Name of the GTK icon theme to use. Leave blank to use default.                                                                 |
-| `icon_overrides`   | `Map<string, string>`                   | `{}`    | Map of image inputs to override names. Usually used for app IDs (or classes) to icon names, overriding the app's default icon. |
+| Name                | Type                                    | Default | Description                                                                                                                    |
+|---------------------|-----------------------------------------|---------|--------------------------------------------------------------------------------------------------------------------------------|
+| `ironvar_defaults`  | `Map<string, string>`                   | `{}`    | Map of [ironvar](ironvars) keys against their default values.                                                                  |
+| `monitors`          | `Map<string, BarConfig or BarConfig[]>` | `null`  | Map of monitor names against bar configs.                                                                                      |
+| `icon_theme`        | `string`                                | `null`  | Name of the GTK icon theme to use. Leave blank to use default.                                                                 |
+| `icon_overrides`    | `Map<string, string>`                   | `{}`    | Map of image inputs to override names. Usually used for app IDs (or classes) to icon names, overriding the app's default icon. |
+| `double_click_time` | `integer` or `"gtk"`                    | `250`   | Time in milliseconds to wait for a double-click. Set to `"gtk"` to use GTK's setting.                                          |
 
 > [!TIP]
 > `monitors` is only required if you are following **2b** or **2c** (ie not the same bar across all monitors).

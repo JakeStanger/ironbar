@@ -289,12 +289,8 @@ fn on_update(
         Event::Add(address, item) => {
             debug!("Received new tray item at '{address}': {item:?}");
 
-            let mut menu_item = TrayMenu::new(
-                &address,
-                *item,
-                activated_channel.clone(),
-                click_handlers,
-            );
+            let mut menu_item =
+                TrayMenu::new(&address, *item, activated_channel.clone(), click_handlers);
 
             let x: Option<&gtk::Widget> = None;
             container.insert_child_after(&menu_item.widget, x);

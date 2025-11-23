@@ -126,12 +126,15 @@ impl<W: IsA<Widget>> IronbarGtkExt for W {
                         source_id.remove();
                     }
 
-                    // Schedule single-click action after double-click timeout (250ms)
-                    let source_id =
-                        glib::timeout_add_local_once(Duration::from_millis(250), move || {
+                    // Schedule single-click action after double-click timeout
+                    let timeout_ms = crate::config::get_double_click_time_ms();
+                    let source_id = glib::timeout_add_local_once(
+                        Duration::from_millis(timeout_ms),
+                        move || {
                             on_single();
                             pending.set(None);
-                        });
+                        },
+                    );
 
                     pending_single_click.set(Some(source_id));
                 }
