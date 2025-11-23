@@ -341,16 +341,19 @@ For information on the `Script` type, and embedding scripts in strings, see [her
 
 #### Events
 
-| Name                  | Type               | Default | Description                                                                                      |
-|-----------------------|--------------------|---------|--------------------------------------------------------------------------------------------------|
-| `on_click_left`       | `Script [oneshot]` | `null`  | Runs the script when the module is left clicked.                                                 |
-| `on_click_middle`     | `Script [oneshot]` | `null`  | Runs the script when the module is middle clicked.                                               |
-| `on_click_right`      | `Script [oneshot]` | `null`  | Runs the script when the module is right clicked.                                                |
-| `on_scroll_up`        | `Script [oneshot]` | `null`  | Runs the script when the module is scroll up on.                                                 |
-| `on_scroll_down`      | `Script [oneshot]` | `null`  | Runs the script when the module is scrolled down on.                                             |
-| `on_mouse_enter`      | `Script [oneshot]` | `null`  | Runs the script when the module is hovered over.                                                 |
-| `on_mouse_exit`       | `Script [oneshot]` | `null`  | Runs the script when the module is no longer hovered over.                                       |
-| `smooth_scroll_speed` | `float`            | `1.0`   | Speed multiplier `0.0` - `10.0` which controls scroll up/down events triggered using a trackpad. |
+| Name                     | Type               | Default | Description                                                                                      |
+|--------------------------|--------------------|---------|--------------------------------------------------------------------------------------------------|
+| `on_click_left`          | `Script [oneshot]` | `null`  | Runs the script when the module is left clicked.                                                 |
+| `on_click_left_double`   | `Script [oneshot]` | `null`  | Runs the script when the module is double-left clicked.                                          |
+| `on_click_middle`        | `Script [oneshot]` | `null`  | Runs the script when the module is middle clicked.                                               |
+| `on_click_middle_double` | `Script [oneshot]` | `null`  | Runs the script when the module is double-middle clicked.                                        |
+| `on_click_right`         | `Script [oneshot]` | `null`  | Runs the script when the module is right clicked.                                                |
+| `on_click_right_double`  | `Script [oneshot]` | `null`  | Runs the script when the module is double-right clicked.                                         |
+| `on_scroll_up`           | `Script [oneshot]` | `null`  | Runs the script when the module is scroll up on.                                                 |
+| `on_scroll_down`         | `Script [oneshot]` | `null`  | Runs the script when the module is scrolled down on.                                             |
+| `on_mouse_enter`         | `Script [oneshot]` | `null`  | Runs the script when the module is hovered over.                                                 |
+| `on_mouse_exit`          | `Script [oneshot]` | `null`  | Runs the script when the module is no longer hovered over.                                       |
+| `smooth_scroll_speed`    | `float`            | `1.0`   | Speed multiplier `0.0` - `10.0` which controls scroll up/down events triggered using a trackpad. |
 
 #### Visibility
 
