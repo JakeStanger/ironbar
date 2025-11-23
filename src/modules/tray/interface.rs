@@ -1,6 +1,6 @@
 use crate::channels::AsyncSenderExt;
 use crate::gtk_helpers::{IronbarGtkExt, MouseButton};
-use crate::modules::tray::{TrayClickAction, TrayClickHandlers};
+use crate::modules::tray::{ReservedTrayAction, TrayClickAction, TrayClickHandlers};
 use crate::script::Script;
 use crate::spawn;
 use glib::{Bytes, VariantTy};
@@ -66,8 +66,8 @@ impl TrayMenu {
                               title: &Option<String>,
                               icon_name: &Option<String>| {
             match action {
-                TrayClickAction::OpenMenu => {
-                    trace!("TrayClickAction::OpenMenu");
+                TrayClickAction::Reserved(ReservedTrayAction::Menu) => {
+                    trace!("TrayClickAction::Reserved(Menu)");
                     pe.popup();
                     // If no menu exists, send secondary activation
                     if !has_menu {
@@ -78,21 +78,24 @@ impl TrayMenu {
                         });
                     }
                 }
-                TrayClickAction::TriggerDefault => {
-                    trace!("TrayClickAction::TriggerDefault");
+                TrayClickAction::Reserved(ReservedTrayAction::Default) => {
+                    trace!("TrayClickAction::Reserved(Default)");
                     tx.send_spawn(ActivateRequest::Default {
                         address: address.to_owned(),
                         x: 0,
                         y: 0,
                     });
                 }
-                TrayClickAction::TriggerSecondary => {
-                    trace!("TrayClickAction::TriggerSecondary");
+                TrayClickAction::Reserved(ReservedTrayAction::Secondary) => {
+                    trace!("TrayClickAction::Reserved(Secondary)");
                     tx.send_spawn(ActivateRequest::Secondary {
                         address: address.to_owned(),
                         x: 0,
                         y: 0,
                     });
+                }
+                TrayClickAction::Reserved(ReservedTrayAction::None) => {
+                    trace!("TrayClickAction::Reserved(None) (ignoring)");
                 }
                 TrayClickAction::Custom(cmd) => {
                     trace!("TrayClickAction::Custom: {}", cmd);
@@ -112,19 +115,16 @@ impl TrayMenu {
                         }
                     });
                 }
-                TrayClickAction::None => {
-                    trace!("TrayClickAction::None (ignoring)");
-                }
             }
         };
 
         // Set up left-click handler with optional double-click support
-        if click_handlers.on_click_left != TrayClickAction::None || click_handlers.on_click_left_double != TrayClickAction::None {
+        if click_handlers.on_click_left != TrayClickAction::Reserved(ReservedTrayAction::None) || click_handlers.on_click_left_double != TrayClickAction::Reserved(ReservedTrayAction::None) {
             let pe_single = popover.clone();
             let tx_single = activated_channel.clone();
             let address_single = address.to_owned();
 
-            let on_double = if click_handlers.on_click_left_double != TrayClickAction::None {
+            let on_double = if click_handlers.on_click_left_double != TrayClickAction::Reserved(ReservedTrayAction::None) {
                 let pe_double = popover.clone();
                 let tx_double = activated_channel.clone();
                 let address_double = address.to_owned();
@@ -173,7 +173,7 @@ impl TrayMenu {
         }
 
         // Set up right-click handler
-        if click_handlers.on_click_right != TrayClickAction::None {
+        if click_handlers.on_click_right != TrayClickAction::Reserved(ReservedTrayAction::None) {
             let pe = popover.clone();
             let tx = activated_channel.clone();
             let address_owned = address.to_owned();
@@ -197,7 +197,7 @@ impl TrayMenu {
         }
 
         // Set up middle-click handler
-        if click_handlers.on_click_middle != TrayClickAction::None {
+        if click_handlers.on_click_middle != TrayClickAction::Reserved(ReservedTrayAction::None) {
             let pe = popover.clone();
             let tx = activated_channel.clone();
             let address_owned = address.to_owned();

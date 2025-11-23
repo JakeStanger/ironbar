@@ -17,18 +17,28 @@ use system_tray::client::{ActivateRequest, UpdateEvent};
 use tokio::sync::mpsc;
 use tracing::{debug, error, trace, warn};
 
-/// Action to perform when clicking on a tray icon
-#[derive(Debug, Clone, PartialEq, Eq)]
+/// Reserved tray click actions
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
 #[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
-pub enum TrayClickAction {
+#[serde(rename_all = "snake_case")]
+pub enum ReservedTrayAction {
     /// Open the tray icon's popup menu
-    OpenMenu,
+    Menu,
     /// Trigger the tray icon's default (primary) action
-    TriggerDefault,
+    Default,
     /// Trigger the tray icon's secondary action
-    TriggerSecondary,
+    Secondary,
     /// Do nothing
     None,
+}
+
+/// Action to perform when clicking on a tray icon
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
+#[serde(untagged)]
+pub enum TrayClickAction {
+    /// Reserved action
+    Reserved(ReservedTrayAction),
     /// Run a custom shell command
     Custom(String),
 }
@@ -84,33 +94,17 @@ pub struct TrayClickHandlers {
 impl Default for TrayClickHandlers {
     fn default() -> Self {
         Self {
-            on_click_left: TrayClickAction::TriggerDefault,
-            on_click_right: TrayClickAction::OpenMenu,
-            on_click_middle: TrayClickAction::None,
-            on_click_left_double: TrayClickAction::None,
+            on_click_left: TrayClickAction::Reserved(ReservedTrayAction::Default),
+            on_click_right: TrayClickAction::Reserved(ReservedTrayAction::Menu),
+            on_click_middle: TrayClickAction::Reserved(ReservedTrayAction::None),
+            on_click_left_double: TrayClickAction::Reserved(ReservedTrayAction::None),
         }
     }
 }
 
 impl Default for TrayClickAction {
     fn default() -> Self {
-        Self::None
-    }
-}
-
-impl<'de> Deserialize<'de> for TrayClickAction {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: serde::Deserializer<'de>,
-    {
-        let s = String::deserialize(deserializer)?;
-        Ok(match s.as_str() {
-            "menu" => Self::OpenMenu,
-            "default" => Self::TriggerDefault,
-            "secondary" => Self::TriggerSecondary,
-            "none" => Self::None,
-            _ => Self::Custom(s),
-        })
+        Self::Reserved(ReservedTrayAction::None)
     }
 }
 
