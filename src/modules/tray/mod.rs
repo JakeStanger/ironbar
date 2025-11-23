@@ -102,6 +102,13 @@ impl Default for TrayClickHandlers {
     }
 }
 
+impl TrayClickAction {
+    /// Returns true if this action is not None
+    pub fn is_actionable(&self) -> bool {
+        !matches!(self, Self::Reserved(ReservedTrayAction::None))
+    }
+}
+
 impl Default for TrayClickAction {
     fn default() -> Self {
         Self::Reserved(ReservedTrayAction::None)

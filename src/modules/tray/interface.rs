@@ -118,106 +118,50 @@ impl TrayMenu {
             }
         };
 
+        // Helper to create a click handler closure with all necessary context
+        let make_handler = |action: &TrayClickAction| {
+            let pe = popover.clone();
+            let tx = activated_channel.clone();
+            let address_owned = address.to_owned();
+            let action = action.clone();
+            let name = item_name.clone();
+            let title = item_title.clone();
+            let icon = item_icon_name.clone();
+
+            move || {
+                execute_action(
+                    action.clone(),
+                    &pe,
+                    &tx,
+                    &address_owned,
+                    has_menu,
+                    &name,
+                    &title,
+                    &icon,
+                );
+            }
+        };
+
         // Set up left-click handler with optional double-click support
-        if click_handlers.on_click_left != TrayClickAction::Reserved(ReservedTrayAction::None) || click_handlers.on_click_left_double != TrayClickAction::Reserved(ReservedTrayAction::None) {
-            let pe_single = popover.clone();
-            let tx_single = activated_channel.clone();
-            let address_single = address.to_owned();
-
-            let on_double = if click_handlers.on_click_left_double != TrayClickAction::Reserved(ReservedTrayAction::None) {
-                let pe_double = popover.clone();
-                let tx_double = activated_channel.clone();
-                let address_double = address.to_owned();
-                let action_double = click_handlers.on_click_left_double.clone();
-                let name_double = item_name.clone();
-                let title_double = item_title.clone();
-                let icon_double = item_icon_name.clone();
-
-                Some(move || {
-                    execute_action(
-                        action_double.clone(),
-                        &pe_double,
-                        &tx_double,
-                        &address_double,
-                        has_menu,
-                        &name_double,
-                        &title_double,
-                        &icon_double,
-                    );
-                })
+        if click_handlers.on_click_left.is_actionable() || click_handlers.on_click_left_double.is_actionable() {
+            let on_single = make_handler(&click_handlers.on_click_left);
+            let on_double = if click_handlers.on_click_left_double.is_actionable() {
+                Some(make_handler(&click_handlers.on_click_left_double))
             } else {
                 None
             };
 
-            let name_single = item_name.clone();
-            let title_single = item_title.clone();
-            let icon_single = item_icon_name.clone();
-            let on_click_left = click_handlers.on_click_left.clone();
-
-            widget.connect_pressed_with_double_click(
-                MouseButton::Primary,
-                move || {
-                    execute_action(
-                        on_click_left.clone(),
-                        &pe_single,
-                        &tx_single,
-                        &address_single,
-                        has_menu,
-                        &name_single,
-                        &title_single,
-                        &icon_single,
-                    );
-                },
-                on_double,
-            );
+            widget.connect_pressed_with_double_click(MouseButton::Primary, on_single, on_double);
         }
 
         // Set up right-click handler
-        if click_handlers.on_click_right != TrayClickAction::Reserved(ReservedTrayAction::None) {
-            let pe = popover.clone();
-            let tx = activated_channel.clone();
-            let address_owned = address.to_owned();
-            let action = click_handlers.on_click_right.clone();
-            let name = item_name.clone();
-            let title = item_title.clone();
-            let icon = item_icon_name.clone();
-
-            widget.connect_pressed(MouseButton::Secondary, move || {
-                execute_action(
-                    action.clone(),
-                    &pe,
-                    &tx,
-                    &address_owned,
-                    has_menu,
-                    &name,
-                    &title,
-                    &icon,
-                );
-            });
+        if click_handlers.on_click_right.is_actionable() {
+            widget.connect_pressed(MouseButton::Secondary, make_handler(&click_handlers.on_click_right));
         }
 
         // Set up middle-click handler
-        if click_handlers.on_click_middle != TrayClickAction::Reserved(ReservedTrayAction::None) {
-            let pe = popover.clone();
-            let tx = activated_channel.clone();
-            let address_owned = address.to_owned();
-            let action = click_handlers.on_click_middle.clone();
-            let name = item_name.clone();
-            let title = item_title.clone();
-            let icon = item_icon_name.clone();
-
-            widget.connect_pressed(MouseButton::Middle, move || {
-                execute_action(
-                    action.clone(),
-                    &pe,
-                    &tx,
-                    &address_owned,
-                    has_menu,
-                    &name,
-                    &title,
-                    &icon,
-                );
-            });
+        if click_handlers.on_click_middle.is_actionable() {
+            widget.connect_pressed(MouseButton::Middle, make_handler(&click_handlers.on_click_middle));
         }
 
         widget.set_child(Some(&content));
