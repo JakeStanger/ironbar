@@ -1,4 +1,4 @@
-2Executes a script and shows the result of `stdout` on a label.
+Executes a script and shows the result of `stdout` on a label.
 Pango markup is supported.
 
 If you want to be able to embed multiple scripts and/or variables, prefer the [label](label) module.
