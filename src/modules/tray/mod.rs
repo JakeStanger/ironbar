@@ -46,9 +46,9 @@ impl<'de> Deserialize<'de> for TrayClickAction {
     {
         let s = String::deserialize(deserializer)?;
         Ok(match s.as_str() {
-            "open_menu" => Self::OpenMenu,
-            "trigger_default" => Self::TriggerDefault,
-            "trigger_secondary" => Self::TriggerSecondary,
+            "menu" => Self::OpenMenu,
+            "default" => Self::TriggerDefault,
+            "secondary" => Self::TriggerSecondary,
             "none" => Self::None,
             _ => Self::Custom(s),
         })
@@ -79,9 +79,9 @@ pub struct TrayModule {
 
     /// Action to perform on left-click.
     ///
-    /// **Valid options**: `open_menu`, `trigger_default`, `trigger_secondary`, `none`, or any custom shell command
+    /// **Valid options**: `menu`, `default`, `secondary`, `none`, or any custom shell command
     /// <br>
-    /// **Default**: `trigger_default` (current behavior, for backwards compatibility)
+    /// **Default**: `default` (current behavior, for backwards compatibility)
     ///
     /// Custom commands support the following placeholders:
     /// - `{name}` - The tray item's identifier/name
@@ -92,7 +92,7 @@ pub struct TrayModule {
     /// # Example
     ///
     /// ```corn
-    /// { on_click_left = "open_menu" }
+    /// { on_click_left = "menu" }
     /// { on_click_left = "notify-send 'Clicked {name}'" }
     /// { on_click_left = "if [ '{name}' = 'copyq' ]; then copyq toggle; fi" }
     /// ```
@@ -100,21 +100,21 @@ pub struct TrayModule {
 
     /// Action to perform on right-click.
     ///
-    /// **Valid options**: `open_menu`, `trigger_default`, `trigger_secondary`, `none`, or any custom shell command
+    /// **Valid options**: `menu`, `default`, `secondary`, `none`, or any custom shell command
     /// <br>
-    /// **Default**: `open_menu`
+    /// **Default**: `menu`
     on_click_right: TrayClickAction,
 
     /// Action to perform on middle-click.
     ///
-    /// **Valid options**: `open_menu`, `trigger_default`, `trigger_secondary`, `none`, or any custom shell command
+    /// **Valid options**: `menu`, `default`, `secondary`, `none`, or any custom shell command
     /// <br>
     /// **Default**: `none`
     on_click_middle: TrayClickAction,
 
     /// Action to perform on double-left-click.
     ///
-    /// **Valid options**: `open_menu`, `trigger_default`, `trigger_secondary`, `none`, or any custom shell command
+    /// **Valid options**: `menu`, `default`, `secondary`, `none`, or any custom shell command
     /// <br>
     /// **Default**: `none`
     on_click_left_double: TrayClickAction,
