@@ -1,5 +1,8 @@
 use crate::channels::AsyncSenderExt;
 use crate::gtk_helpers::{IronbarGtkExt, MouseButton};
+use crate::modules::tray::TrayClickAction;
+use crate::script::Script;
+use crate::spawn;
 use glib::{Bytes, VariantTy};
 use gtk::gdk::Texture;
 use gtk::gio::{Icon, Menu, MenuModel, SimpleAction, SimpleActionGroup};
@@ -36,47 +39,189 @@ impl TrayMenu {
         address: &str,
         item: StatusNotifierItem,
         activated_channel: mpsc::Sender<ActivateRequest>,
+        on_click_left: TrayClickAction,
+        on_click_right: TrayClickAction,
+        on_click_middle: TrayClickAction,
+        on_click_left_double: TrayClickAction,
     ) -> Self {
         let popover = PopoverMenu::builder().build(); // no `new` and we do not have a model yet
         let widget = Button::new();
         let content = GtkBox::new(Orientation::Horizontal, 0);
 
-        let a = address.to_owned();
-        let tx = activated_channel.clone();
-
-        widget.connect_pressed(MouseButton::Primary, move || {
-            trace!("pressed");
-            let tx = tx.clone();
-            let address = a.clone();
-
-            tx.send_spawn(ActivateRequest::Default {
-                address: address.clone(),
-                x: 0,
-                y: 0,
-            });
-        });
-
-        let a = address.to_owned();
-        let tx = activated_channel.clone();
-        let pe = popover.clone();
-
         let has_menu = item.menu.is_some();
 
-        widget.connect_pressed(MouseButton::Secondary, move || {
-            trace!("secondary");
-            pe.popup();
+        // Capture metadata for placeholder substitution in custom commands
+        let item_name = if !item.id.is_empty() {
+            item.id.clone()
+        } else {
+            address.to_owned()
+        };
+        let item_title = item.title.clone();
+        let item_icon_name = item.icon_name.clone();
 
-            if !has_menu {
-                let tx = tx.clone();
-                let address = a.clone();
+        // Helper to execute a tray click action
+        let execute_action = |action: TrayClickAction,
+                              pe: &PopoverMenu,
+                              tx: &mpsc::Sender<ActivateRequest>,
+                              address: &str,
+                              has_menu: bool,
+                              name: &str,
+                              title: &Option<String>,
+                              icon_name: &Option<String>| {
+            match action {
+                TrayClickAction::OpenMenu => {
+                    trace!("TrayClickAction::OpenMenu");
+                    pe.popup();
+                    // If no menu exists, send secondary activation
+                    if !has_menu {
+                        tx.send_spawn(ActivateRequest::Secondary {
+                            address: address.to_owned(),
+                            x: 0,
+                            y: 0,
+                        });
+                    }
+                }
+                TrayClickAction::TriggerDefault => {
+                    trace!("TrayClickAction::TriggerDefault");
+                    tx.send_spawn(ActivateRequest::Default {
+                        address: address.to_owned(),
+                        x: 0,
+                        y: 0,
+                    });
+                }
+                TrayClickAction::TriggerSecondary => {
+                    trace!("TrayClickAction::TriggerSecondary");
+                    tx.send_spawn(ActivateRequest::Secondary {
+                        address: address.to_owned(),
+                        x: 0,
+                        y: 0,
+                    });
+                }
+                TrayClickAction::Custom(cmd) => {
+                    trace!("TrayClickAction::Custom: {}", cmd);
 
-                tx.send_spawn(ActivateRequest::Secondary {
-                    address: address.clone(),
-                    x: 0,
-                    y: 0,
-                });
+                    // Substitute placeholders with tray item metadata
+                    let cmd = cmd
+                        .replace("{name}", name)
+                        .replace("{title}", title.as_deref().unwrap_or(""))
+                        .replace("{icon}", icon_name.as_deref().unwrap_or(""))
+                        .replace("{address}", address);
+
+                    trace!("Executing command after substitution: {}", cmd);
+                    let script = Script::from(cmd.as_str());
+                    spawn(async move {
+                        if let Err(err) = script.get_output(None).await {
+                            error!("{err:?}");
+                        }
+                    });
+                }
+                TrayClickAction::None => {
+                    trace!("TrayClickAction::None (ignoring)");
+                }
             }
-        });
+        };
+
+        // Set up left-click handler with optional double-click support
+        if on_click_left != TrayClickAction::None || on_click_left_double != TrayClickAction::None {
+            let pe_single = popover.clone();
+            let tx_single = activated_channel.clone();
+            let address_single = address.to_owned();
+
+            let on_double = if on_click_left_double != TrayClickAction::None {
+                let pe_double = popover.clone();
+                let tx_double = activated_channel.clone();
+                let address_double = address.to_owned();
+                let action_double = on_click_left_double.clone();
+                let name_double = item_name.clone();
+                let title_double = item_title.clone();
+                let icon_double = item_icon_name.clone();
+
+                Some(move || {
+                    execute_action(
+                        action_double.clone(),
+                        &pe_double,
+                        &tx_double,
+                        &address_double,
+                        has_menu,
+                        &name_double,
+                        &title_double,
+                        &icon_double,
+                    );
+                })
+            } else {
+                None
+            };
+
+            let name_single = item_name.clone();
+            let title_single = item_title.clone();
+            let icon_single = item_icon_name.clone();
+
+            widget.connect_pressed_with_double_click(
+                MouseButton::Primary,
+                move || {
+                    execute_action(
+                        on_click_left.clone(),
+                        &pe_single,
+                        &tx_single,
+                        &address_single,
+                        has_menu,
+                        &name_single,
+                        &title_single,
+                        &icon_single,
+                    );
+                },
+                on_double,
+            );
+        }
+
+        // Set up right-click handler
+        if on_click_right != TrayClickAction::None {
+            let pe = popover.clone();
+            let tx = activated_channel.clone();
+            let address_owned = address.to_owned();
+            let action = on_click_right.clone();
+            let name = item_name.clone();
+            let title = item_title.clone();
+            let icon = item_icon_name.clone();
+
+            widget.connect_pressed(MouseButton::Secondary, move || {
+                execute_action(
+                    action.clone(),
+                    &pe,
+                    &tx,
+                    &address_owned,
+                    has_menu,
+                    &name,
+                    &title,
+                    &icon,
+                );
+            });
+        }
+
+        // Set up middle-click handler
+        if on_click_middle != TrayClickAction::None {
+            let pe = popover.clone();
+            let tx = activated_channel.clone();
+            let address_owned = address.to_owned();
+            let action = on_click_middle.clone();
+            let name = item_name.clone();
+            let title = item_title.clone();
+            let icon = item_icon_name.clone();
+
+            widget.connect_pressed(MouseButton::Middle, move || {
+                execute_action(
+                    action.clone(),
+                    &pe,
+                    &tx,
+                    &address_owned,
+                    has_menu,
+                    &name,
+                    &title,
+                    &icon,
+                );
+            });
+        }
+
         widget.set_child(Some(&content));
         widget.add_css_class("item");
 
