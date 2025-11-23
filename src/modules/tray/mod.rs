@@ -33,6 +33,65 @@ pub enum TrayClickAction {
     Custom(String),
 }
 
+/// Click action handlers for tray icons
+#[derive(Debug, Clone, Deserialize)]
+#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
+#[serde(default)]
+pub struct TrayClickHandlers {
+    /// Action to perform on left-click.
+    ///
+    /// **Valid options**: `menu`, `default`, `secondary`, `none`, or any custom shell command
+    /// <br>
+    /// **Default**: `default` (current behavior, for backwards compatibility)
+    ///
+    /// Custom commands support the following placeholders:
+    /// - `{name}` - The tray item's identifier/name
+    /// - `{title}` - The tray item's title (if available)
+    /// - `{icon}` - The tray item's icon name (if available)
+    /// - `{address}` - The tray item's internal address
+    ///
+    /// # Example
+    ///
+    /// ```corn
+    /// { on_click_left = "menu" }
+    /// { on_click_left = "notify-send 'Clicked {name}'" }
+    /// { on_click_left = "if [ '{name}' = 'copyq' ]; then copyq toggle; fi" }
+    /// ```
+    on_click_left: TrayClickAction,
+
+    /// Action to perform on right-click.
+    ///
+    /// **Valid options**: `menu`, `default`, `secondary`, `none`, or any custom shell command
+    /// <br>
+    /// **Default**: `menu`
+    on_click_right: TrayClickAction,
+
+    /// Action to perform on middle-click.
+    ///
+    /// **Valid options**: `menu`, `default`, `secondary`, `none`, or any custom shell command
+    /// <br>
+    /// **Default**: `none`
+    on_click_middle: TrayClickAction,
+
+    /// Action to perform on double-left-click.
+    ///
+    /// **Valid options**: `menu`, `default`, `secondary`, `none`, or any custom shell command
+    /// <br>
+    /// **Default**: `none`
+    on_click_left_double: TrayClickAction,
+}
+
+impl Default for TrayClickHandlers {
+    fn default() -> Self {
+        Self {
+            on_click_left: TrayClickAction::TriggerDefault,
+            on_click_right: TrayClickAction::OpenMenu,
+            on_click_middle: TrayClickAction::None,
+            on_click_left_double: TrayClickAction::None,
+        }
+    }
+}
+
 impl Default for TrayClickAction {
     fn default() -> Self {
         Self::None
@@ -77,47 +136,9 @@ pub struct TrayModule {
     /// **Default**: `horizontal` for horizontal bars, `vertical` for vertical bars
     direction: Option<ModuleOrientation>,
 
-    /// Action to perform on left-click.
-    ///
-    /// **Valid options**: `menu`, `default`, `secondary`, `none`, or any custom shell command
-    /// <br>
-    /// **Default**: `default` (current behavior, for backwards compatibility)
-    ///
-    /// Custom commands support the following placeholders:
-    /// - `{name}` - The tray item's identifier/name
-    /// - `{title}` - The tray item's title (if available)
-    /// - `{icon}` - The tray item's icon name (if available)
-    /// - `{address}` - The tray item's internal address
-    ///
-    /// # Example
-    ///
-    /// ```corn
-    /// { on_click_left = "menu" }
-    /// { on_click_left = "notify-send 'Clicked {name}'" }
-    /// { on_click_left = "if [ '{name}' = 'copyq' ]; then copyq toggle; fi" }
-    /// ```
-    on_click_left: TrayClickAction,
-
-    /// Action to perform on right-click.
-    ///
-    /// **Valid options**: `menu`, `default`, `secondary`, `none`, or any custom shell command
-    /// <br>
-    /// **Default**: `menu`
-    on_click_right: TrayClickAction,
-
-    /// Action to perform on middle-click.
-    ///
-    /// **Valid options**: `menu`, `default`, `secondary`, `none`, or any custom shell command
-    /// <br>
-    /// **Default**: `none`
-    on_click_middle: TrayClickAction,
-
-    /// Action to perform on double-left-click.
-    ///
-    /// **Valid options**: `menu`, `default`, `secondary`, `none`, or any custom shell command
-    /// <br>
-    /// **Default**: `none`
-    on_click_left_double: TrayClickAction,
+    /// Click action handlers for tray icons
+    #[serde(flatten)]
+    click_handlers: TrayClickHandlers,
 
     /// See [common options](module-level-options#common-options).
     #[serde(flatten)]
@@ -130,10 +151,7 @@ impl Default for TrayModule {
             prefer_theme_icons: true,
             icon_size: default::IconSize::Tiny as u32,
             direction: None,
-            on_click_left: TrayClickAction::TriggerDefault,
-            on_click_right: TrayClickAction::OpenMenu,
-            on_click_middle: TrayClickAction::None,
-            on_click_left_double: TrayClickAction::None,
+            click_handlers: TrayClickHandlers::default(),
             common: Some(CommonConfig::default()),
         }
     }
@@ -215,10 +233,7 @@ impl Module<gtk::Box> for TrayModule {
             let icon_theme = provider.icon_theme();
 
             // listen for UI updates
-            let on_click_left = self.on_click_left.clone();
-            let on_click_right = self.on_click_right.clone();
-            let on_click_middle = self.on_click_middle.clone();
-            let on_click_left_double = self.on_click_left_double.clone();
+            let click_handlers = self.click_handlers.clone();
 
             context.subscribe().recv_glib((), move |(), update| {
                 on_update(
@@ -229,10 +244,7 @@ impl Module<gtk::Box> for TrayModule {
                     self.icon_size,
                     self.prefer_theme_icons,
                     &activated_channel,
-                    on_click_left.clone(),
-                    on_click_right.clone(),
-                    on_click_middle.clone(),
-                    on_click_left_double.clone(),
+                    &click_handlers,
                 );
             });
         };
@@ -246,7 +258,6 @@ impl Module<gtk::Box> for TrayModule {
 
 /// Handles UI updates as callback,
 /// getting the diff since the previous update and applying it to the menu.
-#[allow(clippy::too_many_arguments)]
 fn on_update(
     update: Event,
     container: &gtk::Box,
@@ -255,10 +266,7 @@ fn on_update(
     icon_size: u32,
     prefer_icons: bool,
     activated_channel: &mpsc::Sender<ActivateRequest>,
-    on_click_left: TrayClickAction,
-    on_click_right: TrayClickAction,
-    on_click_middle: TrayClickAction,
-    on_click_left_double: TrayClickAction,
+    click_handlers: &TrayClickHandlers,
 ) {
     match update {
         Event::Add(address, item) => {
@@ -268,10 +276,7 @@ fn on_update(
                 &address,
                 *item,
                 activated_channel.clone(),
-                on_click_left,
-                on_click_right,
-                on_click_middle,
-                on_click_left_double,
+                click_handlers,
             );
 
             let x: Option<&gtk::Widget> = None;

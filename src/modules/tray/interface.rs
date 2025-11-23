@@ -1,6 +1,6 @@
 use crate::channels::AsyncSenderExt;
 use crate::gtk_helpers::{IronbarGtkExt, MouseButton};
-use crate::modules::tray::TrayClickAction;
+use crate::modules::tray::{TrayClickAction, TrayClickHandlers};
 use crate::script::Script;
 use crate::spawn;
 use glib::{Bytes, VariantTy};
@@ -39,10 +39,7 @@ impl TrayMenu {
         address: &str,
         item: StatusNotifierItem,
         activated_channel: mpsc::Sender<ActivateRequest>,
-        on_click_left: TrayClickAction,
-        on_click_right: TrayClickAction,
-        on_click_middle: TrayClickAction,
-        on_click_left_double: TrayClickAction,
+        click_handlers: &TrayClickHandlers,
     ) -> Self {
         let popover = PopoverMenu::builder().build(); // no `new` and we do not have a model yet
         let widget = Button::new();
@@ -122,16 +119,16 @@ impl TrayMenu {
         };
 
         // Set up left-click handler with optional double-click support
-        if on_click_left != TrayClickAction::None || on_click_left_double != TrayClickAction::None {
+        if click_handlers.on_click_left != TrayClickAction::None || click_handlers.on_click_left_double != TrayClickAction::None {
             let pe_single = popover.clone();
             let tx_single = activated_channel.clone();
             let address_single = address.to_owned();
 
-            let on_double = if on_click_left_double != TrayClickAction::None {
+            let on_double = if click_handlers.on_click_left_double != TrayClickAction::None {
                 let pe_double = popover.clone();
                 let tx_double = activated_channel.clone();
                 let address_double = address.to_owned();
-                let action_double = on_click_left_double.clone();
+                let action_double = click_handlers.on_click_left_double.clone();
                 let name_double = item_name.clone();
                 let title_double = item_title.clone();
                 let icon_double = item_icon_name.clone();
@@ -155,6 +152,7 @@ impl TrayMenu {
             let name_single = item_name.clone();
             let title_single = item_title.clone();
             let icon_single = item_icon_name.clone();
+            let on_click_left = click_handlers.on_click_left.clone();
 
             widget.connect_pressed_with_double_click(
                 MouseButton::Primary,
@@ -175,11 +173,11 @@ impl TrayMenu {
         }
 
         // Set up right-click handler
-        if on_click_right != TrayClickAction::None {
+        if click_handlers.on_click_right != TrayClickAction::None {
             let pe = popover.clone();
             let tx = activated_channel.clone();
             let address_owned = address.to_owned();
-            let action = on_click_right.clone();
+            let action = click_handlers.on_click_right.clone();
             let name = item_name.clone();
             let title = item_title.clone();
             let icon = item_icon_name.clone();
@@ -199,11 +197,11 @@ impl TrayMenu {
         }
 
         // Set up middle-click handler
-        if on_click_middle != TrayClickAction::None {
+        if click_handlers.on_click_middle != TrayClickAction::None {
             let pe = popover.clone();
             let tx = activated_channel.clone();
             let address_owned = address.to_owned();
-            let action = on_click_middle.clone();
+            let action = click_handlers.on_click_middle.clone();
             let name = item_name.clone();
             let title = item_title.clone();
             let icon = item_icon_name.clone();
