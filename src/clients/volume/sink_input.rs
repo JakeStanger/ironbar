@@ -131,17 +131,22 @@ fn update(
 
     trace!("updating {info:?}");
 
+    let input_info: SinkInput = info.into();
+
     {
         let mut inputs = lock!(inputs);
-        let Some(pos) = inputs.iter().position(|input| input.index == info.index) else {
+        if let Some(pos) = inputs
+            .iter()
+            .position(|input| input.index == input_info.index)
+        {
+            inputs[pos] = input_info.clone();
+        } else {
             error!("received update to untracked sink input");
             return;
-        };
-
-        inputs[pos] = info.into();
+        }
     }
 
-    tx.send_expect(Event::UpdateInput(info.into()));
+    tx.send_expect(Event::UpdateInput(input_info));
 }
 
 fn remove(index: u32, inputs: &ArcMutVec<SinkInput>, tx: &broadcast::Sender<Event>) {
