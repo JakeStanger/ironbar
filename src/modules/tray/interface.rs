@@ -154,14 +154,28 @@ impl TrayMenu {
             widget.connect_pressed_with_double_click(MouseButton::Primary, on_single, on_double);
         }
 
-        // Set up right-click handler
-        if click_handlers.on_click_right.is_actionable() {
-            widget.connect_pressed(MouseButton::Secondary, make_handler(&click_handlers.on_click_right));
+        // Set up right-click handler with optional double-click support
+        if click_handlers.on_click_right.is_actionable() || click_handlers.on_click_right_double.is_actionable() {
+            let on_single = make_handler(&click_handlers.on_click_right);
+            let on_double = if click_handlers.on_click_right_double.is_actionable() {
+                Some(make_handler(&click_handlers.on_click_right_double))
+            } else {
+                None
+            };
+
+            widget.connect_pressed_with_double_click(MouseButton::Secondary, on_single, on_double);
         }
 
-        // Set up middle-click handler
-        if click_handlers.on_click_middle.is_actionable() {
-            widget.connect_pressed(MouseButton::Middle, make_handler(&click_handlers.on_click_middle));
+        // Set up middle-click handler with optional double-click support
+        if click_handlers.on_click_middle.is_actionable() || click_handlers.on_click_middle_double.is_actionable() {
+            let on_single = make_handler(&click_handlers.on_click_middle);
+            let on_double = if click_handlers.on_click_middle_double.is_actionable() {
+                Some(make_handler(&click_handlers.on_click_middle_double))
+            } else {
+                None
+            };
+
+            widget.connect_pressed_with_double_click(MouseButton::Middle, on_single, on_double);
         }
 
         widget.set_child(Some(&content));
