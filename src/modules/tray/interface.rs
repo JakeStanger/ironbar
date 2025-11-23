@@ -62,21 +62,143 @@ impl TrayMenu {
 
         let has_menu = item.menu.is_some();
 
-        widget.connect_pressed(MouseButton::Secondary, move || {
-            trace!("secondary");
-            pe.popup();
+        // Capture metadata for placeholder substitution in custom commands
+        let item_name = if !item.id.is_empty() {
+            item.id.clone()
+        } else {
+            address.to_owned()
+        };
+        let item_title = item.title.clone();
+        let item_icon_name = item.icon_name.clone();
 
-            if !has_menu {
-                let tx = tx.clone();
-                let address = a.clone();
+        // Helper to execute a tray click action
+        let execute_action = |action: TrayClickAction,
+                              pe: &PopoverMenu,
+                              tx: &mpsc::Sender<ActivateRequest>,
+                              address: &str,
+                              has_menu: bool,
+                              name: &str,
+                              title: &Option<String>,
+                              icon_name: &Option<String>| {
+            match action {
+                TrayClickAction::Reserved(ReservedTrayAction::Menu) => {
+                    trace!("TrayClickAction::Reserved(Menu)");
+                    pe.popup();
+                    // If no menu exists, send secondary activation
+                    if !has_menu {
+                        tx.send_spawn(ActivateRequest::Secondary {
+                            address: address.to_owned(),
+                            x: 0,
+                            y: 0,
+                        });
+                    }
+                }
+                TrayClickAction::Reserved(ReservedTrayAction::Default) => {
+                    trace!("TrayClickAction::Reserved(Default)");
+                    tx.send_spawn(ActivateRequest::Default {
+                        address: address.to_owned(),
+                        x: 0,
+                        y: 0,
+                    });
+                }
+                TrayClickAction::Reserved(ReservedTrayAction::Secondary) => {
+                    trace!("TrayClickAction::Reserved(Secondary)");
+                    tx.send_spawn(ActivateRequest::Secondary {
+                        address: address.to_owned(),
+                        x: 0,
+                        y: 0,
+                    });
+                }
+                TrayClickAction::Reserved(ReservedTrayAction::None) => {
+                    trace!("TrayClickAction::Reserved(None) (ignoring)");
+                }
+                TrayClickAction::Custom(cmd) => {
+                    trace!("TrayClickAction::Custom: {}", cmd);
 
-                tx.send_spawn(ActivateRequest::Secondary {
-                    address: address.clone(),
-                    x: 0,
-                    y: 0,
-                });
+                    // Substitute placeholders with tray item metadata
+                    let cmd = cmd
+                        .replace("{name}", name)
+                        .replace("{title}", title.as_deref().unwrap_or(""))
+                        .replace("{icon}", icon_name.as_deref().unwrap_or(""))
+                        .replace("{address}", address);
+
+                    trace!("Executing command after substitution: {}", cmd);
+                    let script = Script::from(cmd.as_str());
+                    spawn(async move {
+                        if let Err(err) = script.get_output(None).await {
+                            error!("{err:?}");
+                        }
+                    });
+                }
             }
-        });
+        };
+
+        // Helper to create a click handler closure with all necessary context
+        let make_handler = |action: &TrayClickAction| {
+            let pe = popover.clone();
+            let tx = activated_channel.clone();
+            let address_owned = address.to_owned();
+            let action = action.clone();
+            let name = item_name.clone();
+            let title = item_title.clone();
+            let icon = item_icon_name.clone();
+
+            move || {
+                execute_action(
+                    action.clone(),
+                    &pe,
+                    &tx,
+                    &address_owned,
+                    has_menu,
+                    &name,
+                    &title,
+                    &icon,
+                );
+            }
+        };
+
+        // Set up left-click handler with optional double-click support
+        if click_handlers.on_click_left.is_actionable()
+            || click_handlers.on_click_left_double.is_actionable()
+        {
+            let on_single = make_handler(&click_handlers.on_click_left);
+            let on_double = if click_handlers.on_click_left_double.is_actionable() {
+                Some(make_handler(&click_handlers.on_click_left_double))
+            } else {
+                None
+            };
+
+            widget.connect_pressed_with_double_click(MouseButton::Primary, on_single, on_double);
+        }
+
+        // Set up right-click handler with optional double-click support
+        if click_handlers.on_click_right.is_actionable()
+            || click_handlers.on_click_right_double.is_actionable()
+        {
+            let on_single = make_handler(&click_handlers.on_click_right);
+            let on_double = if click_handlers.on_click_right_double.is_actionable() {
+                Some(make_handler(&click_handlers.on_click_right_double))
+            } else {
+                None
+            };
+
+            widget.connect_pressed_with_double_click(MouseButton::Secondary, on_single, on_double);
+        }
+
+        // Set up middle-click handler with optional double-click support
+        if click_handlers.on_click_middle.is_actionable()
+            || click_handlers.on_click_middle_double.is_actionable()
+        {
+            let on_single = make_handler(&click_handlers.on_click_middle);
+            let on_double = if click_handlers.on_click_middle_double.is_actionable() {
+                Some(make_handler(&click_handlers.on_click_middle_double))
+            } else {
+                None
+            };
+
+            widget.connect_pressed_with_double_click(MouseButton::Middle, on_single, on_double);
+        }
+
         widget.set_child(Some(&content));
         widget.add_css_class("item");
 

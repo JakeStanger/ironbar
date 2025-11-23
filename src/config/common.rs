@@ -110,6 +110,45 @@ pub struct CommonConfig {
     /// ```
     pub on_click_middle: Option<ScriptInput>,
 
+    /// A [script](scripts) to run when the module is double-left-clicked.
+    ///
+    /// **Supported script types**: `oneshot`.
+    /// <br>
+    /// **Default**: `null`
+    ///
+    /// # Example
+    ///
+    /// ```corn
+    /// { on_click_left_double = "echo 'double click' >> log.txt" }
+    /// ```
+    pub on_click_left_double: Option<ScriptInput>,
+
+    /// A [script](scripts) to run when the module is double-right-clicked.
+    ///
+    /// **Supported script types**: `oneshot`.
+    /// <br>
+    /// **Default**: `null`
+    ///
+    /// # Example
+    ///
+    /// ```corn
+    /// { on_click_right_double = "echo 'double click' >> log.txt" }
+    /// ```
+    pub on_click_right_double: Option<ScriptInput>,
+
+    /// A [script](scripts) to run when the module is double-middle-clicked.
+    ///
+    /// **Supported script types**: `oneshot`.
+    /// <br>
+    /// **Default**: `null`
+    ///
+    /// # Example
+    ///
+    /// ```corn
+    /// { on_click_middle_double = "echo 'double click' >> log.txt" }
+    /// ```
+    pub on_click_middle_double: Option<ScriptInput>,
+
     /// A [script](scripts) to run when the module is scrolled up on.
     ///
     /// **Supported script types**: `oneshot`.
@@ -256,26 +295,52 @@ impl CommonConfig {
 
         self.install_show_if(container, revealer);
 
-        if let Some(script) = self.on_click_left.map(Script::new_polling) {
-            container.connect_pressed(MouseButton::Primary, move || {
-                trace!("Running on-click script: left");
-                script.run_as_oneshot(None);
-            });
-        }
+        // Helper to install click handlers with optional double-click support
+        let install_click_handler =
+            |button: MouseButton,
+             single: Option<ScriptInput>,
+             double: Option<ScriptInput>,
+             button_name: &'static str| {
+                let single = single.map(Script::new_polling);
+                let double = double.map(Script::new_polling);
 
-        if let Some(script) = self.on_click_middle.map(Script::new_polling) {
-            container.connect_pressed(MouseButton::Middle, move || {
-                trace!("Running on-click script: left");
-                script.run_as_oneshot(None);
-            });
-        }
+                if single.is_some() || double.is_some() {
+                    container.connect_pressed_with_double_click(
+                        button,
+                        move || {
+                            if let Some(script) = &single {
+                                trace!("Running on-click script: {}", button_name);
+                                script.run_as_oneshot(None);
+                            }
+                        },
+                        double.map(|script| {
+                            move || {
+                                trace!("Running on-double-click script: {}", button_name);
+                                script.run_as_oneshot(None);
+                            }
+                        }),
+                    );
+                }
+            };
 
-        if let Some(script) = self.on_click_right.map(Script::new_polling) {
-            container.connect_pressed(MouseButton::Secondary, move || {
-                trace!("Running on-click script: left");
-                script.run_as_oneshot(None);
-            });
-        }
+        install_click_handler(
+            MouseButton::Primary,
+            self.on_click_left,
+            self.on_click_left_double,
+            "left",
+        );
+        install_click_handler(
+            MouseButton::Middle,
+            self.on_click_middle,
+            self.on_click_middle_double,
+            "middle",
+        );
+        install_click_handler(
+            MouseButton::Secondary,
+            self.on_click_right,
+            self.on_click_right_double,
+            "right",
+        );
 
         let event_controller = EventControllerScroll::new(EventControllerScrollFlags::VERTICAL);
 
