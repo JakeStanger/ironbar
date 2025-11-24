@@ -13,6 +13,7 @@ pub enum PlayerType {
     Mpris,
 }
 
+#[allow(clippy::derivable_impls)]
 impl Default for PlayerType {
     fn default() -> Self {
         cfg_if::cfg_if! {

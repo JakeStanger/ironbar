@@ -21,10 +21,11 @@ pub enum ScriptInput {
     Struct(Script),
 }
 
-#[derive(Debug, Deserialize, Clone, Copy, Eq, PartialEq)]
+#[derive(Debug, Default, Deserialize, Clone, Copy, Eq, PartialEq)]
 #[serde(rename_all = "snake_case")]
 #[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
 pub enum ScriptMode {
+    #[default]
     Poll,
     Watch,
 }
@@ -45,12 +46,6 @@ impl From<&str> for ScriptMode {
                 Self::Poll
             }
         }
-    }
-}
-
-impl Default for ScriptMode {
-    fn default() -> Self {
-        Self::Poll
     }
 }
 
