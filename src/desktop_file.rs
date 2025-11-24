@@ -365,46 +365,53 @@ pub async fn open_program(file_name: &str, launch_command: &str) {
 mod tests {
     use super::*;
 
-    fn setup() {
+    type Result = std::result::Result<(), Box<dyn std::error::Error>>;
+
+    fn setup() -> Result {
         unsafe {
-            let pwd = env::current_dir().unwrap();
+            let pwd = env::current_dir()?;
             env::set_var("XDG_DATA_DIRS", format!("{}/test-configs", pwd.display()));
+            Ok(())
         }
     }
 
     #[tokio::test]
-    async fn find_by_filename() {
-        setup();
+    async fn find_by_filename() -> Result {
+        setup()?;
 
         let desktop_files = DesktopFiles::new();
-        let file = desktop_files.find_by_file_name("firefox").await.unwrap();
+        let file = desktop_files.find_by_file_name("firefox").await?;
 
         assert!(file.is_some());
-        assert_eq!(file.unwrap().file_name, "firefox.desktop");
+        assert_eq!(file.expect("should exist").file_name, "firefox.desktop");
+        Ok(())
     }
 
     #[tokio::test]
-    async fn find_by_file_contents() {
-        setup();
+    async fn find_by_file_contents() -> Result {
+        setup()?;
 
         let desktop_files = DesktopFiles::new();
 
-        let file = desktop_files.find_by_file_contents("427520").await.unwrap();
+        let file = desktop_files.find_by_file_contents("427520").await?;
 
         assert!(file.is_some());
-        assert_eq!(file.unwrap().file_name, "Factorio.desktop");
+        assert_eq!(file.expect("should exist").file_name, "Factorio.desktop");
+        Ok(())
     }
 
     #[tokio::test]
-    async fn parser() {
+    async fn parser() -> Result {
         let mut file_ref =
             DesktopFileRef::Unloaded(PathBuf::from("test-configs/applications/firefox.desktop"));
-        let file = file_ref.get().await.unwrap();
+        let file = file_ref.get().await?;
 
         assert_eq!(file.name, Some("Firefox".to_string()));
         assert_eq!(file.icon, Some("firefox".to_string()));
         assert_eq!(file.exec, Some("/usr/lib/firefox/firefox %u".to_string()));
         assert_eq!(file.startup_wm_class, Some("firefox".to_string()));
         assert_eq!(file.app_type, Some("Application".to_string()));
+
+        Ok(())
     }
 }
