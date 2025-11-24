@@ -249,7 +249,8 @@ impl Ironbar {
                             instance
                                 .bars
                                 .borrow_mut()
-                                .retain(|bar| bar.monitor_name() != event.connector);
+                                .extract_if(.., |bar| bar.monitor_name() == event.connector)
+                                .for_each(Bar::close);
                         }
                         MonitorState::Connected(wl_output, gdk_output) => {
                             if let Some(gdk_output) = gdk_output.upgrade() {
@@ -418,7 +419,7 @@ pub fn load_output_bars(ironbar: &Rc<Ironbar>, app: &Application) -> Result<()> 
     let wl = ironbar.clients.borrow_mut().wayland();
     let outputs = wl.output_info_all();
 
-    let display = crate::get_display();
+    let display = get_display();
     let monitors = display.monitors();
 
     for output in outputs {
