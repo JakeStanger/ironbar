@@ -286,7 +286,7 @@ mod tests {
         assert_eq!(tokens.len(), 1);
 
         assert!(matches!(&tokens[0], Part::Token(_)));
-        let Part::Token(token) = tokens.get(0).expect("should exist") else {
+        let Part::Token(token) = tokens.first().expect("should exist") else {
             return Err(Box::new(NotTokenErr));
         };
 
@@ -301,7 +301,7 @@ mod tests {
         assert_eq!(tokens.len(), 1);
 
         assert!(matches!(&tokens[0], Part::Token(_)));
-        let Part::Token(token) = tokens.get(0).expect("should exist") else {
+        let Part::Token(token) = tokens.first().expect("should exist") else {
             return Err(Box::new(NotTokenErr));
         };
 
@@ -317,7 +317,7 @@ mod tests {
         assert_eq!(tokens.len(), 1);
 
         assert!(matches!(&tokens[0], Part::Token(_)));
-        let Part::Token(token) = tokens.get(0).expect("should exist") else {
+        let Part::Token(token) = tokens.first().expect("should exist") else {
             return Err(Box::new(NotTokenErr));
         };
 
@@ -333,7 +333,7 @@ mod tests {
         assert_eq!(tokens.len(), 1);
 
         assert!(matches!(&tokens[0], Part::Token(_)));
-        let Part::Token(token) = tokens.get(0).expect("should exist") else {
+        let Part::Token(token) = tokens.first().expect("should exist") else {
             return Err(Box::new(NotTokenErr));
         };
 
@@ -349,7 +349,7 @@ mod tests {
         assert_eq!(tokens.len(), 1);
 
         assert!(matches!(&tokens[0], Part::Token(_)));
-        let Part::Token(token) = tokens.get(0).expect("should exist") else {
+        let Part::Token(token) = tokens.first().expect("should exist") else {
             return Err(Box::new(NotTokenErr));
         };
 
@@ -368,7 +368,7 @@ mod tests {
         assert_eq!(tokens.len(), 1);
 
         assert!(matches!(&tokens[0], Part::Token(_)));
-        let Part::Token(token) = tokens.get(0).expect("should exist") else {
+        let Part::Token(token) = tokens.first().expect("should exist") else {
             return Err(Box::new(NotTokenErr));
         };
 
@@ -405,7 +405,7 @@ mod tests {
         assert_eq!(tokens.len(), 2);
 
         assert!(matches!(&tokens[0], Part::Token(_)));
-        let Part::Token(token) = tokens.get(0).expect("should exist") else {
+        let Part::Token(token) = tokens.first().expect("should exist") else {
             return Err(Box::new(NotTokenErr));
         };
 
