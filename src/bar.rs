@@ -40,13 +40,6 @@ pub struct Bar {
     inner: Inner,
 }
 
-impl Drop for Bar {
-    fn drop(&mut self) {
-        self.window.close();
-        self.window.destroy();
-    }
-}
-
 impl Bar {
     pub fn new(
         app: &Application,
@@ -162,6 +155,12 @@ impl Bar {
         };
 
         self
+    }
+
+    /// Closes the bar, consuming it.
+    pub fn close(self) {
+        self.window.close();
+        self.window.destroy();
     }
 
     /// Sets up GTK layer shell for a provided application window.

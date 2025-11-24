@@ -1,5 +1,3 @@
-# IPC
-
 The server listens on a Unix socket.
 The path is printed on startup, and can usually be found at `/run/user/$UID/ironbar-ipc.sock`.
 

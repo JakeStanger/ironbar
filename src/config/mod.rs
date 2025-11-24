@@ -221,20 +221,15 @@ pub enum MonitorConfig {
     Multiple(Vec<BarConfig>),
 }
 
-#[derive(Debug, Deserialize, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Default, Deserialize, Copy, Clone, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 #[cfg_attr(feature = "extras", derive(JsonSchema))]
 pub enum BarPosition {
     Top,
+    #[default]
     Bottom,
     Left,
     Right,
-}
-
-impl Default for BarPosition {
-    fn default() -> Self {
-        Self::Bottom
-    }
 }
 
 #[derive(Debug, Default, Deserialize, Copy, Clone, PartialEq, Eq)]
