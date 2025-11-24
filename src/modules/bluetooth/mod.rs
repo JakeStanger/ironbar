@@ -299,14 +299,15 @@ impl Module<Button> for BluetoothModule {
         container.append(&header);
 
         let devices = ScrolledWindow::new();
-        devices.set_policy(
-            gtk::PolicyType::Never,
-            if self.popup.scrollable {
+        let vscrollbar_policy = match self.popup.max_height {
+            Some(max_height) if max_height > 0 => {
+                devices.set_max_content_height(max_height);
                 gtk::PolicyType::Automatic
-            } else {
-                gtk::PolicyType::Never
-            },
-        );
+            }
+            _ => gtk::PolicyType::Never,
+        };
+        devices.set_propagate_natural_height(true);
+        devices.set_policy(gtk::PolicyType::Never, vscrollbar_policy);
         devices.set_vexpand(true);
         devices.add_css_class("devices");
 
@@ -336,7 +337,6 @@ impl Module<Button> for BluetoothModule {
             let icon_size = self.icon_size;
 
             let popup_header = self.popup.header;
-            let popup_grow_height_until = self.popup.grow_height_until;
             let popup_disabled = self.popup.disabled;
             let device_strings = self.popup.device;
             let device_status = self.device_status;
@@ -354,8 +354,6 @@ impl Module<Button> for BluetoothModule {
                 }
 
                 devices.set_visible(state.is_enabled());
-                //ensure the content is at least some basic height to see at least 2 devices, everything else can be done per css: min-height
-                devices.set_min_content_height(devices_box.height().min(popup_grow_height_until));
 
                 disabled.set_visible(!state.is_enabled());
                 disabled_spinner.set_visible(
