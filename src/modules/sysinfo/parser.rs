@@ -256,89 +256,101 @@ fn parse_formatting(chars: &mut Peekable<Chars>, mut formatting: Formatting) -> 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::fmt::Formatter;
+
+    type Result = std::result::Result<(), Box<dyn std::error::Error>>;
+
+    #[derive(Debug)]
+    struct NotTokenErr;
+
+    impl std::fmt::Display for NotTokenErr {
+        fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+            write!(f, "expected token, got static")
+        }
+    }
+    impl std::error::Error for NotTokenErr {}
 
     #[test]
-    fn static_only() {
-        let tokens = parse_input("hello world").unwrap();
-        println!("{tokens:?}");
+    fn static_only() -> Result {
+        let tokens = parse_input("hello world")?;
 
         assert_eq!(tokens.len(), 1);
         assert!(matches!(&tokens[0], Part::Static(str) if str == "hello world"));
+        Ok(())
     }
 
     #[test]
-    fn basic() {
-        let tokens = parse_input("{cpu_frequency}").unwrap();
-        println!("{tokens:?}");
+    fn basic() -> Result {
+        let tokens = parse_input("{cpu_frequency}")?;
 
         assert_eq!(tokens.len(), 1);
 
         assert!(matches!(&tokens[0], Part::Token(_)));
-        let Part::Token(token) = tokens.get(0).unwrap() else {
-            return;
+        let Part::Token(token) = tokens.first().expect("should exist") else {
+            return Err(Box::new(NotTokenErr));
         };
 
         assert_eq!(token.token, TokenType::CpuFrequency);
+        Ok(())
     }
 
     #[test]
-    fn named() {
-        let tokens = parse_input("{cpu_frequency@cpu0}").unwrap();
-        println!("{tokens:?}");
+    fn named() -> Result {
+        let tokens = parse_input("{cpu_frequency@cpu0}")?;
 
         assert_eq!(tokens.len(), 1);
 
         assert!(matches!(&tokens[0], Part::Token(_)));
-        let Part::Token(token) = tokens.get(0).unwrap() else {
-            return;
+        let Part::Token(token) = tokens.first().expect("should exist") else {
+            return Err(Box::new(NotTokenErr));
         };
 
         assert_eq!(token.token, TokenType::CpuFrequency);
         assert!(matches!(&token.function, Function::Name(n) if n == "cpu0"));
+        Ok(())
     }
 
     #[test]
-    fn conversion() {
-        let tokens = parse_input("{cpu_frequency#G}").unwrap();
-        println!("{tokens:?}");
+    fn conversion() -> Result {
+        let tokens = parse_input("{cpu_frequency#G}")?;
 
         assert_eq!(tokens.len(), 1);
 
         assert!(matches!(&tokens[0], Part::Token(_)));
-        let Part::Token(token) = tokens.get(0).unwrap() else {
-            return;
+        let Part::Token(token) = tokens.first().expect("should exist") else {
+            return Err(Box::new(NotTokenErr));
         };
 
         assert_eq!(token.token, TokenType::CpuFrequency);
         assert_eq!(token.prefix, Prefix::Giga);
+        Ok(())
     }
 
     #[test]
-    fn formatting_basic() {
-        let tokens = parse_input("{cpu_frequency:.2}").unwrap();
-        println!("{tokens:?}");
+    fn formatting_basic() -> Result {
+        let tokens = parse_input("{cpu_frequency:.2}")?;
 
         assert_eq!(tokens.len(), 1);
 
         assert!(matches!(&tokens[0], Part::Token(_)));
-        let Part::Token(token) = tokens.get(0).unwrap() else {
-            return;
+        let Part::Token(token) = tokens.first().expect("should exist") else {
+            return Err(Box::new(NotTokenErr));
         };
 
         assert_eq!(token.token, TokenType::CpuFrequency);
         assert_eq!(token.formatting.precision, 2);
+        Ok(())
     }
 
     #[test]
-    fn formatting_complex() {
-        let tokens = parse_input("{cpu_frequency:0<5.2}").unwrap();
-        println!("{tokens:?}");
+    fn formatting_complex() -> Result {
+        let tokens = parse_input("{cpu_frequency:0<5.2}")?;
 
         assert_eq!(tokens.len(), 1);
 
         assert!(matches!(&tokens[0], Part::Token(_)));
-        let Part::Token(token) = tokens.get(0).unwrap() else {
-            return;
+        let Part::Token(token) = tokens.first().expect("should exist") else {
+            return Err(Box::new(NotTokenErr));
         };
 
         assert_eq!(token.token, TokenType::CpuFrequency);
@@ -346,59 +358,61 @@ mod tests {
         assert_eq!(token.formatting.align, Alignment::Left);
         assert_eq!(token.formatting.width, 5);
         assert_eq!(token.formatting.precision, 2);
+        Ok(())
     }
 
     #[test]
-    fn complex() {
-        let tokens = parse_input("{cpu_frequency@cpu0#G:.2}").unwrap();
-        println!("{tokens:?}");
+    fn complex() -> Result {
+        let tokens = parse_input("{cpu_frequency@cpu0#G:.2}")?;
 
         assert_eq!(tokens.len(), 1);
 
         assert!(matches!(&tokens[0], Part::Token(_)));
-        let Part::Token(token) = tokens.get(0).unwrap() else {
-            return;
+        let Part::Token(token) = tokens.first().expect("should exist") else {
+            return Err(Box::new(NotTokenErr));
         };
 
         assert_eq!(token.token, TokenType::CpuFrequency);
         assert!(matches!(&token.function, Function::Name(n) if n == "cpu0"));
         assert_eq!(token.prefix, Prefix::Giga);
         assert_eq!(token.formatting.precision, 2);
+
+        Ok(())
     }
 
     #[test]
-    fn static_then_token() {
-        let tokens = parse_input("Freq: {cpu_frequency#G:.2}").unwrap();
-        println!("{tokens:?}");
+    fn static_then_token() -> Result {
+        let tokens = parse_input("Freq: {cpu_frequency#G:.2}")?;
 
         assert_eq!(tokens.len(), 2);
 
         assert!(matches!(&tokens[0], Part::Static(str) if str == "Freq: "));
 
         assert!(matches!(&tokens[1], Part::Token(_)));
-        let Part::Token(token) = tokens.get(1).unwrap() else {
-            return;
+        let Part::Token(token) = tokens.get(1).expect("should exist") else {
+            return Err(Box::new(NotTokenErr));
         };
 
         assert_eq!(token.token, TokenType::CpuFrequency);
         assert_eq!(token.formatting.precision, 2);
+        Ok(())
     }
 
     #[test]
-    fn token_then_static() {
-        let tokens = parse_input("{cpu_frequency#G:.2} GHz").unwrap();
-        println!("{tokens:?}");
+    fn token_then_static() -> Result {
+        let tokens = parse_input("{cpu_frequency#G:.2} GHz")?;
 
         assert_eq!(tokens.len(), 2);
 
         assert!(matches!(&tokens[0], Part::Token(_)));
-        let Part::Token(token) = tokens.get(0).unwrap() else {
-            return;
+        let Part::Token(token) = tokens.first().expect("should exist") else {
+            return Err(Box::new(NotTokenErr));
         };
 
         assert_eq!(token.token, TokenType::CpuFrequency);
         assert_eq!(token.formatting.precision, 2);
 
         assert!(matches!(&tokens[1], Part::Static(str) if str == " GHz"));
+        Ok(())
     }
 }

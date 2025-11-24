@@ -1,4 +1,5 @@
 #![doc = include_str!("../README.md")]
+#![deny(clippy::unwrap_used)]
 
 use std::cell::RefCell;
 use std::env;
