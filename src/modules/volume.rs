@@ -47,10 +47,8 @@ pub struct VolumeModule {
     pub(crate) truncate: Option<TruncateMode>,
 
     /// See [marquee options](module-level-options#marquee-mode).
-    ///
-    /// **Default**: `null`
     #[serde(default)]
-    pub(crate) marquee: Option<MarqueeMode>,
+    pub(crate) marquee: MarqueeMode,
 
     /// See [layout options](module-level-options#layout)
     #[serde(default, flatten)]
@@ -68,7 +66,7 @@ impl Default for VolumeModule {
             max_volume: 100.0,
             icons: Icons::default(),
             truncate: None,
-            marquee: None,
+            marquee: MarqueeMode::default(),
             layout: LayoutConfig::default(),
             common: Some(CommonConfig::default()),
         }
@@ -457,14 +455,13 @@ impl Module<Button> for VolumeModule {
                         if let Some(truncate) = self.truncate {
                             label.truncate(truncate);
                             item_container.append(&label);
-                        } else if let Some(marquee) = self.marquee.clone() {
-                            if marquee.enable {
-                                let scrolled =
-                                    gtk_helpers::create_marquee_widget(&label, &info.name, marquee);
-                                item_container.append(&scrolled);
-                            } else {
-                                item_container.append(&label);
-                            }
+                        } else if self.marquee.enable {
+                            let scrolled = gtk_helpers::create_marquee_widget(
+                                &label,
+                                &info.name,
+                                self.marquee.clone(),
+                            );
+                            item_container.append(&scrolled);
                         } else {
                             item_container.append(&label);
                         }
