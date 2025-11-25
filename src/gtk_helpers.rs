@@ -8,7 +8,7 @@ use gtk::{
     EventControllerMotion, EventSequenceState, GestureClick, Label, ScrolledWindow, Snapshot,
     Widget,
 };
-use std::cell::RefCell;
+use std::cell::Cell;
 use std::rc::Rc;
 use std::time::{Duration, Instant};
 
@@ -205,10 +205,10 @@ pub fn create_marquee_widget(
     // Cache the original text width (calculated once upfront)
     let original_text_width = pixel_width(&label, &text);
 
-    let is_hovered = Rc::new(RefCell::new(false));
-    let pause_started_at = Rc::new(RefCell::new(None::<Instant>));
-    let is_scrolling = Rc::new(RefCell::new(false));
-    let reset_at_cached = Rc::new(RefCell::new(None::<f64>));
+    let is_hovered = Rc::new(Cell::new(false));
+    let pause_started_at = Rc::new(Cell::new(None::<Instant>));
+    let is_scrolling = Rc::new(Cell::new(false));
+    let reset_at_cached = Rc::new(Cell::new(None::<f64>));
 
     // Start a tick callback that checks size and scrolls if needed
     let is_hovered_clone = is_hovered.clone();
@@ -223,22 +223,22 @@ pub fn create_marquee_widget(
 
         if needs_scroll {
             // Setup scrolling if not already set up
-            if !*is_scrolling_clone.borrow() {
+            if !is_scrolling_clone.get() {
                 let duplicated_text = format!("{}{}{}", &text, &separator, &text);
                 label.set_label(&duplicated_text);
 
                 // Calculate and cache reset position (where to loop back to)
                 let reset_at = pixel_width(&label, &format!("{}{}", &text, &separator)) as f64;
-                *reset_at_cached_clone.borrow_mut() = Some(reset_at);
+                reset_at_cached_clone.set(Some(reset_at));
 
-                *is_scrolling_clone.borrow_mut() = true;
+                is_scrolling_clone.set(true);
             }
 
             // Use cached reset position
-            let reset_at = reset_at_cached_clone.borrow().unwrap();
+            let reset_at = reset_at_cached_clone.get().unwrap();
 
             // Check if paused
-            let is_paused = if let Some(start_time) = *pause_started_at_clone.borrow() {
+            let is_paused = if let Some(start_time) = pause_started_at_clone.get() {
                 start_time.elapsed() <= ease_pause
             } else {
                 false
@@ -249,14 +249,14 @@ pub fn create_marquee_widget(
             }
 
             // Check if we need to resume
-            if pause_started_at_clone.borrow().is_some() {
-                *pause_started_at_clone.borrow_mut() = None;
+            if pause_started_at_clone.get().is_some() {
+                pause_started_at_clone.set(None);
             }
 
             // Determine if we should scroll based on hover state
             let should_scroll = match on_hover {
-                MarqueeOnHover::Play => *is_hovered_clone.borrow(),
-                MarqueeOnHover::Pause => !*is_hovered_clone.borrow(),
+                MarqueeOnHover::Play => is_hovered_clone.get(),
+                MarqueeOnHover::Pause => !is_hovered_clone.get(),
                 MarqueeOnHover::None => true,
             };
 
@@ -265,18 +265,18 @@ pub fn create_marquee_widget(
                 let v = hadjustment.value() + scroll_speed;
                 if v >= reset_at {
                     hadjustment.set_value(v - reset_at);
-                    *pause_started_at_clone.borrow_mut() = Some(Instant::now());
+                    pause_started_at_clone.set(Some(Instant::now()));
                 } else {
                     hadjustment.set_value(v);
                 }
             }
         } else {
             // No need to scroll - reset if currently scrolling
-            if *is_scrolling_clone.borrow() {
+            if is_scrolling_clone.get() {
                 label.set_label(&text);
                 widget.hadjustment().set_value(0.0);
-                *is_scrolling_clone.borrow_mut() = false;
-                *reset_at_cached_clone.borrow_mut() = None; // Clear cache
+                is_scrolling_clone.set(false);
+                reset_at_cached_clone.set(None); // Clear cache
             }
         }
 
@@ -288,12 +288,12 @@ pub fn create_marquee_widget(
 
         let is_hovered_enter = is_hovered.clone();
         motion_controller.connect_enter(move |_, _, _| {
-            *is_hovered_enter.borrow_mut() = true;
+            is_hovered_enter.set(true);
         });
 
         let is_hovered_leave = is_hovered.clone();
         motion_controller.connect_leave(move |_| {
-            *is_hovered_leave.borrow_mut() = false;
+            is_hovered_leave.set(false);
         });
 
         scrolled.add_controller(motion_controller);
