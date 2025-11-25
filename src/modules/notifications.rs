@@ -119,7 +119,7 @@ impl Module<Overlay> for NotificationsModule {
         _info: &ModuleInfo,
         context: &WidgetContext<Self::SendMessage, Self::ReceiveMessage>,
         mut rx: Receiver<Self::ReceiveMessage>,
-    ) -> color_eyre::Result<()>
+    ) -> miette::Result<()>
     where
         <Self as Module<Overlay>>::SendMessage: Clone,
     {
@@ -163,7 +163,7 @@ impl Module<Overlay> for NotificationsModule {
         self,
         context: WidgetContext<Self::SendMessage, Self::ReceiveMessage>,
         _info: &ModuleInfo,
-    ) -> color_eyre::Result<ModuleParts<Overlay>>
+    ) -> miette::Result<ModuleParts<Overlay>>
     where
         <Self as Module<Overlay>>::SendMessage: Clone,
     {

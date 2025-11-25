@@ -12,10 +12,10 @@ use std::sync::{Arc, OnceLock, mpsc};
 use cfg_if::cfg_if;
 #[cfg(feature = "cli")]
 use clap::Parser;
-use color_eyre::{Report, Result};
 use gtk::Application;
 use gtk::gdk::{Display, Monitor};
 use gtk::prelude::*;
+use miette::{Report, Result};
 use smithay_client_toolkit::output::OutputInfo;
 use tokio::runtime::Runtime;
 use tokio::task::{JoinHandle, block_in_place};

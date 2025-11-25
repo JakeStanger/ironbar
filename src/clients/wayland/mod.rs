@@ -10,7 +10,7 @@ use std::sync::{Arc, Mutex};
 use crate::channels::SyncSenderExt;
 use calloop_channel::Event::Msg;
 use cfg_if::cfg_if;
-use color_eyre::{Help, Report};
+use miette::{Diagnostic, IntoDiagnostic, Report};
 use smithay_client_toolkit::output::OutputState;
 use smithay_client_toolkit::reexports::calloop::EventLoop;
 use smithay_client_toolkit::reexports::calloop::channel as calloop_channel;
@@ -20,6 +20,7 @@ use smithay_client_toolkit::seat::SeatState;
 use smithay_client_toolkit::{
     delegate_output, delegate_registry, delegate_seat, registry_handlers,
 };
+use thiserror::Error;
 use tokio::sync::{broadcast, mpsc};
 use tracing::{debug, error, trace};
 use wayland_client::globals::registry_queue_init;
@@ -105,6 +106,23 @@ struct BroadcastChannel<T>(broadcast::Sender<T>, Arc<Mutex<broadcast::Receiver<T
 impl<T> From<(broadcast::Sender<T>, broadcast::Receiver<T>)> for BroadcastChannel<T> {
     fn from(value: (broadcast::Sender<T>, broadcast::Receiver<T>)) -> Self {
         Self(value.0, arc_mut!(value.1))
+    }
+}
+
+#[derive(Debug, Error, Diagnostic)]
+enum Error {
+    #[error("Unsupported Wayland protocol")]
+    #[diagnostic()]
+    UnsupportedProtocol {
+        protocol: &'static str,
+        // #[label("The following modules will not work")]
+        modules: &'static [&'static str],
+    },
+}
+
+impl Error {
+    fn unsupported_protocol(protocol: &'static str, modules: &'static [&'static str]) -> Self {
+        Self::UnsupportedProtocol { protocol, modules }
     }
 }
 
@@ -262,30 +280,31 @@ impl Environment {
         let output_state = OutputState::new(&globals, &qh);
         let seat_state = SeatState::new(&globals, &qh);
         #[cfg(any(feature = "focused", feature = "launcher"))]
-        if let Err(err) = ToplevelManagerState::bind(&globals, &qh) {
-            error!("{:?}",
-                Report::new(err)
-                    .wrap_err("Failed to bind to wlr_foreign_toplevel_manager global")
-                    .note("This is likely a due to the current compositor not supporting the required protocol")
-                    .note("launcher and focused modules will not work")
+        if ToplevelManagerState::bind(&globals, &qh).is_err() {
+            error!(
+                "{:?}",
+                Report::new(Error::unsupported_protocol(
+                    "wlr_foreign_toplevel_manager",
+                    &["launcher", "focused"]
+                ))
             );
         }
 
         #[cfg(feature = "clipboard")]
-        let data_control_device_manager_state = match DataControlDeviceManagerState::bind(
-            &globals, &qh,
-        ) {
-            Ok(state) => Some(state),
-            Err(err) => {
-                error!("{:?}",
-                    Report::new(err)
-                        .wrap_err("Failed to bind to wlr_data_control_device global")
-                        .note("This is likely a due to the current compositor not supporting the required protocol")
-                        .note("clipboard module will not work")
+        let data_control_device_manager_state =
+            match DataControlDeviceManagerState::bind(&globals, &qh) {
+                Ok(state) => Some(state),
+                Err(_) => {
+                    error!(
+                        "{:?}",
+                        Report::new(Error::unsupported_protocol(
+                            "wlr_data_control_device",
+                            &["clipboard"]
+                        ))
                     );
-                None
-            }
-        };
+                    None
+                }
+            };
 
         let mut env = Self {
             registry_state,
@@ -313,10 +332,10 @@ impl Environment {
 
         loop {
             trace!("Dispatching event loop");
-            if let Err(err) = event_loop.dispatch(None, &mut env) {
+            if let Err(err) = event_loop.dispatch(None, &mut env).into_diagnostic() {
                 error!(
                     "{:?}",
-                    Report::new(err).wrap_err("Failed to dispatch pending wayland events")
+                    err.wrap_err("Failed to dispatch pending wayland events")
                 );
 
                 exit(ExitCode::WaylandDispatchError as i32)

@@ -5,11 +5,11 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
 
-use color_eyre::Result;
 use glib::Propagation;
 use gtk::gdk::Paintable;
 use gtk::prelude::*;
 use gtk::{Button, ContentFit, EventSequenceState, GestureClick, Label, Orientation, Scale};
+use miette::Result;
 use tokio::sync::mpsc;
 use tracing::{error, warn};
 

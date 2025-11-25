@@ -1,6 +1,6 @@
 use crate::spawn;
-use color_eyre::{Report, Result};
 use futures_lite::StreamExt;
+use miette::{IntoDiagnostic, Report, Result};
 use std::sync::Arc;
 use swayipc_async::{Connection, Event, EventType};
 use tokio::sync::Mutex;
@@ -32,7 +32,7 @@ impl std::fmt::Debug for Client {
 impl Client {
     pub(crate) async fn new() -> Result<Self> {
         // Avoid using `arc_mut!` here because we need tokio Mutex.
-        let client = Arc::new(Mutex::new(Connection::new().await?));
+        let client = Arc::new(Mutex::new(Connection::new().await.into_diagnostic()?));
         info!("Sway IPC subscription client connected");
 
         Ok(Self {
@@ -86,17 +86,17 @@ impl Client {
         listeners_mut.push((event_type, f));
 
         // create new client as subscription takes ownership
-        let client = Connection::new().await?;
+        let client = Connection::new().await.into_diagnostic()?;
 
         let event_types = listeners.iter().map(|(t, _)| *t).collect::<Vec<_>>();
         let listeners = listeners.clone();
 
         let handle = spawn(async move {
-            let mut events = client.subscribe(&event_types).await?;
+            let mut events = client.subscribe(&event_types).await.into_diagnostic()?;
 
             while let Some(event) = events.next().await {
                 trace!("event: {:?}", event);
-                let event = event?;
+                let event = event.into_diagnostic()?;
                 let ty = sway_event_to_event_type(&event);
                 for (t, f) in listeners.iter() {
                     if *t == ty {

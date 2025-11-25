@@ -5,13 +5,13 @@ use super::{KeyboardLayoutClient, KeyboardLayoutUpdate};
 use super::{Visibility, Workspace};
 use crate::channels::SyncSenderExt;
 use crate::{arc_mut, lock, spawn_blocking};
-use color_eyre::Result;
 use hyprland::ctl::switch_xkb_layout;
 use hyprland::data::{Devices, Workspace as HWorkspace, Workspaces};
 use hyprland::dispatch::{Dispatch, DispatchType, WorkspaceIdentifierWithSpecial};
 use hyprland::event_listener::EventListener;
 use hyprland::prelude::*;
 use hyprland::shared::{HyprDataVec, WorkspaceType};
+use miette::{IntoDiagnostic, Result};
 use tokio::sync::broadcast::{Receiver, Sender, channel};
 use tracing::{debug, error, info, warn};
 
@@ -381,24 +381,29 @@ impl Client {
     /// Gets a workspace by name from the server, given the active workspace if known.
     #[cfg(feature = "workspaces+hyprland")]
     fn get_workspace(name: &str, active: Option<&Workspace>) -> Result<Option<Workspace>> {
-        let workspace = Workspaces::get()?.into_iter().find_map(|w| {
-            if w.name == name {
-                let vis = Visibility::from((&w, active.map(|w| w.name.as_ref()), &|w| {
-                    create_is_visible()(w)
-                }));
+        let workspace = Workspaces::get()
+            .into_diagnostic()?
+            .into_iter()
+            .find_map(|w| {
+                if w.name == name {
+                    let vis = Visibility::from((&w, active.map(|w| w.name.as_ref()), &|w| {
+                        create_is_visible()(w)
+                    }));
 
-                Some(Workspace::from((vis, w)))
-            } else {
-                None
-            }
-        });
+                    Some(Workspace::from((vis, w)))
+                } else {
+                    None
+                }
+            });
 
         Ok(workspace)
     }
 
     /// Gets the active workspace from the server.
     fn get_active_workspace() -> Result<Workspace> {
-        let w = HWorkspace::get_active().map(|w| Workspace::from((Visibility::focused(), w)))?;
+        let w = HWorkspace::get_active()
+            .map(|w| Workspace::from((Visibility::focused(), w)))
+            .into_diagnostic()?;
         Ok(w)
     }
 }

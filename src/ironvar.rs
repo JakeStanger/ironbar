@@ -2,7 +2,7 @@
 
 use crate::channels::SyncSenderExt;
 use crate::{arc_rw, read_lock, write_lock};
-use color_eyre::{Report, Result};
+use miette::{Report, Result};
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
 use tokio::sync::broadcast;

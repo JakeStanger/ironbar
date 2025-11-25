@@ -52,8 +52,8 @@ use crate::Ironbar;
 use crate::modules::{AnyModuleFactory, ModuleFactory, ModuleInfo, ModuleRef};
 use crate::style::CssSource;
 use cfg_if::cfg_if;
-use color_eyre::Result;
 use config::FileFormat;
+use miette::Result;
 #[cfg(feature = "extras")]
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};

@@ -2,7 +2,7 @@ use super::{Visibility, Workspace};
 use crate::channels::SyncSenderExt;
 use crate::clients::sway::Client;
 use crate::{await_sync, error, spawn};
-use color_eyre::Report;
+use miette::{IntoDiagnostic, Report};
 use swayipc_async::{InputChange, InputEvent, Node, WorkspaceChange, WorkspaceEvent};
 use tokio::sync::broadcast::{Receiver, channel};
 
@@ -18,7 +18,8 @@ impl super::WorkspaceClient for Client {
 
             let name = client
                 .get_workspaces()
-                .await?
+                .await
+                .into_diagnostic()?
                 .into_iter()
                 .find(|w| w.id == id)
                 .map(|w| w.name);

@@ -1,7 +1,6 @@
 use crate::channels::AsyncSenderExt;
 use crate::spawn;
-use color_eyre::eyre::WrapErr;
-use color_eyre::{Report, Result};
+use miette::{IntoDiagnostic, Report, Result, WrapErr};
 use serde::Deserialize;
 use std::cmp::min;
 use std::fmt::{Display, Formatter};
@@ -232,6 +231,7 @@ impl Script {
             .args(&args_list)
             .output()
             .await
+            .into_diagnostic()
             .wrap_err("Failed to get script output")?;
 
         trace!("Script output with args: {output:?}");
@@ -239,6 +239,7 @@ impl Script {
         if output.status.success() {
             let stdout = String::from_utf8(output.stdout)
                 .map(|output| output.trim().to_string())
+                .into_diagnostic()
                 .wrap_err("Script stdout not valid UTF-8")?;
 
             debug!("sending stdout: '{stdout}'");
@@ -247,6 +248,7 @@ impl Script {
         } else {
             let stderr = String::from_utf8(output.stderr)
                 .map(|output| output.trim().to_string())
+                .into_diagnostic()
                 .wrap_err("Script stderr not valid UTF-8")?;
 
             debug!("sending stderr: '{stderr}'");
@@ -264,7 +266,8 @@ impl Script {
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .stdin(Stdio::null())
-            .spawn()?;
+            .spawn()
+            .into_diagnostic()?;
 
         debug!("Spawned a long-running process for '{}'", self.cmd);
         trace!("Handle: {:?}", handle);

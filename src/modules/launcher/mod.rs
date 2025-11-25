@@ -15,10 +15,10 @@ use crate::gtk_helpers::{IronbarGtkExt, IronbarLabelExt};
 use crate::modules::launcher::item::ImageTextButton;
 use crate::modules::launcher::pagination::{IconContext, Pagination};
 use crate::{arc_mut, lock, module_impl, rc_mut, spawn, write_lock};
-use color_eyre::Report;
 use gtk::prelude::*;
 use gtk::{Button, Orientation};
 use indexmap::IndexMap;
+use miette::{IntoDiagnostic, Report};
 use serde::Deserialize;
 use std::sync::Arc;
 use tokio::sync::mpsc;
@@ -321,7 +321,8 @@ impl Module<gtk::Box> for LauncherModule {
                             ItemOrWindow::Window(window) => {
                                 send_update(LauncherUpdate::AddWindow(app_id, window)).await
                             }
-                        }?;
+                        }
+                        .into_diagnostic()?;
                     }
                     ToplevelEvent::Update(info) => {
                         let app_id = resolve_app_id(&info.app_id);
@@ -340,13 +341,15 @@ impl Module<gtk::Box> for LauncherModule {
                             app_id.clone(),
                             is_open && info.focused,
                         ))
-                        .await?;
+                        .await
+                        .into_diagnostic()?;
                         send_update(LauncherUpdate::Title(
                             app_id.clone(),
                             info.id,
                             info.title.clone(),
                         ))
-                        .await?;
+                        .await
+                        .into_diagnostic()?;
                     }
                     ToplevelEvent::Remove(info) => {
                         let app_id = resolve_app_id(&info.app_id);
@@ -369,11 +372,14 @@ impl Module<gtk::Box> for LauncherModule {
 
                         match remove_item {
                             Some(ItemOrWindowId::Item) => {
-                                send_update(LauncherUpdate::RemoveItem(app_id.clone())).await?;
+                                send_update(LauncherUpdate::RemoveItem(app_id.clone()))
+                                    .await
+                                    .into_diagnostic()?;
                             }
                             Some(ItemOrWindowId::Window) => {
                                 send_update(LauncherUpdate::RemoveWindow(app_id.clone(), info.id))
-                                    .await?;
+                                    .await
+                                    .into_diagnostic()?;
                             }
                             None => {}
                         }

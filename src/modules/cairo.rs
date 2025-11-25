@@ -6,6 +6,7 @@ use glib::translate::ToGlibPtr;
 use gtk::DrawingArea;
 use gtk::cairo::{Format, ImageSurface};
 use gtk::prelude::*;
+use miette::IntoDiagnostic;
 use mlua::{Error, Function, LightUserData};
 use notify::event::ModifyKind;
 use notify::{Event, EventKind, RecursiveMode, Watcher, recommended_watcher};
@@ -71,7 +72,7 @@ impl Module<gtk::Box> for CairoModule {
         _info: &ModuleInfo,
         context: &WidgetContext<Self::SendMessage, Self::ReceiveMessage>,
         _rx: Receiver<Self::ReceiveMessage>,
-    ) -> color_eyre::Result<()>
+    ) -> miette::Result<()>
     where
         <Self as Module<gtk::Box>>::SendMessage: Clone,
     {
@@ -117,7 +118,7 @@ impl Module<gtk::Box> for CairoModule {
         self,
         context: WidgetContext<Self::SendMessage, Self::ReceiveMessage>,
         info: &ModuleInfo,
-    ) -> color_eyre::Result<ModuleParts<gtk::Box>>
+    ) -> miette::Result<ModuleParts<gtk::Box>>
     where
         <Self as Module<gtk::Box>>::SendMessage: Clone,
     {
@@ -125,7 +126,8 @@ impl Module<gtk::Box> for CairoModule {
 
         let container = gtk::Box::new(info.bar_position.orientation(), 0);
 
-        let surface = ImageSurface::create(Format::ARgb32, self.width as i32, self.height as i32)?;
+        let surface = ImageSurface::create(Format::ARgb32, self.width as i32, self.height as i32)
+            .into_diagnostic()?;
 
         let area = DrawingArea::new();
 
@@ -141,9 +143,10 @@ impl Module<gtk::Box> for CairoModule {
 
         // this feels kinda dirty,
         // but it keeps draw functions separate in the global scope
-        let script = fs::read_to_string(&self.path)?
+        let script = fs::read_to_string(&self.path)
+            .into_diagnostic()?
             .replace("function draw", format!("function __draw_{id}").as_str());
-        lua.load(&script).exec()?;
+        lua.load(&script).exec().into_diagnostic()?;
 
         {
             let lua = lua.clone();

@@ -1,12 +1,11 @@
 mod config;
 mod ui;
 
-use color_eyre::Result;
-use color_eyre::eyre::Report;
 use config::{CustomEntry, OTHER_LABEL, parse_config};
 use gtk::prelude::*;
 use gtk::{Align, Button, ContentFit, Label, Orientation};
 use indexmap::IndexMap;
+use miette::{Report, Result};
 use serde::Deserialize;
 use std::cmp::max;
 use std::time::Duration;

@@ -1,6 +1,5 @@
 use crate::gtk_helpers::IronbarPaintableExt;
 use crate::modules::tray::interface::TrayMenu;
-use color_eyre::{Report, Result};
 use glib::ffi::g_strfreev;
 use glib::translate::ToGlibPtr;
 use gtk::ffi::gtk_icon_theme_get_search_path;
@@ -8,6 +7,7 @@ use gtk::gdk::Texture;
 use gtk::gdk_pixbuf::{Colorspace, Pixbuf};
 use gtk::prelude::WidgetExt;
 use gtk::{ContentFit, IconLookupFlags, IconTheme, Picture, TextDirection};
+use miette::{Report, Result};
 use std::collections::HashSet;
 use std::ffi::CStr;
 use std::os::raw::{c_char, c_int};

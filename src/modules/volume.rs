@@ -166,7 +166,7 @@ impl Module<Button> for VolumeModule {
         _info: &ModuleInfo,
         context: &WidgetContext<Self::SendMessage, Self::ReceiveMessage>,
         mut rx: mpsc::Receiver<Self::ReceiveMessage>,
-    ) -> color_eyre::Result<()>
+    ) -> miette::Result<()>
     where
         <Self as Module<Button>>::SendMessage: Clone,
     {
@@ -231,7 +231,7 @@ impl Module<Button> for VolumeModule {
         self,
         context: WidgetContext<Self::SendMessage, Self::ReceiveMessage>,
         info: &ModuleInfo,
-    ) -> color_eyre::Result<ModuleParts<Button>>
+    ) -> miette::Result<ModuleParts<Button>>
     where
         <Self as Module<Button>>::SendMessage: Clone,
     {

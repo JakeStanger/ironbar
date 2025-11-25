@@ -6,9 +6,9 @@ use std::fs;
 use std::path::Path;
 use std::rc::Rc;
 
-use color_eyre::{Report, Result};
 use gtk::Application;
 use gtk::prelude::*;
+use miette::{IntoDiagnostic, Result};
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::net::{UnixListener, UnixStream};
 use tokio::sync::mpsc::{self, Receiver, Sender};
@@ -41,10 +41,7 @@ impl Ipc {
             let listener = match UnixListener::bind(&path) {
                 Ok(listener) => listener,
                 Err(err) => {
-                    error!(
-                        "{:?}",
-                        Report::new(err).wrap_err("Unable to start IPC server")
-                    );
+                    error!("Unable to start IPC server: {err:?}");
                     return;
                 }
             };
@@ -83,18 +80,21 @@ impl Ipc {
         res_rx: &mut Receiver<Response>,
     ) -> Result<()> {
         trace!("awaiting readable state");
-        stream.readable().await?;
+        stream.readable().await.into_diagnostic()?;
 
         let mut read_buffer = Vec::with_capacity(1024);
 
         let mut reader = BufReader::new(&mut stream);
 
         trace!("reading bytes");
-        let bytes = reader.read_until(b'\n', &mut read_buffer).await?;
+        let bytes = reader
+            .read_until(b'\n', &mut read_buffer)
+            .await
+            .into_diagnostic()?;
         debug!("read {} bytes", bytes);
 
         // FIXME: Error on invalid command
-        let command = serde_json::from_slice::<Command>(&read_buffer[..bytes])?;
+        let command = serde_json::from_slice::<Command>(&read_buffer[..bytes]).into_diagnostic()?;
 
         debug!("Received command: {command:?}");
 
@@ -104,17 +104,17 @@ impl Ipc {
             .await
             .unwrap_or(Response::Err { message: None });
 
-        let mut res = serde_json::to_vec(&res)?;
+        let mut res = serde_json::to_vec(&res).into_diagnostic()?;
         res.push(b'\n');
 
         trace!("awaiting writable state");
-        stream.writable().await?;
+        stream.writable().await.into_diagnostic()?;
 
         debug!("writing {} bytes", res.len());
-        stream.write_all(&res).await?;
+        stream.write_all(&res).await.into_diagnostic()?;
 
         trace!("bytes written, shutting down stream");
-        stream.shutdown().await?;
+        stream.shutdown().await.into_diagnostic()?;
 
         Ok(())
     }

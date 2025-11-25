@@ -1,8 +1,8 @@
 use std::sync::Arc;
 
 use crate::{register_fallible_client, spawn};
-use color_eyre::Result;
 use futures_signals::signal::{Mutable, MutableSignalCloned};
+use miette::{IntoDiagnostic, Result};
 use tracing::error;
 use zbus::export::ordered_stream::OrderedStreamExt;
 use zbus::fdo::PropertiesProxy;
@@ -43,34 +43,37 @@ pub enum ClientState {
 )]
 trait NetworkManagerDbus {
     #[zbus(property)]
-    fn active_connections(&self) -> Result<Vec<ObjectPath<'_>>>;
+    fn active_connections(&self) -> zbus::Result<Vec<ObjectPath<'_>>>;
 
     #[zbus(property)]
-    fn devices(&self) -> Result<Vec<ObjectPath<'_>>>;
+    fn devices(&self) -> zbus::Result<Vec<ObjectPath<'_>>>;
 
     #[zbus(property)]
-    fn networking_enabled(&self) -> Result<bool>;
+    fn networking_enabled(&self) -> zbus::Result<bool>;
 
     #[zbus(property)]
-    fn primary_connection(&self) -> Result<ObjectPath<'_>>;
+    fn primary_connection(&self) -> zbus::Result<ObjectPath<'_>>;
 
     #[zbus(property)]
-    fn primary_connection_type(&self) -> Result<Str<'_>>;
+    fn primary_connection_type(&self) -> zbus::Result<Str<'_>>;
 
     #[zbus(property)]
-    fn wireless_enabled(&self) -> Result<bool>;
+    fn wireless_enabled(&self) -> zbus::Result<bool>;
 }
 
 impl Client {
     async fn new() -> Result<Self> {
         let client_state = Mutable::new(ClientState::Unknown);
-        let dbus_connection = Connection::system().await?;
-        let interface_name = InterfaceName::from_static_str(DBUS_INTERFACE)?;
+        let dbus_connection = Connection::system().await.into_diagnostic()?;
+        let interface_name = InterfaceName::from_static_str(DBUS_INTERFACE).into_diagnostic()?;
         let props_proxy = PropertiesProxy::builder(&dbus_connection)
-            .destination(DBUS_BUS)?
-            .path(DBUS_PATH)?
+            .destination(DBUS_BUS)
+            .into_diagnostic()?
+            .path(DBUS_PATH)
+            .into_diagnostic()?
             .build()
-            .await?;
+            .await
+            .into_diagnostic()?;
 
         Ok(Self {
             client_state,
@@ -81,11 +84,14 @@ impl Client {
     }
 
     async fn run(&self) -> Result<()> {
-        let proxy = NetworkManagerDbusProxy::new(&self.dbus_connection).await?;
+        let proxy = NetworkManagerDbusProxy::new(&self.dbus_connection)
+            .await
+            .into_diagnostic()?;
 
-        let mut primary_connection = proxy.primary_connection().await?;
-        let mut primary_connection_type = proxy.primary_connection_type().await?;
-        let mut wireless_enabled = proxy.wireless_enabled().await?;
+        let mut primary_connection = proxy.primary_connection().await.into_diagnostic()?;
+        let mut primary_connection_type =
+            proxy.primary_connection_type().await.into_diagnostic()?;
+        let mut wireless_enabled = proxy.wireless_enabled().await.into_diagnostic()?;
 
         self.client_state.set(determine_state(
             &primary_connection,
@@ -93,9 +99,13 @@ impl Client {
             wireless_enabled,
         ));
 
-        let mut stream = self.props_proxy.receive_properties_changed().await?;
+        let mut stream = self
+            .props_proxy
+            .receive_properties_changed()
+            .await
+            .into_diagnostic()?;
         while let Some(change) = stream.next().await {
-            let args = change.args()?;
+            let args = change.args().into_diagnostic()?;
             if args.interface_name != self.interface_name {
                 continue;
             }
@@ -104,15 +114,16 @@ impl Client {
             let mut relevant_prop_changed = false;
 
             if changed_props.contains_key("PrimaryConnection") {
-                primary_connection = proxy.primary_connection().await?;
+                primary_connection = proxy.primary_connection().await.into_diagnostic()?;
                 relevant_prop_changed = true;
             }
             if changed_props.contains_key("PrimaryConnectionType") {
-                primary_connection_type = proxy.primary_connection_type().await?;
+                primary_connection_type =
+                    proxy.primary_connection_type().await.into_diagnostic()?;
                 relevant_prop_changed = true;
             }
             if changed_props.contains_key("WirelessEnabled") {
-                wireless_enabled = proxy.wireless_enabled().await?;
+                wireless_enabled = proxy.wireless_enabled().await.into_diagnostic()?;
                 relevant_prop_changed = true;
             }
 

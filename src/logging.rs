@@ -1,8 +1,7 @@
-use color_eyre::Result;
 use dirs::data_dir;
 use glib::{LogLevel, LogWriterOutput};
-use std::backtrace::{Backtrace, BacktraceStatus};
-use std::{env, panic};
+use miette::{IntoDiagnostic, Result};
+use std::env;
 use strip_ansi_escapes::Writer;
 use tracing::{debug, error, info, warn};
 use tracing_appender::non_blocking::{NonBlocking, WorkerGuard};
@@ -35,36 +34,37 @@ pub fn install_logging(debug: bool) -> Result<WorkerGuard> {
     // otherwise file logging drops
     let guard = install_tracing(debug)?;
 
-    color_eyre::config::HookBuilder::default().install()?;
+    // miette::config::HookBuilder::default().install()?;
+    miette::set_panic_hook();
 
-    // custom hook allows tracing_appender to capture panics
-    panic::set_hook(Box::new(move |panic_info| {
-        let payload = panic_info.payload();
-
-        #[allow(clippy::manual_map)]
-        let payload = if let Some(s) = payload.downcast_ref::<&str>() {
-            Some(&**s)
-        } else if let Some(s) = payload.downcast_ref::<String>() {
-            Some(s.as_str())
-        } else {
-            None
-        }
-        .unwrap_or_default()
-        .to_string();
-
-        let location = panic_info.location().map(|l| l.to_string());
-
-        let backtrace = Backtrace::capture();
-        let note = (backtrace.status() == BacktraceStatus::Disabled)
-            .then_some("run with RUST_BACKTRACE=1 environment variable to display a backtrace");
-
-        error!(
-            location = location,
-            backtrace = display(backtrace),
-            note = note,
-            "Ironbar has panicked!\n\t{payload}\n\t",
-        );
-    }));
+    // // custom hook allows tracing_appender to capture panics
+    // panic::set_hook(Box::new(move |panic_info| {
+    //     let payload = panic_info.payload();
+    //
+    //     #[allow(clippy::manual_map)]
+    //     let payload = if let Some(s) = payload.downcast_ref::<&str>() {
+    //         Some(&**s)
+    //     } else if let Some(s) = payload.downcast_ref::<String>() {
+    //         Some(s.as_str())
+    //     } else {
+    //         None
+    //     }
+    //     .unwrap_or_default()
+    //     .to_string();
+    //
+    //     let location = panic_info.location().map(|l| l.to_string());
+    //
+    //     let backtrace = Backtrace::capture();
+    //     let note = (backtrace.status() == BacktraceStatus::Disabled)
+    //         .then_some("run with RUST_BACKTRACE=1 environment variable to display a backtrace");
+    //
+    //     error!(
+    //         location = location,
+    //         backtrace = display(backtrace),
+    //         note = note,
+    //         "Ironbar has panicked!\n\t{payload}\n\t",
+    //     );
+    // }));
 
     Ok(guard)
 }
@@ -79,20 +79,25 @@ fn install_tracing(debug: bool) -> Result<WorkerGuard> {
     let default_log = if debug { "debug" } else { "info" };
 
     let fmt_layer = fmt::layer().with_target(true).with_line_number(true);
-    let filter_layer =
-        EnvFilter::try_from_env("IRONBAR_LOG").or_else(|_| EnvFilter::try_new(default_log))?;
+    let filter_layer = EnvFilter::try_from_env("IRONBAR_LOG")
+        .or_else(|_| EnvFilter::try_new(default_log))
+        .into_diagnostic()?;
 
     let file_filter_layer = EnvFilter::try_from_env("IRONBAR_FILE_LOG")
-        .or_else(|_| EnvFilter::try_new(DEFAULT_FILE_LOG))?;
+        .or_else(|_| EnvFilter::try_new(DEFAULT_FILE_LOG))
+        .into_diagnostic()?;
 
-    let log_path = data_dir().unwrap_or(env::current_dir()?).join("ironbar");
+    let log_path = data_dir()
+        .unwrap_or(env::current_dir().into_diagnostic()?)
+        .join("ironbar");
 
     let appender = tracing_appender::rolling::Builder::new()
         .rotation(Rotation::DAILY)
         .filename_prefix("ironbar")
         .filename_suffix("log")
         .max_log_files(3)
-        .build(log_path)?;
+        .build(log_path)
+        .into_diagnostic()?;
 
     let (file_writer, guard) = tracing_appender::non_blocking(appender);
 

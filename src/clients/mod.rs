@@ -1,5 +1,5 @@
 use crate::{Ironbar, await_sync};
-use color_eyre::Result;
+use miette::Result;
 use std::collections::HashMap;
 use std::path::Path;
 use std::rc::Rc;
@@ -342,7 +342,7 @@ macro_rules! register_fallible_client {
         where
             TSend: Clone,
         {
-            fn try_provide(&self) -> color_eyre::Result<std::sync::Arc<$ty>> {
+            fn try_provide(&self) -> miette::Result<std::sync::Arc<$ty>> {
                 self.ironbar.clients.borrow_mut().$method()
             }
         }

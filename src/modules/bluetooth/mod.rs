@@ -1,10 +1,10 @@
 use std::collections::HashMap;
 use std::ops::Deref;
 
-use color_eyre::Result;
 use glib::SignalHandlerId;
 use gtk::{Align, Button, Label, Orientation};
 use gtk::{ScrolledWindow, Spinner, prelude::*};
+use miette::Result;
 use tokio::sync::mpsc;
 
 pub use self::config::BluetoothModule;

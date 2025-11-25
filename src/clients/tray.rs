@@ -1,6 +1,7 @@
 use crate::channels::SyncSenderExt;
 use crate::clients::ClientResult;
 use crate::{arc_mut, lock, register_fallible_client, spawn};
+use miette::IntoDiagnostic;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use system_tray::client::{ActivateRequest, Client as TrayClient, Event, UpdateEvent};
@@ -25,7 +26,7 @@ pub struct Client {
 
 impl Client {
     pub async fn new() -> ClientResult<Self> {
-        let client = TrayClient::new().await?;
+        let client = TrayClient::new().await.into_diagnostic()?;
 
         let (tx, rx) = broadcast::channel(16);
         let menus = arc_mut!(HashMap::new());

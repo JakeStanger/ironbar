@@ -3,8 +3,8 @@
 /// to reduce compile times.
 use crate::clients::compositor::Workspace as IronWorkspace;
 use crate::{await_sync, clients::compositor::Visibility};
-use color_eyre::eyre::{Result, eyre};
 use core::str;
+use miette::{IntoDiagnostic, Result, miette};
 use serde::{Deserialize, Serialize};
 use std::{env, path::Path};
 use tokio::{
@@ -80,12 +80,12 @@ pub struct Connection(UnixStream);
 impl Connection {
     pub async fn connect() -> Result<Self> {
         let socket_path =
-            env::var_os("NIRI_SOCKET").ok_or_else(|| eyre!("NIRI_SOCKET not found!"))?;
+            env::var_os("NIRI_SOCKET").ok_or_else(|| miette!("NIRI_SOCKET not found!"))?;
         Self::connect_to(socket_path).await
     }
 
     pub async fn connect_to(path: impl AsRef<Path>) -> Result<Self> {
-        let raw_stream = UnixStream::connect(path.as_ref()).await?;
+        let raw_stream = UnixStream::connect(path.as_ref()).await.into_diagnostic()?;
         let stream = raw_stream;
         Ok(Self(stream))
     }
@@ -95,15 +95,15 @@ impl Connection {
         request: Request,
     ) -> Result<(Reply, impl FnMut() -> Result<Event> + '_)> {
         let Self(stream) = self;
-        let mut buf = serde_json::to_string(&request)?;
+        let mut buf = serde_json::to_string(&request).into_diagnostic()?;
 
-        stream.write_all(buf.as_bytes()).await?;
-        stream.shutdown().await?;
+        stream.write_all(buf.as_bytes()).await.into_diagnostic()?;
+        stream.shutdown().await.into_diagnostic()?;
 
         buf.clear();
         let mut reader = BufReader::new(stream);
-        reader.read_line(&mut buf).await?;
-        let reply = serde_json::from_str(&buf)?;
+        reader.read_line(&mut buf).await.into_diagnostic()?;
+        let reply = serde_json::from_str(&buf).into_diagnostic()?;
 
         let events = move || {
             buf.clear();

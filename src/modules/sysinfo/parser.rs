@@ -1,6 +1,6 @@
 use crate::clients::sysinfo::{Function, Prefix, TokenType};
 use crate::modules::sysinfo::token::{Alignment, Formatting, Part, Token};
-use color_eyre::{Report, Result};
+use miette::{IntoDiagnostic, Report, Result};
 use std::iter::Peekable;
 use std::str::{Chars, FromStr};
 
@@ -243,11 +243,11 @@ fn parse_formatting(chars: &mut Peekable<Chars>, mut formatting: Formatting) -> 
     }
 
     if !width_string.is_empty() {
-        formatting.width = width_string.parse()?;
+        formatting.width = width_string.parse().into_diagnostic()?;
     }
 
     if !precision_string.is_empty() {
-        formatting.precision = precision_string.parse()?;
+        formatting.precision = precision_string.parse().into_diagnostic()?;
     }
 
     Ok(formatting)

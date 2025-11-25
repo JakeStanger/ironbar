@@ -2,10 +2,10 @@ use std::fmt::{Debug, Formatter};
 use std::rc::Rc;
 use std::sync::Arc;
 
-use color_eyre::Result;
 use gtk::gdk::Monitor;
 use gtk::prelude::*;
 use gtk::{Application, Button, Orientation, Revealer, Widget};
+use miette::Result;
 use tokio::sync::{broadcast, mpsc};
 use tracing::{debug, trace};
 

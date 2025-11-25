@@ -1,11 +1,11 @@
 use crate::channels::SyncSenderExt;
 use crate::{Ironbar, arc_rw, read_lock, spawn, write_lock};
-use color_eyre::{Report, Result};
 use colpetto::event::{AsRawEvent, DeviceEvent, KeyState, KeyboardEvent};
 use colpetto::{DeviceCapability, Libinput};
 use evdev_rs::DeviceWrapper;
 use evdev_rs::enums::{EV_KEY, EV_LED, EventCode, int_to_ev_key};
 use futures_lite::StreamExt;
+use miette::{IntoDiagnostic, Report, Result};
 use rustix::fs::{Mode, OFlags, open};
 use rustix::io::Errno;
 use std::ffi::{CStr, CString, c_int};
@@ -51,7 +51,7 @@ impl TryFrom<EV_KEY> for Key {
 
 impl Key {
     fn get_state<P: AsRef<Path>>(self, device_path: P) -> Result<bool> {
-        let device = evdev_rs::Device::new_from_path(device_path)?;
+        let device = evdev_rs::Device::new_from_path(device_path).into_diagnostic()?;
 
         match self {
             Self::Caps => device.event_value(&EventCode::EV_LED(EV_LED::LED_CAPSL)),
@@ -146,12 +146,15 @@ impl Client {
     }
 
     async fn run(&self) -> Result<()> {
-        let mut libinput = Libinput::with_tracing(Self::open_restricted, Self::close_restricted)?;
+        let mut libinput = Libinput::with_tracing(Self::open_restricted, Self::close_restricted)
+            .into_diagnostic()?;
 
-        libinput.udev_assign_seat(CString::new(&*self.seat)?.as_c_str())?;
+        libinput
+            .udev_assign_seat(CString::new(&*self.seat).into_diagnostic()?.as_c_str())
+            .into_diagnostic()?;
 
-        let mut stream = libinput.event_stream()?;
-        while let Some(event) = stream.try_next().await? {
+        let mut stream = libinput.event_stream().into_diagnostic()?;
+        while let Some(event) = stream.try_next().await.into_diagnostic()? {
             match event {
                 colpetto::Event::Device(DeviceEvent::Added(event)) => {
                     let device = event.device();

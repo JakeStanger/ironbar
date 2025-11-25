@@ -1,4 +1,4 @@
-use color_eyre::Result;
+use miette::Result;
 use std::fmt::Debug;
 use std::path::PathBuf;
 use std::sync::Arc;

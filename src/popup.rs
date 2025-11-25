@@ -153,6 +153,8 @@ impl Popup {
             self.popover.set_child(Some(content));
             self.popover.unparent();
             self.popover.set_parent(&button);
+
+            println!("popup");
             self.popover.popup();
         }
     }

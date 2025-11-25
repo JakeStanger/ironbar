@@ -9,10 +9,10 @@ use crate::modules::{
     Module, ModuleInfo, ModuleParts, ModulePopup, ModuleUpdateEvent, WidgetContext,
 };
 use crate::{module_impl, spawn};
-use color_eyre::Result;
 use futures_lite::stream::StreamExt;
 use gtk::{Button, prelude::*};
 use gtk::{Label, Orientation};
+use miette::{IntoDiagnostic, Result};
 use serde::Deserialize;
 use std::cmp::Ordering;
 use std::collections::HashMap;
@@ -114,12 +114,17 @@ impl Module<Button> for BatteryModule {
         let display_proxy = context.try_client::<upower::Client>()?;
 
         spawn(async move {
-            let mut prop_changed_stream = display_proxy.receive_properties_changed().await?;
+            let mut prop_changed_stream = display_proxy
+                .receive_properties_changed()
+                .await
+                .into_diagnostic()?;
 
             let mut properties: UpowerProperties = display_proxy
                 .get_all(display_proxy.interface_name.clone())
-                .await?
-                .try_into()?;
+                .await
+                .into_diagnostic()?
+                .try_into()
+                .into_diagnostic()?;
 
             tx.send_update(properties.clone()).await;
 
@@ -299,15 +304,15 @@ fn seconds_to_string(seconds: i64) -> Result<String> {
     let mut time_string = String::new();
     let days = seconds / (DAY);
     if days > 0 {
-        write!(time_string, "{days}d")?;
+        write!(time_string, "{days}d").into_diagnostic()?;
     }
     let hours = (seconds % DAY) / HOUR;
     if hours > 0 {
-        write!(time_string, " {hours}h")?;
+        write!(time_string, " {hours}h").into_diagnostic()?;
     }
     let minutes = (seconds % HOUR) / MINUTE;
     if minutes > 0 {
-        write!(time_string, " {minutes}m")?;
+        write!(time_string, " {minutes}m").into_diagnostic()?;
     }
 
     Ok(time_string.trim_start().to_string())

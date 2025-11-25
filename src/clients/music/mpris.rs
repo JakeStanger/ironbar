@@ -2,7 +2,7 @@ use super::{MusicClient, PlayerState, PlayerUpdate, Status, TICK_INTERVAL_MS, Tr
 use crate::channels::SyncSenderExt;
 use crate::clients::music::ProgressTick;
 use crate::{arc_mut, lock, spawn_blocking};
-use color_eyre::Result;
+use miette::{IntoDiagnostic, Result};
 use mpris::{DBusError, Event, Metadata, PlaybackStatus, Player, PlayerFinder};
 use std::cmp;
 use std::collections::HashSet;
@@ -190,7 +190,7 @@ impl Client {
     fn send_update(player: &Player, tx: &broadcast::Sender<PlayerUpdate>) -> Result<()> {
         debug!("Sending update using '{}'", player.identity());
 
-        let metadata = player.get_metadata()?;
+        let metadata = player.get_metadata().into_diagnostic()?;
         let playback_status = player
             .get_playback_status()
             .unwrap_or(PlaybackStatus::Stopped);
@@ -249,7 +249,7 @@ impl Client {
 macro_rules! command {
     ($self:ident, $func:ident) => {
         if let Some(player) = Self::get_player($self) {
-            player.$func()?;
+            player.$func().into_diagnostic()?;
         } else {
             error!("Could not find player");
         }
@@ -279,7 +279,9 @@ impl MusicClient for Client {
 
     fn set_volume_percent(&self, vol: u8) -> Result<()> {
         if let Some(player) = Self::get_player(self) {
-            player.set_volume(f64::from(vol) / 100.0)?;
+            player
+                .set_volume(f64::from(vol) / 100.0)
+                .into_diagnostic()?;
         } else {
             error!("Could not find player");
         }
@@ -292,7 +294,7 @@ impl MusicClient for Client {
             // see https://github.com/JakeStanger/ironbar/issues/970
             if let Ok(metadata) = player.get_metadata() {
                 if let Some(track_id) = metadata.track_id() {
-                    player.set_position(track_id, &duration)?;
+                    player.set_position(track_id, &duration).into_diagnostic()?;
                 } else {
                     let pos = player.get_position().unwrap_or_default();
 
@@ -301,7 +303,7 @@ impl MusicClient for Client {
 
                     let seek = cmp::max(duration, 0) - position;
 
-                    player.seek(seek)?;
+                    player.seek(seek).into_diagnostic()?;
                 }
             }
         } else {

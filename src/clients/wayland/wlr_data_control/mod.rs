@@ -9,9 +9,9 @@ use self::source::DataControlSourceHandler;
 use super::{Client, Environment, Event, Request, Response};
 use crate::channels::AsyncSenderExt;
 use crate::{Ironbar, lock, spawn};
-use color_eyre::Result;
 use device::DataControlDevice;
 use glib::Bytes;
+use miette::{IntoDiagnostic, Result};
 use rustix::buffer::spare_capacity;
 use rustix::event::epoll;
 use rustix::event::epoll::CreateFlags;
@@ -307,13 +307,14 @@ impl DataControlSourceHandler for Environment {
 
                 debug!("Writing {} bytes", bytes.len());
 
-                let epoll = epoll::create(CreateFlags::CLOEXEC)?;
+                let epoll = epoll::create(CreateFlags::CLOEXEC).into_diagnostic()?;
                 epoll::add(
                     &epoll,
                     fd,
                     epoll::EventData::new_u64(0),
                     epoll::EventFlags::OUT,
-                )?;
+                )
+                .into_diagnostic()?;
 
                 let mut events = Vec::with_capacity(16);
 
@@ -323,8 +324,9 @@ impl DataControlSourceHandler for Environment {
                     epoll::wait(
                         &epoll,
                         spare_capacity(&mut events),
-                        Some(&Timespec::try_from(Duration::from_millis(100))?),
-                    )?;
+                        Some(&Timespec::try_from(Duration::from_millis(100)).into_diagnostic()?),
+                    )
+                    .into_diagnostic()?;
 
                     match file.write(chunk) {
                         Ok(written) => {

@@ -1,6 +1,6 @@
 use super::{BarConfig, BarPosition, MonitorConfig};
-use color_eyre::{Help, Report};
 use gtk::Orientation;
+use miette::Report;
 use serde::de::value::{MapAccessDeserializer, SeqAccessDeserializer};
 use serde::{Deserialize, Deserializer, de};
 use std::fmt;
@@ -27,11 +27,13 @@ impl<'de> Deserialize<'de> for MonitorConfig {
                     Err(e) => e,
                 };
                 // Map can't be array, so create error with both attempts
-                let r = Report::msg(" multi-bar (c): expected an array".to_string())
-                    .wrap_err(format!("single-bar (b): {single_err}"))
-                    .wrap_err("An invalid config was found. The following errors were encountered:")
-                    .note("Both the single-bar (type b / error 1) and multi-bar (type c / error 2) config variants were tried. You can likely ignore whichever of these is not relevant to you.")
-                    .suggestion("Please see https://github.com/JakeStanger/ironbar/wiki/configuration-guide#2-pick-your-use-case for more info on the above");
+                let r = Report::msg(format!("
+                    - single-bar (b): {single_err}
+                    - multi-bar (c): expected an array.
+
+                    Both the single-bar (type b / error 1) and multi-bar (type c / error 2) config variants were tried. You can likely ignore whichever of these is not relevant to you.
+                    Please see https://github.com/JakeStanger/ironbar/wiki/configuration-guide#2-pick-your-use-case for more info on the above
+                "));
                 Err(de::Error::custom(format!("{r:?}")))
             }
 
@@ -42,11 +44,13 @@ impl<'de> Deserialize<'de> for MonitorConfig {
                     Err(e) => e,
                 };
                 // Seq can't be single bar, so create error with both attempts
-                let r = Report::msg(format!(" multi-bar (c): {multi_err}"))
-                    .wrap_err("single-bar (b): expected an object, got array")
-                    .wrap_err("An invalid config was found. The following errors were encountered:")
-                    .note("Both the single-bar (type b / error 1) and multi-bar (type c / error 2) config variants were tried. You can likely ignore whichever of these is not relevant to you.")
-                    .suggestion("Please see https://github.com/JakeStanger/ironbar/wiki/configuration-guide#2-pick-your-use-case for more info on the above");
+                let r = Report::msg(format!("
+                    - single-bar (b): expected an object, got array
+                    - multi-bar (c): {multi_err}
+
+                    Both the single-bar (type b / error 1) and multi-bar (type c / error 2) config variants were tried. You can likely ignore whichever of these is not relevant to you.
+                    Please see https://github.com/JakeStanger/ironbar/wiki/configuration-guide#2-pick-your-use-case for more info on the above
+                "));
                 Err(de::Error::custom(format!("{r:?}")))
             }
         }

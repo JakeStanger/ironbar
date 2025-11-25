@@ -1,6 +1,6 @@
 use crate::modules::sysinfo::Interval;
 use crate::{lock, register_client};
-use color_eyre::{Report, Result};
+use miette::{Report, Result};
 use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::fmt::Debug;

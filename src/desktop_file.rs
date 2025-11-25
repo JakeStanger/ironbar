@@ -1,5 +1,5 @@
 use crate::spawn;
-use color_eyre::{Help, Report, Result};
+use miette::{IntoDiagnostic, Result};
 use std::collections::HashMap;
 use std::env;
 use std::path::{Path, PathBuf};
@@ -26,7 +26,7 @@ impl DesktopFileRef {
 
                 spawn(async move { tx.send(Self::load(&path).await) });
 
-                let file = rx.await??;
+                let file = rx.await.into_diagnostic()??;
                 *self = DesktopFileRef::Loaded(file.clone());
 
                 Ok(file)
@@ -38,7 +38,7 @@ impl DesktopFileRef {
     async fn load(file_path: &Path) -> Result<DesktopFile> {
         debug!("loading applications file: {}", file_path.display());
 
-        let file = tokio::fs::File::open(file_path).await?;
+        let file = tokio::fs::File::open(file_path).await.into_diagnostic()?;
 
         let mut desktop_file = DesktopFile::new(
             file_path
@@ -89,7 +89,7 @@ impl DesktopFileRef {
                     has_categories = true;
                 }
                 "NoDisplay" if !has_no_display => {
-                    desktop_file.no_display = Some(value.parse()?);
+                    desktop_file.no_display = Some(value.parse().into_diagnostic()?);
                     has_no_display = true;
                 }
                 _ => {}
@@ -339,14 +339,15 @@ pub async fn open_program(file_name: &str, launch_command: &str) {
         .stderr(Stdio::null())
         .kill_on_drop(true)
         .spawn()
+        .into_diagnostic()
     {
         Ok(mut child) => Some(child.wait().await),
         Err(err) => {
             error!(
                 "{:?}",
-                Report::new(err)
-                    .wrap_err("Failed to run launch command.")
-                    .suggestion("Perhaps the desktop file is invalid or orphaned?")
+                err.wrap_err(
+                    "Failed to run launch command. Perhaps the desktop file is invalid or orphaned?"
+                )
             );
             None
         }

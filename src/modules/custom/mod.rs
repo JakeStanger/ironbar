@@ -19,9 +19,9 @@ use crate::modules::{
 };
 use crate::script::Script;
 use crate::{module_impl, spawn};
-use color_eyre::Result;
 use gtk::prelude::*;
 use gtk::{Button, Orientation};
+use miette::Result;
 use serde::Deserialize;
 use std::cell::RefCell;
 use std::rc::Rc;

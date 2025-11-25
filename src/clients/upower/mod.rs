@@ -3,6 +3,7 @@ mod dbus;
 use crate::clients::ClientResult;
 use crate::{await_sync, register_fallible_client};
 use dbus::UPowerProxy;
+use miette::IntoDiagnostic;
 use std::collections::HashMap;
 use std::ops::Deref;
 use std::sync::Arc;
@@ -20,11 +21,13 @@ pub struct Client {
 
 impl Client {
     pub async fn new() -> ClientResult<Self> {
-        let dbus = Box::pin(zbus::Connection::system()).await?;
+        let dbus = Box::pin(zbus::Connection::system())
+            .await
+            .into_diagnostic()?;
 
-        let device_proxy = UPowerProxy::new(&dbus).await?;
+        let device_proxy = UPowerProxy::new(&dbus).await.into_diagnostic()?;
 
-        let display_device = device_proxy.get_display_device().await?;
+        let display_device = device_proxy.get_display_device().await.into_diagnostic()?;
 
         let path = display_device.inner().path();
 
@@ -35,7 +38,8 @@ impl Client {
             .expect("failed to set proxy path")
             .cache_properties(CacheProperties::No)
             .build()
-            .await?;
+            .await
+            .into_diagnostic()?;
 
         let interface_name = InterfaceName::from_static_str("org.freedesktop.UPower.Device")
             .expect("failed to create zbus InterfaceName");

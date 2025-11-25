@@ -1,9 +1,9 @@
 use std::env;
 
 use chrono::{DateTime, Local, Locale};
-use color_eyre::Result;
 use gtk::prelude::*;
 use gtk::{Align, Button, Calendar, Label, Orientation};
+use miette::Result;
 use serde::Deserialize;
 use tokio::sync::mpsc;
 use tokio::time::sleep;

@@ -1,12 +1,12 @@
 use crate::desktop_file::DesktopFiles;
 use crate::gtk_helpers::IronbarPaintableExt;
 use crate::{arc_mut, lock};
-use color_eyre::{Help, Report, Result};
 use glib::Bytes;
 use gtk::gdk::{Paintable, Texture};
 use gtk::gdk_pixbuf::Pixbuf;
 use gtk::prelude::*;
 use gtk::{IconLookupFlags, IconTheme, Picture, TextDirection};
+use miette::{IntoDiagnostic, Report, Result};
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::path::PathBuf;
@@ -194,7 +194,6 @@ impl Provider {
                 warn!(
                     "{:?}",
                     Report::msg(format!("Unsupported image type: {input_type}"))
-                        .note("You may need to recompile with support if available")
                 );
                 None
             }
@@ -255,12 +254,13 @@ impl Provider {
             Some(ImageLocation::Local(path)) if path.extension().unwrap_or_default() == "svg" => {
                 let scaled_size = image_ref.size * scale;
 
-                let pixbuf = Pixbuf::from_file_at_scale(path, scaled_size, scaled_size, true)?;
+                let pixbuf = Pixbuf::from_file_at_scale(path, scaled_size, scaled_size, true)
+                    .into_diagnostic()?;
 
-                let buffer = pixbuf.save_to_bufferv("png", &[])?;
+                let buffer = pixbuf.save_to_bufferv("png", &[]).into_diagnostic()?;
                 let bytes = Bytes::from_owned(buffer);
 
-                let texture = Texture::from_bytes(&bytes)?;
+                let texture = Texture::from_bytes(&bytes).into_diagnostic()?;
                 Ok(Some(texture.upcast::<Paintable>()))
             }
             Some(ImageLocation::Local(path)) => Texture::from_filename(path)
@@ -286,11 +286,11 @@ impl Provider {
             }
             #[cfg(feature = "http")]
             Some(ImageLocation::Remote(uri)) => {
-                let res = reqwest::get(uri.clone()).await?;
+                let res = reqwest::get(uri.clone()).await.into_diagnostic()?;
 
                 let status = res.status();
                 let bytes = if status.is_success() {
-                    let bytes = res.bytes().await?;
+                    let bytes = res.bytes().await.into_diagnostic()?;
                     Ok(Bytes::from_owned(bytes))
                 } else {
                     Err(Report::msg(format!(
@@ -315,7 +315,8 @@ impl Provider {
                     .upcast::<Paintable>(),
             )),
             None => Ok(None),
-        }?;
+        }
+        .into_diagnostic()?;
 
         Ok(buf)
     }

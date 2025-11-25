@@ -1,9 +1,10 @@
 use crate::clients::ClientResult;
 use crate::register_fallible_client;
 use cfg_if::cfg_if;
-use color_eyre::{Help, Report, Result};
+use miette::{Diagnostic, Report, Result};
 use std::fmt::{Debug, Display, Formatter};
 use std::sync::Arc;
+use thiserror::Error;
 use tokio::sync::broadcast;
 use tracing::debug;
 
@@ -13,6 +14,16 @@ pub mod hyprland;
 pub mod niri;
 #[cfg(feature = "sway")]
 pub mod sway;
+
+#[derive(Debug, Error, Diagnostic)]
+#[error("Compositor error")]
+#[diagnostic()]
+enum CompositorError {
+    #[error("Only the following compositors are supported: {0:?}")]
+    Unsupported(&'static [&'static str]),
+    #[error("The {0} feature has been compiled without support for the current compositor")]
+    FeatureDisabled(&'static str),
+}
 
 pub enum Compositor {
     #[cfg(feature = "sway")]
@@ -78,13 +89,14 @@ impl Compositor {
             #[cfg(feature = "bindmode+hyprland")]
             Self::Hyprland => Ok(clients.hyprland()),
             #[cfg(feature = "niri")]
-            Self::Niri => Err(Report::msg("Unsupported compositor")
-                .note("Currently bindmode is only supported by Sway and Hyprland")),
-            Self::Unsupported => Err(Report::msg("Unsupported compositor")
-                .note("Currently bindmode is only supported by Sway and Hyprland")),
+            Self::Niri => Err(Report::new(CompositorError::Unsupported(&[
+                "sway", "hyprland",
+            ]))),
+            Self::Unsupported => Err(Report::new(CompositorError::Unsupported(&[
+                "sway", "hyprland",
+            ]))),
             #[allow(unreachable_patterns)]
-            _ => Err(Report::msg("Unsupported compositor")
-                .note("Bindmode feature is disabled for this compositor")),
+            _ => Err(Report::new(CompositorError::FeatureDisabled("bindmode"))),
         }
     }
 
@@ -100,15 +112,14 @@ impl Compositor {
             #[cfg(feature = "keyboard+hyprland")]
             Self::Hyprland => Ok(clients.hyprland()),
             #[cfg(feature = "niri")]
-            Self::Niri => Err(Report::msg("Unsupported compositor").note(
-                "Currently keyboard layout functionality are only supported by Sway and Hyprland",
-            )),
-            Self::Unsupported => Err(Report::msg("Unsupported compositor").note(
-                "Currently keyboard layout functionality are only supported by Sway and Hyprland",
-            )),
+            Self::Niri => Err(Report::new(CompositorError::Unsupported(&[
+                "sway", "hyprland",
+            ]))),
+            Self::Unsupported => Err(Report::new(CompositorError::Unsupported(&[
+                "sway", "hyprland",
+            ]))),
             #[allow(unreachable_patterns)]
-            _ => Err(Report::msg("Unsupported compositor")
-                .note("Keyboard layout feature is disabled for this compositor")),
+            _ => Err(Report::new(CompositorError::FeatureDisabled("keyboard"))),
         }
     }
 
@@ -127,11 +138,11 @@ impl Compositor {
             Self::Hyprland => Ok(clients.hyprland()),
             #[cfg(feature = "workspaces+niri")]
             Self::Niri => Ok(Arc::new(niri::Client::new())),
-            Self::Unsupported => Err(Report::msg("Unsupported compositor")
-                .note("Currently workspaces are only supported by Sway, Niri and Hyprland")),
+            Self::Unsupported => Err(Report::new(CompositorError::Unsupported(&[
+                "sway", "hyprland", "niri",
+            ]))),
             #[allow(unreachable_patterns)]
-            _ => Err(Report::msg("Unsupported compositor")
-                .note("Workspaces feature is disabled for this compositor")),
+            _ => Err(Report::new(CompositorError::FeatureDisabled("workspaces"))),
         }
     }
 }

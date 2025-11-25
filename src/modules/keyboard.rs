@@ -1,7 +1,6 @@
-use color_eyre::Result;
-use color_eyre::eyre::Report;
 use gtk::prelude::*;
 use indexmap::IndexMap;
+use miette::{Report, Result};
 use serde::Deserialize;
 use tokio::sync::mpsc;
 use tracing::{debug, error, trace};

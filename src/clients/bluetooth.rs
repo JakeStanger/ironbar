@@ -1,7 +1,7 @@
 use std::time::Duration;
 
 use crate::{Ironbar, error, register_fallible_client, spawn};
-use color_eyre::Result;
+use miette::{IntoDiagnostic, Result, miette};
 use tokio::{sync::watch, task::JoinSet};
 use tracing::debug;
 
@@ -61,7 +61,7 @@ pub struct Client {
 impl Client {
     pub(crate) async fn new() -> Result<Self> {
         let (tx, rx) = watch::channel(BluetoothState::NotFound);
-        let session = bluer::Session::new().await?;
+        let session = bluer::Session::new().await.into_diagnostic()?;
         {
             let tx = tx.clone();
             let session = session.clone();
@@ -264,23 +264,23 @@ impl Client {
     }
 
     async fn set_powered(session: bluer::Session, val: bool) -> Result<()> {
-        let adapter = session.default_adapter().await?;
-        adapter.set_powered(val).await?;
+        let adapter = session.default_adapter().await.into_diagnostic()?;
+        adapter.set_powered(val).await.into_diagnostic()?;
         Ok(())
     }
 
     async fn connect_device(session: bluer::Session, address: bluer::Address) -> Result<()> {
-        let adapter = session.default_adapter().await?;
-        let device = adapter.device(address)?;
-        device.connect().await?;
+        let adapter = session.default_adapter().await.into_diagnostic()?;
+        let device = adapter.device(address).into_diagnostic()?;
+        device.connect().await.into_diagnostic()?;
 
         Ok(())
     }
 
     async fn disconnect_device(session: bluer::Session, address: bluer::Address) -> Result<()> {
-        let adapter = session.default_adapter().await?;
-        let device = adapter.device(address)?;
-        device.disconnect().await?;
+        let adapter = session.default_adapter().await.into_diagnostic()?;
+        let device = adapter.device(address).into_diagnostic()?;
+        device.disconnect().await.into_diagnostic()?;
 
         Ok(())
     }
@@ -289,10 +289,10 @@ impl Client {
         adapter: bluer::Adapter,
         address: bluer::Address,
     ) -> Result<BluetoothDevice> {
-        let device = adapter.device(address)?;
+        let device = adapter.device(address).into_diagnostic()?;
 
         // Should be patched after
-        let status = if device.is_connected().await? {
+        let status = if device.is_connected().await.into_diagnostic()? {
             BluetoothDeviceStatus::Connected
         } else {
             BluetoothDeviceStatus::Disconnected
@@ -301,17 +301,17 @@ impl Client {
         Ok(BluetoothDevice {
             address,
             status,
-            alias: device.alias().await?,
-            icon: device.icon().await?,
-            battery_percent: device.battery_percentage().await?,
+            alias: device.alias().await.into_diagnostic()?,
+            icon: device.icon().await.into_diagnostic()?,
+            battery_percent: device.battery_percentage().await.into_diagnostic()?,
         })
     }
 
     async fn get_state(session: &bluer::Session) -> Result<BluetoothState> {
         let state = match session.default_adapter().await {
             Ok(adapter) => {
-                if adapter.is_powered().await? {
-                    let addrs = adapter.device_addresses().await?;
+                if adapter.is_powered().await.into_diagnostic()? {
+                    let addrs = adapter.device_addresses().await.into_diagnostic()?;
 
                     let mut joinset = JoinSet::new();
 
@@ -340,7 +340,7 @@ impl Client {
                 kind: bluer::ErrorKind::NotFound,
                 ..
             }) => BluetoothState::NotFound,
-            Err(err) => return Err(err.into()),
+            Err(err) => return Err(miette!("{err:?}")),
         };
 
         Ok(state)

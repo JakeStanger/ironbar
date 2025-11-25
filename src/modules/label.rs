@@ -4,8 +4,8 @@ use crate::dynamic_value::dynamic_string;
 use crate::gtk_helpers::IronbarLabelExt;
 use crate::module_impl;
 use crate::modules::{Module, ModuleInfo, ModuleParts, WidgetContext};
-use color_eyre::Result;
 use gtk::Label;
+use miette::Result;
 use serde::Deserialize;
 use tokio::sync::mpsc;
 

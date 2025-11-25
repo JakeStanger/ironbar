@@ -105,7 +105,7 @@ impl Module<Button> for ClipboardModule {
         _info: &ModuleInfo,
         context: &WidgetContext<Self::SendMessage, Self::ReceiveMessage>,
         mut rx: mpsc::Receiver<Self::ReceiveMessage>,
-    ) -> color_eyre::Result<()> {
+    ) -> miette::Result<()> {
         let max_items = self.max_items;
 
         let tx = context.tx.clone();
@@ -155,7 +155,7 @@ impl Module<Button> for ClipboardModule {
         self,
         context: WidgetContext<Self::SendMessage, Self::ReceiveMessage>,
         info: &ModuleInfo,
-    ) -> color_eyre::Result<ModuleParts<Button>> {
+    ) -> miette::Result<ModuleParts<Button>> {
         let button = IconButton::new(&self.icon, self.icon_size, context.ironbar.image_provider());
 
         button.label().set_justify(self.layout.justify.into());

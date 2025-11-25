@@ -2,8 +2,8 @@ mod dbus;
 
 use crate::channels::SyncSenderExt;
 use crate::{register_fallible_client, spawn};
-use color_eyre::{Report, Result};
 use dbus::SwayNcProxy;
+use miette::{IntoDiagnostic, Result};
 use serde::Deserialize;
 use tokio::sync::broadcast;
 use tracing::{debug, error};
@@ -43,12 +43,14 @@ pub struct Client {
 
 impl Client {
     pub async fn new() -> Result<Self> {
-        let dbus = Box::pin(zbus::Connection::session()).await?;
+        let dbus = Box::pin(zbus::Connection::session())
+            .await
+            .into_diagnostic()?;
 
-        let proxy = SwayNcProxy::new(&dbus).await?;
+        let proxy = SwayNcProxy::new(&dbus).await.into_diagnostic()?;
         let (tx, rx) = broadcast::channel(8);
 
-        let mut stream = proxy.receive_subscribe_v2().await?;
+        let mut stream = proxy.receive_subscribe_v2().await.into_diagnostic()?;
 
         {
             let tx = tx.clone();
@@ -75,9 +77,9 @@ impl Client {
 
     pub async fn state(&self) -> Result<Event> {
         debug!("Getting subscribe data (current state)");
-        match self.proxy.get_subscribe_data().await {
+        match self.proxy.get_subscribe_data().await.into_diagnostic() {
             Ok(data) => Ok(data.into()),
-            Err(err) => Err(Report::new(err)),
+            Err(err) => Err(err),
         }
     }
 

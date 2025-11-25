@@ -1,6 +1,6 @@
 use super::device::DataControlDevice;
 use super::manager::DataControlDeviceManagerState;
-use color_eyre::Result;
+use miette::Result;
 use smithay_client_toolkit::data_device_manager::WritePipe;
 use tracing::error;
 use wayland_client::{Connection, Dispatch, Proxy, QueueHandle};

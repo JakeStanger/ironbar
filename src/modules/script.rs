@@ -4,8 +4,8 @@ use crate::gtk_helpers::IronbarLabelExt;
 use crate::modules::{Module, ModuleInfo, ModuleParts, WidgetContext};
 use crate::script::{OutputStream, Script, ScriptMode};
 use crate::{module_impl, spawn};
-use color_eyre::{Help, Report, Result};
 use gtk::Label;
+use miette::{Report, Result};
 use serde::Deserialize;
 use tokio::sync::mpsc;
 use tracing::error;
@@ -88,11 +88,9 @@ impl Module<Label> for ScriptModule {
                    tx.send_update_spawn(stdout);
                },
                OutputStream::Stderr(stderr) => {
-                   error!("{:?}", Report::msg(stderr)
-                                    .wrap_err("Watched script error:")
-                                    .suggestion("Check the path to your script")
-                                    .suggestion("Check the script for errors")
-                                    .suggestion("If you expect the script to write to stderr, consider redirecting its output to /dev/null to suppress these messages"));
+                   error!("{:?}.\
+                    Check your script for errors. If you expect the script to write to stderr, consider redirecting its output to /dev/null to suppress these messages",
+                       Report::msg(stderr).wrap_err("Watched script error:"));
                }
            }).await;
         });
