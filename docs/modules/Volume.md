@@ -141,26 +141,4 @@ The following tokens can be used in the `format` config option:
 | `.popup-volume .apps-box .app-box .slider`   | Application volume slider.                         |
 | `.popup-volume .apps-box .app-box .btn-mute` | Application volume mute toggle button.             |
 
-> [!TIP]
-> When marquee is enabled, the label is wrapped in a `scrolledwindow`.
-> If you were using `>` (direct child) CSS operator, you may need to update your CSS selectors.
-
-```css
-/* Before */
-.volume .app-box > .title {
-  ...
-}
-
-/* After: target both */
-.volume .app-box > .title,
-.volume .app-box > scrolledwindow > viewport > .title {
-  ...
-}
-
-/* But any child selector stays the same */
-.volume .app-box .title {
-  ...
-}
-```
-
 For more information on styling, please see the [styling guide](styling-guide).
