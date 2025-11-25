@@ -233,6 +233,8 @@ pub fn create_marquee_widget(
                     let reset_at = pixel_width(&label, &format!("{}{}", &text, &separator)) as f64;
                     reset_at_cached.set(Some(reset_at));
 
+                    // Start with initial pause
+                    pause_started_at.set(Some(Instant::now()));
                     is_scrolling.set(true);
                 }
 

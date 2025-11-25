@@ -519,9 +519,7 @@ impl Module<Button> for VolumeModule {
                         if let Some(ui) = inputs.get_mut(&info.index) {
                             // Recreate title widget if name changed and marquee is enabled
                             // (needed to reset marquee scrolling state)
-                            if self.marquee.enable
-                                && ui.label.label().as_str() != info.name
-                            {
+                            if self.marquee.enable && ui.label.label().as_str() != info.name {
                                 if let Some(old_widget) = ui.container.first_child() {
                                     ui.container.remove(&old_widget);
                                 }
