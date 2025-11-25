@@ -60,7 +60,7 @@ pub fn handle_command(command: &BarCommand, ironbar: &Rc<Ironbar>) -> Response {
                 values.push(v);
                 Response::Multi { values }
             }
-            _ => unreachable!(),
+            (acc, _) => acc,
         })
         .unwrap_or(Response::error("Invalid bar name"))
 }
