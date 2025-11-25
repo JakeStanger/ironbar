@@ -512,6 +512,7 @@ impl Module<Button> for VolumeModule {
                                 label,
                                 slider,
                                 btn_mute,
+                                label_raw: info.name.clone(),
                             },
                         );
                     }
@@ -519,7 +520,7 @@ impl Module<Button> for VolumeModule {
                         if let Some(ui) = inputs.get_mut(&info.index) {
                             // Recreate title widget if name changed and marquee is enabled
                             // (needed to reset marquee scrolling state)
-                            if self.marquee.enable && ui.label.label().as_str() != info.name {
+                            if self.marquee.enable && ui.label_raw != info.name {
                                 if let Some(old_widget) = ui.container.first_child() {
                                     ui.container.remove(&old_widget);
                                 }
@@ -534,8 +535,10 @@ impl Module<Button> for VolumeModule {
                                 );
                                 ui.container.prepend(&scrolled);
                                 ui.label = label;
-                            } else {
+                                ui.label_raw = info.name.clone();
+                            } else if ui.label_raw != info.name {
                                 ui.label.set_label(&info.name);
+                                ui.label_raw = info.name.clone();
                             }
 
                             if !ui.slider.has_css_class("dragging") {
@@ -567,4 +570,6 @@ struct InputUi {
     label: Label,
     slider: Scale,
     btn_mute: ToggleButton,
+    // Store original (unformatted) title to detect change when marquee is enabled
+    label_raw: String,
 }
