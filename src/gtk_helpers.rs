@@ -153,13 +153,18 @@ where
     }
 }
 
-// Calculate pixel width of a string given the label it's displayed in
+/// Calculates the pixel width of a string given the label it's displayed in.
 fn pixel_width(label: &gtk::Label, string: &str) -> i32 {
     let layout = label.create_pango_layout(Some(string));
     let (w, _) = layout.size(); // in Pango units (1/1024 px)
     w / gtk::pango::SCALE // back to integer pixels
 }
 
+/// Creates a scrolling marquee widget for long text.
+///
+/// Wraps the provided label in a scrolled window that automatically scrolls
+/// when the text is longer than the allocated width. Supports configurable
+/// scroll speed, pause duration, separator, and hover behavior.
 pub fn create_marquee_widget(
     label: &Label,
     text: &str,
