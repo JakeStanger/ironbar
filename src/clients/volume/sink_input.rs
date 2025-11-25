@@ -146,12 +146,7 @@ fn update(
         }
     }
 
-    tx.send_expect(Event::UpdateInput(input_info.clone()));
-
-    // HACK: send `Remove` and `Add` events to force UI to recreate widget.
-    // This is needed to re-initialize scrolling animation.
-    tx.send_expect(Event::RemoveInput(input_info.index));
-    tx.send_expect(Event::AddInput(input_info));
+    tx.send_expect(Event::UpdateInput(input_info));
 }
 
 fn remove(index: u32, inputs: &ArcMutVec<SinkInput>, tx: &broadcast::Sender<Event>) {

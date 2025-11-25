@@ -516,8 +516,29 @@ impl Module<Button> for VolumeModule {
                         );
                     }
                     Event::UpdateInput(info) => {
-                        if let Some(ui) = inputs.get(&info.index) {
-                            ui.label.set_label(&info.name);
+                        if let Some(ui) = inputs.get_mut(&info.index) {
+                            // Recreate title widget if name changed and marquee is enabled
+                            // (needed to reset marquee scrolling state)
+                            if self.marquee.enable
+                                && ui.label.label().as_str() != info.name
+                            {
+                                if let Some(old_widget) = ui.container.first_child() {
+                                    ui.container.remove(&old_widget);
+                                }
+
+                                let label = Label::new(Some(&info.name));
+                                label.add_css_class("title");
+
+                                let scrolled = gtk_helpers::create_marquee_widget(
+                                    &label,
+                                    &info.name,
+                                    self.marquee.clone(),
+                                );
+                                ui.container.prepend(&scrolled);
+                                ui.label = label;
+                            } else {
+                                ui.label.set_label(&info.name);
+                            }
 
                             if !ui.slider.has_css_class("dragging") {
                                 ui.slider.set_value(info.volume.percent());
