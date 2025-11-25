@@ -234,8 +234,9 @@ pub fn create_marquee_widget(
                 is_scrolling_clone.set(true);
             }
 
-            // Use cached reset position
-            let reset_at = reset_at_cached_clone.get().unwrap();
+            let reset_at = reset_at_cached_clone
+                .get()
+                .expect("reset_at is always set before is_scrolling becomes true");
 
             // Check if paused
             let is_paused = if let Some(start_time) = pause_started_at_clone.get() {
@@ -276,7 +277,7 @@ pub fn create_marquee_widget(
                 label.set_label(&text);
                 widget.hadjustment().set_value(0.0);
                 is_scrolling_clone.set(false);
-                reset_at_cached_clone.set(None); // Clear cache
+                reset_at_cached_clone.set(None);
             }
         }
 
