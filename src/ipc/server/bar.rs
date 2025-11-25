@@ -2,8 +2,6 @@ use super::Response;
 use crate::Ironbar;
 use crate::bar::Bar;
 use crate::ipc::{BarCommand, BarCommandType};
-use glib::prelude::Cast;
-use gtk::Button;
 use std::rc::Rc;
 
 pub fn handle_command(command: &BarCommand, ironbar: &Rc<Ironbar>) -> Response {
@@ -60,7 +58,7 @@ pub fn handle_command(command: &BarCommand, ironbar: &Rc<Ironbar>) -> Response {
                 values.push(v);
                 Response::Multi { values }
             }
-            _ => unreachable!(),
+            (acc, _) => acc,
         })
         .unwrap_or(Response::error("Invalid bar name"))
 }
@@ -78,11 +76,13 @@ fn show_popup(bar: &Bar, widget_name: &str) -> Response {
 
     let module_ref = bar.modules().iter().find(|m| m.name == widget_name);
 
-    let module_button = module_ref.and_then(|m| m.widget.downcast_ref::<Button>());
+    let module_button = module_ref
+        .and_then(|m| m.popup.clone())
+        .and_then(|popup| popup.buttons.first().cloned());
 
     match (module_ref, module_button) {
         (Some(module_ref), Some(button)) => {
-            if popup.show_for(module_ref.id, button) {
+            if popup.show_for(module_ref.id, &button) {
                 Response::Ok
             } else {
                 Response::error("Module has no popup functionality")

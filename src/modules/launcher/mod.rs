@@ -20,6 +20,7 @@ use gtk::prelude::*;
 use gtk::{Button, Orientation};
 use indexmap::IndexMap;
 use serde::Deserialize;
+use std::rc::Rc;
 use std::sync::Arc;
 use tokio::sync::mpsc;
 use tracing::{debug, error, trace, warn};
@@ -588,7 +589,7 @@ impl Module<gtk::Box> for LauncherModule {
 
         let popup = self
             .into_popup(context, info)
-            .into_popup_parts_with_finder(Box::new(move |id| {
+            .into_popup_parts_with_finder(Rc::new(move |id| {
                 buttons
                     .borrow()
                     .values()

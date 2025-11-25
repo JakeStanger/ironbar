@@ -26,7 +26,7 @@ pub type ButtonFinder = dyn Fn(usize) -> Option<Button> + 'static;
 pub struct Popup {
     pub popover: Popover,
     pub container_cache: Rc<RefCell<HashMap<usize, PopupCacheValue>>>,
-    pub button_finder_cache: Rc<RefCell<HashMap<usize, Box<ButtonFinder>>>>,
+    pub button_finder_cache: Rc<RefCell<HashMap<usize, Rc<ButtonFinder>>>>,
     pub button_cache: Rc<RefCell<Vec<Button>>>,
     pos: BarPosition,
     current_widget: Rc<RefCell<Option<CurrentWidgetInfo>>>,
@@ -108,7 +108,7 @@ impl Popup {
         if let Some(button_finder) = content.button_finder {
             self.button_finder_cache
                 .borrow_mut()
-                .insert(key, Box::new(button_finder));
+                .insert(key, button_finder);
         }
     }
 
@@ -117,10 +117,8 @@ impl Popup {
         self.button_cache.borrow_mut().push(button);
     }
 
-    pub fn register_button_finder(&self, key: usize, finder: Box<ButtonFinder>) {
-        self.button_finder_cache
-            .borrow_mut()
-            .insert(key, Box::new(finder));
+    pub fn register_button_finder(&self, key: usize, finder: Rc<ButtonFinder>) {
+        self.button_finder_cache.borrow_mut().insert(key, finder);
     }
 
     pub fn unregister_button(&self, button: &Button) {

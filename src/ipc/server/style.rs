@@ -52,7 +52,7 @@ pub fn handle_command(command: StyleCommand, ironbar: &Ironbar) -> Response {
             }
 
             for module in modules {
-                if module.widget.has_css_class(&name) {
+                if module.root_widget.has_css_class(&name) {
                     module.remove_css_class(&name);
                 } else {
                     module.add_css_class(&name);
@@ -73,18 +73,18 @@ fn modules_by_name<'a>(bars: &'a [Bar], name: &str) -> Vec<&'a ModuleRef> {
 
 impl ModuleRef {
     fn add_css_class(&self, name: &str) {
-        self.widget.add_css_class(name);
+        self.root_widget.add_css_class(name);
 
         if let Some(ref popup) = self.popup {
-            popup.add_css_class(name);
+            popup.container.add_css_class(name);
         }
     }
 
     fn remove_css_class(&self, name: &str) {
-        self.widget.remove_css_class(name);
+        self.root_widget.remove_css_class(name);
 
         if let Some(ref popup) = self.popup {
-            popup.remove_css_class(name);
+            popup.container.remove_css_class(name);
         }
     }
 }
