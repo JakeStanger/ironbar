@@ -44,7 +44,7 @@ pub struct MarqueeMode {
     /// **Default**: `5000` (5 seconds)
     pub pause_duration: u64,
 
-    /// Separator string to place between the repeated text.
+    /// String displayed between the end and beginning of text as it loops.
     ///
     /// **Default**: `"    "` (4 spaces)
     pub separator: String,

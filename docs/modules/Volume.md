@@ -28,7 +28,7 @@ This requires PulseAudio to function (`pipewire-pulse` is supported).
 | `marquee.max_length`            | `integer`                                            | `null`                 | The maximum length of text (roughly, in characters) before it gets truncated and starts scrolling.                                |
 | `marquee.scroll_speed`          | `float`                                              | `0.5`                  | Scroll speed in pixels per frame. Higher values scroll faster.                                                                    |
 | `marquee.pause_duration`        | `integer`                                            | `5000`                 | Duration in milliseconds to pause at each loop point.                                                                             |
-| `marquee.separator`             | `string`                                             | `"    "`               | Separator string to place between the repeated text.                                                                              |
+| `marquee.separator`             | `string`                                             | `"    "`               | String displayed between the end and beginning of text as it loops.                                                               |
 | `marquee.on_hover`              | `'none'` or `'pause'` or `'play'`                    | `'none'`               | Controls marquee behavior on hover: `'none'` (always scroll), `'pause'` (pause on hover), or `'play'` (only scroll on hover).     |
 
 <details>
