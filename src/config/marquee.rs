@@ -18,7 +18,7 @@ pub enum MarqueeOnHover {
 /// This is controlled using a common `MarqueeMode` type,
 /// which is defined below.
 ///
-#[derive(Debug, Deserialize, Clone, Default)]
+#[derive(Debug, Deserialize, Clone)]
 #[serde(default)]
 #[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
 pub struct MarqueeMode {
@@ -37,18 +37,17 @@ pub struct MarqueeMode {
     /// Higher values scroll faster.
     ///
     /// **Default**: `0.5`
-    pub scroll_speed: Option<f64>,
+    pub scroll_speed: f64,
 
     /// Duration in milliseconds to pause at each loop point.
     ///
     /// **Default**: `5000` (5 seconds)
-    pub pause_duration: Option<u64>,
+    pub pause_duration: u64,
 
     /// Separator string to place between the repeated text.
-    /// Can be any string, like " • " or " | ".
     ///
     /// **Default**: `"    "` (4 spaces)
-    pub separator: Option<String>,
+    pub separator: String,
 
     /// Controls marquee behavior on hover.
     ///
@@ -59,4 +58,17 @@ pub struct MarqueeMode {
     ///
     /// **Default**: `"none"`
     pub on_hover: MarqueeOnHover,
+}
+
+impl Default for MarqueeMode {
+    fn default() -> Self {
+        Self {
+            enable: false,
+            max_length: None,
+            scroll_speed: 0.5,
+            pause_duration: 5000,
+            separator: "    ".to_string(),
+            on_hover: MarqueeOnHover::default(),
+        }
+    }
 }

@@ -170,11 +170,6 @@ pub fn create_marquee_widget(
     text: &str,
     marquee_mode: MarqueeMode,
 ) -> ScrolledWindow {
-    // Default constants
-    const DEFAULT_SCROLL_SPEED: f64 = 0.5; // pixels per tick
-    const DEFAULT_PAUSE_DURATION_MS: u64 = 5000; // 5 seconds
-    const DEFAULT_SEPARATOR: &str = "    "; // 4 spaces
-
     let MarqueeMode {
         max_length,
         scroll_speed,
@@ -184,10 +179,7 @@ pub fn create_marquee_widget(
         ..
     } = marquee_mode;
 
-    let scroll_speed = scroll_speed.unwrap_or(DEFAULT_SCROLL_SPEED);
-    let pause_duration_ms = pause_duration.unwrap_or(DEFAULT_PAUSE_DURATION_MS);
-    let sep = separator.unwrap_or_else(|| DEFAULT_SEPARATOR.to_string());
-    let ease_pause = Duration::from_millis(pause_duration_ms);
+    let ease_pause = Duration::from_millis(pause_duration);
 
     let scrolled = ScrolledWindow::builder()
         .vscrollbar_policy(gtk::PolicyType::Never)
@@ -232,11 +224,11 @@ pub fn create_marquee_widget(
         if needs_scroll {
             // Setup scrolling if not already set up
             if !*is_scrolling_clone.borrow() {
-                let duplicated_text = format!("{}{}{}", &text, &sep, &text);
+                let duplicated_text = format!("{}{}{}", &text, &separator, &text);
                 label.set_label(&duplicated_text);
 
                 // Calculate and cache reset position (where to loop back to)
-                let reset_at = pixel_width(&label, &format!("{}{}", &text, &sep)) as f64;
+                let reset_at = pixel_width(&label, &format!("{}{}", &text, &separator)) as f64;
                 *reset_at_cached_clone.borrow_mut() = Some(reset_at);
 
                 *is_scrolling_clone.borrow_mut() = true;
