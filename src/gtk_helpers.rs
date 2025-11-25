@@ -1,4 +1,4 @@
-use crate::config::{MarqueeMode, TruncateMode};
+use crate::config::{MarqueeMode, MarqueeOnHover, TruncateMode};
 use glib::ControlFlow;
 use glib::{SignalHandlerId, markup_escape_text};
 use gtk::gdk::{BUTTON_MIDDLE, BUTTON_PRIMARY, BUTTON_SECONDARY, Paintable};
@@ -175,8 +175,7 @@ pub fn create_marquee_widget(
         scroll_speed,
         pause_duration,
         separator,
-        pause_on_hover,
-        play_on_hover,
+        on_hover,
         ..
     } = marquee_mode;
 
@@ -258,12 +257,10 @@ pub fn create_marquee_widget(
             }
 
             // Determine if we should scroll based on hover state
-            let should_scroll = if play_on_hover {
-                *is_hovered_clone.borrow()
-            } else if pause_on_hover {
-                !*is_hovered_clone.borrow()
-            } else {
-                true
+            let should_scroll = match on_hover {
+                MarqueeOnHover::Play => *is_hovered_clone.borrow(),
+                MarqueeOnHover::Pause => !*is_hovered_clone.borrow(),
+                MarqueeOnHover::None => true,
             };
 
             if should_scroll {
@@ -289,7 +286,7 @@ pub fn create_marquee_widget(
         ControlFlow::Continue
     });
 
-    if pause_on_hover || play_on_hover {
+    if on_hover != MarqueeOnHover::None {
         let motion_controller = EventControllerMotion::new();
 
         let is_hovered_enter = is_hovered.clone();

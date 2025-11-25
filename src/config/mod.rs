@@ -48,7 +48,7 @@ use crate::modules::workspaces::WorkspacesModule;
 
 pub use self::common::{CommonConfig, ModuleJustification, ModuleOrientation, TransitionType};
 pub use self::layout::LayoutConfig;
-pub use self::marquee::MarqueeMode;
+pub use self::marquee::{MarqueeMode, MarqueeOnHover};
 pub use self::truncate::{EllipsizeMode, TruncateMode};
 use crate::Ironbar;
 use crate::modules::{AnyModuleFactory, ModuleFactory, ModuleInfo, ModuleRef};

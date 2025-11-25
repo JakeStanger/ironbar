@@ -29,8 +29,7 @@ This requires PulseAudio to function (`pipewire-pulse` is supported).
 | `marquee.scroll_speed`          | `float`                                              | `0.5`                  | Scroll speed in pixels per frame. Higher values scroll faster.                                                                    |
 | `marquee.pause_duration`        | `integer`                                            | `5000`                 | Duration in milliseconds to pause at each loop point.                                                                             |
 | `marquee.separator`             | `string`                                             | `"    "`               | Separator string to place between the repeated text. Can be any string like `" • "` or `" \| "`.                                 |
-| `marquee.pause_on_hover`        | `bool`                                               | `false`                | Pause scrolling when the mouse cursor hovers over the application title.                                                          |
-| `marquee.play_on_hover`         | `bool`                                               | `false`                | The inverse of `pause_on_hover`: scroll the widget only when hovered. Takes priority over `pause_on_hover`.                         |
+| `marquee.on_hover`              | `'none'` or `'pause'` or `'play'`                    | `'none'`               | Controls marquee behavior on hover: `'none'` (always scroll), `'pause'` (pause on hover), or `'play'` (only scroll on hover).     |
 
 <details>
 <summary>JSON</summary>

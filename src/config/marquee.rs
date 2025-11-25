@@ -1,5 +1,19 @@
 use serde::Deserialize;
 
+/// Defines the behavior of marquee scrolling on hover.
+#[derive(Debug, Deserialize, Clone, Copy, Default, PartialEq, Eq)]
+#[serde(rename_all = "lowercase")]
+#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
+pub enum MarqueeOnHover {
+    /// Scrolling is always active, hover has no effect.
+    #[default]
+    None,
+    /// Scrolling pauses when the widget is hovered.
+    Pause,
+    /// Scrolling only occurs when the widget is hovered.
+    Play,
+}
+
 /// Some modules provide options for scrolling text (marquee effect).
 /// This is controlled using a common `MarqueeMode` type,
 /// which is defined below.
@@ -40,17 +54,14 @@ pub struct MarqueeMode {
     #[serde(default)]
     pub separator: Option<String>,
 
-    /// Whether to pause scrolling on hover.
+    /// Controls marquee behavior on hover.
     ///
-    /// **Default**: `false`
-    #[serde(default)]
-    pub pause_on_hover: bool,
-
-    /// Whether to invert the pause on hover behavior.
-    /// When true, scrolling will only occur on hover.
-    /// This takes priority over `pause_on_hover`.
+    /// **Options**:
+    /// - `"none"`: Always scroll (default)
+    /// - `"pause"`: Pause scrolling on hover
+    /// - `"play"`: Only scroll on hover
     ///
-    /// **Default**: `false`
+    /// **Default**: `"none"`
     #[serde(default)]
-    pub play_on_hover: bool,
+    pub on_hover: MarqueeOnHover,
 }
