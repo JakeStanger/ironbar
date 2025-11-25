@@ -144,8 +144,8 @@ where
 pub struct ModuleRef {
     pub id: usize,
     pub name: String,
-    pub widget: Widget,
-    pub popup: Option<gtk::Box>,
+    pub root_widget: Widget,
+    pub popup: Option<ModulePopupParts>,
 }
 
 pub struct ModuleParts<W: IsA<Widget>> {
@@ -182,6 +182,7 @@ impl<W: IsA<Widget>> ModuleParts<W> {
     }
 }
 
+#[derive(Clone)]
 pub struct ModulePopupParts {
     /// The popup container, with all its contents
     pub container: gtk::Box,
@@ -189,7 +190,7 @@ pub struct ModulePopupParts {
     /// For most modules, this will only be a single button.
     pub buttons: Vec<Button>,
 
-    pub button_finder: Option<Box<ButtonFinder>>,
+    pub button_finder: Option<Rc<ButtonFinder>>,
 }
 
 impl Debug for ModulePopupParts {
@@ -206,7 +207,7 @@ pub trait ModulePopup {
     fn into_popup_parts(self, buttons: Vec<&Button>) -> Option<ModulePopupParts>;
     fn into_popup_parts_owned(self, buttons: Vec<Button>) -> Option<ModulePopupParts>;
 
-    fn into_popup_parts_with_finder(self, finder: Box<ButtonFinder>) -> Option<ModulePopupParts>;
+    fn into_popup_parts_with_finder(self, finder: Rc<ButtonFinder>) -> Option<ModulePopupParts>;
 }
 
 impl ModulePopup for Option<gtk::Box> {
@@ -222,7 +223,7 @@ impl ModulePopup for Option<gtk::Box> {
         })
     }
 
-    fn into_popup_parts_with_finder(self, finder: Box<ButtonFinder>) -> Option<ModulePopupParts> {
+    fn into_popup_parts_with_finder(self, finder: Rc<ButtonFinder>) -> Option<ModulePopupParts> {
         self.map(|container| ModulePopupParts {
             container,
             buttons: vec![],
@@ -354,8 +355,7 @@ pub trait ModuleFactory {
 
         module_parts.setup_identifiers(&common);
 
-        let popup_container = module_parts.popup.as_ref().map(|p| p.container.clone());
-        if let Some(popup_content) = module_parts.popup {
+        if let Some(popup_content) = module_parts.popup.clone() {
             popup_content
                 .container
                 .add_css_class(&format!("popup-{module_name}"));
@@ -375,8 +375,8 @@ pub trait ModuleFactory {
         Ok(ModuleRef {
             id,
             name: instance_name,
-            widget: module_parts.widget.upcast(),
-            popup: popup_container,
+            root_widget: module_parts.widget.upcast(),
+            popup: module_parts.popup,
         })
     }
 
