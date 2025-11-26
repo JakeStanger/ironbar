@@ -1,7 +1,6 @@
 use color_eyre::Result;
 use dirs::data_dir;
 use glib::{LogLevel, LogWriterOutput};
-use std::backtrace::{Backtrace, BacktraceStatus};
 use std::{env, panic};
 use strip_ansi_escapes::Writer;
 use tracing::{debug, error, info, warn};
@@ -35,35 +34,14 @@ pub fn install_logging(debug: bool) -> Result<WorkerGuard> {
     // otherwise file logging drops
     let guard = install_tracing(debug)?;
 
-    color_eyre::config::HookBuilder::default().install()?;
+    let hook_builder = color_eyre::config::HookBuilder::default();
+    let (panic_hook, eyre_hook) = hook_builder.into_hooks();
+
+    eyre_hook.install()?;
 
     // custom hook allows tracing_appender to capture panics
     panic::set_hook(Box::new(move |panic_info| {
-        let payload = panic_info.payload();
-
-        #[allow(clippy::manual_map)]
-        let payload = if let Some(s) = payload.downcast_ref::<&str>() {
-            Some(&**s)
-        } else if let Some(s) = payload.downcast_ref::<String>() {
-            Some(s.as_str())
-        } else {
-            None
-        }
-        .unwrap_or_default()
-        .to_string();
-
-        let location = panic_info.location().map(|l| l.to_string());
-
-        let backtrace = Backtrace::capture();
-        let note = (backtrace.status() == BacktraceStatus::Disabled)
-            .then_some("run with RUST_BACKTRACE=1 environment variable to display a backtrace");
-
-        error!(
-            location = location,
-            backtrace = display(backtrace),
-            note = note,
-            "Ironbar has panicked!\n\t{payload}\n\t",
-        );
+        error!("{}", panic_hook.panic_report(panic_info));
     }));
 
     Ok(guard)
