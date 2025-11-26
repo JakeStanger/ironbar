@@ -1,8 +1,7 @@
-use super::{MusicClient, PlayerState, PlayerUpdate, Status, TICK_INTERVAL_MS, Track};
+use super::{MusicClient, PlayerState, PlayerUpdate, Result, Status, TICK_INTERVAL_MS, Track};
 use crate::channels::SyncSenderExt;
 use crate::clients::music::ProgressTick;
 use crate::{arc_mut, lock, spawn_blocking};
-use color_eyre::Result;
 use mpris::{DBusError, Event, Metadata, PlaybackStatus, Player, PlayerFinder};
 use std::cmp;
 use std::collections::HashSet;

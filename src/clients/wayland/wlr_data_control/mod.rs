@@ -9,7 +9,6 @@ use self::source::DataControlSourceHandler;
 use super::{Client, Environment, Event, Request, Response};
 use crate::channels::AsyncSenderExt;
 use crate::{Ironbar, lock, spawn};
-use color_eyre::Result;
 use device::DataControlDevice;
 use glib::Bytes;
 use rustix::buffer::spare_capacity;
@@ -280,7 +279,7 @@ impl DataControlSourceHandler for Environment {
         source: &ZwlrDataControlSourceV1,
         mime: String,
         write_pipe: WritePipe,
-    ) -> Result<()> {
+    ) -> std::io::Result<()> {
         debug!("Handler received source send request event ({mime})");
 
         if let Some(item) = lock!(self.clipboard).clone() {
@@ -323,7 +322,10 @@ impl DataControlSourceHandler for Environment {
                     epoll::wait(
                         &epoll,
                         spare_capacity(&mut events),
-                        Some(&Timespec::try_from(Duration::from_millis(100))?),
+                        Some(
+                            &Timespec::try_from(Duration::from_millis(100))
+                                .expect("should be valid timespec"),
+                        ),
                     )?;
 
                     match file.write(chunk) {

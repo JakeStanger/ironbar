@@ -137,6 +137,7 @@ tracing-subscriber = { version = "=0.3.19", features = ["env-filter"] } # pinned
 tracing-error = { version = "0.2.1", default-features = false }
 tracing-appender = "0.2.3"
 strip-ansi-escapes = "0.2.0"
+thiserror = "2.0.17"
 color-eyre = "0.6.5"
 serde = { version = "1.0.228", features = ["derive"] }
 indexmap = { version = "2.12.1", features = ["serde"] }

@@ -3,9 +3,9 @@
 /// to reduce compile times.
 use crate::clients::compositor::Workspace as IronWorkspace;
 use crate::{await_sync, clients::compositor::Visibility};
-use color_eyre::eyre::{Result, eyre};
 use core::str;
 use serde::{Deserialize, Serialize};
+use std::io::Result;
 use std::{env, path::Path};
 use tokio::{
     io::{AsyncBufReadExt, AsyncWriteExt, BufReader},
@@ -18,7 +18,7 @@ pub enum Request {
     EventStream,
 }
 
-pub type Reply = Result<Response, String>;
+pub type Reply = std::result::Result<Response, String>;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub enum Response {
@@ -79,8 +79,10 @@ pub enum Event {
 pub struct Connection(UnixStream);
 impl Connection {
     pub async fn connect() -> Result<Self> {
-        let socket_path =
-            env::var_os("NIRI_SOCKET").ok_or_else(|| eyre!("NIRI_SOCKET not found!"))?;
+        let socket_path = env::var_os("NIRI_SOCKET").ok_or_else(|| {
+            // technically this isn't really an io error, but it's close enough
+            std::io::Error::new(std::io::ErrorKind::NotFound, "NIRI_SOCKET not found")
+        })?;
         Self::connect_to(socket_path).await
     }
 

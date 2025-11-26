@@ -1,12 +1,12 @@
 use crate::modules::sysinfo::Interval;
 use crate::{lock, register_client};
-use color_eyre::{Report, Result};
 use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::fmt::Debug;
 use std::str::FromStr;
 use std::sync::{Arc, Mutex};
 use sysinfo::{Components, Disks, LoadAvg, Networks, RefreshKind, System};
+use thiserror::Error;
 
 #[repr(u64)]
 #[derive(Debug, Default, Clone, Copy, Eq, PartialEq)]
@@ -441,10 +441,16 @@ pub enum TokenType {
     Uptime,
 }
 
-impl FromStr for TokenType {
-    type Err = Report;
+#[derive(Debug, Error)]
+#[error("Invalid token type: {input_token}")]
+pub struct InvalidTokenError {
+    pub input_token: String,
+}
 
-    fn from_str(s: &str) -> Result<Self> {
+impl FromStr for TokenType {
+    type Err = InvalidTokenError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
             "cpu_frequency" => Ok(Self::CpuFrequency),
             "cpu_percent" => Ok(Self::CpuPercent),
@@ -477,7 +483,9 @@ impl FromStr for TokenType {
             "load_average_5" => Ok(Self::LoadAverage5),
             "load_average_15" => Ok(Self::LoadAverage15),
             "uptime" => Ok(Self::Uptime),
-            _ => Err(Report::msg(format!("invalid token type: '{s}'"))),
+            _ => Err(InvalidTokenError {
+                input_token: s.to_string(),
+            }),
         }
     }
 }

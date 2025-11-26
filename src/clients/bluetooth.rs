@@ -1,7 +1,6 @@
-use std::time::Duration;
-
 use crate::{Ironbar, error, register_fallible_client, spawn};
-use color_eyre::Result;
+use bluer::Result;
+use std::time::Duration;
 use tokio::{sync::watch, task::JoinSet};
 use tracing::debug;
 
@@ -340,7 +339,7 @@ impl Client {
                 kind: bluer::ErrorKind::NotFound,
                 ..
             }) => BluetoothState::NotFound,
-            Err(err) => return Err(err.into()),
+            Err(err) => return Err(err),
         };
 
         Ok(state)

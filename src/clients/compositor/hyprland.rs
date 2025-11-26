@@ -5,7 +5,7 @@ use super::{KeyboardLayoutClient, KeyboardLayoutUpdate};
 use super::{Visibility, Workspace};
 use crate::channels::SyncSenderExt;
 use crate::{arc_mut, lock, spawn_blocking};
-use color_eyre::Result;
+use hyprland::Result;
 use hyprland::ctl::switch_xkb_layout;
 use hyprland::data::{Devices, Workspace as HWorkspace, Workspaces};
 use hyprland::dispatch::{Dispatch, DispatchType, WorkspaceIdentifierWithSpecial};
@@ -492,7 +492,7 @@ impl KeyboardLayoutClient for Client {
 
 #[cfg(feature = "bindmode+hyprland")]
 impl BindModeClient for Client {
-    fn subscribe(&self) -> Result<Receiver<BindModeUpdate>> {
+    fn subscribe(&self) -> super::Result<Receiver<BindModeUpdate>> {
         Ok(self.bindmode.tx.subscribe())
     }
 }

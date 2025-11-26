@@ -1,6 +1,5 @@
 use super::device::DataControlDevice;
 use super::manager::DataControlDeviceManagerState;
-use color_eyre::Result;
 use smithay_client_toolkit::data_device_manager::WritePipe;
 use tracing::error;
 use wayland_client::{Connection, Dispatch, Proxy, QueueHandle};
@@ -43,7 +42,7 @@ pub trait DataControlSourceHandler: Sized {
         source: &ZwlrDataControlSourceV1,
         mime: String,
         fd: WritePipe,
-    ) -> Result<()>;
+    ) -> std::io::Result<()>;
 
     /// The data source is no longer valid
     /// Cleanup & destroy this resource

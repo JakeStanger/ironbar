@@ -1,11 +1,11 @@
 use crate::spawn;
-use color_eyre::{Report, Result};
 use futures_lite::StreamExt;
 use std::sync::Arc;
 use swayipc_async::{Connection, Event, EventType};
 use tokio::sync::Mutex;
 use tracing::{info, trace};
 
+type Result<T> = std::result::Result<T, swayipc_async::Error>;
 type SyncFn<T> = dyn Fn(&T) + Sync + Send;
 
 struct TaskState {
@@ -80,8 +80,8 @@ impl Client {
 
         // Only the task and self have a reference to listeners, and we just abort the task. This
         // is the only reference to listeners, so we can safely get a mutable reference.
-        let listeners_mut = Arc::get_mut(listeners)
-            .ok_or_else(|| Report::msg("Failed to get mutable reference to listeners"))?;
+        let listeners_mut =
+            Arc::get_mut(listeners).expect("should get mutable reference to listeners");
 
         listeners_mut.push((event_type, f));
 
@@ -105,7 +105,7 @@ impl Client {
                 }
             }
 
-            Ok::<(), Report>(())
+            Ok::<(), _>(())
         });
 
         *join_handle = Some(handle);

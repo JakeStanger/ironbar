@@ -2,11 +2,11 @@ mod dbus;
 
 use crate::channels::SyncSenderExt;
 use crate::{register_fallible_client, spawn};
-use color_eyre::{Report, Result};
 use dbus::SwayNcProxy;
 use serde::Deserialize;
 use tokio::sync::broadcast;
 use tracing::{debug, error};
+use zbus::Result;
 use zbus::export::ordered_stream::OrderedStreamExt;
 use zbus::zvariant::Type;
 
@@ -77,7 +77,7 @@ impl Client {
         debug!("Getting subscribe data (current state)");
         match self.proxy.get_subscribe_data().await {
             Ok(data) => Ok(data.into()),
-            Err(err) => Err(Report::new(err)),
+            Err(err) => Err(err),
         }
     }
 

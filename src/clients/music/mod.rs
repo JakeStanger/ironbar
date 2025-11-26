@@ -1,4 +1,3 @@
-use color_eyre::Result;
 use std::fmt::Debug;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -55,6 +54,8 @@ pub struct ProgressTick {
     pub duration: Option<Duration>,
     pub elapsed: Option<Duration>,
 }
+
+pub type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
 
 pub trait MusicClient: Debug + Send + Sync {
     fn play(&self) -> Result<()>;

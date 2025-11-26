@@ -242,8 +242,9 @@ use super::{BindModeClient, BindModeUpdate};
 
 #[cfg(feature = "bindmode+sway")]
 impl BindModeClient for Client {
-    fn subscribe(&self) -> Result<Receiver<BindModeUpdate>, Report> {
+    fn subscribe(&self) -> super::Result<Receiver<BindModeUpdate>> {
         let (tx, rx) = channel(16);
+
         await_sync(async {
             self.add_listener::<swayipc_async::ModeEvent>(move |mode| {
                 tracing::trace!("mode: {:?}", mode);
@@ -262,7 +263,9 @@ impl BindModeClient for Client {
                 });
             })
             .await
-        })?;
+        })
+        .map_err(|err| super::Error::Other(err.into()))?;
+
         Ok(rx)
     }
 }
