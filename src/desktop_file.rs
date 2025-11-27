@@ -328,11 +328,14 @@ fn files(dir: &Path) -> Vec<PathBuf> {
 
 /// Starts a `.desktop` file with the provided formatted command.
 pub async fn open_program(file_name: &str, launch_command: &str) {
-    let expanded = launch_command.replace("{app_name}", file_name);
-    let launch_command_parts: Vec<&str> = expanded.split_whitespace().collect();
+    // Split first, then replace - keeps filename with spaces as single arg
+    let launch_command_parts: Vec<String> = launch_command
+        .split_whitespace()
+        .map(|part| part.replace("{app_name}", file_name))
+        .collect();
 
     debug!("running {launch_command_parts:?}");
-    let exit_status = match Command::new(launch_command_parts[0])
+    let exit_status = match Command::new(&launch_command_parts[0])
         .args(&launch_command_parts[1..])
         .stdin(Stdio::null())
         .stdout(Stdio::null())
