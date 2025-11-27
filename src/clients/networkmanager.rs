@@ -1,13 +1,12 @@
 use std::sync::Arc;
 
 use crate::{register_fallible_client, spawn};
-use color_eyre::Result;
 use futures_signals::signal::{Mutable, MutableSignalCloned};
 use tracing::error;
 use zbus::export::ordered_stream::OrderedStreamExt;
 use zbus::fdo::PropertiesProxy;
 use zbus::{
-    Connection,
+    Connection, Result,
     names::InterfaceName,
     proxy,
     zvariant::{ObjectPath, Str},

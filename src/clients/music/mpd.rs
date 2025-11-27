@@ -1,10 +1,8 @@
 use super::{
-    MusicClient, PlayerState, PlayerUpdate, ProgressTick, Status, TICK_INTERVAL_MS, Track,
+    MusicClient, PlayerState, PlayerUpdate, ProgressTick, Result, Status, TICK_INTERVAL_MS, Track,
 };
 use crate::channels::SyncSenderExt;
 use crate::{Ironbar, await_sync, spawn};
-use color_eyre::Report;
-use color_eyre::Result;
 use mpd_client::client::{ConnectionEvent, Subsystem};
 use mpd_client::commands::{self, SeekMode};
 use mpd_client::responses::{PlayState, Song};
@@ -19,7 +17,7 @@ use tracing::debug;
 
 macro_rules! command {
     ($self:ident, $command:expr) => {
-        await_sync(async move { $self.client.command($command).await.map_err(Report::new) })
+        await_sync(async move { Ok($self.client.command($command).await?) })
     };
 }
 
@@ -89,7 +87,7 @@ impl Client {
         client: &PersistentClient,
         tx: &broadcast::Sender<PlayerUpdate>,
         music_dir: &Path,
-    ) -> Result<(), broadcast::error::SendError<PlayerUpdate>> {
+    ) -> std::result::Result<(), broadcast::error::SendError<PlayerUpdate>> {
         let current_song = client.command(commands::CurrentSong).await;
         let status = client.command(commands::Status).await;
 

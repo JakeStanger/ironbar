@@ -2,7 +2,6 @@ use super::{Workspace as IronWorkspace, WorkspaceClient, WorkspaceUpdate};
 use crate::channels::SyncSenderExt;
 use crate::clients::compositor::Visibility;
 use crate::{arc_rw, read_lock, spawn, write_lock};
-use color_eyre::Report;
 use connection::{Action, Connection, Event, Request, WorkspaceReferenceArg};
 use std::sync::{Arc, RwLock};
 use tokio::sync::broadcast;
@@ -183,7 +182,7 @@ impl Client {
                 }
             }
 
-            Ok::<(), Report>(())
+            Ok::<(), std::io::Error>(())
         });
 
         Self {
@@ -211,7 +210,7 @@ impl WorkspaceClient for Client {
                 error!("failed to send command: {err:?}");
             }
 
-            Ok::<(), Report>(())
+            Ok::<(), std::io::Error>(())
         });
     }
 

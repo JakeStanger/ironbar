@@ -1,6 +1,5 @@
 use crate::channels::SyncSenderExt;
 use crate::{Ironbar, arc_rw, read_lock, spawn, write_lock};
-use color_eyre::{Report, Result};
 use colpetto::event::{AsRawEvent, DeviceEvent, KeyState, KeyboardEvent};
 use colpetto::{DeviceCapability, Libinput};
 use evdev_rs::DeviceWrapper;
@@ -14,10 +13,29 @@ use std::os::unix::io::OwnedFd;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, RwLock};
 use std::time::Duration;
+use thiserror::Error;
 use tokio::sync::broadcast;
 use tokio::task::LocalSet;
 use tokio::time::sleep;
 use tracing::{debug, error};
+
+#[derive(Debug, Error)]
+pub enum Error {
+    #[error("provided key is not a supported toggle key: {0}")]
+    UnsupportedKey(EV_KEY),
+    #[error("unable to fetch key state")]
+    KeyStateFetch,
+    #[error("unexpected end of stream")]
+    EndOfStream,
+    #[error(transparent)]
+    Io(#[from] std::io::Error),
+    #[error(transparent)]
+    Ffi(#[from] std::ffi::NulError),
+    #[error(transparent)]
+    LibInput(#[from] colpetto::Error),
+}
+
+pub type Result<T> = std::result::Result<T, Error>;
 
 #[derive(Debug, Copy, Clone)]
 pub enum Key {
@@ -37,14 +55,14 @@ impl From<Key> for EV_KEY {
 }
 
 impl TryFrom<EV_KEY> for Key {
-    type Error = Report;
+    type Error = Error;
 
     fn try_from(value: EV_KEY) -> std::result::Result<Self, Self::Error> {
         match value {
             EV_KEY::KEY_CAPSLOCK => Ok(Key::Caps),
             EV_KEY::KEY_NUMLOCK => Ok(Key::Num),
             EV_KEY::KEY_SCROLLLOCK => Ok(Key::Scroll),
-            _ => Err(Report::msg("provided key is not supported toggle key")),
+            _ => Err(Error::UnsupportedKey(value)),
         }
     }
 }
@@ -59,7 +77,7 @@ impl Key {
             Self::Scroll => device.event_value(&EventCode::EV_LED(EV_LED::LED_SCROLLL)),
         }
         .map(|v| v > 0)
-        .ok_or_else(|| Report::msg("failed to get key status"))
+        .ok_or(Error::KeyStateFetch)
     }
 }
 
@@ -81,7 +99,7 @@ struct KeyData<P: AsRef<Path>> {
 }
 
 impl<P: AsRef<Path>> TryFrom<KeyData<P>> for Event {
-    type Error = Report;
+    type Error = Error;
 
     fn try_from(data: KeyData<P>) -> Result<Self> {
         let key = Key::try_from(data.key)?;
@@ -218,7 +236,7 @@ impl Client {
             }
         }
 
-        Err(Report::msg("unexpected end of stream"))
+        Err(Error::EndOfStream)
     }
 
     pub fn get_state(&self, key: Key) -> bool {
