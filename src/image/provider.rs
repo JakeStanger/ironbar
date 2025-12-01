@@ -1,6 +1,6 @@
 use crate::desktop_file::DesktopFiles;
 use crate::gtk_helpers::IronbarPaintableExt;
-use crate::{arc_mut, lock};
+use crate::{arc_mut, lock, spawn};
 use color_eyre::{Help, Report, Result};
 use glib::Bytes;
 use gtk::gdk::{Paintable, Texture};
@@ -183,7 +183,7 @@ impl Provider {
                 input_name[2..].to_string(),
             ))),
             #[cfg(feature = "http")]
-            Some(_t @ ("http" | "https")) => input_name.parse().ok().map(ImageLocation::Remote),
+            Some(_t @ ("http" | "https")) => input.parse().ok().map(ImageLocation::Remote),
             None if input_name.starts_with("steam_app_") => Some(ImageLocation::Steam(
                 input_name.chars().skip("steam_app_".len()).collect(),
             )),
@@ -286,19 +286,27 @@ impl Provider {
             }
             #[cfg(feature = "http")]
             Some(ImageLocation::Remote(uri)) => {
-                let res = reqwest::get(uri.clone()).await?;
-
-                let status = res.status();
-                let bytes = if status.is_success() {
-                    let bytes = res.bytes().await?;
-                    Ok(Bytes::from_owned(bytes))
-                } else {
-                    Err(Report::msg(format!(
-                        "Received non-success HTTP code ({status})"
-                    )))
-                }?;
-
-                Texture::from_bytes(&bytes)
+                let (tx, rx) = tokio::sync::oneshot::channel();
+                let uri = uri.clone();
+                spawn(async move {
+                    let res = async {
+                        let res = reqwest::get(uri).await?;
+                        if res.status().is_success() {
+                            Ok(res.bytes().await?)
+                        } else {
+                            Err(Report::msg(format!(
+                                "error fetching remote image: HTTP {}",
+                                res.status()
+                            )))
+                        }
+                    }
+                    .await;
+                    let _ = tx.send(res);
+                });
+                let bytes = rx
+                    .await
+                    .map_err(|_| Report::msg("HTTP fetch cancelled"))??;
+                Texture::from_bytes(&Bytes::from_owned(bytes))
                     .map(|t| t.scale(image_ref.size as f64, image_ref.size as f64))
             }
             None if use_fallback => Ok(Some(
