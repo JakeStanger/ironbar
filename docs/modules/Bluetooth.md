@@ -17,7 +17,8 @@ Clicking on the widget opens a popout displaying list of available devices and c
 | `format.enabled`              | `string`  | ` On`                                                | Format string to use for the widget button when bluetooth adapter is enabled but no devices are connected.                                       |
 | `format.connected`            | `string`  | ` {device_alias}`                                    | Format string to use for the widget button when bluetooth adapter is enabled and a device is connected.                                          |
 | `format.connected_battery`    | `string`  | ` {device_alias} • {device_battery_percent}%`        | Format string to use for the widget button when bluetooth adapter is enabled, a device is connected and `{device_battery_percent}` is available. |
-| `popup.scrollable`            | `boolean` | `true`                                                | If true makes the popup scrollable, if false stretchable to show all of its content.                                                             |
+| `popup.max_height.pixel`      | `integer` | `330`                                                 | The maximum number of pixels the window can reach before scrolling. Leave blank to allow the popup to grow indefinitely.                         |
+| `popup.max_height.count`      | `integer` | `null`                                                | See `popup.max_height.pixel`, but the limit is set in number of devices. Specify either `pixel` or `count`                                       |
 | `popup.header`                | `string`  | ` Enable Bluetooth`                                  | Format string to use for the header of popup window.                                                                                             |
 | `popup.disabled`              | `string`  | `{adapter_status}`                                    | Format string to use for the message that is displayed when the adapter is not found or disabled.                                                |
 | `popup.device.header`         | `string`  | `{device_alias}`                                      | Format string to use for the header of device box.                                                                                               |
@@ -52,7 +53,9 @@ Clicking on the widget opens a popout displaying list of available devices and c
         "connected_battery": " {device_alias} • {device_battery_percent}%"
       },
       "popup": {
-        "scrollable": true,
+        "max_height": {
+          "count": 5
+        },
         "header": " Enable Bluetooth",
         "disabled": "{adapter_status}",
         "device": {
@@ -98,7 +101,7 @@ connected = " {device_alias}"
 connected_battery = " {device_alias} • {device_battery_percent}%"
 
 [end.popup]
-scrollable = true
+max_height.count = 5
 header = " Enable Bluetooth"
 disabled = "{adapter_status}"
 
@@ -138,7 +141,8 @@ end:
       connected: " {device_alias}"
       connected_battery: " {device_alias} • {device_battery_percent}%"
     popup:
-      scrollable: true
+      max_height:
+        count: 5
       header: " Enable Bluetooth"
       disabled: "{adapter_status}"
       device:
@@ -175,7 +179,7 @@ end:
       format.enabled = " On"
       format.connected = " {device_alias}"
       format.connected_battery = " {device_alias} • {device_battery_percent}%"
-      popup.scrollable = true
+      popup.max_height.count = 5
       popup.header = " Enable Bluetooth"
       popup.disabled = "{adapter_status}"
       popup.device.header = "{device_alias}"
