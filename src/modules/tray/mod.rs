@@ -17,6 +17,127 @@ use system_tray::client::{ActivateRequest, UpdateEvent};
 use tokio::sync::mpsc;
 use tracing::{debug, error, trace, warn};
 
+/// Icon configuration for tray items
+struct IconConfig {
+    theme: IconTheme,
+    size: u32,
+    prefer_theme: bool,
+}
+
+/// Reserved tray click actions
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
+#[serde(rename_all = "snake_case")]
+pub enum ReservedTrayAction {
+    /// Open the tray icon's popup menu
+    Menu,
+    /// Trigger the tray icon's default (primary) action
+    Default,
+    /// Trigger the tray icon's secondary action
+    Secondary,
+    /// Do nothing
+    None,
+}
+
+/// Action to perform when clicking on a tray icon
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
+#[serde(untagged)]
+pub enum TrayClickAction {
+    /// Reserved action
+    Reserved(ReservedTrayAction),
+    /// Run a custom shell command
+    Custom(String),
+}
+
+/// Click action handlers for tray icons
+#[derive(Debug, Clone, Deserialize)]
+#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
+#[serde(default)]
+pub struct TrayClickHandlers {
+    /// Action to perform on left-click.
+    ///
+    /// **Valid options**: `menu`, `default`, `secondary`, `none`, or any custom shell command
+    /// <br>
+    /// **Default**: `default` (current behavior, for backwards compatibility)
+    ///
+    /// Custom commands support the following placeholders:
+    /// - `{name}` - The tray item's identifier/name
+    /// - `{title}` - The tray item's title (if available)
+    /// - `{icon}` - The tray item's icon name (if available)
+    /// - `{address}` - The tray item's internal address
+    ///
+    /// # Example
+    ///
+    /// ```corn
+    /// { on_click_left = "menu" }
+    /// { on_click_left = "notify-send 'Clicked {name}'" }
+    /// { on_click_left = "if [ '{name}' = 'copyq' ]; then copyq toggle; fi" }
+    /// ```
+    on_click_left: TrayClickAction,
+
+    /// Action to perform on right-click.
+    ///
+    /// **Valid options**: `menu`, `default`, `secondary`, `none`, or any custom shell command
+    /// <br>
+    /// **Default**: `menu`
+    on_click_right: TrayClickAction,
+
+    /// Action to perform on middle-click.
+    ///
+    /// **Valid options**: `menu`, `default`, `secondary`, `none`, or any custom shell command
+    /// <br>
+    /// **Default**: `none`
+    on_click_middle: TrayClickAction,
+
+    /// Action to perform on double-left-click.
+    ///
+    /// **Valid options**: `menu`, `default`, `secondary`, `none`, or any custom shell command
+    /// <br>
+    /// **Default**: `none`
+    on_click_left_double: TrayClickAction,
+
+    /// Action to perform on double-right-click.
+    ///
+    /// **Valid options**: `menu`, `default`, `secondary`, `none`, or any custom shell command
+    /// <br>
+    /// **Default**: `none`
+    on_click_right_double: TrayClickAction,
+
+    /// Action to perform on double-middle-click.
+    ///
+    /// **Valid options**: `menu`, `default`, `secondary`, `none`, or any custom shell command
+    /// <br>
+    /// **Default**: `none`
+    on_click_middle_double: TrayClickAction,
+}
+
+impl Default for TrayClickHandlers {
+    fn default() -> Self {
+        Self {
+            on_click_left: TrayClickAction::Reserved(ReservedTrayAction::Default),
+            on_click_right: TrayClickAction::Reserved(ReservedTrayAction::Menu),
+            on_click_middle: TrayClickAction::Reserved(ReservedTrayAction::None),
+            on_click_left_double: TrayClickAction::Reserved(ReservedTrayAction::None),
+            on_click_right_double: TrayClickAction::Reserved(ReservedTrayAction::None),
+            on_click_middle_double: TrayClickAction::Reserved(ReservedTrayAction::None),
+        }
+    }
+}
+
+impl TrayClickAction {
+    /// Returns true if this action is not None
+    pub fn is_actionable(&self) -> bool {
+        !matches!(self, Self::Reserved(ReservedTrayAction::None))
+    }
+}
+
+impl Default for TrayClickAction {
+    fn default() -> Self {
+        Self::Reserved(ReservedTrayAction::None)
+    }
+}
+
 #[derive(Debug, Deserialize, Clone)]
 #[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
 #[serde(default)]
@@ -39,6 +160,10 @@ pub struct TrayModule {
     /// **Default**: `horizontal` for horizontal bars, `vertical` for vertical bars
     direction: Option<ModuleOrientation>,
 
+    /// Click action handlers for tray icons
+    #[serde(flatten)]
+    click_handlers: TrayClickHandlers,
+
     /// See [common options](module-level-options#common-options).
     #[serde(flatten)]
     pub common: Option<CommonConfig>,
@@ -50,6 +175,7 @@ impl Default for TrayModule {
             prefer_theme_icons: true,
             icon_size: default::IconSize::Tiny as u32,
             direction: None,
+            click_handlers: TrayClickHandlers::default(),
             common: Some(CommonConfig::default()),
         }
     }
@@ -128,18 +254,23 @@ impl Module<gtk::Box> for TrayModule {
             let activated_channel = context.controller_tx.clone();
 
             let provider = context.ironbar.image_provider();
-            let icon_theme = provider.icon_theme();
+            let icon_config = IconConfig {
+                theme: provider.icon_theme().clone(),
+                size: self.icon_size,
+                prefer_theme: self.prefer_theme_icons,
+            };
 
             // listen for UI updates
+            let click_handlers = self.click_handlers.clone();
+
             context.subscribe().recv_glib((), move |(), update| {
                 on_update(
                     update,
                     &container,
                     &mut menus,
-                    &icon_theme,
-                    self.icon_size,
-                    self.prefer_theme_icons,
+                    &icon_config,
                     &activated_channel,
+                    &click_handlers,
                 );
             });
         };
@@ -157,21 +288,26 @@ fn on_update(
     update: Event,
     container: &gtk::Box,
     menus: &mut HashMap<Box<str>, TrayMenu>,
-    icon_theme: &IconTheme,
-    icon_size: u32,
-    prefer_icons: bool,
+    icon_config: &IconConfig,
     activated_channel: &mpsc::Sender<ActivateRequest>,
+    click_handlers: &TrayClickHandlers,
 ) {
     match update {
         Event::Add(address, item) => {
             debug!("Received new tray item at '{address}': {item:?}");
 
-            let mut menu_item = TrayMenu::new(&address, *item, activated_channel.clone());
+            let mut menu_item =
+                TrayMenu::new(&address, *item, activated_channel.clone(), click_handlers);
 
             let x: Option<&gtk::Widget> = None;
             container.insert_child_after(&menu_item.widget, x);
 
-            if let Ok(image) = icon::get_image(&menu_item, icon_size, prefer_icons, icon_theme) {
+            if let Ok(image) = icon::get_image(
+                &menu_item,
+                icon_config.size,
+                icon_config.prefer_theme,
+                &icon_config.theme,
+            ) {
                 menu_item.set_image(&image);
             } else {
                 let label = menu_item.title.clone().unwrap_or(address.clone());
@@ -201,7 +337,12 @@ fn on_update(
 
                     if icon_name.as_ref() != menu_item.icon_name() {
                         menu_item.set_icon_name(icon_name);
-                        match icon::get_image(menu_item, icon_size, prefer_icons, icon_theme) {
+                        match icon::get_image(
+                            menu_item,
+                            icon_config.size,
+                            icon_config.prefer_theme,
+                            &icon_config.theme,
+                        ) {
                             Ok(image) => menu_item.set_image(&image),
                             Err(e) => {
                                 error!("error loading icon: {e}");
