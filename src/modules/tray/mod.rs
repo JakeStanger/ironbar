@@ -17,6 +17,13 @@ use system_tray::client::{ActivateRequest, UpdateEvent};
 use tokio::sync::mpsc;
 use tracing::{debug, error, trace, warn};
 
+/// Icon configuration for tray items
+struct IconConfig {
+    theme: IconTheme,
+    size: u32,
+    prefer_theme: bool,
+}
+
 /// Reserved tray click actions
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
 #[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
@@ -247,7 +254,11 @@ impl Module<gtk::Box> for TrayModule {
             let activated_channel = context.controller_tx.clone();
 
             let provider = context.ironbar.image_provider();
-            let icon_theme = provider.icon_theme();
+            let icon_config = IconConfig {
+                theme: provider.icon_theme().clone(),
+                size: self.icon_size,
+                prefer_theme: self.prefer_theme_icons,
+            };
 
             // listen for UI updates
             let click_handlers = self.click_handlers.clone();
@@ -257,9 +268,7 @@ impl Module<gtk::Box> for TrayModule {
                     update,
                     &container,
                     &mut menus,
-                    &icon_theme,
-                    self.icon_size,
-                    self.prefer_theme_icons,
+                    &icon_config,
                     &activated_channel,
                     &click_handlers,
                 );
@@ -279,9 +288,7 @@ fn on_update(
     update: Event,
     container: &gtk::Box,
     menus: &mut HashMap<Box<str>, TrayMenu>,
-    icon_theme: &IconTheme,
-    icon_size: u32,
-    prefer_icons: bool,
+    icon_config: &IconConfig,
     activated_channel: &mpsc::Sender<ActivateRequest>,
     click_handlers: &TrayClickHandlers,
 ) {
@@ -295,7 +302,12 @@ fn on_update(
             let x: Option<&gtk::Widget> = None;
             container.insert_child_after(&menu_item.widget, x);
 
-            if let Ok(image) = icon::get_image(&menu_item, icon_size, prefer_icons, icon_theme) {
+            if let Ok(image) = icon::get_image(
+                &menu_item,
+                icon_config.size,
+                icon_config.prefer_theme,
+                &icon_config.theme,
+            ) {
                 menu_item.set_image(&image);
             } else {
                 let label = menu_item.title.clone().unwrap_or(address.clone());
@@ -325,7 +337,12 @@ fn on_update(
 
                     if icon_name.as_ref() != menu_item.icon_name() {
                         menu_item.set_icon_name(icon_name);
-                        match icon::get_image(menu_item, icon_size, prefer_icons, icon_theme) {
+                        match icon::get_image(
+                            menu_item,
+                            icon_config.size,
+                            icon_config.prefer_theme,
+                            &icon_config.theme,
+                        ) {
                             Ok(image) => menu_item.set_image(&image),
                             Err(e) => {
                                 error!("error loading icon: {e}");
