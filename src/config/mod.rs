@@ -428,7 +428,7 @@ impl Default for BarConfig {
     }
 }
 
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Deserialize, Clone, Default)]
 #[cfg_attr(feature = "extras", derive(JsonSchema))]
 #[serde(default)]
 pub struct Config {
@@ -490,25 +490,8 @@ pub struct Config {
     /// Can be set to a number (e.g., `250`) or `"gtk"` to use GTK's setting.
     ///
     /// **Default**: `250`
-    #[serde(default = "default_double_click_time")]
+    #[serde(default)]
     pub double_click_time: DoubleClickTime,
-}
-
-fn default_double_click_time() -> DoubleClickTime {
-    DoubleClickTime::Ms(250)
-}
-
-impl Default for Config {
-    fn default() -> Self {
-        Self {
-            ironvar_defaults: None,
-            bar: BarConfig::default(),
-            monitors: None,
-            icon_theme: None,
-            icon_overrides: HashMap::new(),
-            double_click_time: default_double_click_time(),
-        }
-    }
 }
 
 /// Double-click time configuration
@@ -527,6 +510,12 @@ pub enum DoubleClickTime {
 #[serde(rename_all = "lowercase")]
 pub enum DoubleClickTimeKeyword {
     Gtk,
+}
+
+impl Default for DoubleClickTime {
+    fn default() -> Self {
+        Self::Ms(250)
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
