@@ -1,7 +1,7 @@
 use crate::channels::{AsyncSenderExt, BroadcastReceiverExt};
 use crate::clients::volume::{self, Event};
-use crate::config::{CommonConfig, LayoutConfig, TruncateMode};
-use crate::gtk_helpers::IronbarLabelExt;
+use crate::config::{CommonConfig, LayoutConfig, MarqueeMode, TruncateMode};
+use crate::gtk_helpers::{self, IronbarLabelExt};
 use crate::modules::{
     Module, ModuleInfo, ModuleParts, ModulePopup, ModuleUpdateEvent, PopupButton, WidgetContext,
 };
@@ -46,6 +46,10 @@ pub struct VolumeModule {
     /// **Default**: `null`
     pub(crate) truncate: Option<TruncateMode>,
 
+    /// See [marquee options](module-level-options#marquee-mode).
+    #[serde(default)]
+    pub(crate) marquee: MarqueeMode,
+
     /// See [layout options](module-level-options#layout)
     #[serde(default, flatten)]
     layout: LayoutConfig,
@@ -62,6 +66,7 @@ impl Default for VolumeModule {
             max_volume: 100.0,
             icons: Icons::default(),
             truncate: None,
+            marquee: MarqueeMode::default(),
             layout: LayoutConfig::default(),
             common: Some(CommonConfig::default()),
         }
@@ -449,6 +454,16 @@ impl Module<Button> for VolumeModule {
 
                         if let Some(truncate) = self.truncate {
                             label.truncate(truncate);
+                            item_container.append(&label);
+                        } else if self.marquee.enable {
+                            let scrolled = gtk_helpers::create_marquee_widget(
+                                &label,
+                                &info.name,
+                                self.marquee.clone(),
+                            );
+                            item_container.append(&scrolled);
+                        } else {
+                            item_container.append(&label);
                         }
 
                         let slider = Scale::builder().sensitive(info.can_set_volume).build();
@@ -485,7 +500,6 @@ impl Module<Button> for VolumeModule {
                             });
                         }
 
-                        item_container.append(&label);
                         item_container.append(&slider);
                         item_container.append(&btn_mute);
 
@@ -498,12 +512,34 @@ impl Module<Button> for VolumeModule {
                                 label,
                                 slider,
                                 btn_mute,
+                                label_raw: info.name.clone(),
                             },
                         );
                     }
                     Event::UpdateInput(info) => {
-                        if let Some(ui) = inputs.get(&info.index) {
-                            ui.label.set_label(&info.name);
+                        if let Some(ui) = inputs.get_mut(&info.index) {
+                            // Recreate title widget if name changed and marquee is enabled
+                            // (needed to reset marquee scrolling state)
+                            if self.marquee.enable && ui.label_raw != info.name {
+                                if let Some(old_widget) = ui.container.first_child() {
+                                    ui.container.remove(&old_widget);
+                                }
+
+                                let label = Label::new(Some(&info.name));
+                                label.add_css_class("title");
+
+                                let scrolled = gtk_helpers::create_marquee_widget(
+                                    &label,
+                                    &info.name,
+                                    self.marquee.clone(),
+                                );
+                                ui.container.prepend(&scrolled);
+                                ui.label = label;
+                                ui.label_raw = info.name.clone();
+                            } else if ui.label_raw != info.name {
+                                ui.label.set_label(&info.name);
+                                ui.label_raw = info.name.clone();
+                            }
 
                             if !ui.slider.has_css_class("dragging") {
                                 ui.slider.set_value(info.volume.percent());
@@ -534,4 +570,6 @@ struct InputUi {
     label: Label,
     slider: Scale,
     btn_mute: ToggleButton,
+    // Store original (unformatted) title to detect change when marquee is enabled
+    label_raw: String,
 }
