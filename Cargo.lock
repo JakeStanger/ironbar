@@ -2004,6 +2004,7 @@ dependencies = [
  "gtk4-layer-shell",
  "hyprland",
  "indexmap",
+ "libcorn",
  "libpulse-binding",
  "lua-src",
  "mlua",
@@ -2015,6 +2016,7 @@ dependencies = [
  "schemars",
  "serde",
  "serde_json",
+ "serde_norway",
  "smithay-client-toolkit",
  "strip-ansi-escapes",
  "swayipc-async",
@@ -2022,6 +2024,7 @@ dependencies = [
  "system-tray",
  "thiserror 2.0.18",
  "tokio",
+ "toml 0.9.8",
  "tracing",
  "tracing-appender",
  "tracing-error",
@@ -2125,16 +2128,15 @@ checksum = "37c93d8daa9d8a012fd8ab92f088405fb202ea0b6ab73ee2482ae66af4f42091"
 
 [[package]]
 name = "libcorn"
-version = "0.10.0"
+version = "0.10.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "deeaa03b640fc4dbe8cbc3aadff0e825c994d63b4d99b7589a484029fbd54ae1"
+checksum = "4cbe123d43f1351417f3b13e643bfce6c32590ca218226f1dc0c0dc9de2fbcdc"
 dependencies = [
- "cfg-if",
  "indexmap",
  "pest",
  "pest_derive",
  "serde",
- "thiserror 1.0.69",
+ "thiserror 2.0.18",
 ]
 
 [[package]]
@@ -3144,6 +3146,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "eded382c5f5f786b989652c49544c4877d9f015cc22e145a5ea8ea66c2921cd2"
 
 [[package]]
+name = "ryu"
+version = "1.0.22"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a50f4cf475b65d88e057964e0e9bb1f0aa9bbb2036dc65c64596b42932536984"
+
+[[package]]
 name = "same-file"
 version = "1.0.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3274,6 +3282,19 @@ dependencies = [
  "serde",
  "serde_core",
  "zmij",
+]
+
+[[package]]
+name = "serde_norway"
+version = "0.9.42"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e408f29489b5fd500fab51ff1484fc859bb655f32c671f307dcd733b72e8168c"
+dependencies = [
+ "indexmap",
+ "itoa",
+ "ryu",
+ "serde",
+ "unsafe-libyaml-norway",
 ]
 
 [[package]]
@@ -3792,10 +3813,12 @@ version = "0.9.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f0dc8b1fb61449e27716ec0e1bdf0f6b8f3e8f6b05391e8497b8b6d7804ea6d8"
 dependencies = [
+ "indexmap",
  "serde_core",
  "serde_spanned 1.0.3",
  "toml_datetime 0.7.3",
  "toml_parser",
+ "toml_writer",
  "winnow",
 ]
 
@@ -3850,6 +3873,12 @@ checksum = "c0cbe268d35bdb4bb5a56a2de88d0ad0eb70af5384a99d648cd4b3d04039800e"
 dependencies = [
  "winnow",
 ]
+
+[[package]]
+name = "toml_writer"
+version = "1.0.6+spec-1.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ab16f14aed21ee8bfd8ec22513f7287cd4a91aa92e44edfe2c17ddd004e92607"
 
 [[package]]
 name = "tower"
@@ -4032,6 +4061,12 @@ name = "unicode-xid"
 version = "0.2.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ebc1c04c71510c7f702b52b7c350734c9ff1295c464a03335b00bb84fc54f853"
+
+[[package]]
+name = "unsafe-libyaml-norway"
+version = "0.2.15"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b39abd59bf32521c7f2301b52d05a6a2c975b6003521cbd0c6dc1582f0a22104"
 
 [[package]]
 name = "untrusted"

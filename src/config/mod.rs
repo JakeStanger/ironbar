@@ -3,6 +3,7 @@ pub mod default;
 mod r#impl;
 mod layout;
 mod marquee;
+mod thresholds;
 mod truncate;
 
 #[cfg(feature = "battery")]
@@ -51,6 +52,7 @@ use crate::modules::workspaces::WorkspacesModule;
 pub use self::common::{CommonConfig, ModuleJustification, ModuleOrientation, TransitionType};
 pub use self::layout::LayoutConfig;
 pub use self::marquee::{MarqueeMode, MarqueeOnHover};
+pub use self::thresholds::Thresholds;
 pub use self::truncate::{EllipsizeMode, TruncateMode};
 
 use gtk::prelude::ObjectExt;
