@@ -1,6 +1,6 @@
 name: PR Update
 on:
-  pull_request:
+  pull_request_target:
 
 jobs:
   label_pr:
