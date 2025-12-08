@@ -1,9 +1,13 @@
 use crate::config::TruncateMode;
 use glib::{SignalHandlerId, markup_escape_text};
 use gtk::gdk::{BUTTON_MIDDLE, BUTTON_PRIMARY, BUTTON_SECONDARY, Paintable};
+use gtk::glib;
 use gtk::pango::EllipsizeMode;
 use gtk::prelude::*;
 use gtk::{EventSequenceState, GestureClick, Label, Snapshot, Widget};
+use std::cell::Cell;
+use std::rc::Rc;
+use std::time::Duration;
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 #[repr(u32)]
@@ -28,6 +32,19 @@ pub trait IronbarGtkExt {
     fn connect_pressed<F>(&self, button: MouseButton, f: F) -> SignalHandlerId
     where
         F: Fn() + 'static;
+
+    /// Adds a `GestureClick` controller with separate handlers for single and double clicks.
+    /// Single-click is delayed by the double-click timeout (250ms) to distinguish from double-clicks.
+    /// If `on_double` is None, behaves like `connect_pressed` with no delay.
+    fn connect_pressed_with_double_click<F1, F2>(
+        &self,
+        button: MouseButton,
+        on_single: F1,
+        on_double: Option<F2>,
+    ) -> SignalHandlerId
+    where
+        F1: Fn() + 'static,
+        F2: Fn() + 'static;
 }
 
 impl<W: IsA<Widget>> IronbarGtkExt for W {
@@ -56,6 +73,83 @@ impl<W: IsA<Widget>> IronbarGtkExt for W {
         let id = controller.connect_pressed(move |gesture, _, _, _| {
             gesture.set_state(EventSequenceState::Claimed);
             f();
+        });
+
+        self.add_controller(controller);
+        id
+    }
+
+    fn connect_pressed_with_double_click<F1, F2>(
+        &self,
+        button: MouseButton,
+        on_single: F1,
+        on_double: Option<F2>,
+    ) -> SignalHandlerId
+    where
+        F1: Fn() + 'static,
+        F2: Fn() + 'static,
+    {
+        let controller = GestureClick::new();
+
+        if button != MouseButton::Any {
+            controller.set_button(button as u32);
+        }
+
+        // If no double-click handler provided, behave like regular connect_pressed
+        let Some(on_double) = on_double else {
+            let id = controller.connect_pressed(move |gesture, _, _, _| {
+                gesture.set_state(EventSequenceState::Claimed);
+                on_single();
+            });
+            self.add_controller(controller);
+            return id;
+        };
+
+        // Wrap callbacks in Rc to make them cloneable
+        let on_single = Rc::new(on_single);
+        let on_double = Rc::new(on_double);
+
+        // Track pending single-click timeout to cancel if double-click occurs
+        let pending_single_click: Rc<Cell<Option<glib::SourceId>>> = Rc::new(Cell::new(None));
+
+        let id = controller.connect_pressed(move |gesture, n_press, _, _| {
+            gesture.set_state(EventSequenceState::Claimed);
+
+            match n_press {
+                1 => {
+                    // Single click: delay action to see if double-click comes
+                    let on_single = on_single.clone();
+                    let pending = pending_single_click.clone();
+
+                    // Cancel any existing pending single-click
+                    if let Some(source_id) = pending.take() {
+                        source_id.remove();
+                    }
+
+                    // Schedule single-click action after double-click timeout
+                    let timeout_ms = crate::config::get_double_click_time_ms();
+                    let source_id = glib::timeout_add_local_once(
+                        Duration::from_millis(timeout_ms),
+                        move || {
+                            on_single();
+                            pending.set(None);
+                        },
+                    );
+
+                    pending_single_click.set(Some(source_id));
+                }
+                2 => {
+                    // Double click: cancel pending single-click and execute double-click action
+                    if let Some(source_id) = pending_single_click.take() {
+                        source_id.remove();
+                    }
+
+                    on_double();
+                }
+                _ => {
+                    // Ignore triple-clicks and beyond
+                }
+            }
         });
 
         self.add_controller(controller);

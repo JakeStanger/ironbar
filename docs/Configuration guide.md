@@ -293,12 +293,13 @@ Check [here](config) for an example config file for a fully configured bar in ea
 
 The following table lists each of the top-level bar config options:
 
-| Name               | Type                                    | Default | Description                                                                                                                    |
-|--------------------|-----------------------------------------|---------|--------------------------------------------------------------------------------------------------------------------------------|
-| `ironvar_defaults` | `Map<string, string>`                   | `{}`    | Map of [ironvar](ironvars) keys against their default values.                                                                  |
-| `monitors`         | `Map<string, BarConfig or BarConfig[]>` | `null`  | Map of monitor names against bar configs.                                                                                      |
-| `icon_theme`       | `string`                                | `null`  | Name of the GTK icon theme to use. Leave blank to use default.                                                                 |
-| `icon_overrides`   | `Map<string, string>`                   | `{}`    | Map of image inputs to override names. Usually used for app IDs (or classes) to icon names, overriding the app's default icon. |
+| Name                | Type                                    | Default | Description                                                                                                                    |
+|---------------------|-----------------------------------------|---------|--------------------------------------------------------------------------------------------------------------------------------|
+| `ironvar_defaults`  | `Map<string, string>`                   | `{}`    | Map of [ironvar](ironvars) keys against their default values.                                                                  |
+| `monitors`          | `Map<string, BarConfig or BarConfig[]>` | `null`  | Map of monitor names against bar configs.                                                                                      |
+| `icon_theme`        | `string`                                | `null`  | Name of the GTK icon theme to use. Leave blank to use default.                                                                 |
+| `icon_overrides`    | `Map<string, string>`                   | `{}`    | Map of image inputs to override names. Usually used for app IDs (or classes) to icon names, overriding the app's default icon. |
+| `double_click_time` | `integer` or `"gtk"`                    | `250`   | Time in milliseconds to wait for a double-click. Set to `"gtk"` to use GTK's setting.                                          |
 
 > [!TIP]
 > `monitors` is only required if you are following **2b** or **2c** (ie not the same bar across all monitors).
@@ -341,16 +342,19 @@ For information on the `Script` type, and embedding scripts in strings, see [her
 
 #### Events
 
-| Name                  | Type               | Default | Description                                                                                      |
-|-----------------------|--------------------|---------|--------------------------------------------------------------------------------------------------|
-| `on_click_left`       | `Script [oneshot]` | `null`  | Runs the script when the module is left clicked.                                                 |
-| `on_click_middle`     | `Script [oneshot]` | `null`  | Runs the script when the module is middle clicked.                                               |
-| `on_click_right`      | `Script [oneshot]` | `null`  | Runs the script when the module is right clicked.                                                |
-| `on_scroll_up`        | `Script [oneshot]` | `null`  | Runs the script when the module is scroll up on.                                                 |
-| `on_scroll_down`      | `Script [oneshot]` | `null`  | Runs the script when the module is scrolled down on.                                             |
-| `on_mouse_enter`      | `Script [oneshot]` | `null`  | Runs the script when the module is hovered over.                                                 |
-| `on_mouse_exit`       | `Script [oneshot]` | `null`  | Runs the script when the module is no longer hovered over.                                       |
-| `smooth_scroll_speed` | `float`            | `1.0`   | Speed multiplier `0.0` - `10.0` which controls scroll up/down events triggered using a trackpad. |
+| Name                     | Type               | Default | Description                                                                                      |
+|--------------------------|--------------------|---------|--------------------------------------------------------------------------------------------------|
+| `on_click_left`          | `Script [oneshot]` | `null`  | Runs the script when the module is left clicked.                                                 |
+| `on_click_left_double`   | `Script [oneshot]` | `null`  | Runs the script when the module is double-left clicked.                                          |
+| `on_click_middle`        | `Script [oneshot]` | `null`  | Runs the script when the module is middle clicked.                                               |
+| `on_click_middle_double` | `Script [oneshot]` | `null`  | Runs the script when the module is double-middle clicked.                                        |
+| `on_click_right`         | `Script [oneshot]` | `null`  | Runs the script when the module is right clicked.                                                |
+| `on_click_right_double`  | `Script [oneshot]` | `null`  | Runs the script when the module is double-right clicked.                                         |
+| `on_scroll_up`           | `Script [oneshot]` | `null`  | Runs the script when the module is scroll up on.                                                 |
+| `on_scroll_down`         | `Script [oneshot]` | `null`  | Runs the script when the module is scrolled down on.                                             |
+| `on_mouse_enter`         | `Script [oneshot]` | `null`  | Runs the script when the module is hovered over.                                                 |
+| `on_mouse_exit`          | `Script [oneshot]` | `null`  | Runs the script when the module is no longer hovered over.                                       |
+| `smooth_scroll_speed`    | `float`            | `1.0`   | Speed multiplier `0.0` - `10.0` which controls scroll up/down events triggered using a trackpad. |
 
 #### Visibility
 
