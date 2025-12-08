@@ -6,12 +6,23 @@ use glib::Bytes;
 use gtk::gdk::{Paintable, Texture};
 use gtk::gdk_pixbuf::Pixbuf;
 use gtk::prelude::*;
-use gtk::{IconLookupFlags, IconTheme, Picture, TextDirection};
+use gtk::{IconLookupFlags, IconPaintable, IconTheme, Picture, TextDirection};
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use tracing::{debug, trace, warn};
+
+fn lookup_icon(theme: &IconTheme, name: &str, size: i32, scale: i32) -> IconPaintable {
+    theme.lookup_icon(
+        name,
+        &[],
+        size,
+        scale,
+        TextDirection::None,
+        IconLookupFlags::empty(),
+    )
+}
 
 #[derive(Debug, Clone, Eq, Hash, PartialEq)]
 struct ImageRef {
@@ -237,21 +248,9 @@ impl Provider {
         const FALLBACK_ICON_NAME: &str = "dialog-question-symbolic";
 
         let buf = match &image_ref.location {
-            Some(ImageLocation::Icon(name)) => {
-                Ok(Some(
-                    image_ref
-                        .theme
-                        .lookup_icon(
-                            name,
-                            &[], // setting fallback here causes issue loading some icons
-                            image_ref.size,
-                            scale,
-                            TextDirection::None,
-                            IconLookupFlags::empty(),
-                        )
-                        .upcast::<Paintable>(),
-                ))
-            }
+            Some(ImageLocation::Icon(name)) => Ok(Some(
+                lookup_icon(&image_ref.theme, name, image_ref.size, scale).upcast::<Paintable>(),
+            )),
             Some(ImageLocation::Local(path)) if path.extension().unwrap_or_default() == "svg" => {
                 let scaled_size = image_ref.size * scale;
 
@@ -310,16 +309,7 @@ impl Provider {
                     .map(|t| t.scale(image_ref.size as f64, image_ref.size as f64))
             }
             None if use_fallback => Ok(Some(
-                image_ref
-                    .theme
-                    .lookup_icon(
-                        FALLBACK_ICON_NAME,
-                        &[],
-                        image_ref.size,
-                        scale,
-                        TextDirection::None,
-                        IconLookupFlags::empty(),
-                    )
+                lookup_icon(&image_ref.theme, FALLBACK_ICON_NAME, image_ref.size, scale)
                     .upcast::<Paintable>(),
             )),
             None => Ok(None),
@@ -344,6 +334,11 @@ impl Provider {
             .borrow()
             .clone()
             .expect("theme should be set on bar init")
+    }
+
+    /// Looks up an icon from the configured icon theme.
+    pub fn lookup_icon(&self, name: &str, size: i32, scale: i32) -> IconPaintable {
+        lookup_icon(&self.icon_theme(), name, size, scale)
     }
 
     /// Sets the custom icon theme name.
