@@ -2,6 +2,7 @@ mod common;
 pub mod default;
 mod r#impl;
 mod layout;
+mod thresholds;
 mod truncate;
 
 #[cfg(feature = "battery")]
