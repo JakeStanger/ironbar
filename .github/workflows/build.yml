@@ -92,6 +92,7 @@ jobs:
         feature:
           - http
           - ipc
+          - inhibit
           - cli
           - config+all
           - config+json
