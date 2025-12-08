@@ -88,12 +88,22 @@ impl Default for FormatConfig {
 
 #[derive(Debug, Deserialize, Clone)]
 #[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
+#[serde(rename_all = "lowercase")]
+pub enum SizeLimit {
+    Devices(i32),
+    Pixels(i32),
+}
+
+#[derive(Debug, Deserialize, Clone)]
+#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
 #[serde(default)]
 pub struct PopupConfig {
-    /// Whether to make the popup scrollable or stretchable to show all of its content.
+    /// The maximum height the window can reach before scrolling.
+    /// Specify either as `pixels` or `devices`.
+    /// Leave blank to allow the popup to grow indefinitely.
     ///
-    /// **Default**: `true`
-    pub scrollable: bool,
+    /// **Default**: `Some(SizeLimit::Pixel(330))`
+    pub max_height: Option<SizeLimit>,
 
     /// Format string to use for the header of popup window.
     ///
@@ -112,7 +122,7 @@ pub struct PopupConfig {
 impl Default for PopupConfig {
     fn default() -> Self {
         Self {
-            scrollable: true,
+            max_height: Some(SizeLimit::Pixels(330)),
             header: " Enable Bluetooth".to_string(),
             disabled: "{adapter_status}".to_string(),
             device: PopupDeviceConfig::default(),

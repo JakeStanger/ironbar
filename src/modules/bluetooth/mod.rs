@@ -13,6 +13,7 @@ use crate::channels::{AsyncSenderExt, BroadcastReceiverExt};
 use crate::clients::bluetooth::{self, BluetoothDevice, BluetoothDeviceStatus, BluetoothState};
 use crate::gtk_helpers::IronbarGtkExt;
 use crate::image::IconLabel;
+use crate::modules::bluetooth::config::SizeLimit;
 use crate::modules::{
     Module, ModuleInfo, ModuleParts, ModulePopup, ModuleUpdateEvent, PopupButton, WidgetContext,
 };
@@ -298,23 +299,25 @@ impl Module<Button> for BluetoothModule {
 
         container.append(&header);
 
-        let devices = ScrolledWindow::new();
-        devices.set_policy(
-            gtk::PolicyType::Never,
-            if self.popup.scrollable {
+        let devices_window = ScrolledWindow::new();
+        let vscrollbar_policy = match self.popup.max_height {
+            Some(SizeLimit::Pixels(max_height)) if max_height > 0 => {
+                devices_window.set_max_content_height(max_height);
                 gtk::PolicyType::Automatic
-            } else {
-                gtk::PolicyType::Never
-            },
-        );
-        devices.set_vexpand(true);
-        devices.add_css_class("devices");
+            }
+            Some(SizeLimit::Devices(_)) => gtk::PolicyType::Automatic,
+            Some(SizeLimit::Pixels(_)) | None => gtk::PolicyType::Never,
+        };
+        devices_window.set_propagate_natural_height(true);
+        devices_window.set_policy(gtk::PolicyType::Never, vscrollbar_policy);
+        devices_window.set_vexpand(true);
+        devices_window.add_css_class("devices");
 
         let devices_box = gtk::Box::new(Orientation::Vertical, 0);
         devices_box.add_css_class("box");
 
-        devices.set_child(Some(&devices_box));
-        container.append(&devices);
+        devices_window.set_child(Some(&devices_box));
+        container.append(&devices_window);
 
         let disabled = gtk::Box::new(Orientation::Vertical, 0);
         disabled.add_css_class("disabled");
@@ -340,6 +343,7 @@ impl Module<Button> for BluetoothModule {
             let device_strings = self.popup.device;
             let device_status = self.device_status;
             let adapter_status = self.adapter_status;
+            let max_height = self.popup.max_height.clone();
 
             let mut enable_handle = None;
             let mut device_map = HashMap::new();
@@ -352,7 +356,7 @@ impl Module<Button> for BluetoothModule {
                     header_switch.disconnect(handle);
                 }
 
-                devices.set_visible(state.is_enabled());
+                devices_window.set_visible(state.is_enabled());
 
                 disabled.set_visible(!state.is_enabled());
                 disabled_spinner.set_visible(
@@ -467,6 +471,25 @@ impl Module<Button> for BluetoothModule {
                             false
                         }
                     });
+
+                    // If max_devices is set, measure the first N devices and set max height
+                    if let Some(SizeLimit::Devices(max_dev_count)) = max_height {
+                        let devices_to_measure = (max_dev_count as usize).min(device_map.len());
+                        let mut total_height = 0;
+
+                        for child in devices_box.children().take(devices_to_measure) {
+                            // Measure the widget's natural height
+                            let (_min, natural, _, _) = child.measure(
+                                gtk::Orientation::Vertical,
+                                -1, // No width constraint
+                            );
+                            total_height += natural;
+                        }
+
+                        if total_height > 0 {
+                            devices_window.set_max_content_height(total_height);
+                        }
+                    }
                 } else if state == BluetoothState::Disabled {
                     let tx = tx.clone();
                     enable_handle = Some(header_switch.connect_active_notify(move |switch| {
