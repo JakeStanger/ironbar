@@ -346,14 +346,11 @@ fn start_ironbar(
 /// Gets the GDK `Display` instance.
 #[must_use]
 pub fn get_display() -> Display {
-    Display::default().map_or_else(
-        || {
-            let report = Report::msg("Failed to get default GTK display");
-            error!("{:?}", report);
-            exit(ExitCode::GtkDisplay as i32)
-        },
-        |display| display,
-    )
+    Display::default().unwrap_or_else(|| {
+        let report = Report::msg("Failed to get default GTK display");
+        error!("{:?}", report);
+        exit(ExitCode::GtkDisplay as i32)
+    })
 }
 
 /// Loads all the bars associated with an output.
