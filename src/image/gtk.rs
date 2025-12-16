@@ -69,6 +69,10 @@ impl IconButton {
     pub fn label(&self) -> &Label {
         &self.label
     }
+
+    pub fn set_label(&self, input: &str) {
+        self.label.set_label_escaped(input);
+    }
 }
 
 #[cfg(any(
