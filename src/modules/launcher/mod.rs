@@ -17,7 +17,7 @@ use crate::modules::launcher::pagination::{IconContext, Pagination};
 use crate::{arc_mut, lock, module_impl, rc_mut, spawn, write_lock};
 use color_eyre::Report;
 use gtk::prelude::*;
-use gtk::{Button, Orientation};
+use gtk::{Button, EventControllerMotion, Orientation};
 use indexmap::IndexMap;
 use serde::Deserialize;
 use std::rc::Rc;
@@ -611,6 +611,12 @@ impl Module<gtk::Box> for LauncherModule {
         const MAX_WIDTH: i32 = 250;
 
         let container = gtk::Box::new(Orientation::Vertical, 0);
+
+        // Close popup when mouse leaves the popup container
+        let tx = context.tx.clone();
+        let event_controller = EventControllerMotion::new();
+        event_controller.connect_leave(move |_| tx.send_spawn(ModuleUpdateEvent::ClosePopup));
+        container.add_controller(event_controller);
 
         // we need some content to force the container to have a size
         let placeholder = Button::with_label("PLACEHOLDER");
