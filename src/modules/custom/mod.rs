@@ -237,8 +237,12 @@ impl Module<gtk::Box> for CustomModule {
             tx: &context.controller_tx,
             bar_orientation: orientation,
             popup_buttons: popup_buttons.clone(),
-            module_factory: BarModuleFactory::new(context.ironbar.clone(), context.popup.clone())
-                .into(),
+            module_factory: BarModuleFactory::new(
+                context.ironbar.clone(),
+                context.bar.clone(),
+                context.popup.clone(),
+            )
+            .into(),
             image_provider: context.ironbar.image_provider(),
         };
 
@@ -286,6 +290,7 @@ impl Module<gtk::Box> for CustomModule {
                 image_provider: context.ironbar.image_provider(),
                 module_factory: PopupModuleFactory::new(
                     context.ironbar,
+                    context.bar,
                     context.popup,
                     context.button_id,
                 )

@@ -6,6 +6,7 @@ use gtk::gdk::Monitor;
 use gtk::prelude::*;
 use gtk::{Application, ApplicationWindow, CenterBox, EventControllerMotion, Orientation, Window};
 use gtk_layer_shell::LayerShell;
+use std::cell::RefCell;
 use std::rc::Rc;
 use std::time::Duration;
 use tracing::{debug, error, info};
@@ -19,6 +20,23 @@ enum Inner {
         module_refs: Vec<ModuleRef>,
         popup: Rc<Popup>,
     },
+}
+
+#[derive(Debug, Clone)]
+struct AutohideState {
+    hotspot_window: Window,
+    lock_state: LockState,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum LockState {
+    /// No lock held on bar visibility
+    Unlocked,
+    /// Lock held on bar visibility
+    Locked,
+    /// Lock held on bar visibility
+    /// with request to hide bar as soon as lock is cleared
+    LockedPendingClose,
 }
 
 #[derive(Debug, Clone)]
@@ -36,6 +54,8 @@ pub struct Bar {
     start: gtk::Box,
     center: gtk::Box,
     end: gtk::Box,
+
+    autohide_state: Rc<RefCell<Option<AutohideState>>>,
 
     inner: Inner,
 }
@@ -86,6 +106,7 @@ impl Bar {
             start,
             center,
             end,
+            autohide_state: rc_mut!(None),
             inner: Inner::New {
                 config: Some(config),
             },
@@ -123,9 +144,10 @@ impl Bar {
         let anchor_to_edges = config.anchor_to_edges;
         let margin = config.margin;
 
-        let load_result = self.load_modules(config, monitor);
+        let instance = Rc::new(self.clone());
+        let load_result = self.load_modules(instance, config, monitor);
 
-        if let Some(autohide) = autohide {
+        let autohide_state = if let Some(autohide) = autohide {
             let hotspot_window = Window::new();
             self.setup_autohide(&hotspot_window, load_result.popup.clone(), autohide);
             self.setup_layer_shell(
@@ -140,10 +162,18 @@ impl Bar {
             if start_hidden {
                 hotspot_window.set_visible(true);
             }
-        }
+
+            Some(AutohideState {
+                lock_state: LockState::Unlocked,
+                hotspot_window,
+            })
+        } else {
+            None
+        };
 
         self.show(!start_hidden);
 
+        *self.autohide_state.borrow_mut() = autohide_state;
         self.inner = Inner::Loaded {
             popup: load_result.popup,
             module_refs: load_result.module_refs,
@@ -237,19 +267,29 @@ impl Bar {
                 let win = self.window.clone();
                 let hotspot_window = hotspot_window.clone();
                 let timeout_id = timeout_id.clone();
+                let autohide_state = self.autohide_state.clone();
 
                 popup.popover.connect_hide(move |popover| {
                     let win = win.clone();
                     let hotspot_window = hotspot_window.clone();
                     let tid = timeout_id.clone();
                     let popover = popover.clone();
+                    let autohide_state = autohide_state.clone();
 
                     *timeout_id.borrow_mut() = Some(glib::timeout_add_local_once(
                         Duration::from_millis(timeout),
                         move || {
                             if !popover.is_visible() {
-                                win.set_visible(false);
-                                hotspot_window.set_visible(true);
+                                let mut autohide_state = autohide_state.borrow_mut();
+                                if autohide_state.as_ref().map(|state| state.lock_state)
+                                    == Some(LockState::Locked)
+                                {
+                                    autohide_state.as_mut().expect("to have value").lock_state =
+                                        LockState::LockedPendingClose;
+                                } else {
+                                    win.set_visible(false);
+                                    hotspot_window.set_visible(true);
+                                }
                             }
 
                             *tid.borrow_mut() = None;
@@ -262,19 +302,29 @@ impl Bar {
                 let win = self.window.clone();
                 let hotspot_window = hotspot_window.clone();
                 let timeout_id = timeout_id.clone();
+                let autohide_state = self.autohide_state.clone();
 
                 event_controller.connect_leave(move |_| {
                     let win = win.clone();
                     let hotspot_window = hotspot_window.clone();
                     let tid = timeout_id.clone();
                     let popup = popup.clone();
+                    let autohide_state = autohide_state.clone();
 
                     *timeout_id.borrow_mut() = Some(glib::timeout_add_local_once(
                         Duration::from_millis(timeout),
                         move || {
                             if !popup.visible() {
-                                win.set_visible(false);
-                                hotspot_window.set_visible(true);
+                                let mut autohide_state = autohide_state.borrow_mut();
+                                if autohide_state.as_ref().map(|state| state.lock_state)
+                                    == Some(LockState::Locked)
+                                {
+                                    autohide_state.as_mut().expect("to have value").lock_state =
+                                        LockState::LockedPendingClose;
+                                } else {
+                                    win.set_visible(false);
+                                    hotspot_window.set_visible(true);
+                                }
                             }
 
                             *tid.borrow_mut() = None;
@@ -308,7 +358,12 @@ impl Bar {
     }
 
     /// Loads the configured modules onto a bar.
-    fn load_modules(&self, config: BarConfig, monitor: &Monitor) -> BarLoadResult {
+    fn load_modules(
+        &self,
+        instance: Rc<Bar>,
+        config: BarConfig,
+        monitor: &Monitor,
+    ) -> BarLoadResult {
         let app = &self.window.application().expect("to exist");
 
         macro_rules! info {
@@ -342,6 +397,7 @@ impl Bar {
                 modules,
                 &info,
                 &self.ironbar,
+                &instance,
                 &popup,
             ));
         }
@@ -355,6 +411,7 @@ impl Bar {
                 modules,
                 &info,
                 &self.ironbar,
+                &instance,
                 &popup,
             ));
         }
@@ -368,6 +425,7 @@ impl Bar {
                 modules,
                 &info,
                 &self.ironbar,
+                &instance,
                 &popup,
             ));
         }
@@ -428,6 +486,21 @@ impl Bar {
         }
     }
 
+    pub fn set_locked(&self, locked: bool) {
+        let mut autohide_state = self.autohide_state.borrow_mut();
+        let Some(autohide_state) = autohide_state.as_mut() else {
+            return;
+        };
+
+        if locked {
+            autohide_state.lock_state = LockState::Locked;
+        } else if autohide_state.lock_state == LockState::LockedPendingClose {
+            self.window.set_visible(false);
+            autohide_state.hotspot_window.set_visible(true);
+            autohide_state.lock_state = LockState::Unlocked;
+        }
+    }
+
     pub fn modules(&self) -> &[ModuleRef] {
         match &self.inner {
             Inner::New { .. } => {
@@ -463,9 +536,10 @@ fn add_modules(
     modules: Vec<ModuleConfig>,
     info: &ModuleInfo,
     ironbar: &Rc<Ironbar>,
+    slf: &Rc<Bar>,
     popup: &Rc<Popup>,
 ) -> Vec<ModuleRef> {
-    let module_factory = BarModuleFactory::new(ironbar.clone(), popup.clone()).into();
+    let module_factory = BarModuleFactory::new(ironbar.clone(), slf.clone(), popup.clone()).into();
 
     let mut results = vec![];
     for config in modules {

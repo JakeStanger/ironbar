@@ -4,7 +4,7 @@ mod interface;
 use crate::channels::{AsyncSenderExt, BroadcastReceiverExt};
 use crate::clients::tray;
 use crate::config::{CommonConfig, ModuleOrientation, default};
-use crate::modules::{Module, ModuleInfo, ModuleParts, WidgetContext};
+use crate::modules::{Module, ModuleInfo, ModuleParts, ModuleUpdateEvent, WidgetContext};
 use crate::{lock, module_impl, spawn};
 use color_eyre::{Report, Result};
 use gtk::prelude::*;
@@ -181,9 +181,14 @@ impl Default for TrayModule {
     }
 }
 
+pub enum UiEvent {
+    Menu(bool),
+    Activate(ActivateRequest),
+}
+
 impl Module<gtk::Box> for TrayModule {
     type SendMessage = Event;
-    type ReceiveMessage = ActivateRequest;
+    type ReceiveMessage = UiEvent;
 
     module_impl!("tray");
 
@@ -204,29 +209,39 @@ impl Module<gtk::Box> for TrayModule {
         };
 
         // listen to tray updates
-        spawn(async move {
-            for (key, (item, menu)) in initial_items {
-                tx.send_update(Event::Add(key.clone(), item.into())).await;
+        spawn({
+            let tx = tx.clone();
+            async move {
+                for (key, (item, menu)) in initial_items {
+                    tx.send_update(Event::Add(key.clone(), item.into())).await;
 
-                if let Some(menu) = menu.clone() {
-                    tx.send_update(Event::Update(key, UpdateEvent::Menu(menu)))
-                        .await;
+                    if let Some(menu) = menu.clone() {
+                        tx.send_update(Event::Update(key, UpdateEvent::Menu(menu)))
+                            .await;
+                    }
                 }
-            }
 
-            while let Ok(message) = tray_rx.recv().await {
-                tx.send_update(message).await;
+                while let Ok(message) = tray_rx.recv().await {
+                    tx.send_update(message).await;
+                }
             }
         });
 
         // send tray commands
         spawn(async move {
             while let Some(cmd) = rx.recv().await {
-                debug!("start activation");
-                if let Err(err) = client.activate(cmd).await {
-                    error!("{err:?}");
+                match cmd {
+                    UiEvent::Menu(open) => {
+                        tx.send_expect(ModuleUpdateEvent::LockVisible(open)).await;
+                    }
+                    UiEvent::Activate(action) => {
+                        debug!("activating: {action:?}");
+                        if let Err(err) = client.activate(action).await {
+                            error!("{err:?}");
+                        }
+                        trace!("end activation");
+                    }
                 }
-                debug!("end activation");
             }
 
             Ok::<_, Report>(())
@@ -280,6 +295,18 @@ impl Module<gtk::Box> for TrayModule {
             popup: None,
         })
     }
+
+    fn into_popup(
+        self,
+        _context: WidgetContext<Self::SendMessage, Self::ReceiveMessage>,
+        info: &ModuleInfo,
+    ) -> Option<gtk::Box>
+    where
+        Self: Sized,
+        <Self as Module<gtk::Box>>::SendMessage: Clone,
+    {
+        Some(gtk::Box::new(info.bar_position.orientation(), 0))
+    }
 }
 
 /// Handles UI updates as callback,
@@ -289,7 +316,7 @@ fn on_update(
     container: &gtk::Box,
     menus: &mut HashMap<Box<str>, TrayMenu>,
     icon_config: &IconConfig,
-    activated_channel: &mpsc::Sender<ActivateRequest>,
+    activated_channel: &mpsc::Sender<UiEvent>,
     click_handlers: &TrayClickHandlers,
 ) {
     match update {

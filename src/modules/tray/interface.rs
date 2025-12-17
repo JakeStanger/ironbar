@@ -1,6 +1,6 @@
 use crate::channels::AsyncSenderExt;
 use crate::gtk_helpers::{IronbarGtkExt, MouseButton};
-use crate::modules::tray::{ReservedTrayAction, TrayClickAction, TrayClickHandlers};
+use crate::modules::tray::{ReservedTrayAction, TrayClickAction, TrayClickHandlers, UiEvent};
 use crate::script::Script;
 use crate::spawn;
 use glib::{Bytes, VariantTy};
@@ -24,7 +24,7 @@ pub(crate) struct TrayMenu {
     pub popover: PopoverMenu,
     image_widget: Option<Picture>,
     label_widget: Option<Label>,
-    activated_channel: mpsc::Sender<ActivateRequest>,
+    tx: mpsc::Sender<UiEvent>,
     path: Option<String>,
     address: String,
 
@@ -38,7 +38,7 @@ impl TrayMenu {
     pub fn new(
         address: &str,
         item: StatusNotifierItem,
-        activated_channel: mpsc::Sender<ActivateRequest>,
+        tx: mpsc::Sender<UiEvent>,
         click_handlers: &TrayClickHandlers,
     ) -> Self {
         let popover = PopoverMenu::builder().build(); // no `new` and we do not have a model yet
@@ -58,8 +58,8 @@ impl TrayMenu {
 
         // Helper to execute a tray click action
         let execute_action = |action: TrayClickAction,
-                              pe: &PopoverMenu,
-                              tx: &mpsc::Sender<ActivateRequest>,
+                              popover: &PopoverMenu,
+                              tx: &mpsc::Sender<UiEvent>,
                               address: &str,
                               has_menu: bool,
                               name: &str,
@@ -68,31 +68,33 @@ impl TrayMenu {
             match action {
                 TrayClickAction::Reserved(ReservedTrayAction::Menu) => {
                     trace!("TrayClickAction::Reserved(Menu)");
-                    pe.popup();
-                    // If no menu exists, send secondary activation
-                    if !has_menu {
-                        tx.send_spawn(ActivateRequest::Secondary {
+
+                    if has_menu {
+                        popover.popup();
+                        tx.send_spawn(UiEvent::Menu(true));
+                    } else {
+                        tx.send_spawn(UiEvent::Activate(ActivateRequest::Secondary {
                             address: address.to_owned(),
                             x: 0,
                             y: 0,
-                        });
+                        }));
                     }
                 }
                 TrayClickAction::Reserved(ReservedTrayAction::Default) => {
                     trace!("TrayClickAction::Reserved(Default)");
-                    tx.send_spawn(ActivateRequest::Default {
+                    tx.send_spawn(UiEvent::Activate(ActivateRequest::Default {
                         address: address.to_owned(),
                         x: 0,
                         y: 0,
-                    });
+                    }));
                 }
                 TrayClickAction::Reserved(ReservedTrayAction::Secondary) => {
                     trace!("TrayClickAction::Reserved(Secondary)");
-                    tx.send_spawn(ActivateRequest::Secondary {
+                    tx.send_spawn(UiEvent::Activate(ActivateRequest::Secondary {
                         address: address.to_owned(),
                         x: 0,
                         y: 0,
-                    });
+                    }));
                 }
                 TrayClickAction::Reserved(ReservedTrayAction::None) => {
                     trace!("TrayClickAction::Reserved(None) (ignoring)");
@@ -121,7 +123,7 @@ impl TrayMenu {
         // Helper to create a click handler closure with all necessary context
         let make_handler = |action: &TrayClickAction| {
             let pe = popover.clone();
-            let tx = activated_channel.clone();
+            let tx = tx.clone();
             let address_owned = address.to_owned();
             let action = action.clone();
             let name = item_name.clone();
@@ -195,13 +197,18 @@ impl TrayMenu {
             widget.add_css_class("urgent");
         }
 
+        popover.connect_hide({
+            let tx = tx.clone();
+            move |_| tx.send_spawn(UiEvent::Menu(false))
+        });
+
         Self {
             box_content: content,
             widget,
             popover,
             image_widget: None,
             label_widget: None,
-            activated_channel,
+            tx,
             title: item.title,
             icon_name: item.icon_name,
             icon_theme_path: item.icon_theme_path,
@@ -314,7 +321,7 @@ impl TrayMenu {
         action_group: &SimpleActionGroup,
     ) -> String {
         let action_name = format!("action_{}", sub.id);
-        let tx = self.activated_channel.clone();
+        let tx = self.tx.clone();
         let id = sub.id;
         let action = SimpleAction::new(&action_name, None);
         let address = self.address.clone();
@@ -334,7 +341,7 @@ impl TrayMenu {
         value: bool,
     ) -> String {
         let action_name = format!("action_{}", sub.id);
-        let tx = self.activated_channel.clone();
+        let tx = self.tx.clone();
         let id = sub.id;
         let action = SimpleAction::new_stateful(&action_name, None, &value.to_variant());
 
@@ -369,7 +376,7 @@ impl TrayMenu {
         selected: bool,
     ) -> String {
         let action_name = format!("action_radio_{radio_group}");
-        let tx = self.activated_channel.clone();
+        let tx = self.tx.clone();
         let id = sub.id;
 
         let action =
@@ -558,15 +565,15 @@ impl TrayMenu {
     }
 }
 
-fn activate(tx: &mpsc::Sender<ActivateRequest>, address: &str, path: &str, id: i32) {
+fn activate(tx: &mpsc::Sender<UiEvent>, address: &str, path: &str, id: i32) {
     trace!("activated {},{}, {}", address, path, id);
     let tx = tx.clone();
     let address = address.to_string();
     let path = path.to_string();
 
-    tx.send_spawn(ActivateRequest::MenuItem {
+    tx.send_spawn(UiEvent::Activate(ActivateRequest::MenuItem {
         address,
         menu_path: path,
         submenu_id: id,
-    });
+    }));
 }
