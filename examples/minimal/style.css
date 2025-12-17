@@ -13,11 +13,13 @@
     border-radius: 0;
     border: none;
     box-shadow: none;
+    background-image: none;
     font-family: monospace;
 }
 
 #bar, popover, popover contents, calendar {
     background-color: var(--color-dark-primary);
+    color: var(--color-white);
 }
 
 box, button, label {
@@ -43,6 +45,7 @@ button:hover, button:active {
 
 .clock {
     font-weight: bold;
+    color: var(--color-white);
 }
 
 .popup-clock .calendar-clock {
@@ -51,6 +54,10 @@ button:hover, button:active {
 
 .popup-clock .calendar .today {
     background-color: var(--color-active);
+}
+
+.workspaces * {    
+    color: var(--color-white);
 }
 
 .workspaces .item.visible {
