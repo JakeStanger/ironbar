@@ -225,7 +225,7 @@ impl TryFrom<InputEvent> for KeyboardLayoutUpdate {
 
     fn try_from(value: InputEvent) -> Result<Self, Self::Error> {
         match value.change {
-            InputChange::XkbLayout => {
+            InputChange::XkbLayout | InputChange::XkbKeymap => {
                 if let Some(layout) = value.input.xkb_active_layout_name {
                     Ok(KeyboardLayoutUpdate(layout))
                 } else {
