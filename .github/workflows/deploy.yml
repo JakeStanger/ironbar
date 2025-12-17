@@ -72,7 +72,7 @@ jobs:
         run: mkdir -p target
 
       - name: Build schema
-        run: cargo run --features schema -- --print-schema > target/schema-${{ github.ref_name }}.json
+        run: cargo run --features extras -- --print-schema > target/schema-${{ github.ref_name }}.json
 
       - name: Copy file via SSH
         uses: appleboy/scp-action@v0.1.7
