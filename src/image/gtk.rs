@@ -1,13 +1,56 @@
 use crate::gtk_helpers::IronbarLabelExt;
 use crate::image;
 use gtk::prelude::*;
-use gtk::{Button, ContentFit, Label, Orientation, Picture};
+use gtk::{Button, ContentFit, Image, Label, Orientation, Picture};
+use std::cell::RefCell;
 use std::ops::Deref;
+use std::rc::Rc;
+
+const ICON_PREFIX: &str = "icon:";
+const IMAGE_CLASSES: &[&str] = &["icon", "image"];
+
+fn create_icon<F>(input: &str, size: i32, provider: &image::Provider, on_result: F)
+where
+    F: FnOnce(Result<gtk::Widget, ()>) + 'static,
+{
+    // Uses Image for themed icons (icon: prefix) or Picture for files (file://, http://).
+    if let Some(icon_name) = input.strip_prefix(ICON_PREFIX) {
+        let image = Image::builder().build();
+        image.set_css_classes(IMAGE_CLASSES);
+        image.set_paintable(Some(&provider.lookup_icon(
+            icon_name,
+            size,
+            image.scale_factor(),
+        )));
+        image.set_pixel_size(size);
+        on_result(Ok(image.upcast()));
+    } else {
+        let picture = Picture::builder()
+            .content_fit(ContentFit::ScaleDown)
+            .build();
+        picture.set_css_classes(IMAGE_CLASSES);
+
+        let provider = provider.clone();
+        let input = input.to_owned();
+        let picture_clone = picture.clone();
+
+        glib::spawn_future_local(async move {
+            if provider
+                .load_into_picture(&input, size, false, &picture_clone)
+                .await
+                .unwrap_or(false)
+            {
+                on_result(Ok(picture_clone.upcast()));
+            } else {
+                on_result(Err(()));
+            }
+        });
+    }
+}
 
 #[derive(Debug, Clone)]
 #[cfg(any(
     feature = "cairo",
-    feature = "clipboard",
     feature = "clipboard",
     feature = "keyboard",
     feature = "launcher",
@@ -23,7 +66,6 @@ pub struct IconButton {
 #[cfg(any(
     feature = "cairo",
     feature = "clipboard",
-    feature = "clipboard",
     feature = "keyboard",
     feature = "launcher",
     feature = "music",
@@ -33,31 +75,16 @@ pub struct IconButton {
 impl IconButton {
     pub fn new(input: &str, size: i32, image_provider: image::Provider) -> Self {
         let button = Button::new();
-        let image = Picture::builder()
-            .content_fit(ContentFit::ScaleDown)
-            .build();
         let label = Label::builder().use_markup(true).build();
         label.set_label_escaped(input);
 
         if image::Provider::is_explicit_input(input) {
-            image.add_css_class("image");
-            image.add_css_class("icon");
+            let button_clone = button.clone();
+            let label_clone = label.clone();
 
-            let image = image.clone();
-            let label = label.clone();
-            let button = button.clone();
-
-            let input = input.to_string(); // ew
-
-            glib::spawn_future_local(async move {
-                if let Ok(true) = image_provider
-                    .load_into_picture(&input, size, false, &image)
-                    .await
-                {
-                    button.set_child(Some(&image));
-                } else {
-                    button.set_child(Some(&label));
-                }
+            create_icon(input, size, &image_provider, move |result| match result {
+                Ok(widget) => button_clone.set_child(Some(&widget)),
+                Err(()) => button_clone.set_child(Some(&label_clone)),
             });
         } else {
             button.set_child(Some(&label));
@@ -76,14 +103,13 @@ impl IconButton {
 }
 
 #[cfg(any(
+    feature = "cairo",
     feature = "clipboard",
     feature = "keyboard",
+    feature = "launcher",
     feature = "music",
     feature = "notifications",
     feature = "workspaces",
-    feature = "cairo",
-    feature = "clipboard",
-    feature = "launcher",
 ))]
 impl Deref for IconButton {
     type Target = Button;
@@ -105,7 +131,7 @@ pub struct IconLabel {
     provider: image::Provider,
     container: gtk::Box,
     label: Label,
-    image: Picture,
+    current_icon: Rc<RefCell<Option<gtk::Widget>>>,
 
     size: i32,
 }
@@ -126,31 +152,23 @@ impl IconLabel {
         label.add_css_class("icon");
         label.add_css_class("text-icon");
 
-        let image = Picture::builder()
-            .content_fit(ContentFit::ScaleDown)
-            .build();
-        image.add_css_class("icon");
-        image.add_css_class("image");
-
-        container.append(&image);
-        container.append(&label);
+        let current_icon = Rc::new(RefCell::new(None));
 
         if image::Provider::is_explicit_input(input) {
-            let image = image.clone();
-            let label = label.clone();
-            let image_provider = image_provider.clone();
+            let label_clone = label.clone();
+            let input_str = input.to_owned();
+            let container_clone = container.clone();
+            let current_icon_clone = current_icon.clone();
 
-            let input = input.to_string();
-
-            glib::spawn_future_local(async move {
-                let res = image_provider
-                    .load_into_picture(&input, size, false, &image)
-                    .await;
-                if matches!(res, Ok(true)) {
-                    image.set_visible(true);
-                } else {
-                    label.set_label_escaped(&input);
-                    label.set_visible(true);
+            create_icon(input, size, image_provider, move |result| match result {
+                Ok(widget) => {
+                    // This executes after the label is appended below, so prepend is used to keep the order.
+                    container_clone.prepend(&widget);
+                    *current_icon_clone.borrow_mut() = Some(widget);
+                }
+                Err(()) => {
+                    label_clone.set_label_escaped(&input_str);
+                    label_clone.set_visible(true);
                 }
             });
         } else {
@@ -158,51 +176,54 @@ impl IconLabel {
             label.set_visible(true);
         }
 
+        container.append(&label);
+
         Self {
             provider: image_provider.clone(),
             container,
             label,
-            image,
+            current_icon,
             size,
         }
     }
 
     pub fn set_label(&self, input: Option<&str>) {
-        let label = &self.label;
-        let image = &self.image;
+        // Remove old icon if present
+        if let Some(old) = self.current_icon.borrow_mut().take() {
+            self.container.remove(&old);
+        }
 
-        if let Some(input) = input {
-            if image::Provider::is_explicit_input(input) {
-                let provider = self.provider.clone();
-                let size = self.size;
+        match input {
+            Some(input) if image::Provider::is_explicit_input(input) => {
+                self.label.set_visible(false);
+                let label_clone = self.label.clone();
+                let input_str = input.to_owned();
+                let container_clone = self.container.clone();
+                let current_icon_clone = self.current_icon.clone();
 
-                let label = label.clone();
-                let image = image.clone();
-                let input = input.to_string();
-
-                glib::spawn_future_local(async move {
-                    let res = provider
-                        .load_into_picture(&input, size, false, &image)
-                        .await;
-                    if matches!(res, Ok(true)) {
-                        label.set_visible(false);
-                        image.set_visible(true);
-                    } else {
-                        label.set_label_escaped(&input);
-
-                        image.set_visible(false);
-                        label.set_visible(true);
-                    }
-                });
-            } else {
-                label.set_label_escaped(input);
-
-                image.set_visible(false);
-                label.set_visible(true);
+                create_icon(
+                    input,
+                    self.size,
+                    &self.provider,
+                    move |result| match result {
+                        Ok(widget) => {
+                            container_clone.prepend(&widget);
+                            *current_icon_clone.borrow_mut() = Some(widget);
+                        }
+                        Err(()) => {
+                            label_clone.set_label_escaped(&input_str);
+                            label_clone.set_visible(true);
+                        }
+                    },
+                );
             }
-        } else {
-            label.set_visible(false);
-            image.set_visible(false);
+            Some(input) => {
+                self.label.set_label_escaped(input);
+                self.label.set_visible(true);
+            }
+            None => {
+                self.label.set_visible(false);
+            }
         }
     }
 
