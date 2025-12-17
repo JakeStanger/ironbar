@@ -127,12 +127,7 @@ impl Bar {
 
         if let Some(autohide) = autohide {
             let hotspot_window = Window::new();
-            Self::setup_autohide(
-                &self.window,
-                &hotspot_window,
-                load_result.popup.clone(),
-                autohide,
-            );
+            self.setup_autohide(&hotspot_window, load_result.popup.clone(), autohide);
             self.setup_layer_shell(
                 &hotspot_window,
                 false,
@@ -215,17 +210,17 @@ impl Bar {
         );
     }
 
-    fn setup_autohide(
-        window: &ApplicationWindow,
-        hotspot_window: &Window,
-        popup: Rc<Popup>,
-        timeout: u64,
-    ) {
+    fn setup_autohide(&self, hotspot_window: &Window, popup: Rc<Popup>, timeout: u64) {
         hotspot_window.set_visible(false);
 
         hotspot_window.set_opacity(0.01);
         hotspot_window.set_decorated(false);
-        hotspot_window.set_default_size(0, 1);
+
+        let (w, h) = match self.position {
+            BarPosition::Top | BarPosition::Bottom => (0, 5),
+            BarPosition::Left | BarPosition::Right => (5, 0),
+        };
+        hotspot_window.set_default_size(w, h);
 
         let timeout_id = rc_mut!(None);
 
@@ -239,7 +234,7 @@ impl Bar {
             //  can we try and tidy this up?
 
             {
-                let win = window.clone();
+                let win = self.window.clone();
                 let hotspot_window = hotspot_window.clone();
                 let timeout_id = timeout_id.clone();
 
@@ -264,7 +259,7 @@ impl Bar {
             }
 
             {
-                let win = window.clone();
+                let win = self.window.clone();
                 let hotspot_window = hotspot_window.clone();
                 let timeout_id = timeout_id.clone();
 
@@ -294,11 +289,11 @@ impl Bar {
                 }
             });
 
-            window.add_controller(event_controller);
+            self.window.add_controller(event_controller);
         }
 
         {
-            let win = window.clone();
+            let win = self.window.clone();
 
             let event_controller = EventControllerMotion::new();
 
