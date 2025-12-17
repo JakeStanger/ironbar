@@ -4,6 +4,85 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.18.0] - 2025-12-17
+### :boom: BREAKING CHANGES
+- due to [`aa130d1`](https://github.com/JakeStanger/ironbar/commit/aa130d1b9f1ec8b2c5df7822081966a61071369d) - port to gtk4 *(commit by [@JakeStanger](https://github.com/JakeStanger))*:
+
+  Popups now use the native GTK popover widget, rather than a separate window. Styles will need updating.
+
+- due to [`557b9b8`](https://github.com/JakeStanger/ironbar/commit/557b9b870c0ebc2e01c070edd70d565d42b969a6) - generate completions using cli instead of build *(commit by [@JakeStanger](https://github.com/JakeStanger))*:
+
+  Shell completions are no longer generated at build time, and must be generated using `ironbar --print-completions <shell>`
+
+
+### :sparkles: New Features
+- [`aa130d1`](https://github.com/JakeStanger/ironbar/commit/aa130d1b9f1ec8b2c5df7822081966a61071369d) - port to gtk4 *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`e79ef46`](https://github.com/JakeStanger/ironbar/commit/e79ef46c3a68f5f612c70dc6462b008ec117e424) - **tray**: handle sni status property *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`750e02b`](https://github.com/JakeStanger/ironbar/commit/750e02b27162f1524a5270bcb96e35912c9ff206) - **logging**: `--debug` cli flag now sets logging level to debug *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`595ce0a`](https://github.com/JakeStanger/ironbar/commit/595ce0ab60981a034479ccec23836ca0bd928749) - **clipboard**: options for configuring image width/height *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`0af16dc`](https://github.com/JakeStanger/ironbar/commit/0af16dc8cd386a4dea53a305706d581fc078e882) - add `config` and `theme` args, default themes *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`377f72d`](https://github.com/JakeStanger/ironbar/commit/377f72dfccb106c036c1925cb8b4035c5e07ed70) - **workspaces**: implement urgency for niri *(commit by [@Rodrigodd](https://github.com/Rodrigodd))*
+- [`222f5c5`](https://github.com/JakeStanger/ironbar/commit/222f5c55b655b627d0703cb05948fc61e09ab231) - **bluetooth**: add options for popup height limit *(commit by [@xMAC94x](https://github.com/xMAC94x))*
+- [`d6999bb`](https://github.com/JakeStanger/ironbar/commit/d6999bb10f5dcefc45fbf6c05bbeceb9cbc44bb0) - add double-click support for all modules *(commit by [@postsolar](https://github.com/postsolar))*
+- [`2200be3`](https://github.com/JakeStanger/ironbar/commit/2200be3ebe719cfa22329f7fa9c65c57aa76bc2e) - add configurable tray icon click actions *(commit by [@postsolar](https://github.com/postsolar))*
+
+### :bug: Bug Fixes
+- [`68b1a63`](https://github.com/JakeStanger/ironbar/commit/68b1a630830c4275380b0e01c3cfa67f82b20017) - **menu**: `.open` class not added when height property not set *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`63e975a`](https://github.com/JakeStanger/ironbar/commit/63e975a3f22488b264a67e1e5f5771891ee9bfc0) - **notifications**: close popup on panel open *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`6b2a1b2`](https://github.com/JakeStanger/ironbar/commit/6b2a1b2e585eb082fa51ea67bd168a672da01d82) - **workspaces**: send workspace move for hyprland
+- [`502d0d9`](https://github.com/JakeStanger/ironbar/commit/502d0d91f14e0a226767dcbcf2a599cb6cbbb224) - **logging**: panic messages have escaped ansi sequences *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`0bfa479`](https://github.com/JakeStanger/ironbar/commit/0bfa479c1ebab44511ac36861977db1723ce8cc9) - potential race condition on monitor connection causing issues with bar creation *(PR [#1198](https://github.com/JakeStanger/ironbar/pull/1198) by [@azertyfun](https://github.com/azertyfun))*
+- [`68e1f8a`](https://github.com/JakeStanger/ironbar/commit/68e1f8adc6b4edb78c29d62383999d67ac544576) - some icons not resolving *(commit by [@azertyfun](https://github.com/azertyfun))*
+- [`99e682f`](https://github.com/JakeStanger/ironbar/commit/99e682f5b825a972b130ab5270d49a49701a8991) - **autohide**: errors on startup *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`dbaab6d`](https://github.com/JakeStanger/ironbar/commit/dbaab6d5bf40a9e75effb0cedbd60ae7c5554221) - **autohide**: keep open if popup is visible *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`954271d`](https://github.com/JakeStanger/ironbar/commit/954271d2e7f3d0992c8efacd0d71a1853d99d7af) - **autohide**: trigger close on popup close *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`9d160d0`](https://github.com/JakeStanger/ironbar/commit/9d160d052506a09d7319ffa0a6796dcea8f3b921) - **nix**: replace deprecated wrapGAppsHook *(commit by [@TaskForceTorture](https://github.com/TaskForceTorture))*
+- [`123733d`](https://github.com/JakeStanger/ironbar/commit/123733d71e89cc081009881790bd3e70ad32982b) - **nix**: add dbus as a dependency *(commit by [@TaskForceTorture](https://github.com/TaskForceTorture))*
+- [`2539676`](https://github.com/JakeStanger/ironbar/commit/253967647d74a7e0b5ca61cde2b9c331ac400e49) - **nix**: add dbus to the devshell *(commit by [@postsolar](https://github.com/postsolar))*
+- [`905424f`](https://github.com/JakeStanger/ironbar/commit/905424f38246b74b1ff26c1e3b89aabe8cdbf45c) - **keyboard**: init fails if keyboard layout not available *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`2c11d67`](https://github.com/JakeStanger/ironbar/commit/2c11d674247a55bf9f52b3ee67f5699b81b2af0f) - regression from [#1198](https://github.com/JakeStanger/ironbar/pull/1198) *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`9c141dd`](https://github.com/JakeStanger/ironbar/commit/9c141ddb34e3d5c261516647421258518029a33c) - **ipc**: crash handling error from bar *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`a067914`](https://github.com/JakeStanger/ironbar/commit/a067914a246237f780d7f9f7b2ae61e02820bf12) - **ipc**: popup commands broken for custom module *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`2c215ea`](https://github.com/JakeStanger/ironbar/commit/2c215ea23e4dad1128bac9908a4998c9312b3b8e) - **desktop**: handle spaces in file names *(PR [#1263](https://github.com/JakeStanger/ironbar/pull/1263) by [@slowsage](https://github.com/slowsage))*
+- [`bcd00f5`](https://github.com/JakeStanger/ironbar/commit/bcd00f598fe1f34262bf9f963efd98e2547943ce) - **launcher**: close popup when mouse leaves *(commit by [@slowsage](https://github.com/slowsage))*
+- [`1a6d7f4`](https://github.com/JakeStanger/ironbar/commit/1a6d7f41fbc6909bacde99ab565aeaeb8042d808) - **image**: remote images not loading *(PR [#1267](https://github.com/JakeStanger/ironbar/pull/1267) by [@slowsage](https://github.com/slowsage))*
+  - :arrow_lower_right: *fixes issue [#1261](https://github.com/JakeStanger/ironbar/issues/1261) opened by [@tixwho](https://github.com/tixwho)*
+- [`423cf50`](https://github.com/JakeStanger/ironbar/commit/423cf50044e28643b5d5fbc1fdcd28f2cdb701af) - **keyboard**: pango markup not working in layout map *(commit by [@tobias47n9e](https://github.com/tobias47n9e))*
+- [`859c9c2`](https://github.com/JakeStanger/ironbar/commit/859c9c2922ed0809607d8a8f83cfd3bc8a90c9d1) - **autohide**: not working on vertical bars *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`eb39c9f`](https://github.com/JakeStanger/ironbar/commit/eb39c9f049e122339749c02a9e18e302258e0bf1) - **tray**: menus inaccessible when autohide enabled *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`91e1897`](https://github.com/JakeStanger/ironbar/commit/91e1897629000ef094f17f7ccd580115d7cef44e) - CSS style issues on minimal theme with no gtk theme *(PR [#1281](https://github.com/JakeStanger/ironbar/pull/1281) by [@esther-ff](https://github.com/esther-ff))*
+- [`19188ae`](https://github.com/JakeStanger/ironbar/commit/19188ae45ed1d4a453a3c1d5de34aa78279e3160) - **keyboard**: layout update not working on sway *(PR [#1282](https://github.com/JakeStanger/ironbar/pull/1282) by [@tobias47n9e](https://github.com/tobias47n9e))*
+
+### :recycle: Refactors
+- [`3faff44`](https://github.com/JakeStanger/ironbar/commit/3faff44d5576bcfc958453f04af9702f28ebfb01) - **config**: prefer `serde(default)` attr at struct-level *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`c77ee42`](https://github.com/JakeStanger/ironbar/commit/c77ee42027d85e353b31b13b082792801333fc0d) - **tray**: remove hard-coded icon spacing *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`557b9b8`](https://github.com/JakeStanger/ironbar/commit/557b9b870c0ebc2e01c070edd70d565d42b969a6) - generate completions using cli instead of build *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`51539ec`](https://github.com/JakeStanger/ironbar/commit/51539ec8f4ab8c761487aa3aa17a73fd4ab9341e) - remove old default bar *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`2ac01cd`](https://github.com/JakeStanger/ironbar/commit/2ac01cddb98ec5d728d23c19716bcf1d7bb0e65f) - fix gtk4.12 warnings *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`2abb847`](https://github.com/JakeStanger/ironbar/commit/2abb847a9723b9c3dfa3d0519efd1ca787a3940a) - **clients**: use concrete errors where possible *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`44569ee`](https://github.com/JakeStanger/ironbar/commit/44569ee6282cfead68606e22cb46c9a1d3140c11) - **tray**: group icon parameters to fix clippy warning *(commit by [@postsolar](https://github.com/postsolar))*
+
+### :white_check_mark: Tests
+- [`b69ff35`](https://github.com/JakeStanger/ironbar/commit/b69ff35e2767fe272e217e2983af5a764a709e8b) - fix clippy warnings *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+
+### :memo: Documentation Changes
+- [`6dc867c`](https://github.com/JakeStanger/ironbar/commit/6dc867c83f4f9284ef3fcfd52e4c837e259fd141) - **readme**: add aur bin package *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`c88dd15`](https://github.com/JakeStanger/ironbar/commit/c88dd1527a0195322b9b07cbeb9aef4dcae6dc77) - **readme**: update blurb [skip ci] *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`059d68c`](https://github.com/JakeStanger/ironbar/commit/059d68c4e7e6f633dbe6ed14e7199f5c6ff7ea70) - **contributing**: add details on `---no-default-features` *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`f0aa89a`](https://github.com/JakeStanger/ironbar/commit/f0aa89aeb9932c9e4f05b8f16a2655dbb8f11c8f) - **readme**: replace banner image *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`aeef5bb`](https://github.com/JakeStanger/ironbar/commit/aeef5bbaa0bc469d302b5f5ab530ae13e509d562) - **examples**: replace with new `minimal` and `desktop` configs *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`03b8f90`](https://github.com/JakeStanger/ironbar/commit/03b8f90380f9a7e157f6d420b0e2508b772dd0df) - update desktop example README with the correct command *(commit by [@CBenoit](https://github.com/CBenoit))*
+- [`c3655ec`](https://github.com/JakeStanger/ironbar/commit/c3655ec899121d6fb7ed3a4b4f194a0460b3ff6d) - **readme**: add info on motivation *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`2159aac`](https://github.com/JakeStanger/ironbar/commit/2159aac121297e9183087a24ac0f280e6e5bfe3c) - **compiling**: correct debian packages, split build/runtime *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`f6fb373`](https://github.com/JakeStanger/ironbar/commit/f6fb373ce3a83ba793fc42c595603ccacb6d99bd) - **battery**: fix formatting for toml thresholds section *(PR [#1236](https://github.com/JakeStanger/ironbar/pull/1236) by [@ksharizard](https://github.com/ksharizard))*
+- [`9964103`](https://github.com/JakeStanger/ironbar/commit/9964103856e84e580d1de735257adc87c4f90a97) - **scripts**: fix typos and improve clarity *(PR [#1237](https://github.com/JakeStanger/ironbar/pull/1237) by [@ksharizard](https://github.com/ksharizard))*
+- [`a673bca`](https://github.com/JakeStanger/ironbar/commit/a673bcaca8c521d55421a35ec13a31668bb7ebd7) - add development guide
+- [`cc88560`](https://github.com/JakeStanger/ironbar/commit/cc88560f6dff0d67d329269c84d2b25c96ea2faa) - **styling guide**: add libadwaita clarification
+- [`a384671`](https://github.com/JakeStanger/ironbar/commit/a3846717351ae9877f9bd147d920364db5077bb9) - tidy and improve custom docs *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`bac7f76`](https://github.com/JakeStanger/ironbar/commit/bac7f76161c790e927392c1593bfd07481f6be37) - fix typo in Script.md documentation *(commit by [@postsolar](https://github.com/postsolar))*
+- [`e1b1231`](https://github.com/JakeStanger/ironbar/commit/e1b1231bde280ef0c81bfcbf09bb603876f782ca) - **readme**: remove unmaintained fedora copr package *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+
+
 ## [v0.17.1] - 2025-10-05
 ### :sparkles: New Features
 - [`e07d077`](https://github.com/JakeStanger/ironbar/commit/e07d077c7de716d7e8cc03f954c27780b3e7c41a) - **volume**: adjust smoothly as slider is dragged *(commit by [@JakeStanger](https://github.com/JakeStanger))*
@@ -869,3 +948,4 @@ It also requires `lua-lgi` as a runtime dependency.
 [v0.16.1]: https://github.com/JakeStanger/ironbar/compare/v0.16.0...v0.16.1
 [v0.17.0]: https://github.com/JakeStanger/ironbar/compare/v0.16.1...v0.17.0
 [v0.17.1]: https://github.com/JakeStanger/ironbar/compare/v0.17.0...v0.17.1
+[v0.18.0]: https://github.com/JakeStanger/ironbar/compare/v0.17.1...v0.18.0
