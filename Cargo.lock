@@ -1943,7 +1943,7 @@ dependencies = [
 
 [[package]]
 name = "ironbar"
-version = "0.18.0-pre"
+version = "0.18.0"
 dependencies = [
  "bluer",
  "cfg-if",
