@@ -2,19 +2,19 @@ use std::fmt::{Debug, Formatter};
 use std::rc::Rc;
 use std::sync::Arc;
 
+use crate::Ironbar;
+use crate::bar::Bar;
+use crate::channels::{MpscReceiverExt, SyncSenderExt};
+use crate::clients::{ClientResult, ProvidesClient, ProvidesFallibleClient};
+use crate::config::{BarPosition, CommonConfig, TransitionType};
+use crate::gtk_helpers::IronbarGtkExt;
+use crate::popup::{ButtonFinder, Popup};
 use color_eyre::Result;
 use gtk::gdk::Monitor;
 use gtk::prelude::*;
 use gtk::{Application, Button, Orientation, Revealer, Widget};
 use tokio::sync::{broadcast, mpsc};
 use tracing::{debug, trace};
-
-use crate::Ironbar;
-use crate::channels::{MpscReceiverExt, SyncSenderExt};
-use crate::clients::{ClientResult, ProvidesClient, ProvidesFallibleClient};
-use crate::config::{BarPosition, CommonConfig, TransitionType};
-use crate::gtk_helpers::IronbarGtkExt;
-use crate::popup::{ButtonFinder, Popup};
 
 #[cfg(feature = "battery")]
 pub mod battery;
@@ -91,6 +91,12 @@ pub enum ModuleUpdateEvent<T: Clone> {
     OpenPopup(usize),
     /// Force sets the popup closed.
     ClosePopup,
+    /// Sets whether the bar should remain visible
+    /// when autohide is enabled.
+    ///
+    /// This is used for modules with custom popup implementations
+    /// (the tray).
+    LockVisible(bool),
 }
 
 pub struct WidgetContext<TSend, TReceive>
@@ -99,6 +105,7 @@ where
 {
     pub id: usize,
     pub ironbar: Rc<Ironbar>,
+    pub bar: Rc<Bar>,
     pub popup: Rc<Popup>,
     pub tx: mpsc::Sender<ModuleUpdateEvent<TSend>>,
     pub update_tx: broadcast::Sender<TSend>,
@@ -333,6 +340,7 @@ pub trait ModuleFactory {
         let context = WidgetContext {
             id,
             ironbar: self.ironbar().clone(),
+            bar: self.bar().clone(),
             popup: self.popup().clone(),
             tx: ui_tx,
             update_tx: tx.clone(),
@@ -391,18 +399,24 @@ pub trait ModuleFactory {
         TSend: Debug + Clone + Send + 'static;
 
     fn ironbar(&self) -> &Rc<Ironbar>;
+    fn bar(&self) -> &Rc<Bar>;
     fn popup(&self) -> &Rc<Popup>;
 }
 
 #[derive(Clone)]
 pub struct BarModuleFactory {
     ironbar: Rc<Ironbar>,
+    bar: Rc<Bar>,
     popup: Rc<Popup>,
 }
 
 impl BarModuleFactory {
-    pub fn new(ironbar: Rc<Ironbar>, popup: Rc<Popup>) -> Self {
-        Self { ironbar, popup }
+    pub fn new(ironbar: Rc<Ironbar>, bar: Rc<Bar>, popup: Rc<Popup>) -> Self {
+        Self {
+            ironbar,
+            bar,
+            popup,
+        }
     }
 }
 
@@ -417,6 +431,7 @@ impl ModuleFactory for BarModuleFactory {
     ) where
         TSend: Debug + Clone + Send + 'static,
     {
+        let bar = self.bar().clone();
         rx.recv_glib(&self.popup, move |popup, ev| match ev {
             ModuleUpdateEvent::Update(update) => {
                 trace!("received update for {name} [#{id}]: {update:?}");
@@ -440,12 +455,20 @@ impl ModuleFactory for BarModuleFactory {
                 debug!("Closing popup for {name} [#{id}]");
                 popup.hide();
             }
+            ModuleUpdateEvent::LockVisible(lock) => {
+                println!("Setting bar locked status: {lock}");
+                bar.set_locked(lock);
+            }
             _ => {}
         });
     }
 
     fn ironbar(&self) -> &Rc<Ironbar> {
         &self.ironbar
+    }
+
+    fn bar(&self) -> &Rc<Bar> {
+        &self.bar
     }
 
     fn popup(&self) -> &Rc<Popup> {
@@ -456,14 +479,16 @@ impl ModuleFactory for BarModuleFactory {
 #[derive(Clone)]
 pub struct PopupModuleFactory {
     ironbar: Rc<Ironbar>,
+    bar: Rc<Bar>,
     popup: Rc<Popup>,
     button_id: usize,
 }
 
 impl PopupModuleFactory {
-    pub fn new(ironbar: Rc<Ironbar>, popup: Rc<Popup>, button_id: usize) -> Self {
+    pub fn new(ironbar: Rc<Ironbar>, bar: Rc<Bar>, popup: Rc<Popup>, button_id: usize) -> Self {
         Self {
             ironbar,
+            bar,
             popup,
             button_id,
         }
@@ -518,6 +543,10 @@ impl ModuleFactory for PopupModuleFactory {
         &self.ironbar
     }
 
+    fn bar(&self) -> &Rc<Bar> {
+        &self.bar
+    }
+
     fn popup(&self) -> &Rc<Popup> {
         &self.popup
     }
@@ -550,6 +579,13 @@ impl ModuleFactory for AnyModuleFactory {
         match self {
             AnyModuleFactory::Bar(bar) => bar.ironbar(),
             AnyModuleFactory::Popup(popup) => popup.ironbar(),
+        }
+    }
+
+    fn bar(&self) -> &Rc<Bar> {
+        match self {
+            AnyModuleFactory::Bar(bar) => bar.bar(),
+            AnyModuleFactory::Popup(popup) => popup.bar(),
         }
     }
 
