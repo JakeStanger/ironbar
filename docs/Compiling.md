@@ -140,6 +140,7 @@ cargo build --release --no-default-features \
 | clock               | Enables the `clock` module.                                                                                          |
 | custom              | Enables the `custom` module.                                                                                         |
 | focused             | Enables the `focused` module.                                                                                        |
+| inhibit             | Enables the `inhibit` module.                                                                                        |
 | keyboard            | Enables the `keyboard` module without keyboard layout support.                                                       |
 | keyboard+all        | Enables the `keyboard` module with keyboard layout support for all compositors.                                      |
 | keyboard+sway       | Enables the `keyboard` module with keyboard layout support for Sway.                                                 |

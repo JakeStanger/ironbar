@@ -33,6 +33,7 @@
 - [Clipboard](clipboard)
 - [Clock](clock)
 - [Focused](focused)
+- [Inhibit](inhibit)
 - [Keyboard](keyboard)
 - [Launcher](launcher)
 - [Menu](menu)

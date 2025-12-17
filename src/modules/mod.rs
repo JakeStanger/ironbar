@@ -38,6 +38,8 @@ pub mod clock;
 pub mod custom;
 #[cfg(feature = "focused")]
 pub mod focused;
+#[cfg(feature = "inhibit")]
+pub mod inhibit;
 #[cfg(feature = "keyboard")]
 pub mod keyboard;
 #[cfg(feature = "label")]
