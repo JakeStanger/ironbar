@@ -13,6 +13,7 @@
     border-radius: 0;
     border: none;
     box-shadow: none;
+    background-image: none;
     font-family: monospace;
 }
 
@@ -22,6 +23,7 @@
 
 box, button, label {
     background-color: #0000;
+    color: var(--color-white);
 }
 
 button {
