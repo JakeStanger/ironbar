@@ -30,7 +30,7 @@ JSON and YAML both support schema checking by adding the `$schema` key
 to the top level of your config.
 
 - master: `https://f.jstanger.dev/github/ironbar/schema.json`
-- ~~release: `https://f.jstanger.dev/github/ironbar/schema-v0.16.0.json`~~ *(Not released yet)*
+- release: `https://f.jstanger.dev/github/ironbar/schema-v0.18.0.json` 
 
 ## 2. Pick your use-case
 
