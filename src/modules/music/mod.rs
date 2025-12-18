@@ -281,15 +281,21 @@ impl Module<Button> for MusicModule {
         let title_label =
             IconPrefixedLabel::with_overflow(&icons.track, title_overflow, &image_provider);
 
-        let album_label = IconPrefixedLabel::new(&icons.album, None, &image_provider);
-        if let Some(truncate) = self.truncate_popup_album {
-            album_label.label().truncate(truncate);
-        }
+        let album_overflow = OverflowLabel::new(
+            Label::builder().use_markup(true).build(),
+            self.truncate_popup_album,
+            self.marquee_popup_album.clone(),
+        );
+        let album_label =
+            IconPrefixedLabel::with_overflow(&icons.album, album_overflow, &image_provider);
 
-        let artist_label = IconPrefixedLabel::new(&icons.artist, None, &image_provider);
-        if let Some(truncate) = self.truncate_popup_artist {
-            artist_label.label().truncate(truncate);
-        }
+        let artist_overflow = OverflowLabel::new(
+            Label::builder().use_markup(true).build(),
+            self.truncate_popup_artist,
+            self.marquee_popup_artist.clone(),
+        );
+        let artist_label =
+            IconPrefixedLabel::with_overflow(&icons.artist, artist_overflow, &image_provider);
 
         title_label.add_css_class("title");
         album_label.add_css_class("album");

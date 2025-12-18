@@ -257,17 +257,6 @@ pub struct IconPrefixedLabel {
 
 #[cfg(feature = "music")]
 impl IconPrefixedLabel {
-    pub fn new(icon_input: &str, label: Option<&str>, image_provider: &image::Provider) -> Self {
-        let mut builder = Label::builder().use_markup(true);
-
-        if let Some(label) = label {
-            builder = builder.label(label);
-        }
-
-        let label = builder.build();
-        Self::build(icon_input, label, None, image_provider)
-    }
-
     pub fn with_overflow(
         icon_input: &str,
         overflow: crate::gtk_helpers::OverflowLabel,
@@ -303,10 +292,6 @@ impl IconPrefixedLabel {
             overflow,
             container,
         }
-    }
-
-    pub fn label(&self) -> &Label {
-        &self.label
     }
 
     pub fn set_label_escaped(&self, text: &str) {
