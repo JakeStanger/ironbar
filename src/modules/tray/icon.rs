@@ -5,7 +5,6 @@ use gtk::gdk::Texture;
 use gtk::gdk_pixbuf::{Colorspace, Pixbuf};
 use gtk::prelude::WidgetExt;
 use gtk::{ContentFit, IconLookupFlags, IconTheme, Picture, TextDirection};
-
 use system_tray::item::IconPixmap;
 
 pub fn get_image(
@@ -68,7 +67,7 @@ fn get_image_from_pixmap(item: Option<&[IconPixmap]>, size: u32) -> Result<Pictu
     const BITS_PER_SAMPLE: i32 = 8;
 
     let pixmap = item
-        .and_then(|pixmap| pixmap.iter().find(|p| p.width >= size as i32))
+        .and_then(|pixmap| find_approx_size(pixmap, size))
         .ok_or_else(|| Report::msg("Failed to get pixmap from tray icon"))?;
 
     if pixmap.width == 0 || pixmap.height == 0 {
@@ -105,4 +104,73 @@ fn get_image_from_pixmap(item: Option<&[IconPixmap]>, size: u32) -> Result<Pictu
     picture.set_paintable(texture.as_ref());
 
     Ok(picture)
+}
+
+///  Finds the `IconPixmap`
+///  which is the smallest but bigger than wanted,
+///  or the biggest of all if no bigger than wanted.
+fn find_approx_size(v: &[IconPixmap], size: u32) -> Option<&IconPixmap> {
+    let size = size as i32;
+
+    if v.is_empty() {
+        return None;
+    }
+
+    if v.len() == 1 {
+        return v.first();
+    }
+
+    let mut approx = &v[0];
+
+    for p in &v[1..] {
+        if (p.width >= size && (approx.width < size || p.width < approx.width))
+            || (p.width < size && p.width > approx.width)
+        {
+            approx = p;
+        }
+    }
+
+    Some(approx)
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn test_find_approx_height() {
+        use super::{IconPixmap, find_approx_size};
+
+        macro_rules! make_list {
+            ($heights:expr) => {
+                $heights
+                    .iter()
+                    .map(|width| IconPixmap {
+                        width: *width,
+                        height: 0,
+                        pixels: vec![],
+                    })
+                    .collect::<Vec<IconPixmap>>()
+            };
+        }
+        macro_rules! assert_correct {
+            ($list:expr, $width:expr, $index:expr) => {
+                assert_eq!(
+                    find_approx_size(&$list, $width).unwrap().width,
+                    $list[$index].width
+                );
+            };
+        }
+
+        let list = make_list!([10, 20, 50, 40, 30]);
+        assert_correct!(list, 1, 0);
+        assert_correct!(list, 10, 0);
+        assert_correct!(list, 11, 1);
+        assert_correct!(list, 20, 1);
+        assert_correct!(list, 21, 4);
+        assert_correct!(list, 30, 4);
+        assert_correct!(list, 31, 3);
+        assert_correct!(list, 40, 3);
+        assert_correct!(list, 41, 2);
+        assert_correct!(list, 50, 2);
+        assert_correct!(list, 51, 2);
+    }
 }
