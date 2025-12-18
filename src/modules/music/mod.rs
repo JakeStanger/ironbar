@@ -20,7 +20,7 @@ use crate::clients::Clients;
 use crate::clients::music::{
     self, MusicClient, PlayerState, PlayerUpdate, ProgressTick, Status, Track,
 };
-use crate::gtk_helpers::IronbarLabelExt;
+use crate::gtk_helpers::{IronbarLabelExt, OverflowLabel};
 use crate::image::{IconButton, IconLabel, IconPrefixedLabel};
 use crate::modules::PopupButton;
 use crate::modules::{
@@ -183,18 +183,18 @@ impl Module<Button> for MusicModule {
 
         icon_pause.label().set_justify(self.layout.justify.into());
 
-        let label = Label::builder()
-            .use_markup(true)
-            .justify(self.layout.justify.into())
-            .build();
-
-        if let Some(truncate) = self.truncate {
-            label.truncate(truncate);
-        }
+        let label = OverflowLabel::new(
+            Label::builder()
+                .use_markup(true)
+                .justify(self.layout.justify.into())
+                .build(),
+            self.truncate,
+            self.marquee.clone(),
+        );
 
         button_contents.append(&*icon_pause);
         button_contents.append(&*icon_play);
-        button_contents.append(&label);
+        button_contents.append(label.widget());
 
         {
             let tx = context.tx.clone();
@@ -206,40 +206,43 @@ impl Module<Button> for MusicModule {
 
         let rx = context.subscribe();
 
-        rx.recv_glib((&button, &context.tx), move |(button, tx), event| {
-            let ControllerEvent::Update(mut event) = event else {
-                return;
-            };
+        rx.recv_glib(
+            (&button, &context.tx, &label),
+            move |(button, tx, label), event| {
+                let ControllerEvent::Update(mut event) = event else {
+                    return;
+                };
 
-            if let Some(event) = event.take() {
-                label.set_label_escaped(&event.display_string);
+                if let Some(event) = event.take() {
+                    label.set_label_escaped(&event.display_string);
 
-                button.set_visible(true);
+                    button.set_visible(true);
 
-                match event.status.state {
-                    PlayerState::Playing if self.show_status_icon => {
-                        icon_play.set_visible(true);
-                        icon_pause.set_visible(false);
+                    match event.status.state {
+                        PlayerState::Playing if self.show_status_icon => {
+                            icon_play.set_visible(true);
+                            icon_pause.set_visible(false);
+                        }
+                        PlayerState::Paused if self.show_status_icon => {
+                            icon_pause.set_visible(true);
+                            icon_play.set_visible(false);
+                        }
+                        PlayerState::Stopped => {
+                            button.set_visible(false);
+                        }
+                        _ => {}
                     }
-                    PlayerState::Paused if self.show_status_icon => {
-                        icon_pause.set_visible(true);
+
+                    if !self.show_status_icon {
+                        icon_pause.set_visible(false);
                         icon_play.set_visible(false);
                     }
-                    PlayerState::Stopped => {
-                        button.set_visible(false);
-                    }
-                    _ => {}
+                } else {
+                    button.set_visible(false);
+                    tx.send_spawn(ModuleUpdateEvent::ClosePopup);
                 }
-
-                if !self.show_status_icon {
-                    icon_pause.set_visible(false);
-                    icon_play.set_visible(false);
-                }
-            } else {
-                button.set_visible(false);
-                tx.send_spawn(ModuleUpdateEvent::ClosePopup);
-            }
-        });
+            },
+        );
 
         let popup = self
             .into_popup(context, info)
@@ -270,10 +273,13 @@ impl Module<Button> for MusicModule {
 
         let info_box = gtk::Box::new(Orientation::Vertical, 10);
 
-        let title_label = IconPrefixedLabel::new(&icons.track, None, &image_provider);
-        if let Some(truncate) = self.truncate_popup_title {
-            title_label.label().truncate(truncate);
-        }
+        let title_overflow = OverflowLabel::new(
+            Label::builder().use_markup(true).build(),
+            self.truncate_popup_title,
+            self.marquee_popup_title.clone(),
+        );
+        let title_label =
+            IconPrefixedLabel::with_overflow(&icons.track, title_overflow, &image_provider);
 
         let album_label = IconPrefixedLabel::new(&icons.album, None, &image_provider);
         if let Some(truncate) = self.truncate_popup_album {
@@ -523,8 +529,7 @@ impl Module<Button> for MusicModule {
 fn update_popup_metadata_label(text: Option<String>, label: &IconPrefixedLabel) {
     match text {
         Some(value) => {
-            label.label().set_label_escaped(&value);
-            label.set_visible(true);
+            label.set_label_escaped(&value);
         }
         None => {
             label.set_visible(false);

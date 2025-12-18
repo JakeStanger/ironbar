@@ -248,20 +248,16 @@ impl Deref for IconLabel {
     }
 }
 
-#[derive(Clone, Debug)]
 #[cfg(feature = "music")]
 pub struct IconPrefixedLabel {
     label: Label,
+    overflow: Option<crate::gtk_helpers::OverflowLabel>,
     container: gtk::Box,
 }
 
 #[cfg(feature = "music")]
 impl IconPrefixedLabel {
     pub fn new(icon_input: &str, label: Option<&str>, image_provider: &image::Provider) -> Self {
-        let container = gtk::Box::new(Orientation::Horizontal, 5);
-
-        let icon = IconLabel::new(icon_input, 24, image_provider);
-
         let mut builder = Label::builder().use_markup(true);
 
         if let Some(label) = label {
@@ -269,18 +265,58 @@ impl IconPrefixedLabel {
         }
 
         let label = builder.build();
+        Self::build(icon_input, label, None, image_provider)
+    }
+
+    pub fn with_overflow(
+        icon_input: &str,
+        overflow: crate::gtk_helpers::OverflowLabel,
+        image_provider: &image::Provider,
+    ) -> Self {
+        let label = overflow.label().clone();
+        Self::build(icon_input, label, Some(overflow), image_provider)
+    }
+
+    fn build(
+        icon_input: &str,
+        label: Label,
+        overflow: Option<crate::gtk_helpers::OverflowLabel>,
+        image_provider: &image::Provider,
+    ) -> Self {
+        let container = gtk::Box::new(Orientation::Horizontal, 5);
+
+        let icon = IconLabel::new(icon_input, 24, image_provider);
 
         icon.add_css_class("icon-box");
         label.add_css_class("label");
 
         container.append(&*icon);
-        container.append(&label);
 
-        Self { label, container }
+        if let Some(ref overflow) = overflow {
+            container.append(overflow.widget());
+        } else {
+            container.append(&label);
+        }
+
+        Self {
+            label,
+            overflow,
+            container,
+        }
     }
 
     pub fn label(&self) -> &Label {
         &self.label
+    }
+
+    pub fn set_label_escaped(&self, text: &str) {
+        if let Some(overflow) = &self.overflow {
+            overflow.set_label_escaped(text);
+        } else {
+            self.label.set_label_escaped(text);
+        }
+
+        self.set_visible(true);
     }
 }
 

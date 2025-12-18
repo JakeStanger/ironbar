@@ -255,6 +255,7 @@ fn pixel_width(label: &gtk::Label, string: &str) -> i32 {
 ///
 /// The widget returned by [`widget`] can be packed directly into layouts. The underlying
 /// `Label` can be accessed via [`label`] to apply CSS classes or other label-specific settings.
+#[derive(Clone)]
 pub struct OverflowLabel {
     label: Label,
     widget: Widget,
@@ -310,6 +311,7 @@ impl OverflowLabel {
     }
 }
 
+#[derive(Clone)]
 struct MarqueeLabel {
     inner: Rc<MarqueeInner>,
     scrolled: ScrolledWindow,
