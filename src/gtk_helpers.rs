@@ -9,7 +9,7 @@ use gtk::{
     EventControllerMotion, EventSequenceState, GestureClick, Label, ScrolledWindow, Snapshot,
     Widget,
 };
-use std::cell::Cell;
+use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 use std::time::{Duration, Instant};
 
@@ -251,154 +251,224 @@ fn pixel_width(label: &gtk::Label, string: &str) -> i32 {
     w / gtk::pango::SCALE // back to integer pixels
 }
 
-/// Creates a scrolling marquee widget for long text.
+/// Wrapper around a `Label` that applies either truncation or marquee scrolling.
 ///
-/// Wraps the provided label in a scrolled window that automatically scrolls
-/// when the text is longer than the allocated width. Supports configurable
-/// scroll speed, pause duration, separator, and hover behavior.
-pub fn create_marquee_widget(
-    label: &Label,
-    text: &str,
-    marquee_mode: MarqueeMode,
-) -> ScrolledWindow {
-    let MarqueeMode {
-        max_length,
-        scroll_speed,
-        pause_duration,
-        separator,
-        on_hover,
-        ..
-    } = marquee_mode;
+/// The widget returned by [`widget`] can be packed directly into layouts. The underlying
+/// `Label` can be accessed via [`label`] to apply CSS classes or other label-specific settings.
+pub struct OverflowLabel {
+    label: Label,
+    widget: Widget,
+    marquee: Option<MarqueeLabel>,
+}
 
-    let ease_pause = Duration::from_millis(pause_duration);
-
-    let scrolled = ScrolledWindow::builder()
-        .vscrollbar_policy(gtk::PolicyType::Never)
-        .build();
-
-    scrolled.hscrollbar().set_visible(false);
-
-    // Set `min-width` to the pixel width of the text, but not wider than `max_length` (as calculated)
-    if let Some(max_length) = max_length {
-        let sample_string = text.chars().take(max_length as usize).collect::<String>();
-        let width = pixel_width(label, &sample_string);
-        scrolled.set_min_content_width(width);
-    }
-
-    scrolled.set_child(Some(label));
-
-    // Set initial state
-    label.set_label(text);
-
-    let label = label.clone();
-    let text = text.to_string();
-
-    // Cache the original text width (calculated once upfront)
-    let original_text_width = pixel_width(&label, &text);
-
-    let is_hovered = Rc::new(Cell::new(false));
-    let pause_started_at = Rc::new(Cell::new(None::<Instant>));
-    let is_scrolling = Rc::new(Cell::new(false));
-    let reset_at_cached = Rc::new(Cell::new(None::<f64>));
-
-    // Start a tick callback that checks size and scrolls if needed
-    scrolled.add_tick_callback({
-        let is_hovered = is_hovered.clone();
-        let pause_started_at = pause_started_at.clone();
-        let is_scrolling = is_scrolling.clone();
-        let reset_at_cached = reset_at_cached.clone();
-
-        move |widget, _| {
-            let allocated_width = widget.width();
-
-            // Check if we need to scroll based on text width vs allocated width
-            let needs_scroll = original_text_width > allocated_width;
-
-            if needs_scroll {
-                // Setup scrolling if not already set up
-                if !is_scrolling.get() {
-                    let duplicated_text = format!("{}{}{}", &text, &separator, &text);
-                    label.set_label(&duplicated_text);
-
-                    // Calculate and cache reset position (where to loop back to)
-                    let reset_at = pixel_width(&label, &format!("{}{}", &text, &separator)) as f64;
-                    reset_at_cached.set(Some(reset_at));
-
-                    // Start with initial pause
-                    pause_started_at.set(Some(Instant::now()));
-                    is_scrolling.set(true);
-                }
-
-                let reset_at = reset_at_cached
-                    .get()
-                    .expect("reset_at is always set before is_scrolling becomes true");
-
-                // Check if paused
-                let is_paused = if let Some(start_time) = pause_started_at.get() {
-                    start_time.elapsed() <= ease_pause
-                } else {
-                    false
-                };
-
-                if is_paused {
-                    return ControlFlow::Continue;
-                }
-
-                // Check if we need to resume
-                if pause_started_at.get().is_some() {
-                    pause_started_at.set(None);
-                }
-
-                // Determine if we should scroll based on hover state
-                let should_scroll = match on_hover {
-                    MarqueeOnHover::Play => is_hovered.get(),
-                    MarqueeOnHover::Pause => !is_hovered.get(),
-                    MarqueeOnHover::None => true,
-                };
-
-                if should_scroll {
-                    let hadjustment = widget.hadjustment();
-                    let v = hadjustment.value() + scroll_speed;
-                    if v >= reset_at {
-                        hadjustment.set_value(v - reset_at);
-                        pause_started_at.set(Some(Instant::now()));
-                    } else {
-                        hadjustment.set_value(v);
-                    }
-                }
-            } else {
-                // No need to scroll - reset if currently scrolling
-                if is_scrolling.get() {
-                    label.set_label(&text);
-                    widget.hadjustment().set_value(0.0);
-                    is_scrolling.set(false);
-                    reset_at_cached.set(None);
-                }
+impl OverflowLabel {
+    /// Create a new overflow-aware label.
+    ///
+    /// If `truncate` is provided, marquee is ignored. If marquee is enabled, the label
+    /// is wrapped in a `ScrolledWindow` that handles scrolling logic.
+    pub fn new(label: Label, truncate: Option<TruncateMode>, marquee_mode: MarqueeMode) -> Self {
+        if truncate.is_some() || !marquee_mode.enable {
+            if let Some(truncate) = truncate {
+                label.truncate(truncate);
             }
 
-            ControlFlow::Continue
+            let widget = label.clone().upcast::<Widget>();
+
+            Self {
+                label,
+                widget,
+                marquee: None,
+            }
+        } else {
+            let marquee = MarqueeLabel::new(label.clone(), marquee_mode);
+            let widget = marquee.widget().clone().upcast::<Widget>();
+
+            Self {
+                label,
+                widget,
+                marquee: Some(marquee),
+            }
         }
-    });
-
-    if on_hover != MarqueeOnHover::None {
-        let motion_controller = EventControllerMotion::new();
-
-        motion_controller.connect_enter({
-            let is_hovered = is_hovered.clone();
-            move |_, _, _| {
-                is_hovered.set(true);
-            }
-        });
-
-        motion_controller.connect_leave({
-            let is_hovered = is_hovered.clone();
-            move |_| {
-                is_hovered.set(false);
-            }
-        });
-
-        scrolled.add_controller(motion_controller);
     }
 
-    scrolled
+    pub fn label(&self) -> &Label {
+        &self.label
+    }
+
+    pub fn widget(&self) -> &Widget {
+        &self.widget
+    }
+
+    /// Set the label text, escaping markup unless the string already contains `<span`.
+    /// When marquee is enabled, this also resets scroll state for the new text.
+    pub fn set_label_escaped(&self, text: &str) {
+        if let Some(marquee) = &self.marquee {
+            marquee.set_text(text);
+        } else {
+            self.label.set_label_escaped(text);
+        }
+    }
+}
+
+struct MarqueeLabel {
+    inner: Rc<MarqueeInner>,
+    scrolled: ScrolledWindow,
+}
+
+struct MarqueeInner {
+    label: Label,
+    mode: MarqueeMode,
+    text: RefCell<String>,
+    original_text_width: Cell<i32>,
+    is_hovered: Cell<bool>,
+    pause_started_at: Cell<Option<Instant>>,
+    is_scrolling: Cell<bool>,
+    reset_at_cached: Cell<Option<f64>>,
+    pause_duration: Duration,
+}
+
+impl MarqueeLabel {
+    fn new(label: Label, marquee_mode: MarqueeMode) -> Self {
+        let scrolled = ScrolledWindow::builder()
+            .vscrollbar_policy(gtk::PolicyType::Never)
+            .build();
+
+        scrolled.hscrollbar().set_visible(false);
+        scrolled.set_child(Some(&label));
+
+        let inner = Rc::new(MarqueeInner {
+            label,
+            mode: marquee_mode.clone(),
+            text: RefCell::new(String::new()),
+            original_text_width: Cell::new(0),
+            is_hovered: Cell::new(false),
+            pause_started_at: Cell::new(None),
+            is_scrolling: Cell::new(false),
+            reset_at_cached: Cell::new(None),
+            pause_duration: Duration::from_millis(marquee_mode.pause_duration),
+        });
+
+        {
+            let inner = inner.clone();
+            let scrolled_clone = scrolled.clone();
+
+            scrolled.add_tick_callback(move |_, _| inner.tick(&scrolled_clone));
+        }
+
+        if marquee_mode.on_hover != MarqueeOnHover::None {
+            let motion_controller = EventControllerMotion::new();
+
+            {
+                let inner = inner.clone();
+                motion_controller.connect_enter(move |_, _, _| {
+                    inner.is_hovered.set(true);
+                });
+            }
+
+            {
+                let inner = inner.clone();
+                motion_controller.connect_leave(move |_| {
+                    inner.is_hovered.set(false);
+                });
+            }
+
+            scrolled.add_controller(motion_controller);
+        }
+
+        Self { inner, scrolled }
+    }
+
+    fn widget(&self) -> &ScrolledWindow {
+        &self.scrolled
+    }
+
+    fn set_text(&self, text: &str) {
+        self.inner.text.replace(text.to_string());
+        self.inner
+            .original_text_width
+            .set(pixel_width(&self.inner.label, text));
+        self.inner.is_scrolling.set(false);
+        self.inner.reset_at_cached.set(None);
+        self.inner.pause_started_at.set(None);
+
+        let hadjustment = self.scrolled.hadjustment();
+        hadjustment.set_value(0.0);
+
+        if let Some(max_length) = self.inner.mode.max_length {
+            let sample_string = text.chars().take(max_length as usize).collect::<String>();
+            let width = pixel_width(&self.inner.label, &sample_string);
+            self.scrolled.set_min_content_width(width);
+        } else {
+            self.scrolled.set_min_content_width(0);
+        }
+
+        self.inner.label.set_label_escaped(text);
+    }
+}
+
+impl MarqueeInner {
+    fn tick(&self, scrolled: &ScrolledWindow) -> ControlFlow {
+        let allocated_width = scrolled.width();
+        let text = self.text.borrow();
+
+        let needs_scroll = self.original_text_width.get() > allocated_width;
+
+        if needs_scroll {
+            if !self.is_scrolling.get() {
+                let duplicated_text = format!("{}{}{}", &*text, &self.mode.separator, &*text);
+                self.label.set_label(&duplicated_text);
+
+                let reset_at =
+                    pixel_width(&self.label, &format!("{}{}", &*text, &self.mode.separator)) as f64;
+                self.reset_at_cached.set(Some(reset_at));
+
+                self.pause_started_at.set(Some(Instant::now()));
+                self.is_scrolling.set(true);
+            }
+
+            let reset_at = self
+                .reset_at_cached
+                .get()
+                .expect("reset_at is always set before is_scrolling becomes true");
+
+            let is_paused = if let Some(start_time) = self.pause_started_at.get() {
+                start_time.elapsed() <= self.pause_duration
+            } else {
+                false
+            };
+
+            if is_paused {
+                return ControlFlow::Continue;
+            }
+
+            if self.pause_started_at.get().is_some() {
+                self.pause_started_at.set(None);
+            }
+
+            let should_scroll = match self.mode.on_hover {
+                MarqueeOnHover::Play => self.is_hovered.get(),
+                MarqueeOnHover::Pause => !self.is_hovered.get(),
+                MarqueeOnHover::None => true,
+            };
+
+            if should_scroll {
+                let hadjustment = scrolled.hadjustment();
+                let v = hadjustment.value() + self.mode.scroll_speed;
+                if v >= reset_at {
+                    hadjustment.set_value(v - reset_at);
+                    self.pause_started_at.set(Some(Instant::now()));
+                } else {
+                    hadjustment.set_value(v);
+                }
+            }
+        } else if self.is_scrolling.get() {
+            self.label.set_label_escaped(&text);
+            scrolled.hadjustment().set_value(0.0);
+            self.is_scrolling.set(false);
+            self.reset_at_cached.set(None);
+            self.pause_started_at.set(None);
+        }
+
+        ControlFlow::Continue
+    }
 }
