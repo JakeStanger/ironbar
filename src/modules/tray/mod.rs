@@ -360,10 +360,13 @@ fn on_update(
                     icon_name,
                     icon_pixmap,
                 } => {
-                    menu_item.icon_pixmap = icon_pixmap;
+                    let name_changed = icon_name.as_ref() != menu_item.icon_name();
+                    let pixmap_changed = icon_pixmap != menu_item.icon_pixmap;
 
-                    if icon_name.as_ref() != menu_item.icon_name() {
+                    if name_changed || pixmap_changed {
+                        menu_item.icon_pixmap = icon_pixmap;
                         menu_item.set_icon_name(icon_name);
+
                         match icon::get_image(
                             menu_item,
                             icon_config.size,
