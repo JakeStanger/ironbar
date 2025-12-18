@@ -11,6 +11,7 @@ use gtk::{
     ShortcutTrigger, prelude::*,
 };
 use gtk::{Button, Label, PopoverMenu};
+use std::path::PathBuf;
 use system_tray::client::ActivateRequest;
 use system_tray::item::{IconPixmap, Status, StatusNotifierItem, Tooltip};
 use system_tray::menu::ToggleState;
@@ -30,7 +31,7 @@ pub(crate) struct TrayMenu {
 
     pub title: Option<String>,
     pub icon_name: Option<String>,
-    pub icon_theme_path: Option<String>,
+    pub icon_theme_path: Option<PathBuf>,
     pub icon_pixmap: Option<Vec<IconPixmap>>,
 }
 
@@ -211,7 +212,7 @@ impl TrayMenu {
             tx,
             title: item.title,
             icon_name: item.icon_name,
-            icon_theme_path: item.icon_theme_path,
+            icon_theme_path: item.icon_theme_path.map(PathBuf::from),
             icon_pixmap: item.icon_pixmap,
             path: None,
             address: address.to_owned(),
