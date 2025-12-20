@@ -71,14 +71,14 @@
           naersk = naersk';
         };
 
-      default = self.packages.${pkgs.hostPlatform.system}.ironbar;
+      default = self.packages.${pkgs.stdenv.hostPlatform.system}.ironbar;
     });
 
     # Apps
     apps = forAllSystems (pkgs: let
       ironbar = {
         type = "app";
-        program = pkgs.lib.getExe self.packages.${pkgs.hostPlatform.system}.ironbar;
+        program = pkgs.lib.getExe self.packages.${pkgs.stdenv.hostPlatform.system}.ironbar;
       };
     in {
       inherit ironbar;

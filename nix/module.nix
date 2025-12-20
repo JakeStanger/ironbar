@@ -5,7 +5,7 @@ self: {
   ...
 }: let
   cfg = config.programs.ironbar;
-  defaultIronbarPackage = self.packages.${pkgs.hostPlatform.system}.default;
+  defaultIronbarPackage = self.packages.${pkgs.stdenv.hostPlatform.system}.default;
   jsonFormat = pkgs.formats.json {};
   inherit
     (lib)
