@@ -39,6 +39,16 @@ pub struct BatteryModule {
     /// **Default**: `24`
     icon_size: i32,
 
+    /// Whether to show the icon.
+    ///
+    /// **Default**: `true`
+    show_icon: bool,
+
+    /// Whether to show the label.
+    ///
+    /// **Default**: `true`
+    show_label: bool,
+
     // -- Common --
     /// See [layout options](module-level-options#layout)
     #[serde(flatten)]
@@ -82,6 +92,8 @@ impl Default for BatteryModule {
             format: "{percentage}%".to_string(),
             icon_size: default::IconSize::Small as i32,
             layout: LayoutConfig::default(),
+            show_icon: true,
+            show_label: true,
             thresholds: HashMap::new(),
             common: Some(CommonConfig::default()),
         }
@@ -165,16 +177,26 @@ impl Module<Button> for BatteryModule {
         context: WidgetContext<Self::SendMessage, Self::ReceiveMessage>,
         info: &ModuleInfo,
     ) -> Result<ModuleParts<Button>> {
-        let icon = IconLabel::new("", self.icon_size, &context.ironbar.image_provider());
-        icon.add_css_class("icon");
-
-        let label = Label::builder()
-            .label(&self.format)
-            .use_markup(true)
-            .justify(self.layout.justify.into())
-            .build();
-
-        label.add_css_class("label");
+        let icon = match self.show_icon {
+            true => {
+                let icon = IconLabel::new("", self.icon_size, &context.ironbar.image_provider());
+                icon.add_css_class("icon");
+                Some(icon)
+            }
+            false => None,
+        };
+        let label = match self.show_label {
+            true => {
+                let label = Label::builder()
+                    .label(&self.format)
+                    .use_markup(true)
+                    .justify(self.layout.justify.into())
+                    .build();
+                label.add_css_class("label");
+                Some(label)
+            }
+            false => None,
+        };
 
         let container = gtk::Box::new(self.layout.orientation(info), 5);
         container.add_css_class("contents");
@@ -182,8 +204,12 @@ impl Module<Button> for BatteryModule {
         let button = Button::new();
         button.add_css_class("button");
 
-        container.append(&*icon);
-        container.append(&label);
+        if let Some(i) = &icon {
+            container.append(&**i);
+        }
+        if let Some(l) = &label {
+            container.append(l);
+        }
         button.set_child(Some(&container));
 
         let tx = context.tx.clone();
@@ -195,26 +221,29 @@ impl Module<Button> for BatteryModule {
         rx.recv_glib(
             (&button, &self.format, &self.thresholds),
             move |(button, format, thresholds), properties| {
-                let state = properties.state;
-
-                let is_charging =
-                    state == BatteryState::Charging || state == BatteryState::PendingCharge;
-
-                let time_remaining = if is_charging {
-                    seconds_to_string(properties.time_to_full)
-                } else {
-                    seconds_to_string(properties.time_to_empty)
-                }
-                .unwrap_or_default();
-
                 let percentage = properties.percentage;
-                let format = format
-                    .replace("{percentage}", &percentage.round().to_string())
-                    .replace("{time_remaining}", &time_remaining)
-                    .replace("{state}", &state.to_string());
 
-                label.set_label_escaped(&format);
-                icon.set_label(Some(&format!("icon:{}", properties.icon_name)));
+                if let Some(l) = &label {
+                    let state = properties.state;
+                    let is_charging =
+                        state == BatteryState::Charging || state == BatteryState::PendingCharge;
+                    let time_remaining = if is_charging {
+                        seconds_to_string(properties.time_to_full)
+                    } else {
+                        seconds_to_string(properties.time_to_empty)
+                    }
+                    .unwrap_or_default();
+                    let format = format
+                        .replace("{percentage}", &percentage.round().to_string())
+                        .replace("{time_remaining}", &time_remaining)
+                        .replace("{state}", &state.to_string());
+
+                    l.set_label_escaped(&format);
+                }
+
+                if let Some(i) = &icon {
+                    i.set_label(Some(&format!("icon:{}", properties.icon_name)));
+                }
 
                 if let Some(threshold) = get_threshold(percentage, thresholds) {
                     button.add_css_class(threshold);

@@ -17,6 +17,8 @@ Displays system power information such as the battery percentage, and estimated 
 | `format`     | `string`             | `{percentage}%` | Format string to use for the widget button label.                                                                                                    |
 | `icon_size`  | `integer`            | `24`            | Size to render icon at.                                                                                                                              |
 | `thresholds` | `Map<string, float>` | `{}`            | Map of threshold names to apply as classes against the percentage at which to apply them. The nearest value above the current percentage is applied. |
+| `show_icon`  | `boolean`            | `true`          | Whether to show the icon.                                                                                                                            |
+| `show_label` | `boolean`            | `true`          | Whether to show the label.                                                                                                                           |
 
 <details>
 <summary>JSON</summary>
