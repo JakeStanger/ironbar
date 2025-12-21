@@ -183,14 +183,12 @@ impl Module<Button> for MusicModule {
 
         icon_pause.label().set_justify(self.layout.justify.into());
 
-        let label = OverflowLabel::new(
-            Label::builder()
-                .use_markup(true)
-                .justify(self.layout.justify.into())
-                .build(),
-            self.truncate,
-            self.marquee.clone(),
-        );
+        let label = Label::builder()
+            .use_markup(true)
+            .justify(self.layout.justify.into())
+            .build();
+
+        let label = OverflowLabel::new(label, self.truncate, self.marquee.clone());
 
         button_contents.append(&*icon_pause);
         button_contents.append(&*icon_play);
