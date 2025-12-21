@@ -1,4 +1,4 @@
-use crate::gtk_helpers::IronbarLabelExt;
+use crate::gtk_helpers::{IronbarLabelExt, OverflowLabel};
 use crate::image;
 use gtk::prelude::*;
 use gtk::{Button, ContentFit, Image, Label, Orientation, Picture};
@@ -248,39 +248,60 @@ impl Deref for IconLabel {
     }
 }
 
-#[derive(Clone, Debug)]
 #[cfg(feature = "music")]
 pub struct IconPrefixedLabel {
     label: Label,
+    overflow: Option<OverflowLabel>,
     container: gtk::Box,
 }
 
 #[cfg(feature = "music")]
 impl IconPrefixedLabel {
-    pub fn new(icon_input: &str, label: Option<&str>, image_provider: &image::Provider) -> Self {
+    pub fn with_overflow(
+        icon_input: &str,
+        overflow: OverflowLabel,
+        image_provider: &image::Provider,
+    ) -> Self {
+        let label = overflow.label().clone();
+        Self::build(icon_input, label, Some(overflow), image_provider)
+    }
+
+    fn build(
+        icon_input: &str,
+        label: Label,
+        overflow: Option<OverflowLabel>,
+        image_provider: &image::Provider,
+    ) -> Self {
         let container = gtk::Box::new(Orientation::Horizontal, 5);
 
         let icon = IconLabel::new(icon_input, 24, image_provider);
-
-        let mut builder = Label::builder().use_markup(true);
-
-        if let Some(label) = label {
-            builder = builder.label(label);
-        }
-
-        let label = builder.build();
 
         icon.add_css_class("icon-box");
         label.add_css_class("label");
 
         container.append(&*icon);
-        container.append(&label);
 
-        Self { label, container }
+        if let Some(ref overflow) = overflow {
+            container.append(overflow.widget());
+        } else {
+            container.append(&label);
+        }
+
+        Self {
+            label,
+            overflow,
+            container,
+        }
     }
 
-    pub fn label(&self) -> &Label {
-        &self.label
+    pub fn set_label_escaped(&self, text: &str) {
+        if let Some(overflow) = &self.overflow {
+            overflow.set_label_escaped(text);
+        } else {
+            self.label.set_label_escaped(text);
+        }
+
+        self.set_visible(true);
     }
 }
 

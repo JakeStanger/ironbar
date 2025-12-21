@@ -1,7 +1,7 @@
 use crate::channels::{AsyncSenderExt, BroadcastReceiverExt};
 use crate::clients::volume::{self, Event};
 use crate::config::{CommonConfig, LayoutConfig, MarqueeMode, TruncateMode};
-use crate::gtk_helpers::{self, IronbarLabelExt};
+use crate::gtk_helpers::{IronbarLabelExt, OverflowLabel};
 use crate::modules::{
     Module, ModuleInfo, ModuleParts, ModulePopup, ModuleUpdateEvent, PopupButton, WidgetContext,
 };
@@ -449,22 +449,14 @@ impl Module<Button> for VolumeModule {
                         let item_container = gtk::Box::new(Orientation::Vertical, 0);
                         item_container.add_css_class("app-box");
 
-                        let label = Label::new(Some(&info.name));
-                        label.add_css_class("title");
-
-                        if let Some(truncate) = self.truncate {
-                            label.truncate(truncate);
-                            item_container.append(&label);
-                        } else if self.marquee.enable {
-                            let scrolled = gtk_helpers::create_marquee_widget(
-                                &label,
-                                &info.name,
-                                self.marquee.clone(),
-                            );
-                            item_container.append(&scrolled);
-                        } else {
-                            item_container.append(&label);
-                        }
+                        let title_label = OverflowLabel::new(
+                            Label::new(None),
+                            self.truncate,
+                            self.marquee.clone(),
+                        );
+                        title_label.label().add_css_class("title");
+                        title_label.set_label_escaped(&info.name);
+                        item_container.append(title_label.widget());
 
                         let slider = Scale::builder().sensitive(info.can_set_volume).build();
                         slider.set_range(0.0, self.max_volume);
@@ -509,7 +501,7 @@ impl Module<Button> for VolumeModule {
                             info.index,
                             InputUi {
                                 container: item_container,
-                                label,
+                                title_label,
                                 slider,
                                 btn_mute,
                                 label_raw: info.name.clone(),
@@ -518,26 +510,8 @@ impl Module<Button> for VolumeModule {
                     }
                     Event::UpdateInput(info) => {
                         if let Some(ui) = inputs.get_mut(&info.index) {
-                            // Recreate title widget if name changed and marquee is enabled
-                            // (needed to reset marquee scrolling state)
-                            if self.marquee.enable && ui.label_raw != info.name {
-                                if let Some(old_widget) = ui.container.first_child() {
-                                    ui.container.remove(&old_widget);
-                                }
-
-                                let label = Label::new(Some(&info.name));
-                                label.add_css_class("title");
-
-                                let scrolled = gtk_helpers::create_marquee_widget(
-                                    &label,
-                                    &info.name,
-                                    self.marquee.clone(),
-                                );
-                                ui.container.prepend(&scrolled);
-                                ui.label = label;
-                                ui.label_raw = info.name.clone();
-                            } else if ui.label_raw != info.name {
-                                ui.label.set_label(&info.name);
+                            if ui.label_raw != info.name {
+                                ui.title_label.set_label_escaped(&info.name);
                                 ui.label_raw = info.name.clone();
                             }
 
@@ -567,7 +541,7 @@ impl Module<Button> for VolumeModule {
 
 struct InputUi {
     container: gtk::Box,
-    label: Label,
+    title_label: OverflowLabel,
     slider: Scale,
     btn_mute: ToggleButton,
     // Store original (unformatted) title to detect change when marquee is enabled

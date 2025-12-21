@@ -1,4 +1,4 @@
-use crate::config::{CommonConfig, LayoutConfig, TruncateMode, default};
+use crate::config::{CommonConfig, LayoutConfig, MarqueeMode, TruncateMode, default};
 use dirs::{audio_dir, home_dir};
 use serde::Deserialize;
 use std::path::PathBuf;
@@ -85,20 +85,36 @@ pub struct MusicModule {
     /// **Default**: `null`
     pub(crate) truncate: Option<TruncateMode>,
 
+    /// See [marquee options](module-level-options#marquee-mode).
+    #[serde(default)]
+    pub(crate) marquee: MarqueeMode,
+
     /// See [truncate options](module-level-options#truncate-mode).
     ///
     /// **Default**: `null`
     pub(crate) truncate_popup_artist: Option<TruncateMode>,
+
+    /// See [marquee options](module-level-options#marquee-mode).
+    #[serde(default)]
+    pub(crate) marquee_popup_artist: MarqueeMode,
 
     /// See [truncate options](module-level-options#truncate-mode).
     ///
     /// **Default**: `null`
     pub(crate) truncate_popup_album: Option<TruncateMode>,
 
+    /// See [marquee options](module-level-options#marquee-mode).
+    #[serde(default)]
+    pub(crate) marquee_popup_album: MarqueeMode,
+
     /// See [truncate options](module-level-options#truncate-mode).
     ///
     /// **Default**: `null`
     pub(crate) truncate_popup_title: Option<TruncateMode>,
+
+    /// See [marquee options](module-level-options#marquee-mode).
+    #[serde(default)]
+    pub(crate) marquee_popup_title: MarqueeMode,
 
     /// See [layout options](module-level-options#layout)
     #[serde(flatten)]
@@ -121,9 +137,13 @@ impl Default for MusicModule {
             host: "localhost:6600".to_string(),
             music_dir: default_music_dir(),
             truncate: None,
+            marquee: MarqueeMode::default(),
             truncate_popup_artist: None,
+            marquee_popup_artist: MarqueeMode::default(),
             truncate_popup_album: None,
+            marquee_popup_album: MarqueeMode::default(),
             truncate_popup_title: None,
+            marquee_popup_title: MarqueeMode::default(),
             layout: LayoutConfig::default(),
             common: Some(CommonConfig::default()),
         }
