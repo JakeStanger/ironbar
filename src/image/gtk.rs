@@ -1,4 +1,4 @@
-use crate::gtk_helpers::IronbarLabelExt;
+use crate::gtk_helpers::{IronbarLabelExt, OverflowLabel};
 use crate::image;
 use gtk::prelude::*;
 use gtk::{Button, ContentFit, Image, Label, Orientation, Picture};
@@ -251,7 +251,7 @@ impl Deref for IconLabel {
 #[cfg(feature = "music")]
 pub struct IconPrefixedLabel {
     label: Label,
-    overflow: Option<crate::gtk_helpers::OverflowLabel>,
+    overflow: Option<OverflowLabel>,
     container: gtk::Box,
 }
 
@@ -259,7 +259,7 @@ pub struct IconPrefixedLabel {
 impl IconPrefixedLabel {
     pub fn with_overflow(
         icon_input: &str,
-        overflow: crate::gtk_helpers::OverflowLabel,
+        overflow: OverflowLabel,
         image_provider: &image::Provider,
     ) -> Self {
         let label = overflow.label().clone();
@@ -269,7 +269,7 @@ impl IconPrefixedLabel {
     fn build(
         icon_input: &str,
         label: Label,
-        overflow: Option<crate::gtk_helpers::OverflowLabel>,
+        overflow: Option<OverflowLabel>,
         image_provider: &image::Provider,
     ) -> Self {
         let container = gtk::Box::new(Orientation::Horizontal, 5);
