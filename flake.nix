@@ -44,6 +44,7 @@
             libinput
             libevdev
             luajit
+            sccache
             ;
           inherit (pkgs.luajitPackages) lgi;
         };
