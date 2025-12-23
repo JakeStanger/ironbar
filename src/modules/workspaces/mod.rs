@@ -42,6 +42,9 @@ pub enum SortOrder {
     /// Workspaces are sorted numerically first,
     /// and named workspaces are added to the end in alphabetical order.
     Name,
+
+    /// Shows workspaces in the order of their index within the compositor.
+    Index,
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -165,25 +168,31 @@ pub struct WorkspaceItemContext {
 ///
 /// Named workspaces are always sorted before numbered ones.
 fn reorder_workspaces(container: &gtk::Box, sort_order: SortOrder) {
-    let mut buttons = container
+    let mut buttons: Vec<(String, Option<gtk::Widget>)> = container
         .children()
         .map(|child| {
-            let label = if sort_order == SortOrder::Label {
-                child
+            let label = match sort_order {
+                SortOrder::Label => child
                     .downcast_ref::<gtk::Button>()
                     .and_then(ButtonExt::label)
                     .unwrap_or_else(|| child.widget_name())
-            } else {
-                child.widget_name()
-            }
-            .to_string();
+                    .to_string(),
+                SortOrder::Index => {
+                    let index = child.get_tag::<i64>("workspace_index").copied();
+
+                    index
+                        .map(|v| v.to_string())
+                        .unwrap_or_else(|| i64::MAX.to_string())
+                }
+                _ => child.widget_name().to_string(),
+            };
 
             (label, Some(child))
         })
-        .collect::<Vec<_>>();
+        .collect();
 
     buttons.sort_by(|(label_a, _), (label_b, _)| {
-        match (label_a.parse::<i32>(), label_b.parse::<i32>()) {
+        match (label_a.parse::<i64>(), label_b.parse::<i64>()) {
             (Ok(a), Ok(b)) => a.cmp(&b),
             (Ok(_), Err(_)) => Ordering::Less,
             (Err(_), Ok(_)) => Ordering::Greater,
@@ -293,6 +302,9 @@ impl Module<gtk::Box> for WorkspacesModule {
                         // set an ID to track the open workspace for the favourite
                         btn.set_workspace_id(workspace.id);
                         btn.set_open_state(workspace.visibility.into());
+                        btn.button().set_tag("workspace_index", workspace.index);
+                    } else if let Some(btn) = button_map.find_button_mut(&workspace) {
+                        btn.button().set_tag("workspace_index", workspace.index);
                     } else {
                         let btn = Button::new(
                             workspace.id,
@@ -300,6 +312,9 @@ impl Module<gtk::Box> for WorkspacesModule {
                             workspace.visibility.into(),
                             &item_context,
                         );
+
+                        btn.button().set_tag("workspace_index", workspace.index);
+
                         container.append(btn.button());
                         btn.button().set_visible(true);
 
@@ -368,6 +383,10 @@ impl Module<gtk::Box> for WorkspacesModule {
                     WorkspaceUpdate::Remove(id) => remove_workspace(id, &mut button_map),
                     WorkspaceUpdate::Move(workspace) if has_initialized => {
                         if self.all_monitors {
+                            if !self.hidden.contains(&workspace.name) {
+                                add_workspace(workspace, &mut button_map);
+                                reorder!();
+                            }
                             return;
                         }
 
