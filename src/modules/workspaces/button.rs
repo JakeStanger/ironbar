@@ -16,10 +16,16 @@ pub struct Button {
 }
 
 impl Button {
-    pub fn new(id: i64, name: &str, open_state: OpenState, context: &WorkspaceItemContext) -> Self {
-        let label = context.name_map.get(name).map_or(name, String::as_str);
+    pub fn new(
+        id: i64,
+        index: i64,
+        name: &str,
+        open_state: OpenState,
+        context: &WorkspaceItemContext,
+    ) -> Self {
+        let label = context.format_label(name, index);
 
-        let button = IconButton::new(label, context.icon_size, context.image_provider.clone());
+        let button = IconButton::new(&label, context.icon_size, context.image_provider.clone());
         button.set_widget_name(name);
         button.add_css_class("item");
 
@@ -42,6 +48,10 @@ impl Button {
 
     pub fn button(&self) -> &GtkButton {
         &self.button
+    }
+
+    pub fn set_label(&self, label: &str) {
+        self.button.set_label(label);
     }
 
     pub fn set_open_state(&self, open_state: OpenState) {
