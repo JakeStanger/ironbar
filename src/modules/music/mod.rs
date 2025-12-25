@@ -226,7 +226,9 @@ impl Module<Button> for MusicModule {
                             icon_play.set_visible(false);
                         }
                         PlayerState::Stopped => {
-                            button.set_visible(false);
+                            label.set_label_escaped("");
+                            icon_pause.set_visible(false);
+                            icon_play.set_visible(false);
                         }
                         _ => {}
                     }
