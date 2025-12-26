@@ -2,14 +2,13 @@ use std::borrow::Cow;
 use std::cell::RefMut;
 use std::path::PathBuf;
 use std::sync::Arc;
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
 
 use color_eyre::Result;
 use glib::Propagation;
 use gtk::gdk::Paintable;
 use gtk::prelude::*;
-use gtk::{Button, ContentFit, EventSequenceState, GestureClick, Label, Orientation, Scale};
+use gtk::{Button, ContentFit, Label, Orientation, Scale};
 use tokio::sync::mpsc;
 use tracing::{error, warn};
 
@@ -390,32 +389,15 @@ impl Module<Button> for MusicModule {
         progress_box.append(&progress_label);
         container.append(&progress_box);
 
-        let event_handler = GestureClick::new();
-        let drag_lock = Arc::new(AtomicBool::new(false));
-
         {
-            let drag_lock = drag_lock.clone();
-            event_handler.connect_pressed(move |gesture, _, _, _| {
-                gesture.set_state(EventSequenceState::Claimed);
-                drag_lock.store(true, Ordering::Relaxed);
-            });
-        }
-
-        {
-            let drag_lock = drag_lock.clone();
-            let scale = progress.clone();
             let tx = context.controller_tx.clone();
-            event_handler.connect_released(move |gesture, _, _, _| {
-                gesture.set_state(EventSequenceState::Claimed);
-
-                let value = scale.value();
-                tx.send_spawn(PlayerCommand::Seek(Duration::from_secs_f64(value)));
-
-                drag_lock.store(false, Ordering::Relaxed);
+            progress.connect_value_changed(move |scale| {
+                if scale.has_css_class("dragging") {
+                    let value = scale.value();
+                    tx.send_spawn(PlayerCommand::Seek(Duration::from_secs_f64(value)));
+                }
             });
         }
-
-        progress.add_controller(event_handler);
 
         let image_size = self.cover_image_size;
 
@@ -503,9 +485,7 @@ impl Module<Button> for MusicModule {
                         volume_box.set_visible(false);
                     }
                 }
-                ControllerEvent::UpdateProgress(progress_tick)
-                    if !drag_lock.load(Ordering::Relaxed) =>
-                {
+                ControllerEvent::UpdateProgress(progress_tick) => {
                     if let (Some(elapsed), Some(duration)) =
                         (progress_tick.elapsed, progress_tick.duration)
                     {
@@ -515,8 +495,10 @@ impl Module<Button> for MusicModule {
                             format_time(duration)
                         ));
 
-                        progress.set_value(elapsed.as_secs_f64());
-                        progress.set_range(0.0, duration.as_secs_f64());
+                        if !progress.has_css_class("dragging") {
+                            progress.set_value(elapsed.as_secs_f64());
+                            progress.set_range(0.0, duration.as_secs_f64());
+                        }
                         progress_box.set_visible(true);
                     } else {
                         progress_box.set_visible(false);
