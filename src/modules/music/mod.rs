@@ -1,6 +1,7 @@
 use std::borrow::Cow;
-use std::cell::RefMut;
+use std::cell::{Cell, RefMut};
 use std::path::PathBuf;
+use std::rc::Rc;
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -391,11 +392,19 @@ impl Module<Button> for MusicModule {
 
         {
             let tx = context.controller_tx.clone();
-            progress.connect_value_changed(move |scale| {
-                if scale.has_css_class("dragging") {
+            let was_dragging = Rc::new(Cell::new(false));
+
+            // Seek only when dragging ends (when "dragging" CSS class is removed)
+            progress.connect_notify_local(Some("css-classes"), move |scale, _| {
+                let is_dragging = scale.has_css_class("dragging");
+
+                // If we were dragging and now we're not, drag just ended - seek
+                if was_dragging.get() && !is_dragging {
                     let value = scale.value();
                     tx.send_spawn(PlayerCommand::Seek(Duration::from_secs_f64(value)));
                 }
+
+                was_dragging.set(is_dragging);
             });
         }
 
@@ -495,6 +504,7 @@ impl Module<Button> for MusicModule {
                             format_time(duration)
                         ));
 
+                        // Don't update slider position while user is dragging
                         if !progress.has_css_class("dragging") {
                             progress.set_value(elapsed.as_secs_f64());
                             progress.set_range(0.0, duration.as_secs_f64());
