@@ -1,12 +1,13 @@
 use std::borrow::Cow;
-use std::cell::RefMut;
+use std::cell::{Cell, RefMut};
 use std::path::PathBuf;
+use std::rc::Rc;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
 
 use color_eyre::Result;
-use glib::Propagation;
+use glib::{Propagation, SourceId};
 use gtk::gdk::Paintable;
 use gtk::prelude::*;
 use gtk::{Button, ContentFit, EventSequenceState, GestureClick, Label, Orientation, Scale};
@@ -29,6 +30,10 @@ use crate::modules::{
 use crate::{module_impl, spawn};
 
 mod config;
+
+/// Timeout duration to distinguish between transient stops (track changes)
+/// and real stops (player closed). Delay before hiding the music widget.
+const STOP_HIDE_TIMEOUT_MS: u64 = 500;
 
 #[derive(Debug)]
 pub enum PlayerCommand {
@@ -204,14 +209,22 @@ impl Module<Button> for MusicModule {
 
         let rx = context.subscribe();
 
+        // Track pending hide timeout to distinguish transient stops from real stops
+        let hide_timeout: Rc<Cell<Option<SourceId>>> = Rc::new(Cell::new(None));
+
         rx.recv_glib(
-            (&button, &context.tx, &label),
-            move |(button, tx, label), event| {
+            (&button, &context.tx, &label, &hide_timeout),
+            move |(button, tx, label, hide_timeout), event| {
                 let ControllerEvent::Update(mut event) = event else {
                     return;
                 };
 
                 if let Some(event) = event.take() {
+                    // Cancel any pending hide timeout since we received an update
+                    if let Some(source_id) = hide_timeout.take() {
+                        source_id.remove();
+                    }
+
                     label.set_label_escaped(&event.display_string);
 
                     button.set_visible(true);
@@ -226,9 +239,27 @@ impl Module<Button> for MusicModule {
                             icon_play.set_visible(false);
                         }
                         PlayerState::Stopped => {
+                            // Clear UI immediately but defer hiding to distinguish
+                            // transient stops (track changes) from real stops (player closed)
                             label.set_label_escaped("");
                             icon_pause.set_visible(false);
                             icon_play.set_visible(false);
+
+                            // Schedule hide if no new state arrives
+                            let button = button.clone();
+                            let tx = tx.clone();
+                            let hide_timeout_inner = hide_timeout.clone();
+
+                            let source_id = glib::timeout_add_local_once(
+                                Duration::from_millis(STOP_HIDE_TIMEOUT_MS),
+                                move || {
+                                    button.set_visible(false);
+                                    tx.send_spawn(ModuleUpdateEvent::ClosePopup);
+                                    hide_timeout_inner.set(None);
+                                },
+                            );
+
+                            hide_timeout.set(Some(source_id));
                         }
                         _ => {}
                     }
@@ -238,6 +269,12 @@ impl Module<Button> for MusicModule {
                         icon_play.set_visible(false);
                     }
                 } else {
+                    // Player fully disconnected (no track info at all)
+                    // Cancel any pending timeout and hide immediately
+                    if let Some(source_id) = hide_timeout.take() {
+                        source_id.remove();
+                    }
+
                     button.set_visible(false);
                     tx.send_spawn(ModuleUpdateEvent::ClosePopup);
                 }
