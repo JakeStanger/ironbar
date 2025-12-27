@@ -144,6 +144,8 @@ impl Compositor {
 pub struct Workspace {
     /// Unique identifier
     pub id: i64,
+    /// The workspace index (e.g. for sorting)
+    pub index: i64,
     /// Workspace friendly name
     pub name: String,
     /// Name of the monitor (output) the workspace is located on

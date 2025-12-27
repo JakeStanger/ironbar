@@ -54,6 +54,7 @@ impl From<&Workspace> for IronWorkspace {
         // but if it does not have a name, the monitor index is used.
         Self {
             id: workspace.id as i64,
+            index: workspace.idx as i64,
             name: workspace.name.clone().unwrap_or(workspace.idx.to_string()),
             monitor: workspace.output.clone().unwrap_or_default(),
             visibility: if workspace.is_active {

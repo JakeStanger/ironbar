@@ -518,6 +518,7 @@ impl From<(Visibility, HWorkspace)> for Workspace {
     fn from((visibility, workspace): (Visibility, HWorkspace)) -> Self {
         Self {
             id: workspace.id as i64,
+            index: workspace.id as i64,
             name: workspace.name,
             monitor: workspace.monitor,
             visibility,

@@ -72,6 +72,7 @@ impl From<Node> for Workspace {
 
         Self {
             id: node.id,
+            index: node.num.unwrap_or(0) as i64,
             name: node.name.unwrap_or_default(),
             monitor: node.output.unwrap_or_default(),
             visibility,
@@ -85,6 +86,7 @@ impl From<swayipc_async::Workspace> for Workspace {
 
         Self {
             id: workspace.id,
+            index: workspace.num as i64,
             name: workspace.name,
             monitor: workspace.output,
             visibility,
