@@ -11,8 +11,10 @@ use tracing::{debug, error};
 
 #[derive(Debug)]
 pub struct PopupCacheValue {
-    // pub name: String,
     pub content: gtk::Box,
+    /// Whether this module disallows the popover widget from using autohide.
+    /// Where popups are controlled via hover, autohide can cause issues.
+    pub disable_autohide: bool,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -30,6 +32,7 @@ pub struct Popup {
     pub button_cache: Rc<RefCell<Vec<Button>>>,
     pos: BarPosition,
     current_widget: Rc<RefCell<Option<CurrentWidgetInfo>>>,
+    autohide: bool,
 }
 
 impl Debug for Popup {
@@ -84,6 +87,7 @@ impl Popup {
             button_finder_cache: rc_mut!(HashMap::new()),
             pos,
             current_widget: rc_mut!(None),
+            autohide,
         }
     }
 
@@ -102,6 +106,7 @@ impl Popup {
             key,
             PopupCacheValue {
                 content: content.container.clone(),
+                disable_autohide: content.disable_autohide,
             },
         );
 
@@ -128,7 +133,11 @@ impl Popup {
     pub fn show(&self, widget_id: usize, button_id: usize) {
         self.clear_window();
 
-        if let Some(PopupCacheValue { content, .. }) = self.container_cache.borrow().get(&widget_id)
+        if let Some(PopupCacheValue {
+            content,
+            disable_autohide,
+            ..
+        }) = self.container_cache.borrow().get(&widget_id)
         {
             *self.current_widget.borrow_mut() = Some(CurrentWidgetInfo { widget_id });
 
@@ -151,6 +160,11 @@ impl Popup {
             self.popover.set_child(Some(content));
             self.popover.unparent();
             self.popover.set_parent(&button);
+
+            if *disable_autohide {
+                self.popover.set_autohide(false);
+            }
+
             self.popover.popup();
         }
     }
@@ -163,7 +177,11 @@ impl Popup {
     pub fn show_for(&self, widget_id: usize, button: &Button) -> bool {
         self.clear_window();
 
-        if let Some(PopupCacheValue { content, .. }) = self.container_cache.borrow().get(&widget_id)
+        if let Some(PopupCacheValue {
+            content,
+            disable_autohide,
+            ..
+        }) = self.container_cache.borrow().get(&widget_id)
         {
             *self.current_widget.borrow_mut() = Some(CurrentWidgetInfo { widget_id });
 
@@ -171,6 +189,11 @@ impl Popup {
             self.popover.set_child(Some(content));
             self.popover.unparent();
             self.popover.set_parent(button);
+
+            if *disable_autohide {
+                self.popover.set_autohide(false);
+            }
+
             self.popover.popup();
 
             true
@@ -181,6 +204,7 @@ impl Popup {
 
     fn clear_window(&self) {
         self.popover.set_child(None::<&gtk::Box>);
+        self.popover.set_autohide(self.autohide);
     }
 
     /// Hides the popup
