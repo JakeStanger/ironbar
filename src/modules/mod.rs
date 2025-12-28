@@ -198,8 +198,18 @@ pub struct ModulePopupParts {
     /// An array of buttons which can be used for opening the popup.
     /// For most modules, this will only be a single button.
     pub buttons: Vec<Button>,
+    /// Whether this module disallows the popover widget from using autohide.
+    /// Where popups are controlled via hover, autohide can cause issues.
+    pub disable_autohide: bool,
 
     pub button_finder: Option<Rc<ButtonFinder>>,
+}
+
+impl ModulePopupParts {
+    fn disable_autohide(mut self) -> Self {
+        self.disable_autohide = true;
+        self
+    }
 }
 
 impl Debug for ModulePopupParts {
@@ -229,6 +239,7 @@ impl ModulePopup for Option<gtk::Box> {
             container,
             buttons,
             button_finder: None,
+            disable_autohide: false,
         })
     }
 
@@ -237,6 +248,7 @@ impl ModulePopup for Option<gtk::Box> {
             container,
             buttons: vec![],
             button_finder: Some(finder),
+            disable_autohide: false,
         })
     }
 }

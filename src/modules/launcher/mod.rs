@@ -5,7 +5,8 @@ mod pagination;
 use self::item::{AppearanceOptions, Item, ItemButton, Window};
 use self::open_state::OpenState;
 use super::{
-    Module, ModuleInfo, ModuleParts, ModulePopup, ModuleUpdateEvent, PopupButton, WidgetContext,
+    Module, ModuleInfo, ModuleParts, ModulePopup, ModulePopupParts, ModuleUpdateEvent, PopupButton,
+    WidgetContext,
 };
 use crate::channels::{AsyncSenderExt, BroadcastReceiverExt};
 use crate::clients::wayland::{self, ToplevelEvent};
@@ -595,7 +596,8 @@ impl Module<gtk::Box> for LauncherModule {
                     .values()
                     .find(|b| b.button.button.popup_id() == id)
                     .map(|b| b.button.button.clone())
-            }));
+            }))
+            .map(ModulePopupParts::disable_autohide);
 
         Ok(ModuleParts {
             widget: container,
