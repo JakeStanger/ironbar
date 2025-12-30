@@ -70,7 +70,9 @@ impl Client {
                                             });
                                         }
 
-                                        if workspace.monitor != old_workspace.monitor {
+                                        if workspace.monitor != old_workspace.monitor
+                                            || workspace.index != old_workspace.index
+                                        {
                                             updates.push(WorkspaceUpdate::Move(workspace.clone()));
                                         }
                                     }
