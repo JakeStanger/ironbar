@@ -212,7 +212,10 @@ impl Module<gtk::Box> for TrayModule {
         spawn({
             let tx = tx.clone();
             async move {
+                let mut known_ids = std::collections::HashSet::new();
+
                 for (key, (item, menu)) in initial_items {
+                    known_ids.insert(key.clone());
                     tx.send_update(Event::Add(key.clone(), item.into())).await;
 
                     if let Some(menu) = menu.clone() {
@@ -222,6 +225,19 @@ impl Module<gtk::Box> for TrayModule {
                 }
 
                 while let Ok(message) = tray_rx.recv().await {
+                    match &message {
+                        Event::Add(address, _) => {
+                            if !known_ids.insert(address.clone()) {
+                                debug!("Skipping duplicate tray item: {address}");
+                                continue;
+                            }
+                        }
+                        Event::Remove(address) => {
+                            known_ids.remove(address);
+                        }
+                        _ => {}
+                    }
+
                     tx.send_update(message).await;
                 }
             }
