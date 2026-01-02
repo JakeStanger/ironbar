@@ -1,75 +1,16 @@
+> [!NOTE]
+> The Lua engine uses LuaJIT 5.1, and requires the use of a library called `lgi`.
+> Ensure you have the correct lua-lgi package installed.
+
 Allows you to render custom content using the Lua and the Cairo drawing library.
 This is an advanced feature which provides a powerful escape hatch, allowing you to fetch data and render anything
 using an embedded scripting environment.
 
 Scripts are automatically hot-reloaded.
 
-> [!NOTE]
-> The Lua engine uses LuaJIT 5.1, and requires the use of a library called `lgi`.
-> Ensure you have the correct lua-lgi package installed.
-
 ![Circle clock](https://f.jstanger.dev/github/ironbar/cairo-clock.png)
 
-## Configuration
-
-> Type: `cairo`
-
-| Name               | Type      | Default | Description                                        |
-|--------------------|-----------|---------|----------------------------------------------------|
-| `path`             | `string`  | `null`  | The path to the Lua script to load.                |
-| `frequency`        | `float`   | `200`   | The number of milliseconds between each draw call. |
-| `width`            | `integer` | `42`    | The canvas width in pixels.                        |
-| `height`           | `integer` | `42`    | The canvas height in pixels.                       |
-
-<details>
-<summary>JSON</summary>
-
-```json
-{
-  "center": [
-    {
-      "type": "cairo",
-      "path": ".config/ironbar/clock.lua",
-      "frequency": 100,
-      "width": 300,
-      "height": 300
-    }
-  ]
-}
-
-```
-
-</details>
-
-<details>
-<summary>TOML</summary>
-
-```toml
-[[center]]
-type = "cairo"
-path = ".config/ironbar/clock.lua"
-frequency = 100
-width = 300
-height = 300
-```
-</details>
-
-<details>
-<summary>YAML</summary>
-
-```yaml
-center:
-- type: cairo
-  path: .config/ironbar/clock.lua
-  frequency: 100
-  width: 300
-  height: 300
-```
-
-</details>
-
-<details>
-<summary>Corn</summary>
+## Example
 
 ```corn
 let { 
@@ -86,9 +27,13 @@ let {
 }
 ```
 
-</details>
+## Configuration
 
-### Script
+> Type: `cairo`
+
+%{properties}%
+
+## Script
 
 Every script must return a function or callable table with three parameters:
 - Cairo context (required)
