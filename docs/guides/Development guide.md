@@ -336,7 +336,7 @@ Child namespaces can be used to logically group keys.
 For example, the `sysinfo` client registers a child namespace called `cpu_frequency` to hold CPU frequency information.
 This namespace then contains child values for each CPU core, and aggregate values.
 
-The implementation can be as static or dynamic as necesary, depending on the use-case.
+The implementation can be as static or dynamic as necessary, depending on the use-case.
 Performing I/O to fetch values is generally considered okay, since values are generally queried on an ad-hoc basis.
 
 ## Creating a new module
@@ -349,13 +349,13 @@ The module consists of a struct that represents its configuration.
 This config is "digested" when the bar loads to form the specific module instance.
 
 At a minimum, each module struct must derive all of `Debug`, `serde::Deserialize`, and `Clone`. 
-When the `extras` feature is enabled, it must also derive `schemars::JsonSchema`.
+When the `extras` feature is enabled, it must also derive `serde::Serialize` and `schemars::JsonSchema`.
 
 An extract of the Clock module is shown below as an example:
 
 ```rust
 #[derive(Debug, Deserialize, Clone, PartialEq)]
-#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "extras", derive(serde::Serialize, schemars::JsonSchema))]
 #[serde(default)]
 pub struct ClockModule {
     /// The format string to use for the date/time shown on the bar.
@@ -430,7 +430,7 @@ and a set of appropriate default profiles where appropriate.
 
 ```rs
 #[derive(Debug, Default, Clone, Deserialize)]
-#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "extras", derive(serde::Serialize, schemars::JsonSchema))]
 #[serde(default)]
 pub struct VolumeProfile {
     pub(super) icons: Icons,

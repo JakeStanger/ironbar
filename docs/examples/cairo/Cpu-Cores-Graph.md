@@ -2,82 +2,7 @@ Creates an inline bar chart of CPU usage per core
 
 ![CPU Graph](https://f.jstanger.dev/github/ironbar/cario-cpu-graph.png)
 
-
 ## Configuration
-
-<details>
-<summary>JSON</summary>
-
-```json
-{
-  "height": 20,
-  "end": [
-    {
-      "type": "cairo",
-      "path": ".config/ironbar/cpu_graph.lua",
-      "frequency": 500,
-      "width": 320,
-      "height": 20
-    },
-    {
-      "type": "sys_info",
-      "format": [
-        "{load_average_1}/{load_average_5}/{load_average_15}"
-      ],
-      "interval": {
-        "cpu": 1
-      }
-    }
-  ]
-}
-```
-
-</details>
-<details>
-<summary>TOML</summary>
-
-```toml
-height = 20
-
-[[end]]
-type = "cairo"
-path = ".config/ironbar/cpu_graph.lua"
-frequency = 500
-width = 320
-height = 20
-
-[[end]]
-type = "sys_info"
-format = [
-    "{load_average_1}/{load_average_5}/{load_average_15}",
-]
-
-[end.interval]
-cpu = 1
-```
-
-</details>
-<details>
-<summary>YAML</summary>
-
-```yaml
-height: 20
-end:
-- type: cairo
-  path: .config/ironbar/cpu_graph.lua
-  frequency: 500
-  width: 320
-  height: 20
-- type: sys_info
-  format:
-  - "{load_average_1}/{load_average_5}/{load_average_15}"
-  interval:
-    cpu: 1
-```
-
-</details>
-<details>
-<summary>Corn</summary>
 
 ```corn
 let {
@@ -102,7 +27,6 @@ let {
 }
 ```
 
-</details>
 
 ## Script
 
