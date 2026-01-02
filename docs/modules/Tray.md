@@ -2,21 +2,22 @@ Displays a fully interactive icon tray using the KDE `libappindicator` and `com.
 
 ![Screenshot showing icon tray widget](https://f.jstanger.dev/github/ironbar/modules/tray.png)
 
+## Example
+
+```corn
+{
+  end = [{
+    type = "tray"
+    direction = "top_to_bottom"
+  }]
+}
+```
+
 ## Configuration
 
 > Type: `tray`
 
-| Name                     | Type                                                       | Default                 | Description                                                                                                                                                         |
-|--------------------------|------------------------------------------------------------|-------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `direction`              | `'horizontal'` or `'vertical'` (shorthand: `'h'` or `'v'`) | Matches bar orientation | The direction in which to pack tray icons.                                                                                                                          |
-| `icon_size`              | `integer`                                                  | `16`                    | Size in pixels to display tray icons as.                                                                                                                            |
-| `prefer_theme_icons`     | `bool`                                                     | `true`                  | Requests that icons from the theme be used over the item-provided item. Most items only provide one or the other so this will have no effect in most circumstances. |
-| `on_click_left`          | `string`                                                   | `'default'`             | Action to perform on left-click. See [Click Actions](#click-actions) below.                                                                                         |
-| `on_click_right`         | `string`                                                   | `'menu'`                | Action to perform on right-click. See [Click Actions](#click-actions) below.                                                                                        |
-| `on_click_middle`        | `string`                                                   | `'none'`                | Action to perform on middle-click. See [Click Actions](#click-actions) below.                                                                                       |
-| `on_click_left_double`   | `string`                                                   | `'none'`                | Action to perform on double-left-click. See [Click Actions](#click-actions) below.                                                                                  |
-| `on_click_right_double`  | `string`                                                   | `'none'`                | Action to perform on double-right-click. See [Click Actions](#click-actions) below.                                                                                 |
-| `on_click_middle_double` | `string`                                                   | `'none'`                | Action to perform on double-middle-click. See [Click Actions](#click-actions) below.                                                                                |
+%{properties}%
 
 ### Click Actions
 
@@ -54,58 +55,6 @@ To run custom commands based on which tray item was clicked:
   on_click_middle = "if [ '{name}' = 'copyq' ]; then copyq toggle; fi"
 }
 ```
-
-<details>
-<summary>JSON</summary>
-
-```json
-{
-  "end": [
-    {
-      "type": "tray",
-      "direction": "top_to_bottom"
-    }
-  ]
-}
-```
-
-</details>
-
-<details>
-<summary>TOML</summary>
-
-```toml
-[[end]]
-type = "tray"
-direction = "top_to_bottom"
-```
-
-</details>
-
-<details>
-<summary>YAML</summary>
-
-```yaml
-end:
-  - type: "tray"
-    direction: "top_to_bottom"
-```
-
-</details>
-
-<details>
-<summary>Corn</summary>
-
-```corn
-{
-  end = [{
-    type = "tray"
-    direction = "top_to_bottom"
-  }]
-}
-```
-
-</details>
 
 ## Styling
 
