@@ -25,7 +25,7 @@ pub struct State {
 
 fn format_duration(d: Duration) -> String {
     if d == Duration::MAX {
-        return "∞".to_string();
+        return "".to_string();
     }
     let s = d.as_secs();
     let (h, m, s) = (s / 3600, s % 3600 / 60, s % 60);
