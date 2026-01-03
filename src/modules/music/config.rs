@@ -32,13 +32,25 @@ impl Default for PlayerType {
 #[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
 #[serde(default)]
 pub struct MusicModule {
-    /// Type of player to connect to
+    /// Type of player to connect to.
     #[serde(default)]
+    #[cfg_attr(feature = "extras", schemars(extend("default" = "'mpris'")))]
     pub(crate) player_type: PlayerType,
 
     /// Format of current song info to display on the bar.
     ///
-    /// Info on formatting tokens [below](#formatting-tokens).
+    /// The following tokens can be used and will be replaced
+    /// with values from the currently playing track:
+    ///
+    /// | Token        | Description                          |
+    /// |--------------|--------------------------------------|
+    /// | `{title}`    | Title                                |
+    /// | `{album}`    | Album name                           |
+    /// | `{artist}`   | Artist name                          |
+    /// | `{date}`     | Release date                         |
+    /// | `{track}`    | Track number                         |
+    /// | `{disc}`     | Disc number                          |
+    /// | `{genre}`    | Genre                                |
     ///
     /// **Default**: `{title} / {artist}`
     pub(crate) format: String,
@@ -65,14 +77,20 @@ pub struct MusicModule {
     pub(crate) cover_image_size: i32,
 
     // -- MPD --
-    /// *[MPD Only]*
+    /// :::note
+    /// MPD only
+    /// :::
+    ///
     /// TCP or Unix socket address of the MPD server.
     /// For TCP, this should include the port number.
     ///
     /// **Default**: `localhost:6600`
     pub(crate) host: String,
 
-    /// *[MPD Only]*
+    /// :::note
+    /// MPD only
+    /// :::
+    ///
     /// Path to root of the MPD server's music directory.
     /// This is required for displaying album art.
     ///

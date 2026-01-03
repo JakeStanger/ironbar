@@ -17,7 +17,21 @@ use tracing::{debug, error, trace, warn};
 #[serde(untagged)]
 #[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
 pub enum ScriptInput {
+    /// A shorthand script input represented as a string.
+    ///
+    /// Shorthand scripts should be written in the format:
+    ///
+    /// ```
+    /// mode:interval:script
+    /// ```
+    ///
+    /// For example:
+    ///
+    /// ```
+    /// poll:5000:uptime -p | cut -d ' ' -f2-
+    /// ```
     String(String),
+    /// A longform script input represented as its own object.
     Struct(Script),
 }
 
@@ -76,9 +90,12 @@ impl ScriptMode {
 #[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
 #[serde(default)]
 pub struct Script {
-    pub(crate) mode: ScriptMode,
+    /// The method used to execute the script.
+    pub mode: ScriptMode,
+    /// The command to run. This is passed to `sh -c`.
     pub cmd: String,
-    pub(crate) interval: u64,
+    /// The interval in milliseconds between script runs.
+    pub interval: u64,
 }
 
 impl Default for Script {

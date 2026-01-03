@@ -6,7 +6,6 @@ use serde::Deserialize;
 #[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
 pub struct LayoutConfig {
     /// The orientation to display the widget contents.
-    /// Setting to vertical will rotate text 90 degrees.
     ///
     /// **Valid options**: `horizontal`, `vertical`
     /// <br>

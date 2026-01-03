@@ -410,7 +410,7 @@ pub struct BarConfig {
     pub autohide: Option<u64>,
 
     /// An array of modules to append to the start of the bar.
-    /// Depending on the orientation, this is either the top of the left edge.
+    /// Depending on the orientation, this is either the top or the left edge.
     ///
     /// **Default**: `[]`
     pub start: Option<Vec<ModuleConfig>>,
@@ -515,7 +515,7 @@ pub struct Config {
 
     // force type to be included in schema
     #[cfg(feature = "extras")]
-    __common: CommonConfig
+    __common: CommonConfig,
 }
 
 /// Double-click time configuration
