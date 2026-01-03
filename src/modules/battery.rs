@@ -73,7 +73,17 @@ impl State for ProfileState {
 #[serde(default)]
 struct BatteryProfile {
     /// The format string to use for the widget button label.
-    /// For available tokens, see [below](#formatting-tokens).
+    ///
+    /// The following tokens can be used
+    /// and will be replaced with values from the battery state:
+    ///
+    /// | Token               | Description                                                 |
+    /// |---------------------|-------------------------------------------------------------|
+    /// | `{percentage}`      | The battery charge percentage.                              |
+    /// | `{state}`           | The current battery (dis)charging state.                    |
+    /// | `{time_remaining}`  | The ETA to battery empty or full.                           |
+    /// | `{level}`           | The battery charge level name (e.g. "Low", "High", "Full"). |
+    /// | `{type}`            | The battery type (e.g. "Battery", "Keyboard", "Mouse").     |
     ///
     /// **Default**: `{percentage}%`
     format: String,

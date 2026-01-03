@@ -20,9 +20,9 @@ use tokio::sync::mpsc;
 #[serde(default)]
 pub struct SysInfoModule {
     /// List of strings including formatting tokens.
-    /// For available tokens, see [below](#formatting-tokens).
     ///
-    /// **Required**
+    /// See [formatting tokens](#formatting tokens) for detailed information
+    /// on how the formatting system works.
     format: Vec<String>,
 
     /// Number of seconds between refresh.
@@ -120,7 +120,9 @@ impl Default for Intervals {
 #[serde(untagged)]
 #[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
 pub enum Interval {
+    /// Shared between all systems.
     All(u64),
+    /// Per-system overrides.
     Individual(Intervals),
 }
 

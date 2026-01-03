@@ -282,7 +282,40 @@ impl ModuleConfig {
 #[derive(Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "extras", derive(JsonSchema))]
 pub enum MonitorConfig {
+    /// A single bar config for this monitor.
+    /// This is configured using a `BarConfig` object directly.
+    /// # Example
+    ///
+    /// ```corn
+    /// let {
+    ///     $clock = { type = "clock" }
+    ///
+    /// } in {
+    ///     monitors = {
+    ///         DP-1 = { name = "DP-1" center = [ $clock ] }
+    ///         DP-2 = { name = "DP-2" center = [ $clock ] }
+    ///     }
+    /// }
+    /// ```
     Single(BarConfig),
+    /// Multiple bars configured on this monitor.
+    /// This takes an array, where each object is its own full `BarConfig`.
+    ///
+    /// # Example
+    ///
+    /// ```corn
+    /// let {
+    ///     $clock = { type = "clock" }
+    ///
+    /// } in {
+    ///     monitors = {
+    ///         DP-1 = [
+    ///             { name = "DP-1_A" center = [ $clock ] position = "top" }
+    ///             { name = "DP-1_B" center = [ $clock ] position = "bottom" }
+    ///         ]
+    ///     }
+    /// }
+    /// ```
     Multiple(Vec<BarConfig>),
 }
 
@@ -350,6 +383,7 @@ pub struct BarConfig {
     /// **Valid options**: `top`, `bottom`, `left`, `right`
     /// <br>
     /// **Default**: `bottom`
+    #[cfg_attr(feature = "extras", schemars(extend("default" = "bottom")))]
     #[hot_reload(normal)]
     pub position: BarPosition,
 
@@ -406,6 +440,7 @@ pub struct BarConfig {
     /// **Default**: `top`
     #[serde(deserialize_with = "r#impl::deserialize_layer")]
     #[cfg_attr(feature = "extras", schemars(schema_with = "r#impl::schema_layer"))]
+    #[cfg_attr(feature = "extras", schemars(extend("default" = "top")))]
     #[hot_reload(normal)]
     pub layer: gtk_layer_shell::Layer,
 
@@ -415,6 +450,7 @@ pub struct BarConfig {
     /// as the bar, causing them to shift.
     ///
     /// **Default**: `true` unless `start_hidden` is set.
+    #[cfg_attr(feature = "extras", schemars(extend("default" = "`true` unless `start_hidden` is set.")))]
     #[hot_reload(recreate)]
     pub exclusive_zone: Option<bool>,
 
@@ -461,7 +497,7 @@ pub struct BarConfig {
     pub autohide_listener: AutohideListener,
 
     /// An array of modules to append to the start of the bar.
-    /// Depending on the orientation, this is either the top of the left edge.
+    /// Depending on the orientation, this is either the top or the left edge.
     ///
     /// **Default**: `[]`
     #[hot_reload(modules)]
@@ -508,7 +544,7 @@ impl Default for BarConfig {
 #[cfg_attr(feature = "extras", derive(JsonSchema))]
 #[serde(default)]
 pub struct Config {
-    /// A map of [ironvar](ironvar) keys and values
+    /// A map of [ironvar](/dynamic-content/ironvar) keys and values
     /// to initialize Ironbar with on startup.
     ///
     /// **Default**: `{}`
@@ -547,7 +583,9 @@ pub struct Config {
     /// - a single object, which denotes a single bar for that monitor,
     /// - an array of multiple objects, which denotes multiple for that monitor.
     ///
-    /// Providing this option overrides the single, global `bar` option.
+    /// > [!TIP]
+    /// > This is is only required if you are following **2b** or **2c** (ie not the same bar across all monitors).
+    /// > Providing this option overrides the single, global `bar` option.
     pub monitors: Option<HashMap<String, MonitorConfig>>,
 
     /// The name of the GTK icon theme to use.
@@ -558,6 +596,15 @@ pub struct Config {
 
     /// Map of app IDs (or classes) to icon names,
     /// overriding the app's default icon.
+    ///
+    /// # Example
+    ///
+    /// ```corn
+    /// {
+    ///     icon_overrides.Mailspring = "icon:mail-generic"
+    ///     icon_overrides.zen = "icon:firefox"
+    /// }
+    /// ```
     ///
     /// **Default**: `{}`
     pub icon_overrides: HashMap<String, String>,
@@ -576,7 +623,7 @@ pub struct Config {
 
     // force type to be included in schema
     #[cfg(feature = "extras")]
-    __common: CommonConfig
+    __common: CommonConfig,
 }
 
 #[derive(Debug, Clone, Copy, Deserialize)]
