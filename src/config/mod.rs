@@ -9,7 +9,7 @@ mod truncate;
 #[cfg(feature = "battery")]
 use crate::modules::battery::BatteryModule;
 #[cfg(feature = "bindmode")]
-use crate::modules::bindmode::Bindmode;
+use crate::modules::bindmode::BindmodeModule;
 #[cfg(feature = "bluetooth")]
 use crate::modules::bluetooth::BluetoothModule;
 #[cfg(feature = "brightness")]
@@ -117,7 +117,7 @@ pub enum ModuleConfig {
     #[cfg(feature = "battery")]
     Battery(Box<BatteryModule>),
     #[cfg(feature = "bindmode")]
-    Bindmode(Box<Bindmode>),
+    Bindmode(Box<BindmodeModule>),
     #[cfg(feature = "bluetooth")]
     Bluetooth(Box<BluetoothModule>),
     #[cfg(feature = "brightness")]
@@ -512,6 +512,10 @@ pub struct Config {
     /// **Default**: `250`
     #[serde(default)]
     pub double_click_time: DoubleClickTime,
+
+    // force type to be included in schema
+    #[cfg(feature = "extras")]
+    __common: CommonConfig
 }
 
 /// Double-click time configuration
