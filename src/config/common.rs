@@ -177,7 +177,8 @@ pub struct CommonConfig {
     /// of smooth scrolling on trackpad.
     ///
     /// **Default**: `1.0`
-    pub smooth_scroll_speed: Option<f64>,
+    #[serde(default = "default_smooth_scroll_speed")]
+    pub smooth_scroll_speed: f64,
 
     /// A [script](scripts) to run when the cursor begins hovering over the module.
     ///
@@ -206,6 +207,10 @@ pub struct CommonConfig {
     /// Prevents the popup from opening on-click for this widget.
     #[serde(default)]
     pub disable_popup: bool,
+}
+
+fn default_smooth_scroll_speed() -> f64 {
+    1.0
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -347,7 +352,7 @@ impl CommonConfig {
         let scroll_up_script = self.on_scroll_up.map(Script::new_polling);
         let scroll_down_script = self.on_scroll_down.map(Script::new_polling);
 
-        let scroll_speed = self.smooth_scroll_speed.unwrap_or(1.0);
+        let scroll_speed = self.smooth_scroll_speed;
         let curr_scroll = Cell::new(0.0);
 
         event_controller.connect_scroll(move |_, _dx, dy| {

@@ -32,13 +32,13 @@ struct IconConfig {
 #[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
 #[serde(rename_all = "snake_case")]
 pub enum ReservedTrayAction {
-    /// Open the tray icon's popup menu
+    /// Open the tray icon's popup menu.
     Menu,
-    /// Trigger the tray icon's default (primary) action
+    /// Trigger the tray icon's default (primary) action.
     Default,
-    /// Trigger the tray icon's secondary action
+    /// Trigger the tray icon's secondary action.
     Secondary,
-    /// Do nothing
+    /// Do nothing.
     None,
 }
 
@@ -47,9 +47,17 @@ pub enum ReservedTrayAction {
 #[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
 #[serde(untagged)]
 pub enum TrayClickAction {
-    /// Reserved action
+    /// A built-in action.
+    ///
+    /// # Example
+    ///
+    /// ```corn
+    /// { on_click_left = "menu" }
+    /// ```
     Reserved(ReservedTrayAction),
-    /// Run a custom shell command
+
+    /// Any custom shell command.
+    /// This is passed to `sh -c`.
     Custom(String),
 }
 
@@ -62,7 +70,7 @@ pub struct TrayClickHandlers {
     ///
     /// **Valid options**: `menu`, `default`, `secondary`, `none`, or any custom shell command
     /// <br>
-    /// **Default**: `default` (current behavior, for backwards compatibility)
+    /// **Default**: `default` (current behaviour, for backwards compatibility)
     ///
     /// Custom commands support the following placeholders:
     /// - `{name}` - The tray item's identifier/name
@@ -77,6 +85,7 @@ pub struct TrayClickHandlers {
     /// { on_click_left = "notify-send 'Clicked {name}'" }
     /// { on_click_left = "if [ '{name}' = 'copyq' ]; then copyq toggle; fi" }
     /// ```
+    #[cfg_attr(feature = "extras", schemars(extend("default" = "'default'")))]
     on_click_left: TrayClickAction,
 
     /// Action to perform on right-click.
@@ -84,6 +93,7 @@ pub struct TrayClickHandlers {
     /// **Valid options**: `menu`, `default`, `secondary`, `none`, or any custom shell command
     /// <br>
     /// **Default**: `menu`
+    #[cfg_attr(feature = "extras", schemars(extend("default" = "'menu'")))]
     on_click_right: TrayClickAction,
 
     /// Action to perform on middle-click.
@@ -161,15 +171,51 @@ pub struct TrayModule {
     /// **Valid options**: `horizontal`, `vertical`
     /// <br>
     /// **Default**: `horizontal` for horizontal bars, `vertical` for vertical bars
+    #[cfg_attr(feature = "extras", schemars(extend("default" = "[matches bar orientation]")))]
     direction: Option<ModuleOrientation>,
-
-    /// Click action handlers for tray icons
-    #[serde(flatten)]
-    click_handlers: TrayClickHandlers,
 
     /// See [common options](module-level-options#common-options).
     #[serde(flatten)]
     pub common: Option<CommonConfig>,
+
+    /// Click action handlers for tray icons.
+    ///
+    /// Click actions can be one of the following built-in actions, or any custom shell command:
+    ///
+    /// **Built-in actions:**
+    /// - `menu` - Opens the tray icon's popup menu
+    /// - `default` - Triggers the tray icon's default (primary) action
+    /// - `secondary` - Triggers the tray icon's secondary action
+    /// - `none` - Do nothing
+    ///
+    /// **Custom commands:**
+    ///
+    /// Any other string is treated as a custom shell command. Custom commands support the following placeholders:
+    /// - `{name}` - The tray item's identifier/name
+    /// - `{title}` - The tray item's title (if available)
+    /// - `{icon}` - The tray item's icon name (if available)
+    /// - `{address}` - The tray item's internal address
+    ///
+    /// **Examples:**
+    ///
+    /// ```corn
+    /// {
+    ///   type = "tray"
+    ///   on_click_left = "menu"
+    ///   on_click_left_double = "default"
+    /// }
+    /// ```
+    ///
+    /// To run custom commands based on which tray item was clicked:
+    /// ```corn
+    /// {
+    ///   type = "tray"
+    ///   on_click_left = "notify-send 'Clicked {name}'"
+    ///   on_click_middle = "if [ '{name}' = 'copyq' ]; then copyq toggle; fi"
+    /// }
+    /// ```
+    #[serde(flatten)]
+    click_handlers: TrayClickHandlers,
 }
 
 impl Default for TrayModule {
