@@ -15,6 +15,7 @@ use tokio::sync::mpsc::Receiver;
 #[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
 #[serde(default)]
 pub struct NetworkManagerModule {
+    /// Size in pixels to render the icon at.
     icon_size: i32,
 
     #[serde(flatten)]
