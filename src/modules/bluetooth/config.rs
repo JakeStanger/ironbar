@@ -44,6 +44,18 @@ impl Default for BluetoothModule {
     }
 }
 
+/// Format strings for each of the bluetooth adapter states.
+///
+/// The following tokens can be used:
+///
+/// | Token                      | Description                                                                                                             |
+/// |----------------------------|-------------------------------------------------------------------------------------------------------------------------|
+/// | `{adapter_status}`         | The current adapter status. The mapping of a status to a string could be defined using `adapter_status` config section. |
+/// | `{device_alias}`           | The device name or address if name is not available.                                                                    |
+/// | `{device_status}`          | The current device status. The mapping of a status to a string could be defined using `device_status` config section.   |
+/// | `{device_battery_percent}` | The device battery percentage.                                                                                          |
+/// | `{device_address}`         | The device address, e.g `00:11:22:33:FF:EE`.                                                                            |
+
 #[derive(Debug, Deserialize, Clone)]
 #[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
 #[serde(default)]
@@ -90,7 +102,9 @@ impl Default for FormatConfig {
 #[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
 #[serde(rename_all = "lowercase")]
 pub enum SizeLimit {
+    /// The maximum number of devices the window can reach before scrolling.
     Devices(i32),
+    /// The maximum number of pixels the window can reach before scrolling.
     Pixels(i32),
 }
 

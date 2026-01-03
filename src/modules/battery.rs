@@ -29,7 +29,15 @@ const MINUTE: i64 = 60;
 #[serde(default)]
 pub struct BatteryModule {
     /// The format string to use for the widget button label.
-    /// For available tokens, see [below](#formatting-tokens).
+    ///
+    /// The following tokens can be used
+    /// and will be replaced with values from the battery state:
+    ///
+    /// | Token               | Description                              |
+    /// |---------------------|------------------------------------------|
+    /// | `{percentage}`      | The battery charge percentage.           |
+    /// | `{state}`           | The current battery (dis)charging state. |
+    /// | `{time_remaining}`  | The ETA to battery empty or full.        |
     ///
     /// **Default**: `{percentage}%`
     format: String,
