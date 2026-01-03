@@ -87,6 +87,11 @@ pub struct LauncherModule {
     /// **Default**: `16`
     pagination_icon_size: i32,
 
+    /// Command used to launch applications.
+    ///
+    /// **Default**: `gtk-launch`
+    launch_command: String,
+
     // -- common --
     /// Truncate application names on the bar if they get too long.
     /// See [truncate options](module-level-options#truncate-mode).
@@ -103,11 +108,6 @@ pub struct LauncherModule {
     /// See [layout options](module-level-options#layout)
     #[serde(default, flatten)]
     layout: LayoutConfig,
-
-    /// Command used to launch applications.
-    ///
-    /// **Default**: `gtk-launch`
-    launch_command: String,
 
     /// See [common options](module-level-options#common-options).
     #[serde(flatten)]
