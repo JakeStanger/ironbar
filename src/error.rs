@@ -4,6 +4,7 @@ pub enum ExitCode {
     CreateBars = 2,
     IpcResponseError = 3,
     WaylandDispatchError = 4,
+    CliError = 5,
 }
 
 pub const ERR_MUTEX_LOCK: &str = "Failed to get lock on Mutex";

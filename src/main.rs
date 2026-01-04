@@ -121,6 +121,23 @@ fn run_with_args() {
                 }
             });
         }
+        #[cfg(feature = "config")]
+        None if args.validate_config > 0 => {
+            let _guard = logging::install_logging(args.debug);
+
+            let (_, _, error_level) = Config::load(args.config.unwrap_or_default(), args.theme);
+
+            let err = match args.validate_config {
+                1 => error_level >= config::ErrorLevel::Error,
+                2 => error_level >= config::ErrorLevel::Warn,
+                _ => {
+                    error!("invalid validate_config level");
+                    exit(ExitCode::CliError as i32)
+                }
+            };
+
+            exit(err as i32);
+        }
         None => start_ironbar(args.debug, args.config.unwrap_or_default(), args.theme),
     }
 }
@@ -140,7 +157,15 @@ pub struct Ironbar {
 
 impl Ironbar {
     fn new(config_location: ConfigLocation, css_location: Option<ConfigLocation>) -> Self {
-        let (mut config, css_source) = Config::load(config_location.clone(), css_location.clone());
+        cfg_if!(
+            if #[cfg(feature = "config")] {
+                let (mut config, css_source, _) =
+                    Config::load(config_location.clone(), css_location.clone());
+            } else {
+                let (mut config, css_source) =
+                    Config::load(config_location.clone(), css_location.clone());
+            }
+        );
 
         let desktop_files = DesktopFiles::new();
         let image_provider =
