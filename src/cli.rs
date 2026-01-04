@@ -34,6 +34,14 @@ pub struct Args {
     #[arg(short('t'), long, env = "IRONBAR_CSS")]
     pub theme: Option<ConfigLocation>,
 
+    /// Validate the loaded config and CSS path, and exit immediately.
+    /// Exits with code `0` if config is valid, or `1` if invalid.
+    /// Pass arg a second time to fail on warnings.
+    ///
+    /// Any errors or warnings are logged regardless of mode.
+    #[arg(short, long, action = clap::ArgAction::Count)]
+    pub validate_config: u8,
+
     /// Format to output the response as.
     #[arg(short, long)]
     pub format: Option<Format>,

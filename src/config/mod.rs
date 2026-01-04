@@ -562,12 +562,31 @@ impl ConfigLocation {
     }
 }
 
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
+pub enum ErrorLevel {
+    None,
+    Warn,
+    Error,
+}
+
+impl ErrorLevel {
+    fn warn(self) -> Self {
+        self.max(ErrorLevel::Warn)
+    }
+
+    fn error(self) -> Self {
+        self.max(ErrorLevel::Error)
+    }
+}
+
 impl Config {
     #[cfg(feature = "config")]
     pub fn load(
         config_location: ConfigLocation,
         css_location: Option<ConfigLocation>,
-    ) -> (Config, CssSource) {
+    ) -> (Config, CssSource, ErrorLevel) {
+        let mut error_level = ErrorLevel::None;
+
         cfg_if! {
             if #[cfg(feature = "config+corn")] {
                 const CONFIG_MINIMAL: (&str, FileFormat) = (include_str!("../../examples/minimal/config.corn"), FileFormat::Corn);
@@ -605,6 +624,7 @@ impl Config {
                 if path.exists() {
                     CssSource::File(path)
                 } else {
+                    error_level = error_level.error();
                     error!(
                         "styles at '{}' not found, falling back to minimal theme",
                         path.display()
@@ -627,6 +647,7 @@ impl Config {
             .build()
             .and_then(|conf| conf.try_deserialize())
             .unwrap_or_else(|err| {
+                error_level = error_level.error();
                 error!("Error loading config: {err:?}");
                 config::Config::builder()
                     .add_source(config::File::from_str(CONFIG_MINIMAL.0, CONFIG_MINIMAL.1))
@@ -643,6 +664,7 @@ impl Config {
             let variable_manager = Ironbar::variable_manager();
             for (k, v) in ironvars {
                 if variable_manager.set(&k, v).is_err() {
+                    error_level = error_level.warn();
                     warn!("Ignoring invalid ironvar: '{k}'");
                 }
             }
@@ -652,7 +674,7 @@ impl Config {
         // GTK's setting will be set lazily on first use (after GTK is initialized)
         set_double_click_time(config.double_click_time.clone());
 
-        (config, css_source)
+        (config, css_source, error_level)
     }
 
     #[cfg(not(feature = "config"))]
