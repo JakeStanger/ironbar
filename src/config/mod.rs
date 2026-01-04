@@ -598,7 +598,7 @@ impl Config {
             ConfigLocation::Custom(mut path) => {
                 if path.is_dir() {
                     path = path.join("style.css")
-                } else if !path.ends_with(".css") {
+                } else if path.extension().is_none_or(|ext| ext != "css") {
                     path = path.parent().unwrap_or(&path).join("style.css");
                 };
 
