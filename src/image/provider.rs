@@ -308,10 +308,13 @@ impl Provider {
                 Texture::from_bytes(&Bytes::from_owned(bytes))
                     .map(|t| t.scale(image_ref.size as f64, image_ref.size as f64))
             }
-            None if use_fallback => Ok(Some(
-                lookup_icon(&image_ref.theme, FALLBACK_ICON_NAME, image_ref.size, scale)
-                    .upcast::<Paintable>(),
-            )),
+            None if use_fallback => {
+                warn!("failed to resolve {:?}, using fallback", image_ref.location);
+                Ok(Some(
+                    lookup_icon(&image_ref.theme, FALLBACK_ICON_NAME, image_ref.size, scale)
+                        .upcast::<Paintable>(),
+                ))
+            }
             None => Ok(None),
         }?;
 
