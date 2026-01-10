@@ -20,10 +20,10 @@ or [label](label) if you only need a single text label.
 This module can be quite fiddly to configure as you effectively have to build a tree of widgets by hand.
 It is well worth looking at the examples.
 
-| Name    | Type                   | Default    | Description                              |
-|---------|------------------------|------------|------------------------------------------|
+| Name    | Type                   | Default | Description                              |
+|---------|------------------------|---------|------------------------------------------|
 | `bar`   | `(Module or Widget)[]` | `[]`    | Modules and widgets to add to the bar.   |
-| `popup` | `(Module or Widget)[]`               | `null`     | Modules and widgets to add to the popup. |
+| `popup` | `(Module or Widget)[]` | `null`  | Modules and widgets to add to the popup. |
 
 ### `Widget`
 
