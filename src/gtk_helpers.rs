@@ -22,12 +22,24 @@ pub enum MouseButton {
     Secondary = BUTTON_SECONDARY,
 }
 
-pub trait IronbarGtkExt {
+pub trait IronbarGlibExt {
     /// Gets a data tag on a widget, if it exists.
     fn get_tag<V: 'static>(&self, key: &str) -> Option<&V>;
     /// Sets a data tag on a widget.
     fn set_tag<V: 'static>(&self, key: &str, value: V);
+}
 
+impl<W: IsA<glib::Object>> IronbarGlibExt for W {
+    fn get_tag<V: 'static>(&self, key: &str) -> Option<&V> {
+        unsafe { self.data(key).map(|val| val.as_ref()) }
+    }
+
+    fn set_tag<V: 'static>(&self, key: &str, value: V) {
+        unsafe { self.set_data(key, value) }
+    }
+}
+
+pub trait IronbarGtkExt {
     /// Returns an iterator for the widget's first-level children.
     fn children(&self) -> ChildIterator;
 
@@ -52,14 +64,6 @@ pub trait IronbarGtkExt {
 }
 
 impl<W: IsA<Widget>> IronbarGtkExt for W {
-    fn get_tag<V: 'static>(&self, key: &str) -> Option<&V> {
-        unsafe { self.data(key).map(|val| val.as_ref()) }
-    }
-
-    fn set_tag<V: 'static>(&self, key: &str, value: V) {
-        unsafe { self.set_data(key, value) }
-    }
-
     fn children(&self) -> ChildIterator {
         ChildIterator::new(self)
     }

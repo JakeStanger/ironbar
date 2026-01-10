@@ -6,7 +6,7 @@ use self::button::Button;
 use crate::channels::{AsyncSenderExt, BroadcastReceiverExt};
 use crate::clients::compositor::{Workspace, WorkspaceClient, WorkspaceUpdate};
 use crate::config::{CommonConfig, LayoutConfig, default};
-use crate::gtk_helpers::IronbarGtkExt;
+use crate::gtk_helpers::{IronbarGlibExt, IronbarGtkExt};
 use crate::modules::workspaces::button_map::{ButtonMap, Identifier};
 use crate::modules::workspaces::open_state::OpenState;
 use crate::modules::{Module, ModuleInfo, ModuleParts, WidgetContext};
