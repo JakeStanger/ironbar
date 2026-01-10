@@ -7,7 +7,7 @@ use crate::bar::Bar;
 use crate::channels::{MpscReceiverExt, SyncSenderExt};
 use crate::clients::{ClientResult, ProvidesClient, ProvidesFallibleClient};
 use crate::config::{BarPosition, CommonConfig, TransitionType};
-use crate::gtk_helpers::IronbarGtkExt;
+use crate::gtk_helpers::IronbarGlibExt;
 use crate::popup::{ButtonFinder, Popup};
 use color_eyre::Result;
 use gtk::gdk::Monitor;
