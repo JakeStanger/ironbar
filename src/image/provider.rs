@@ -1,5 +1,5 @@
 use crate::desktop_file::DesktopFiles;
-use crate::gtk_helpers::IronbarPaintableExt;
+use crate::gtk_helpers::{IronbarGlibExt, IronbarPaintableExt};
 use crate::{arc_mut, lock, spawn};
 use color_eyre::{Help, Report, Result};
 use glib::Bytes;
@@ -268,8 +268,9 @@ impl Provider {
                 const SIZES: [i32; 8] = [16, 24, 32, 48, 64, 96, 128, 256];
                 let size = SIZES
                     .into_iter()
-                    .find(|&s| s < image_ref.size)
-                    .unwrap_or(image_ref.size);
+                    .find(|&s| s >= image_ref.size)
+                    .or_else(|| SIZES.into_iter().rfind(|&s| s < image_ref.size))
+                    .unwrap_or(*SIZES.first().expect("sizes should have length > 0"));
 
                 let path = dirs::data_dir().map_or_else(
                     || Err(Report::msg("Missing XDG data dir")),
@@ -317,6 +318,13 @@ impl Provider {
             }
             None => Ok(None),
         }?;
+
+        if let Some(buf) = &buf {
+            buf.set_tag("image-location", format!("{:?}", image_ref.location));
+            buf.set_tag("image-size", image_ref.size);
+            buf.set_tag("image-scale", scale);
+            buf.set_tag("use-fallback", use_fallback);
+        }
 
         Ok(buf)
     }
