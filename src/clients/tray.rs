@@ -61,6 +61,9 @@ impl Client {
                                 entry.menu = Some(menu.clone());
                             }
                         }
+                        Event::Remove(address) => {
+                            lock!(menus).remove(address.as_str());
+                        }
                         _ => {}
                     }
 
