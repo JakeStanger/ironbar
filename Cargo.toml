@@ -160,7 +160,7 @@ cfg-if = "1.0.4"
 bluer = { version = "0.17.4", optional = true, features = ["bluetoothd"] }
 
 # cli
-clap = { version = "4.5.53", optional = true, features = ["derive", "env"] }
+clap = { version = "4.5.54", optional = true, features = ["derive", "env"] }
 
 # http
 reqwest = { version = "0.13.1", default-features = false, features = ["default-tls", "http2"], optional = true }
