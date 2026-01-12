@@ -143,7 +143,7 @@ strip-ansi-escapes = "0.2.0"
 thiserror = "2.0.17"
 color-eyre = "0.6.5"
 serde = { version = "1.0.228", features = ["derive"] }
-indexmap = { version = "2.12.1", features = ["serde"] }
+indexmap = { version = "2.13.0", features = ["serde"] }
 dirs = "6.0.0"
 walkdir = "2.5.0"
 notify = { version = "8.2.0", default-features = false }
