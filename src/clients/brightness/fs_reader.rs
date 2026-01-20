@@ -67,7 +67,7 @@ pub fn default_resource_name(subsystem: &str) -> Option<String> {
     match subsystem {
         "backlight" => {
             // harded list of common names
-            const TO_CHECK: [&str; 9] = [
+            const TO_CHECK: [&str; 10] = [
                 "amdgpu_bl0",
                 "amdgpu_bl1",
                 "intel_backlight",
@@ -77,6 +77,7 @@ pub fn default_resource_name(subsystem: &str) -> Option<String> {
                 "nouveau_backlight",
                 "acpi_video0",
                 "acpi_video1",
+                "apple-panel-bl",
             ];
 
             TO_CHECK
@@ -88,7 +89,7 @@ pub fn default_resource_name(subsystem: &str) -> Option<String> {
             // almost all leds have the same postfix
             possible_files
                 .into_iter()
-                .find(|v| v.ends_with("::kdb_backlight"))
+                .find(|v| v.ends_with("kdb_backlight"))
         }
         _ => None,
     }
