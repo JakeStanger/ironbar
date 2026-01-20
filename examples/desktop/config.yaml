@@ -14,7 +14,8 @@ center:
   player_type: mpd
 end:
 - type: battery
-  show_if: '[ -f /sys/class/power_supply/BAT0 ]'
+  show_if: |
+    ls /sys/class/power_supply/ | grep --quiet '^BAT'
 - type: sys_info
   format:
   - '{cpu_percent}% '

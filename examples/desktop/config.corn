@@ -4,7 +4,7 @@ let {
     $launcher = { type = "launcher" favorites = [ "firefox" ] truncate.mode = "end" truncate.max_length = 30 }
 
     $music = { type = "music" player_type = "mpd" }
-    $battery = { type = "battery" show_if = "[ -f /sys/class/power_supply/BAT0 ]" }
+    $battery = { type = "battery" show_if = "ls /sys/class/power_supply/ | grep --quiet '^BAT'" }
     $sys_info = { type = "sys_info" format = ["{cpu_percent}% " "{memory_percent}% "] interval.cpu = 1 }
     $clipboard = { type = "clipboard" max_items = 5 truncate.mode = "end" truncate.length = 30 }
     $volume = { type = "volume" }
