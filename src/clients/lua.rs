@@ -17,7 +17,10 @@ impl LuaEngine {
     pub fn new(config_dir: &Path) -> Self {
         let lua = unsafe { Lua::unsafe_new() };
 
-        if let Err(err) = lua.globals().set("ironbar", IronbarUserData::new()) {
+        if let Err(err) = lua
+            .globals()
+            .set("ironbar", IronbarUserData::new(config_dir))
+        {
             warn!("{err:?}");
         }
 
@@ -49,12 +52,14 @@ impl Deref for LuaEngine {
 
 struct IronbarUserData {
     variable_manager: Arc<VariableManager>,
+    config_dir: String,
 }
 
 impl IronbarUserData {
-    fn new() -> Self {
+    fn new(config_dir: &Path) -> Self {
         IronbarUserData {
             variable_manager: Ironbar::variable_manager().clone(),
+            config_dir: config_dir.to_string_lossy().into(),
         }
     }
 
@@ -98,6 +103,12 @@ impl IronbarUserData {
 }
 
 impl UserData for IronbarUserData {
+    fn add_fields<F: mlua::UserDataFields<Self>>(fields: &mut F) {
+        fields.add_field_method_get("config_dir", |lua, this| {
+            lua.create_string(&this.config_dir)
+        });
+    }
+
     fn add_methods<M: mlua::UserDataMethods<Self>>(methods: &mut M) {
         methods.add_method("var_get", |lua, this, key| this.var_get(lua, key));
     }
