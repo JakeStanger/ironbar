@@ -1,6 +1,6 @@
 use crate::channels::{AsyncSenderExt, BroadcastReceiverExt};
 use crate::clients::volume::{self, Event};
-use crate::config::{CommonConfig, LayoutConfig, MarqueeMode, TruncateMode};
+use crate::config::{CommonConfig, LayoutConfig, MarqueeMode, Thresholds, TruncateMode};
 use crate::gtk_helpers::{IronbarLabelExt, OverflowLabel};
 use crate::modules::{
     Module, ModuleInfo, ModuleParts, ModulePopup, ModuleUpdateEvent, PopupButton, WidgetContext,
@@ -77,20 +77,8 @@ impl Default for VolumeModule {
 #[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
 #[serde(default)]
 pub struct Icons {
-    /// Icon to show for high volume levels.
-    ///
-    /// **Default**: `󰕾`
-    volume_high: String,
-
-    /// Icon to show for medium volume levels.
-    ///
-    /// **Default**: `󰖀`
-    volume_medium: String,
-
-    /// Icon to show for low volume levels.
-    ///
-    /// **Default**: `󰕿`
-    volume_low: String,
+    /// Icons to show for each volume level.
+    volume: Thresholds<String>,
 
     /// Icon to show for muted outputs.
     ///
@@ -101,9 +89,7 @@ pub struct Icons {
 impl Default for Icons {
     fn default() -> Self {
         Self {
-            volume_high: "󰕾".to_string(),
-            volume_medium: "󰖀".to_string(),
-            volume_low: "󰕿".to_string(),
+            volume: Thresholds::new_low_med_high("󰕿".to_string(), "󰖀".to_string(), "󰕾".to_string()),
             muted: "󰝟".to_string(),
         }
     }
@@ -111,11 +97,10 @@ impl Default for Icons {
 
 impl Icons {
     fn volume_icon(&self, volume_percent: f64) -> &str {
-        match volume_percent as u32 {
-            0..=33 => &self.volume_low,
-            34..=66 => &self.volume_medium,
-            67.. => &self.volume_high,
-        }
+        self.volume
+            .for_value(volume_percent as i32)
+            .map(String::as_ref)
+            .unwrap_or_default()
     }
 }
 
