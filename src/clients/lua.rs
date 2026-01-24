@@ -1,7 +1,7 @@
 use mlua::{Error, IntoLua, Lua, UserData, Value};
 use std::path::Path;
 use std::{ops::Deref, sync::Arc};
-use tracing::{debug, error, warn};
+use tracing::{debug, error, info, warn};
 
 use crate::Ironbar;
 use crate::ironvar::{Namespace, VariableManager};
@@ -110,6 +110,22 @@ impl UserData for IronbarUserData {
     }
 
     fn add_methods<M: mlua::UserDataMethods<Self>>(methods: &mut M) {
+        methods.add_method("log_debug", |_, _, message: String| {
+            debug!(message);
+            Ok(())
+        });
+        methods.add_method("log_info", |_, _, message: String| {
+            info!(message);
+            Ok(())
+        });
+        methods.add_method("log_warn", |_, _, message: String| {
+            warn!(message);
+            Ok(())
+        });
+        methods.add_method("log_error", |_, _, message: String| {
+            error!(message);
+            Ok(())
+        });
         methods.add_method("var_get", |lua, this, key| this.var_get(lua, key));
     }
 }
