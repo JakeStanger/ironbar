@@ -1,7 +1,10 @@
-use mlua::Lua;
-use std::ops::Deref;
+use mlua::{Error, IntoLua, Lua, UserData, Value};
 use std::path::Path;
-use tracing::{debug, error};
+use std::{ops::Deref, sync::Arc};
+use tracing::{debug, error, warn};
+
+use crate::Ironbar;
+use crate::ironvar::{Namespace, VariableManager};
 
 /// Wrapper around Lua instance
 /// to create a singleton and handle initialization.
@@ -13,6 +16,10 @@ pub struct LuaEngine {
 impl LuaEngine {
     pub fn new(config_dir: &Path) -> Self {
         let lua = unsafe { Lua::unsafe_new() };
+
+        if let Err(err) = lua.globals().set("ironbar", IronbarUserData::new()) {
+            warn!("{err:?}");
+        }
 
         let user_init = config_dir.join("init.lua");
         if user_init.exists() {
@@ -37,5 +44,61 @@ impl Deref for LuaEngine {
 
     fn deref(&self) -> &Self::Target {
         &self.lua
+    }
+}
+
+struct IronbarUserData {
+    variable_manager: Arc<VariableManager>,
+}
+
+impl IronbarUserData {
+    fn new() -> Self {
+        IronbarUserData {
+            variable_manager: Ironbar::variable_manager().clone(),
+        }
+    }
+
+    fn var_get(&self, lua: &Lua, key: String) -> Result<Value, Error> {
+        let mut ns: Arc<dyn Namespace + Sync + Send> = self.variable_manager.clone();
+        let mut last_part: Option<&str> = None;
+
+        for part in key.split('.') {
+            ns = if let Some(ns) = ns.get_namespace(part) {
+                ns.clone()
+            } else {
+                last_part = Some(part);
+                break;
+            };
+        }
+        if let Some(key) = last_part {
+            match ns.get(key) {
+                Some(value) => Self::to_value(lua, value),
+                None => Err(Error::RuntimeError(format!("Variable not found: {}", key))),
+            }
+        } else {
+            let table = lua.create_table()?;
+
+            for (key, value) in ns.get_all() {
+                table.set(key, Self::to_value(lua, value)?)?;
+            }
+
+            Ok(Value::Table(table))
+        }
+    }
+
+    fn to_value(lua: &Lua, value: String) -> Result<Value, Error> {
+        if let Ok(i) = value.parse::<i64>() {
+            i.into_lua(lua)
+        } else if let Ok(f) = value.parse::<f64>() {
+            f.into_lua(lua)
+        } else {
+            value.into_lua(lua)
+        }
+    }
+}
+
+impl UserData for IronbarUserData {
+    fn add_methods<M: mlua::UserDataMethods<Self>>(methods: &mut M) {
+        methods.add_method("var_get", |lua, this, key| this.var_get(lua, key));
     }
 }
