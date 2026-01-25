@@ -28,9 +28,7 @@ use crate::bar::{Bar, create_bar};
 use crate::channels::SyncSenderExt;
 use crate::clients::Clients;
 use crate::clients::outputs::MonitorState;
-#[cfg(not(feature = "cli"))]
-use crate::config::ConfigLocation;
-use crate::config::{Config, ConfigSource, CssSource, MonitorConfig, resolve_sources};
+use crate::config::{Config, ConfigSource, CssSource, MonitorConfig, hot_reload, resolve_sources};
 use crate::desktop_file::DesktopFiles;
 use crate::error::ExitCode;
 #[cfg(any(feature = "ipc", feature = "cairo"))]
@@ -69,8 +67,8 @@ fn main() {
         feature = "cli" => {run_with_args();}
         _ => {
             let (config_source, css_source) = resolve_sources(
-                env::var("IRONBAR_CONFIG").map(PathBuf::from).ok().map(ConfigLocation::Custom),
-                env::var("IRONBAR_CSS").map(PathBuf::from).ok().map(ConfigLocation::Custom),
+                env::var("IRONBAR_CONFIG").map(PathBuf::from).ok().map(config::ConfigLocation::Custom),
+                env::var("IRONBAR_CSS").map(PathBuf::from).ok().map(config::ConfigLocation::Custom),
             );
             start_ironbar(false, config_source, css_source);
         }
@@ -227,7 +225,17 @@ impl Ironbar {
                 ipc
             };
 
-            load_css(&css_source);
+            let hot_reload = instance.config.borrow().hot_reload;
+            load_css(&css_source, hot_reload.is_styles_enabled());
+
+            #[cfg(feature = "config")]
+            if hot_reload.is_config_enabled()
+                && let ConfigSource::File(path) = &instance.config_source
+            {
+                hot_reload::install(path, app, &instance);
+            }
+
+            // -- shutdown --
 
             #[cfg(feature = "ipc")]
             let ipc_path = ipc.path().to_path_buf();
@@ -261,7 +269,7 @@ impl Ironbar {
                     .set_icon_theme(instance.config.borrow().icon_theme.as_deref());
 
                 // Load initial bars
-                match load_output_bars(&instance.clone(), &app) {
+                match load_output_bars(&instance, &app) {
                     Ok(()) => {}
                     Err(report) => {
                         error!("{:?}", report);
@@ -272,7 +280,7 @@ impl Ironbar {
                 let outputs = instance.clients.borrow_mut().outputs();
                 let mut rx_outputs = outputs.subscribe();
 
-                outputs.start(&instance.clone());
+                outputs.start(instance.clone());
 
                 // Listen for monitor events
                 while let Ok(event) = rx_outputs.recv().await {
@@ -303,6 +311,30 @@ impl Ironbar {
         // Ignore CLI args
         // Some are provided by swaybar_config but not currently supported
         app.run_with_args(&Vec::<&str>::new());
+    }
+
+    /// Fully reloads Ironbar by closing all bars, reloading the config,
+    /// and recreating bars with the new config.
+    ///
+    /// Note the reload only handles bars.
+    /// Other settings updates are handled elsewhere,
+    /// normally by the caller.
+    ///
+    /// Additionally, client state is left untouched.
+    pub fn reload(instance: &Rc<Ironbar>, application: &Application) {
+        instance.bars.borrow_mut().clear();
+
+        let windows = application.windows();
+        for window in windows {
+            window.close();
+        }
+
+        instance.reload_config();
+
+        match load_output_bars(instance, application) {
+            Ok(()) => {}
+            Err(err) => error!("{err:?}"),
+        }
     }
 
     /// Gets the current Tokio runtime.
@@ -354,6 +386,16 @@ impl Ironbar {
             .collect()
     }
 
+    #[must_use]
+    pub fn bars_by_monitor_name(&self, monitor_name: &str) -> Vec<Bar> {
+        self.bars
+            .borrow()
+            .iter()
+            .filter(|&bar| bar.monitor_name() == monitor_name)
+            .cloned()
+            .collect()
+    }
+
     /// Associates the command (`cmd`) of a script with a sender meant to
     /// remotely kill the process.
     ///
@@ -376,7 +418,6 @@ impl Ironbar {
 
     /// Re-reads the config file from disk and replaces the active config.
     /// Note this does *not* reload bars, which must be performed separately.
-    #[cfg(feature = "ipc")]
     fn reload_config(&self) {
         self.config.replace(Config::load(&self.config_source).0);
     }
@@ -468,33 +509,8 @@ pub fn load_output_bars(ironbar: &Rc<Ironbar>, app: &Application) -> Result<()> 
     let wl = ironbar.clients.borrow_mut().wayland();
     let outputs = wl.output_info_all();
 
-    let display = get_display();
-    let monitors = display.monitors();
-
     for output in outputs {
-        let Some(monitor_name) = &output.name else {
-            return Err(Report::msg("Output missing monitor name"));
-        };
-
-        let monitor_desc = &output.description.clone().unwrap_or_default();
-        let find_monitor = || {
-            for i in 0..monitors.n_items() {
-                let Some(monitor) = monitors.item(i).and_downcast::<Monitor>() else {
-                    continue;
-                };
-
-                if monitor.description().unwrap_or_default().as_str() == monitor_desc
-                    || monitor.connector().unwrap_or_default().as_str() == monitor_name
-                {
-                    return Some(monitor);
-                }
-            }
-
-            None
-        };
-
-        let Some(monitor) = find_monitor() else {
-            error!("failed to find matching monitor for {}", monitor_name);
+        let Some(monitor) = find_monitor_for_output(&output) else {
             continue;
         };
 
@@ -505,6 +521,32 @@ pub fn load_output_bars(ironbar: &Rc<Ironbar>, app: &Application) -> Result<()> 
     }
 
     Ok(())
+}
+
+fn find_monitor_for_output(output: &OutputInfo) -> Option<Monitor> {
+    let Some(output_name) = &output.name else {
+        return None;
+    };
+
+    let display = get_display();
+    let monitors = display.monitors();
+
+    let monitor_desc = &output.description.clone().unwrap_or_default();
+
+    for i in 0..monitors.n_items() {
+        let Some(monitor) = monitors.item(i).and_downcast::<Monitor>() else {
+            continue;
+        };
+
+        if monitor.description().unwrap_or_default().as_str() == monitor_desc
+            || monitor.connector().unwrap_or_default().as_str() == output_name
+        {
+            return Some(monitor);
+        }
+    }
+
+    error!("failed to find matching monitor for {output_name}");
+    None
 }
 
 fn create_runtime() -> Runtime {

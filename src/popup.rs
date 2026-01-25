@@ -2,7 +2,7 @@ use crate::config::BarPosition;
 use crate::modules::{ModuleInfo, ModulePopupParts, PopupButton};
 use crate::rc_mut;
 use gtk::prelude::*;
-use gtk::{Button, Popover, PositionType};
+use gtk::{Button, Popover};
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::fmt::{Debug, Formatter};
@@ -56,23 +56,12 @@ impl Popup {
     pub fn new(module_info: &ModuleInfo, gap: i32, autohide: bool) -> Self {
         let pos = module_info.bar_position;
 
-        let position = match pos {
-            BarPosition::Top => PositionType::Bottom,
-            BarPosition::Bottom => PositionType::Top,
-            BarPosition::Left => PositionType::Right,
-            BarPosition::Right => PositionType::Left,
-        };
-
-        let (offset_x, offset_y) = match pos {
-            BarPosition::Top => (0, gap),
-            BarPosition::Bottom => (0, -gap),
-            BarPosition::Left | BarPosition::Right => (gap, 0),
-        };
+        let (offset_x, offset_y) = offset(pos, gap);
 
         let popover = Popover::builder()
             .has_arrow(false)
             .autohide(autohide)
-            .position(position)
+            .position(pos.into())
             .build();
 
         popover.set_offset(offset_x, offset_y);
@@ -90,6 +79,13 @@ impl Popup {
             current_widget: rc_mut!(None),
             autohide,
         }
+    }
+
+    pub fn set_position(&self, pos: BarPosition, gap: i32) {
+        self.popover.set_position(pos.into());
+        let (offset_x, offset_y) = offset(pos, gap);
+
+        self.popover.set_offset(offset_x, offset_y);
     }
 
     pub fn register_content(&self, key: usize, content: ModulePopupParts) {
@@ -222,5 +218,13 @@ impl Popup {
 
     pub fn current_widget(&self) -> Option<usize> {
         self.current_widget.borrow().map(|w| w.widget_id)
+    }
+}
+
+fn offset(pos: BarPosition, gap: i32) -> (i32, i32) {
+    match pos {
+        BarPosition::Top => (0, gap),
+        BarPosition::Bottom => (0, -gap),
+        BarPosition::Left | BarPosition::Right => (gap, 0),
     }
 }

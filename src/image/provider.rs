@@ -1,6 +1,6 @@
 use crate::desktop_file::DesktopFiles;
 use crate::gtk_helpers::{IronbarGlibExt, IronbarPaintableExt};
-use crate::{arc_mut, lock, spawn};
+use crate::{arc_mut, lock, rc_mut, spawn};
 use color_eyre::{Help, Report, Result};
 use glib::Bytes;
 use gtk::gdk::{Paintable, Texture};
@@ -10,8 +10,9 @@ use gtk::{IconLookupFlags, IconPaintable, IconTheme, Picture, TextDirection};
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::path::PathBuf;
+use std::rc::Rc;
 use std::sync::{Arc, Mutex};
-use tracing::{debug, trace, warn};
+use tracing::{debug, warn};
 
 fn lookup_icon(theme: &IconTheme, name: &str, size: i32, scale: i32) -> IconPaintable {
     theme.lookup_icon(
@@ -63,13 +64,18 @@ impl Cache {
             paintable_cache: HashMap::new(),
         }
     }
+
+    fn clear(&mut self) {
+        self.location_cache.clear();
+        self.paintable_cache.clear();
+    }
 }
 
 #[derive(Debug, Clone)]
 pub struct Provider {
     desktop_files: DesktopFiles,
     icon_theme: RefCell<Option<IconTheme>>,
-    overrides: HashMap<String, String>,
+    overrides: Rc<RefCell<HashMap<String, String>>>,
     cache: Arc<Mutex<Cache>>,
 }
 
@@ -81,7 +87,7 @@ impl Provider {
         Self {
             desktop_files,
             icon_theme: RefCell::new(None),
-            overrides: overrides_map,
+            overrides: rc_mut!(overrides_map),
             cache: arc_mut!(Cache::new()),
         }
     }
@@ -180,7 +186,8 @@ impl Provider {
     ) -> Result<Option<ImageLocation>> {
         const MAX_RECURSE_DEPTH: u8 = 2;
 
-        let input = self.overrides.get(input).map_or(input, String::as_str);
+        let input_override = self.overrides.borrow().get(input).cloned();
+        let input = input_override.as_deref().unwrap_or(input);
 
         let should_parse_desktop_file = !Self::is_explicit_input(input);
 
@@ -355,18 +362,32 @@ impl Provider {
     /// Sets the custom icon theme name.
     /// If no name is provided, the system default is used.
     pub fn set_icon_theme(&self, theme: Option<&str>) {
-        trace!("Setting icon theme to {:?}", theme);
+        debug!("Setting icon theme to {:?}", theme);
 
-        let icon_theme = if theme.is_some() {
-            let icon_theme = IconTheme::new();
-            icon_theme.set_theme_name(theme);
-            icon_theme
-        } else {
-            IconTheme::default()
-        };
+        let icon_theme = self
+            .icon_theme
+            .borrow_mut()
+            .get_or_insert_with(|| {
+                let icon_theme = IconTheme::new();
+                icon_theme.set_display(Some(&crate::get_display()));
+                icon_theme
+            })
+            .clone();
 
-        icon_theme.set_display(Some(crate::get_display()).as_ref());
+        // `None` resets `custom_theme`, so the theme follows `gtk-icon-theme-name` again
+        icon_theme.set_theme_name(theme);
+        lock!(self.cache).clear();
 
         *self.icon_theme.borrow_mut() = Some(icon_theme);
+        lock!(self.cache).clear();
+    }
+
+    pub fn set_overrides(&self, overrides: &mut HashMap<String, String>) {
+        let mut overrides_map = HashMap::with_capacity(overrides.len());
+        overrides_map.extend(overrides.drain());
+
+        self.overrides.replace(overrides_map);
+
+        lock!(self.cache).clear();
     }
 }

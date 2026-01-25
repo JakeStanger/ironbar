@@ -55,7 +55,7 @@ Ironbar is designed to support anything from a lightweight bar to a full desktop
 - A range of modules which integrate with native desktop libraries
 - Ability to create custom widgets, run scripts and embed dynamic content (including via Lua)
 - Easy to configure anything from a single bar across all monitors, to multiple different unique bars per monitor 
-- Support for multiple config languages
+- Support for multiple config languages, with config hot-reloading
 
 ---
 

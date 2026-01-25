@@ -140,6 +140,9 @@ extras = ["dep:schemars", "dep:clap_complete"]
 "battery.test" = ["battery"]
 
 [dependencies]
+# core internal
+ironbar_macros = { path = "./macros" }
+
 # core
 gtk = { package = "gtk4", version = "0.10.0", features = ["v4_12"] }
 gtk-layer-shell = { package = "gtk4-layer-shell", version = "0.6.3" }

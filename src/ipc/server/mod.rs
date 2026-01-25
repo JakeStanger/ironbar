@@ -8,7 +8,6 @@ use std::rc::Rc;
 
 use color_eyre::{Report, Result};
 use gtk::Application;
-use gtk::prelude::*;
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::net::{UnixListener, UnixStream};
 use tokio::sync::mpsc::{self, Receiver, Sender};
@@ -135,19 +134,7 @@ impl Ipc {
             }
             Command::Reload => {
                 info!("Closing existing bars");
-                ironbar.bars.borrow_mut().clear();
-
-                let windows = application.windows();
-                for window in windows {
-                    window.close();
-                }
-
-                ironbar.reload_config();
-
-                match crate::load_output_bars(ironbar, application) {
-                    Ok(()) => {}
-                    Err(err) => error!("{err:?}"),
-                }
+                Ironbar::reload(ironbar, application);
                 Response::Ok
             }
             Command::Var(cmd) => ironvar::handle_command(cmd),
