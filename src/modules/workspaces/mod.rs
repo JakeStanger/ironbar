@@ -48,7 +48,7 @@ pub enum SortOrder {
     Index,
 }
 
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Deserialize, Clone, PartialEq)]
 #[serde(untagged)]
 #[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
 pub enum Favorites {
@@ -62,7 +62,7 @@ impl Default for Favorites {
     }
 }
 
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Deserialize, Clone, PartialEq, Eq)]
 #[serde(untagged)]
 #[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
 pub enum Format {
@@ -90,7 +90,7 @@ impl Format {
     }
 }
 
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Deserialize, Clone, PartialEq)]
 #[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
 #[serde(default)]
 pub struct WorkspacesModule {

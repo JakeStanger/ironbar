@@ -112,7 +112,7 @@ impl Client {
         }
     }
 
-    pub(crate) fn start(&self, ironbar: &Rc<Ironbar>) {
+    pub(crate) fn start(&self, ironbar: Rc<Ironbar>) {
         let mut rx_wl_outputs = ironbar.clients.borrow_mut().wayland().subscribe_outputs();
 
         let monitors = arc_mut!(HashMap::new());
