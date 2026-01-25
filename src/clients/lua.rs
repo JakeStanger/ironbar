@@ -1,5 +1,6 @@
 use mlua::{Error, IntoLua, Lua, UserData, Value};
 use std::path::Path;
+use std::time::{SystemTime, UNIX_EPOCH};
 use std::{ops::Deref, sync::Arc};
 use tracing::{debug, error, info, warn};
 
@@ -100,6 +101,19 @@ impl IronbarUserData {
             value.into_lua(lua)
         }
     }
+
+    fn unixtime(lua: &Lua) -> Result<Value, Error> {
+        let now = match SystemTime::now().duration_since(UNIX_EPOCH) {
+            Ok(now) => now,
+            Err(err) => return Err(Error::RuntimeError(format!("SystemTime: {}", err))),
+        };
+        let table = lua.create_table()?;
+        table.set("secs", now.as_secs_f64())?;
+        table.set("subsec_millis", now.subsec_millis())?;
+        table.set("subsec_micros", now.subsec_micros())?;
+
+        Ok(Value::Table(table))
+    }
 }
 
 impl UserData for IronbarUserData {
@@ -127,5 +141,6 @@ impl UserData for IronbarUserData {
             Ok(())
         });
         methods.add_method("var_get", |lua, this, key| this.var_get(lua, key));
+        methods.add_method("unixtime", |lua, _, ()| Self::unixtime(lua));
     }
 }
