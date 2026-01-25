@@ -11,7 +11,7 @@ use gtk::{Box as GtkBox, ContentFit, Picture};
 use serde::Deserialize;
 use tokio::sync::mpsc::Receiver;
 
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Deserialize, Clone, PartialEq)]
 #[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
 #[serde(default)]
 pub struct NetworkManagerModule {

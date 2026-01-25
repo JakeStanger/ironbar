@@ -7,7 +7,7 @@ use std::time::Duration;
 /// Command to control inhibit state.
 ///
 /// **Valid options**: `toggle`, `cycle`
-#[derive(Debug, Clone, Copy, Deserialize)]
+#[derive(Debug, Clone, Copy, Deserialize, PartialEq, Eq)]
 #[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
 #[serde(rename_all = "lowercase")]
 pub enum InhibitCommand {
@@ -17,7 +17,7 @@ pub enum InhibitCommand {
     Cycle,
 }
 
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Deserialize, Clone, PartialEq)]
 #[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
 #[serde(default)]
 pub struct InhibitModule {
@@ -97,7 +97,7 @@ fn parse_duration(s: &str) -> Result<Duration, String> {
         .map(|time| Duration::from_secs(time.num_seconds_from_midnight() as u64))
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
 pub(super) struct DurationSpec {
     #[cfg_attr(feature = "extras", schemars(with = "Vec<String>"))]
