@@ -5,6 +5,7 @@ use std::{ops::Deref, sync::Arc};
 use tracing::{debug, error, info, warn};
 
 use crate::Ironbar;
+use crate::ironvar::{Namespace, VariableManager};
 
 /// Wrapper around Lua instance
 /// to create a singleton and handle initialization.
@@ -51,24 +52,20 @@ impl Deref for LuaEngine {
 }
 
 struct IronbarUserData {
-    #[cfg(feature = "ipc")]
-    variable_manager: Arc<crate::ironvar::VariableManager>,
+    variable_manager: Arc<VariableManager>,
     config_dir: String,
 }
 
 impl IronbarUserData {
     fn new(config_dir: &Path) -> Self {
         IronbarUserData {
-            #[cfg(feature = "ipc")]
             variable_manager: Ironbar::variable_manager().clone(),
             config_dir: config_dir.to_string_lossy().into(),
         }
     }
 
-    #[cfg(feature = "ipc")]
     fn var_get(&self, lua: &Lua, mut key: String) -> Result<Value, Error> {
-        let mut ns: Arc<dyn crate::ironvar::Namespace + Sync + Send> =
-            self.variable_manager.clone();
+        let mut ns: Arc<dyn Namespace + Sync + Send> = self.variable_manager.clone();
 
         if key.contains('.') {
             for part in key.split('.') {
@@ -87,10 +84,8 @@ impl IronbarUserData {
         }
     }
 
-    #[cfg(feature = "ipc")]
     fn var_list(&self, lua: &Lua, namespace: Option<String>) -> Result<Value, Error> {
-        let mut ns: Arc<dyn crate::ironvar::Namespace + Sync + Send> =
-            self.variable_manager.clone();
+        let mut ns: Arc<dyn Namespace + Sync + Send> = self.variable_manager.clone();
 
         if let Some(namespace) = namespace {
             for part in namespace.split('.') {
@@ -161,9 +156,7 @@ impl UserData for IronbarUserData {
             Ok(())
         });
         methods.add_method("unixtime", |lua, _, ()| Self::unixtime(lua));
-        #[cfg(feature = "ipc")]
         methods.add_method("var_get", |lua, this, key| this.var_get(lua, key));
-        #[cfg(feature = "ipc")]
         methods.add_method("var_list", |lua, this, namespace| {
             this.var_list(lua, namespace)
         });

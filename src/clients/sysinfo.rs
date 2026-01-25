@@ -490,10 +490,10 @@ impl FromStr for TokenType {
     }
 }
 
-#[cfg(feature = "ipc")]
+#[cfg(any(feature = "ipc", feature = "cairo"))]
 use crate::ironvar::{Namespace, NamespaceTrait};
 
-#[cfg(feature = "ipc")]
+#[cfg(any(feature = "ipc", feature = "cairo"))]
 impl Namespace for Client {
     fn get(&self, key: &str) -> Option<String> {
         let get = |value: Value| Some(value.get(Prefix::None).to_string());
