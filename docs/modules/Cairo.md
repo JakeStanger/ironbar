@@ -134,13 +134,6 @@ A longer example, used to create the clock in the image at the top of the page, 
 <summary>Circle clock</summary>
 
 ```lua
-function get_ms()
-    return ironbar:unixtime().subsec_millis / 1000
-    -- Only using the stdlib would require something like:
-    -- local ms = tostring(io.popen('date +%s%3N'):read('a')):sub(-4, 9999)
-    -- return tonumber(ms) / 1000
-end
-
 function draw(cr, width, height)
     local center_x = width / 2
     local center_y = height / 2
@@ -151,7 +144,7 @@ function draw(cr, width, height)
     local hours = date_table["hour"]
     local minutes = date_table["min"]
     local seconds = date_table["sec"]
-    local ms = get_ms()
+    local ms = ironbar:unixtime().subsec_millis / 1000
 
 
     local label_seconds = seconds
