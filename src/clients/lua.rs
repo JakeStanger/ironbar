@@ -21,7 +21,7 @@ impl LuaEngine {
             .globals()
             .set("ironbar", IronbarUserData::new(config_dir))
         {
-            warn!("{err:?}");
+            error!("{err:?}");
         }
 
         let user_init = config_dir.join("init.lua");

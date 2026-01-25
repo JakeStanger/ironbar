@@ -91,10 +91,33 @@ let {
 ### Script
 
 Every script must contain a function called `draw`. 
-This takes a single parameter, which is the Cairo context.
+This takes a three parameters:
+- Cairo context (required)
+- Width of the drawing area (can be omitted)
+- Height of the drawing area (can be omitted)
 
 Outside of this, you can do whatever you like. 
 The full lua `stdlib` is available, and you can load in additional system packages as desired.
+
+Additionally there is basic access to the ironbar via the `ironbar` global:
+- `ironbar.config_dir`: Absolute path to the configuration directory. This can be used for relative file imports, e.g.:
+  ```lua
+   local_module = dofile(ironbar.config_dir .. "local_mod.lua")`
+   ```
+- `ironbar:log_debug(msg)`, `ironbar:log_info(msg)`, `ironbar:log_warn(msg)`,`ironbar:log_error(msg)`: Write a log message.
+- `ironbar:unixtime()`: Returns high-resultion unixtime (stdlib only offers second-resultion). Will return a table:
+  - `sec`: Seconds since unix-epoch with fractions
+  - `subsec_millis`: Sub-second milliseconds as integer
+  - `subsec_micros`: Sub-second microseconds as integer
+- `ironbar:var_get(key)`: Get an ironbar variable, e.g.
+  ```lua
+  memory_free = ironbar:var_get("sysinfo.memory_free")
+  ```
+- `ironbar:var_list(namespace)`: Get all variables of a namespace as table (non-recursive), e.g.:
+  ```lua
+  memory_free = ironbar:var_list("sysinfo")["memory_free"]
+  ```
+
 
 The most basic example, which draws a red square, can be seen below:
 
@@ -112,14 +135,16 @@ A longer example, used to create the clock in the image at the top of the page, 
 
 ```lua
 function get_ms()
-    local ms = tostring(io.popen('date +%s%3N'):read('a')):sub(-4, 9999)
-    return tonumber(ms) / 1000
+    return ironbar:unixtime().subsec_millis / 1000
+    -- Only using the stdlib would require something like:
+    -- local ms = tostring(io.popen('date +%s%3N'):read('a')):sub(-4, 9999)
+    -- return tonumber(ms) / 1000
 end
 
-function draw(cr)
-    local center_x = 150
-    local center_y = 150
-    local radius = 130
+function draw(cr, width, height)
+    local center_x = width / 2
+    local center_y = height / 2
+    local radius = math.min(width, height) / 2 - 20
 
     local date_table = os.date("*t")
 
