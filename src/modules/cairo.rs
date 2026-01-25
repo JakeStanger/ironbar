@@ -156,7 +156,7 @@ impl Module<gtk::Box> for CairoModule {
                 .eval()
                 .expect("to be valid");
 
-            area.set_draw_func(move |_, cr, _w, _h| {
+            area.set_draw_func(move |_, cr, w, h| {
                 if let Err(err) = cr.set_source_surface(&surface, 0.0, 0.0) {
                     error!("{err}");
                     return;
@@ -166,10 +166,10 @@ impl Module<gtk::Box> for CairoModule {
 
                 // mlua needs a valid return type, even if we don't return anything
                 if let Err(err) =
-                    function.call::<Option<bool>>((id.as_str(), LightUserData(ptr.cast())))
+                    function.call::<Option<bool>>((id.as_str(), LightUserData(ptr.cast()), w, h))
                 {
                     if let Error::RuntimeError(message) = err {
-                        let message = message.split_once("]:").expect("to exist").1;
+                        let message = message.split_once(":").expect("to exist").1;
                         error!("[lua runtime error] {}:{message}", path.display());
                     } else {
                         error!("{err}");
@@ -200,7 +200,7 @@ impl Module<gtk::Box> for CairoModule {
                 Ok(script) => match lua.load(&script).exec() {
                     Ok(()) => {}
                     Err(Error::SyntaxError { message, .. }) => {
-                        let message = message.split_once("]:").expect("to exist").1;
+                        let message = message.split_once(":").expect("to exist").1;
                         error!("[lua syntax error] {}:{message}", self.path.display());
                     }
                     Err(err) => error!("lua error: {err:?}"),
