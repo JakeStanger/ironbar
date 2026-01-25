@@ -2,7 +2,7 @@ use crate::config::{ModuleJustification, ModuleOrientation};
 use crate::modules::ModuleInfo;
 use serde::Deserialize;
 
-#[derive(Clone, Debug, Deserialize, Default)]
+#[derive(Clone, Debug, Deserialize, Default, PartialEq, Eq)]
 #[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
 pub struct LayoutConfig {
     /// The orientation to display the widget contents.

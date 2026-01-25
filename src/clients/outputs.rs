@@ -75,14 +75,14 @@ impl MonitorProxy {
                 tx.send_expect(MonitorEvent {
                     connector: self.connector.clone(),
                     state: MonitorState::Disconnected,
-                })
+                });
             }
             InternalMonitorState::BothConnected(wl_output, gdk_output) => {
                 info!("Monitor {} connected", self.connector);
                 tx.send_expect(MonitorEvent {
                     connector: self.connector.clone(),
                     state: MonitorState::Connected(wl_output.clone(), gdk_output.clone()),
-                })
+                });
             }
             _ => {}
         }
@@ -112,7 +112,7 @@ impl Client {
         }
     }
 
-    pub(crate) fn start(&self, ironbar: &Rc<Ironbar>) {
+    pub(crate) fn start(&self, ironbar: Rc<Ironbar>) {
         let mut rx_wl_outputs = ironbar.clients.borrow_mut().wayland().subscribe_outputs();
 
         let monitors = arc_mut!(HashMap::new());
@@ -133,13 +133,13 @@ impl Client {
                         });
                         match event.event_type {
                             wayland::OutputEventType::New => {
-                                entry.connect_wayland(&event.output).maybe_send(&output_tx)
+                                entry.connect_wayland(&event.output).maybe_send(&output_tx);
                             }
                             wayland::OutputEventType::Destroyed => {
-                                entry.disconnect().maybe_send(&output_tx)
+                                entry.disconnect().maybe_send(&output_tx);
                             }
                             wayland::OutputEventType::Update => {}
-                        };
+                        }
                     }
                 }
             });

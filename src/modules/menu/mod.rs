@@ -180,8 +180,8 @@ impl Module<Button> for MenuModule {
                 BarPosition::Bottom => Align::End,
 
                 _ => match &info.location {
-                    &ModuleLocation::Left | &ModuleLocation::Center => Align::Start,
-                    &ModuleLocation::Right => Align::End,
+                    &ModuleLocation::Start | &ModuleLocation::Center => Align::Start,
+                    &ModuleLocation::End => Align::End,
                 },
             }
         };

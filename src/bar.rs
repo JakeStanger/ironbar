@@ -1,3 +1,4 @@
+use crate::config::diff::BarDiffDetails;
 use crate::config::{BarConfig, BarPosition, MarginConfig, ModuleConfig};
 use crate::modules::{BarModuleFactory, ModuleInfo, ModuleLocation, ModuleRef};
 use crate::popup::Popup;
@@ -19,6 +20,7 @@ enum Inner {
     Loaded {
         module_refs: Vec<ModuleRef>,
         popup: Rc<Popup>,
+        instance: Rc<Bar>,
     },
 }
 
@@ -145,7 +147,7 @@ impl Bar {
         let margin = config.margin;
 
         let instance = Rc::new(self.clone());
-        let load_result = self.load_modules(instance, config, monitor);
+        let load_result = self.load_modules(&instance, config, monitor);
 
         let autohide_state = if let Some(autohide) = autohide {
             let hotspot_window = Window::new();
@@ -177,6 +179,7 @@ impl Bar {
         self.inner = Inner::Loaded {
             popup: load_result.popup,
             module_refs: load_result.module_refs,
+            instance,
         };
 
         self
@@ -186,6 +189,144 @@ impl Bar {
     pub fn close(self) {
         self.window.close();
         self.window.destroy();
+    }
+
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+
+    /// The name of the output the bar is displayed on.
+    pub fn monitor_name(&self) -> &str {
+        &self.monitor_name
+    }
+
+    pub fn popup(&self) -> Rc<Popup> {
+        match &self.inner {
+            Inner::New { .. } => {
+                panic!("Attempted to get popup of uninitialized bar. This is a serious bug!")
+            }
+            Inner::Loaded { popup, .. } => popup.clone(),
+        }
+    }
+
+    pub fn visible(&self) -> bool {
+        self.window.is_visible()
+    }
+
+    /// Sets the window visibility status
+    pub fn set_visible(&self, visible: bool) {
+        self.window.set_visible(visible);
+    }
+
+    pub fn set_exclusive(&self, exclusive: bool) {
+        if exclusive {
+            self.window.auto_exclusive_zone_enable();
+        } else {
+            self.window.set_exclusive_zone(0);
+        }
+    }
+
+    pub fn set_locked(&self, locked: bool) {
+        let mut autohide_state = self.autohide_state.borrow_mut();
+        let Some(autohide_state) = autohide_state.as_mut() else {
+            return;
+        };
+
+        if locked {
+            autohide_state.lock_state = LockState::Locked;
+        } else if autohide_state.lock_state == LockState::LockedPendingClose {
+            self.window.set_visible(false);
+            autohide_state.hotspot_window.set_visible(true);
+            autohide_state.lock_state = LockState::Unlocked;
+        }
+    }
+
+    pub fn modules(&self) -> &[ModuleRef] {
+        match &self.inner {
+            Inner::New { .. } => {
+                panic!("Attempted to get modules of uninitialized bar. This is a serious bug!")
+            }
+            Inner::Loaded { module_refs, .. } => module_refs,
+        }
+    }
+
+    pub fn apply_diff(&mut self, diff: BarDiffDetails, config: BarConfig, monitor: &Monitor) {
+        let module_factory =
+            BarModuleFactory::new(self.ironbar.clone(), self.instance(), self.popup()).into();
+        let app = &self.window.application().expect("to exist");
+
+        macro_rules! info {
+            ($location:expr) => {
+                ModuleInfo {
+                    app,
+                    bar_position: config.position,
+                    monitor,
+                    output_name: &self.monitor_name,
+                    location: $location,
+                }
+            };
+        }
+
+        let module_refs = match &mut self.inner {
+            Inner::New { .. } => {
+                panic!("Attempted to get modules of uninitialized bar. This is a serious bug!")
+            }
+            Inner::Loaded { module_refs, .. } => module_refs,
+        };
+
+        let mut load_modules = |mut modules: Vec<ModuleConfig>,
+                                diffs: Vec<usize>,
+                                container: &gtk::Box,
+                                location: ModuleLocation| {
+            // avoid potential panic if all modules are disabled, but...
+            if modules.is_empty() {
+                return;
+            }
+
+            for i in diffs.into_iter().rev() {
+                let Some(existing_module) = module_refs
+                    .iter_mut()
+                    .filter(|m| m.location == location)
+                    .nth(i)
+                else {
+                    error!("failed to find existing module to replace");
+                    return;
+                };
+
+                #[allow(unreachable_code)] // ...above check doesn't satisfy rustc
+                let module = modules.remove(i);
+
+                match module.create(&module_factory, container, &info!(location)) {
+                    Ok(module) => {
+                        let existing_wrapper = existing_module
+                            .root_widget
+                            .parent()
+                            .expect("root should have revealer parent");
+                        let new_wrapper = module
+                            .root_widget
+                            .parent()
+                            .expect("root should have revealer parent");
+
+                        container.reorder_child_after(&new_wrapper, Some(&existing_wrapper));
+                        container.remove(&existing_wrapper);
+                        let _ = std::mem::replace(existing_module, module);
+                    }
+                    Err(err) => error!("{err:?}"),
+                }
+            }
+        };
+
+        if let Some(modules) = config.start {
+            load_modules(modules, diff.start, &self.start, ModuleLocation::Start);
+        }
+
+        if let Some(modules) = config.center {
+            load_modules(modules, diff.center, &self.center, ModuleLocation::Center);
+        }
+
+        if let Some(modules) = config.end {
+            load_modules(modules, diff.end, &self.end, ModuleLocation::End);
+        }
     }
 
     /// Sets up GTK layer shell for a provided application window.
@@ -360,7 +501,7 @@ impl Bar {
     /// Loads the configured modules onto a bar.
     fn load_modules(
         &self,
-        instance: Rc<Bar>,
+        instance: &Rc<Bar>,
         config: BarConfig,
         monitor: &Monitor,
     ) -> BarLoadResult {
@@ -380,7 +521,7 @@ impl Bar {
 
         // popup ignores module location so can bodge this for now
         let popup = Popup::new(
-            &info!(ModuleLocation::Left),
+            &info!(ModuleLocation::Start),
             config.popup_gap,
             config.popup_autohide,
         );
@@ -391,13 +532,13 @@ impl Bar {
         if let Some(modules) = config.start {
             self.content.set_start_widget(Some(&self.start));
 
-            let info = info!(ModuleLocation::Left);
+            let info = info!(ModuleLocation::Start);
             refs.extend(add_modules(
                 &self.start,
                 modules,
                 &info,
                 &self.ironbar,
-                &instance,
+                instance,
                 &popup,
             ));
         }
@@ -411,7 +552,7 @@ impl Bar {
                 modules,
                 &info,
                 &self.ironbar,
-                &instance,
+                instance,
                 &popup,
             ));
         }
@@ -419,13 +560,13 @@ impl Bar {
         if let Some(modules) = config.end {
             self.content.set_end_widget(Some(&self.end));
 
-            let info = info!(ModuleLocation::Right);
+            let info = info!(ModuleLocation::End);
             refs.extend(add_modules(
                 &self.end,
                 modules,
                 &info,
                 &self.ironbar,
-                &instance,
+                instance,
                 &popup,
             ));
         }
@@ -451,62 +592,12 @@ impl Bar {
         }
     }
 
-    pub fn name(&self) -> &str {
-        &self.name
-    }
-
-    /// The name of the output the bar is displayed on.
-    pub fn monitor_name(&self) -> &str {
-        &self.monitor_name
-    }
-
-    pub fn popup(&self) -> Rc<Popup> {
-        match &self.inner {
-            Inner::New { .. } => {
-                panic!("Attempted to get popup of uninitialized bar. This is a serious bug!")
-            }
-            Inner::Loaded { popup, .. } => popup.clone(),
-        }
-    }
-
-    pub fn visible(&self) -> bool {
-        self.window.is_visible()
-    }
-
-    /// Sets the window visibility status
-    pub fn set_visible(&self, visible: bool) {
-        self.window.set_visible(visible);
-    }
-
-    pub fn set_exclusive(&self, exclusive: bool) {
-        if exclusive {
-            self.window.auto_exclusive_zone_enable();
-        } else {
-            self.window.set_exclusive_zone(0);
-        }
-    }
-
-    pub fn set_locked(&self, locked: bool) {
-        let mut autohide_state = self.autohide_state.borrow_mut();
-        let Some(autohide_state) = autohide_state.as_mut() else {
-            return;
-        };
-
-        if locked {
-            autohide_state.lock_state = LockState::Locked;
-        } else if autohide_state.lock_state == LockState::LockedPendingClose {
-            self.window.set_visible(false);
-            autohide_state.hotspot_window.set_visible(true);
-            autohide_state.lock_state = LockState::Unlocked;
-        }
-    }
-
-    pub fn modules(&self) -> &[ModuleRef] {
+    fn instance(&self) -> Rc<Bar> {
         match &self.inner {
             Inner::New { .. } => {
                 panic!("Attempted to get modules of uninitialized bar. This is a serious bug!")
             }
-            Inner::Loaded { module_refs, .. } => module_refs,
+            Inner::Loaded { instance, .. } => instance.clone(),
         }
     }
 }

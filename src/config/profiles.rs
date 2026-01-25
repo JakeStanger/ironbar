@@ -87,7 +87,7 @@ impl State for f64 {}
 /// to the field to avoid `profiles.profiles` syntax.
 ///
 /// `S` = State, `T` = Configuration data.
-#[derive(Debug, Default, Clone, Deserialize)]
+#[derive(Debug, Default, Clone, Deserialize, PartialEq)]
 #[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
 #[serde(default)]
 pub struct Profiles<S, T>
@@ -109,7 +109,7 @@ where
 /// Serde will attempt to match in order,
 /// which will incorrectly resolve all objects as `Simple`
 /// due to `Default` constraint.
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, PartialEq)]
 #[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
 #[serde(untagged)]
 pub enum ProfileEntry<S, T>
@@ -162,7 +162,7 @@ where
 /// An individual profile.
 /// This represents the threshold at which it should be activated,
 /// and the configuration associated with it.
-#[derive(Debug, Default, Clone, Deserialize)]
+#[derive(Debug, Default, Clone, Deserialize, PartialEq)]
 #[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
 pub struct Profile<S, T>
 where

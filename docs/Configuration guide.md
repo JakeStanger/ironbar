@@ -300,6 +300,9 @@ The following table lists each of the top-level bar config options:
 | `icon_theme`        | `string`                                | `null`  | Name of the GTK icon theme to use. Leave blank to use default.                                                                 |
 | `icon_overrides`    | `Map<string, string>`                   | `{}`    | Map of image inputs to override names. Usually used for app IDs (or classes) to icon names, overriding the app's default icon. |
 | `double_click_time` | `integer` or `"gtk"`                    | `250`   | Time in milliseconds to wait for a double-click. Set to `"gtk"` to use GTK's setting.                                          |
+| `hot_reload`        | `boolean` or `HotReload`                | `true`  | Whether to hot-reload config and style changes. Can also take object format to toggle separately.                              |
+| `hot_reload.config` | `boolean`                               | `true`  | Whether to hot-reload config changes.                                                                                          |
+| `hot_reload.style`  | `boolean`                               | `true`  | Whether to hot-reload style changes.                                                                                           |
 
 > [!TIP]
 > `monitors` is only required if you are following **2b** or **2c** (ie not the same bar across all monitors).
