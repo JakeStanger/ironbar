@@ -28,7 +28,7 @@ use crate::clients::outputs::MonitorState;
 use crate::config::{Config, ConfigLocation, MonitorConfig};
 use crate::desktop_file::DesktopFiles;
 use crate::error::ExitCode;
-#[cfg(feature = "ipc")]
+#[cfg(any(feature = "ipc", feature = "cairo"))]
 use crate::ironvar::VariableManager;
 use crate::style::{CssSource, load_css};
 
@@ -45,7 +45,7 @@ mod gtk_helpers;
 mod image;
 #[cfg(feature = "ipc")]
 mod ipc;
-#[cfg(feature = "ipc")]
+#[cfg(any(feature = "ipc", feature = "cairo"))]
 mod ironvar;
 mod logging;
 mod macros;
@@ -315,7 +315,7 @@ impl Ironbar {
     }
 
     /// Gets the `Ironvar` manager singleton.
-    #[cfg(feature = "ipc")]
+    #[cfg(any(feature = "ipc", feature = "cairo"))]
     #[must_use]
     pub fn variable_manager() -> Arc<VariableManager> {
         static VARIABLE_MANAGER: OnceLock<Arc<VariableManager>> = OnceLock::new();

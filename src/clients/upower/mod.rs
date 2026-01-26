@@ -55,7 +55,7 @@ impl Deref for Client {
     }
 }
 
-#[cfg(feature = "ipc")]
+#[cfg(any(feature = "ipc", feature = "cairo"))]
 impl crate::ironvar::Namespace for Client {
     fn get(&self, key: &str) -> Option<String> {
         let value =

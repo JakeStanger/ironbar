@@ -657,7 +657,7 @@ impl Config {
                     .expect("should be a valid config")
             });
 
-        #[cfg(feature = "ipc")]
+        #[cfg(any(feature = "ipc", feature = "cairo"))]
         if let Some(ironvars) = config.ironvar_defaults.take() {
             use crate::ironvar::WritableNamespace;
 

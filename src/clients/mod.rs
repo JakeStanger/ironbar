@@ -239,7 +239,7 @@ impl Clients {
             .get_or_insert_with(|| {
                 let client = Arc::new(sysinfo::Client::new());
 
-                #[cfg(feature = "ipc")]
+                #[cfg(any(feature = "ipc", feature = "cairo"))]
                 Ironbar::variable_manager().register_namespace("sysinfo", client.clone());
 
                 client
@@ -267,7 +267,7 @@ impl Clients {
         } else {
             let client = await_sync(async { upower::Client::new().await })?;
 
-            #[cfg(feature = "ipc")]
+            #[cfg(any(feature = "ipc", feature = "cairo"))]
             Ironbar::variable_manager().register_namespace("upower", client.clone());
 
             self.upower.replace(client.clone());
