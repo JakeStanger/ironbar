@@ -10,7 +10,7 @@ use serde::Deserialize;
 use tokio::sync::mpsc::Receiver;
 use tracing::error;
 
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Deserialize, Clone, PartialEq)]
 #[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
 #[serde(default)]
 pub struct NotificationsModule {
@@ -39,7 +39,7 @@ impl Default for NotificationsModule {
     }
 }
 
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Deserialize, Clone, PartialEq, Eq)]
 #[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
 #[serde(default)]
 struct Icons {

@@ -1,7 +1,7 @@
 use gtk::pango::EllipsizeMode as GtkEllipsizeMode;
 use serde::Deserialize;
 
-#[derive(Debug, Deserialize, Clone, Copy, Default)]
+#[derive(Debug, Deserialize, Clone, Copy, Default, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 #[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
 pub enum EllipsizeMode {
@@ -31,7 +31,7 @@ impl From<EllipsizeMode> for GtkEllipsizeMode {
 ///
 /// **Default**: `Auto (end)`
 ///
-#[derive(Debug, Deserialize, Clone, Copy)]
+#[derive(Debug, Deserialize, Clone, Copy, PartialEq, Eq)]
 #[serde(untagged)]
 #[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
 pub enum TruncateMode {
