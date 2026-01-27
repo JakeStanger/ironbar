@@ -1,11 +1,14 @@
+mod config;
+
 use crate::channels::{AsyncSenderExt, BroadcastReceiverExt};
 use crate::clients::volume::{self, Event};
-use crate::config::{CommonConfig, LayoutConfig, MarqueeMode, ModuleOrientation, TruncateMode};
+use crate::config::{ModuleOrientation, ProfileUpdateEvent};
 use crate::gtk_helpers::{IronbarLabelExt, OverflowLabel};
 use crate::modules::{
     Module, ModuleInfo, ModuleParts, ModulePopup, ModuleUpdateEvent, PopupButton, WidgetContext,
 };
 use crate::{lock, module_impl, spawn};
+use config::VolumeProfile;
 use glib::subclass::prelude::*;
 use glib::{Object, Properties};
 use gtk::prelude::*;
@@ -13,117 +16,12 @@ use gtk::{
     Button, DropDown, Expression, Label, ListItem, Orientation, Scale, SignalListItemFactory,
     ToggleButton, gio,
 };
-use serde::Deserialize;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use tokio::sync::mpsc;
 use tracing::trace;
 
-#[derive(Debug, Clone, Deserialize)]
-#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
-#[serde(default)]
-pub struct VolumeModule {
-    /// The format string to use for the widget button label.
-    /// For available tokens, see [below](#formatting-tokens).
-    ///
-    /// **Default**: `{icon} {percentage}%`
-    format: String,
-
-    /// The orientation of the sink slider
-    ///
-    /// **Default**: vertical
-    sink_slider_orientation: ModuleOrientation,
-
-    /// Maximum value to allow volume sliders to reach.
-    /// Pulse supports values > 100 but this may result in distortion.
-    ///
-    /// **Default**: `100`
-    max_volume: f64,
-
-    /// Volume state icons.
-    ///
-    /// See [icons](#icons).
-    icons: Icons,
-
-    // -- Common --
-    /// See [truncate options](module-level-options#truncate-mode).
-    ///
-    /// **Default**: `null`
-    pub(crate) truncate: Option<TruncateMode>,
-
-    /// See [marquee options](module-level-options#marquee-mode).
-    #[serde(default)]
-    pub(crate) marquee: MarqueeMode,
-
-    /// See [layout options](module-level-options#layout)
-    #[serde(default, flatten)]
-    layout: LayoutConfig,
-
-    /// See [common options](module-level-options#common-options).
-    #[serde(flatten)]
-    pub common: Option<CommonConfig>,
-}
-
-impl Default for VolumeModule {
-    fn default() -> Self {
-        Self {
-            format: "{icon} {percentage}%".to_string(),
-            sink_slider_orientation: ModuleOrientation::Vertical,
-            max_volume: 100.0,
-            icons: Icons::default(),
-            truncate: None,
-            marquee: MarqueeMode::default(),
-            layout: LayoutConfig::default(),
-            common: Some(CommonConfig::default()),
-        }
-    }
-}
-
-#[derive(Debug, Clone, Deserialize)]
-#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
-#[serde(default)]
-pub struct Icons {
-    /// Icon to show for high volume levels.
-    ///
-    /// **Default**: `󰕾`
-    volume_high: String,
-
-    /// Icon to show for medium volume levels.
-    ///
-    /// **Default**: `󰖀`
-    volume_medium: String,
-
-    /// Icon to show for low volume levels.
-    ///
-    /// **Default**: `󰕿`
-    volume_low: String,
-
-    /// Icon to show for muted outputs.
-    ///
-    /// **Default**: `󰝟`
-    muted: String,
-}
-
-impl Default for Icons {
-    fn default() -> Self {
-        Self {
-            volume_high: "󰕾".to_string(),
-            volume_medium: "󰖀".to_string(),
-            volume_low: "󰕿".to_string(),
-            muted: "󰝟".to_string(),
-        }
-    }
-}
-
-impl Icons {
-    fn volume_icon(&self, volume_percent: f64) -> &str {
-        match volume_percent as u32 {
-            0..=33 => &self.volume_low,
-            34..=66 => &self.volume_medium,
-            67.. => &self.volume_high,
-        }
-    }
-}
+pub use config::VolumeModule;
 
 #[derive(Debug, Clone)]
 pub enum Update {
@@ -133,6 +31,15 @@ pub enum Update {
 
     InputVolume(u32, f64),
     InputMute(u32, bool),
+}
+
+struct BarUiUpdate {
+    muted: bool,
+    description: String,
+}
+
+struct BtnMuteUiUpdate {
+    muted: bool,
 }
 
 glib::wrapper! {
@@ -171,6 +78,10 @@ impl Module<Button> for VolumeModule {
     type ReceiveMessage = Update;
 
     module_impl!("volume");
+
+    fn on_create(&mut self) {
+        self.profiles.setup_defaults(config::default_profiles());
+    }
 
     fn spawn_controller(
         &self,
@@ -264,27 +175,43 @@ impl Module<Button> for VolumeModule {
 
         let rx = context.subscribe();
 
-        rx.recv_glib(
-            (&self.icons, &self.format),
-            move |(icons, format), event| match event {
-                Event::AddSink(sink) | Event::UpdateSink(sink) if sink.active => {
+        let mut manager = {
+            let format = self.format.clone();
+
+            // attach to button as we want class there
+            self.profiles.attach(
+                &button,
+                move |_, event: ProfileUpdateEvent<VolumeProfile, BarUiUpdate>| {
+                    let icons = &event.profile.icons;
                     let label = format
                         .replace(
                             "{icon}",
-                            if sink.muted {
+                            if event.data.muted {
                                 &icons.muted
                             } else {
-                                icons.volume_icon(sink.volume.percent())
+                                &icons.volume
                             },
                         )
-                        .replace("{percentage}", &sink.volume.percent().to_string())
-                        .replace("{name}", &sink.description);
+                        .replace("{percentage}", &event.value.to_string())
+                        .replace("{name}", &event.data.description);
 
                     button_label.set_label_escaped(&label);
-                }
-                _ => {}
-            },
-        );
+                },
+            )
+        };
+
+        rx.recv_glib((), move |(), event| match event {
+            Event::AddSink(sink) | Event::UpdateSink(sink) if sink.active => {
+                manager.update(
+                    sink.volume.percent() as i32,
+                    BarUiUpdate {
+                        muted: sink.muted,
+                        description: sink.description,
+                    },
+                );
+            }
+            _ => {}
+        });
 
         let popup = self
             .into_popup(context, info)
@@ -393,6 +320,20 @@ impl Module<Button> for VolumeModule {
         btn_mute.add_css_class("btn-mute");
         sink_container.append(&btn_mute);
 
+        let mut manager = self.profiles.attach(
+            &btn_mute,
+            move |btn_mute, event: ProfileUpdateEvent<VolumeProfile, BtnMuteUiUpdate>| {
+                btn_mute.set_active(event.data.muted);
+
+                let icons = &event.profile.icons;
+                btn_mute.set_label(if event.data.muted {
+                    &icons.muted
+                } else {
+                    &icons.volume
+                });
+            },
+        );
+
         {
             let tx = context.controller_tx.clone();
             let selector = sink_selector.clone();
@@ -419,12 +360,10 @@ impl Module<Button> for VolumeModule {
                             sink_selector.set_selected(sinks.len() as u32);
                             slider.set_value(info.volume.percent());
 
-                            btn_mute.set_active(info.muted);
-                            btn_mute.set_label(if info.muted {
-                                &self.icons.muted
-                            } else {
-                                self.icons.volume_icon(info.volume.percent())
-                            });
+                            manager.update(
+                                info.volume.percent() as i32,
+                                BtnMuteUiUpdate { muted: info.muted },
+                            );
                         }
 
                         sinks.push(info);
@@ -439,12 +378,10 @@ impl Module<Button> for VolumeModule {
                                 slider.set_value(info.volume.percent());
                             }
 
-                            btn_mute.set_active(info.muted);
-                            btn_mute.set_label(if info.muted {
-                                &self.icons.muted
-                            } else {
-                                self.icons.volume_icon(info.volume.percent())
-                            });
+                            manager.update(
+                                info.volume.percent() as i32,
+                                BtnMuteUiUpdate { muted: info.muted },
+                            );
                         }
                     }
                     Event::RemoveSink(name) => {
@@ -488,12 +425,10 @@ impl Module<Button> for VolumeModule {
                         let btn_mute = ToggleButton::new();
                         btn_mute.add_css_class("btn-mute");
 
-                        btn_mute.set_active(info.muted);
-                        btn_mute.set_label(if info.muted {
-                            &self.icons.muted
-                        } else {
-                            self.icons.volume_icon(info.volume.percent())
-                        });
+                        manager.update(
+                            info.volume.percent() as i32,
+                            BtnMuteUiUpdate { muted: info.muted },
+                        );
 
                         {
                             let tx = context.controller_tx.clone();
@@ -514,7 +449,6 @@ impl Module<Button> for VolumeModule {
                                 container: item_container,
                                 title_label,
                                 slider,
-                                btn_mute,
                                 label_raw: info.name.clone(),
                             },
                         );
@@ -531,11 +465,10 @@ impl Module<Button> for VolumeModule {
                             }
 
                             ui.slider.set_sensitive(info.can_set_volume);
-                            ui.btn_mute.set_label(if info.muted {
-                                &self.icons.muted
-                            } else {
-                                self.icons.volume_icon(info.volume.percent())
-                            });
+                            manager.update(
+                                info.volume.percent() as i32,
+                                BtnMuteUiUpdate { muted: info.muted },
+                            );
                         }
                     }
                     Event::RemoveInput(index) => {
@@ -554,7 +487,6 @@ struct InputUi {
     container: gtk::Box,
     title_label: OverflowLabel,
     slider: Scale,
-    btn_mute: ToggleButton,
     // Store original (unformatted) title to detect change when marquee is enabled
     label_raw: String,
 }
