@@ -297,6 +297,8 @@ where
 
     fn name() -> &'static str;
 
+    fn on_create(&mut self) {}
+
     fn spawn_controller(
         &self,
         info: &ModuleInfo,
@@ -341,6 +343,8 @@ pub trait ModuleFactory {
         TWidget: IsA<Widget>,
         TSend: Debug + Clone + Send + 'static,
     {
+        module.on_create();
+
         let id = Ironbar::unique_id();
         let common = module.take_common();
 
