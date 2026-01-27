@@ -105,6 +105,7 @@ pub struct WidgetContext<TSend, TReceive>
 where
     TSend: Clone,
 {
+    #[allow(dead_code)]
     pub id: usize,
     pub ironbar: Rc<Ironbar>,
     pub bar: Rc<Bar>,
