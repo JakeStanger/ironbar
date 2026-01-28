@@ -105,8 +105,6 @@ pub struct WidgetContext<TSend, TReceive>
 where
     TSend: Clone,
 {
-    #[allow(dead_code)]
-    pub id: usize,
     pub ironbar: Rc<Ironbar>,
     pub bar: Rc<Bar>,
     pub popup: Rc<Popup>,
@@ -353,7 +351,6 @@ pub trait ModuleFactory {
         let (tx, rx) = broadcast::channel(64);
 
         let context = WidgetContext {
-            id,
             ironbar: self.ironbar().clone(),
             bar: self.bar().clone(),
             popup: self.popup().clone(),
