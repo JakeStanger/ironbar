@@ -19,14 +19,13 @@ use tracing::{debug, error};
 
 #[derive(Debug, Clone, Deserialize)]
 #[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "extras", schemars(extend("required" = ["path"])))]
 #[serde(default)]
 pub struct CairoModule {
     /// The path to the Lua script to load.
     /// This can be absolute, or relative to the working directory.
     ///
     /// The script must contain the entry `draw` function.
-    ///
-    /// **Required**
     path: PathBuf,
 
     /// The number of milliseconds between each draw call.
@@ -45,6 +44,7 @@ pub struct CairoModule {
     height: u32,
 
     /// See [common options](module-level-options#common-options).
+    #[serde(flatten)]
     pub common: Option<CommonConfig>,
 }
 

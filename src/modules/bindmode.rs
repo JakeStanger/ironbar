@@ -13,7 +13,7 @@ use tracing::{info, trace};
 
 #[derive(Debug, Deserialize, Clone)]
 #[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
-pub struct Bindmode {
+pub struct BindmodeModule {
     // -- Common --
     /// See [truncate options](module-level-options#truncate-mode).
     ///
@@ -29,7 +29,7 @@ pub struct Bindmode {
     pub common: Option<CommonConfig>,
 }
 
-impl Module<Label> for Bindmode {
+impl Module<Label> for BindmodeModule {
     type SendMessage = BindModeUpdate;
     type ReceiveMessage = ();
 
