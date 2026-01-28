@@ -90,8 +90,7 @@ let {
 
 ### Script
 
-Every script must contain a function called `draw`. 
-This takes a three parameters:
+Every script must return a function or callable table with three parameters:
 - Cairo context (required)
 - Width of the drawing area (can be omitted)
 - Height of the drawing area (can be omitted)
@@ -104,9 +103,9 @@ Additionally there is basic access to the ironbar via the `ironbar` global:
   ```lua
    local_module = dofile(ironbar.config_dir .. "local_mod.lua")`
    ```
-- `ironbar:log_debug(msg)`, `ironbar:log_info(msg)`, `ironbar:log_warn(msg)`,`ironbar:log_error(msg)`: Write a log message.
+- `ironbar:log_debug(msg)`, `ironbar:log_info(msg)`, `ironbar:log_warn(msg)`, `ironbar:log_error(msg)`: Write a log message.
 - `ironbar:unixtime()`: Returns high-resolution unixtime (stdlib only offers second-resolution). Will return a table:
-  - `sec`: Seconds since unix-epoch with fractions
+  - `secs`: Seconds since unix-epoch with fractions
   - `subsec_millis`: Sub-second milliseconds as integer
   - `subsec_micros`: Sub-second microseconds as integer
 - `ironbar:var_get(key)`: Get an ironbar variable, e.g.
@@ -118,15 +117,42 @@ Additionally there is basic access to the ironbar via the `ironbar` global:
   memory_free = ironbar:var_list("sysinfo")["memory_free"]
   ```
 
-
-The most basic example, which draws a red square, can be seen below:
-
-```lua
-function draw(cr) 
+Basic examples, which draw a red square
+- As anonymous function:
+  ```lua
+  return function(cr) 
     cr:set_source_rgb(1.0, 0.0, 0.0)
     cr:paint()
-end
-```
+  end
+  ```
+- As local function:
+  ```lua
+  local function draw_square(cr) 
+    cr:set_source_rgb(1.0, 0.0, 0.0)
+    cr:paint()
+  end
+
+  return draw_square
+  ```
+- As callable table (also using width and height):
+  ```lua
+  local square = {}
+
+  function square:draw(cr, width, height)
+    cr:set_source_rgb(1.0, 0.0, 0.0)
+    cr:rectangle(0, 0, width, height)
+    cr:fill()
+  end
+
+  setmetatable(square, {
+   __call = function(o, cr, width, height)
+      return o:draw(cr, width, height)
+   end,
+  })
+
+  return square
+  ```
+
 
 A longer example, used to create the clock in the image at the top of the page, is shown below:
 
@@ -134,7 +160,7 @@ A longer example, used to create the clock in the image at the top of the page, 
 <summary>Circle clock</summary>
 
 ```lua
-function draw(cr, width, height)
+local function draw_clock(cr, width, height)
     local center_x = width / 2
     local center_y = height / 2
     local radius = math.min(width, height) / 2 - 20
@@ -202,6 +228,8 @@ function draw(cr, width, height)
 
     return 0
 end
+
+return draw_clock
 ```
 
 </details>
