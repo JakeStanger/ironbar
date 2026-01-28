@@ -103,9 +103,9 @@ Additionally there is basic access to the ironbar via the `ironbar` global:
   ```lua
    local_module = dofile(ironbar.config_dir .. "local_mod.lua")`
    ```
-- `ironbar:log_debug(msg)`, `ironbar:log_info(msg)`, `ironbar:log_warn(msg)`,`ironbar:log_error(msg)`: Write a log message.
+- `ironbar:log_debug(msg)`, `ironbar:log_info(msg)`, `ironbar:log_warn(msg)`, `ironbar:log_error(msg)`: Write a log message.
 - `ironbar:unixtime()`: Returns high-resolution unixtime (stdlib only offers second-resolution). Will return a table:
-  - `sec`: Seconds since unix-epoch with fractions
+  - `secs`: Seconds since unix-epoch with fractions
   - `subsec_millis`: Sub-second milliseconds as integer
   - `subsec_micros`: Sub-second microseconds as integer
 - `ironbar:var_get(key)`: Get an ironbar variable, e.g.
