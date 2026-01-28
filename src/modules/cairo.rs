@@ -69,11 +69,11 @@ impl CairoModule {
         let value = match lua.load(self.path.clone()).call::<Value>(()) {
             Ok(value) => value,
             Err(Error::SyntaxError { message, .. }) => {
-                error!("[lua syntax error]:{message}");
+                error!("[lua syntax error]: {message}");
                 return None;
             }
             Err(Error::RuntimeError(message)) => {
-                error!("[lua runtime error]:{message}");
+                error!("[lua runtime error]: {message}");
                 return None;
             }
             Err(err) => {
@@ -182,6 +182,7 @@ impl Module<gtk::Box> for CairoModule {
 
         let lua = context.ironbar.clients.borrow_mut().lua(&config_dir);
 
+        // Keep draw function in a mutex so it can be replaced on file change
         let draw_function = Rc::new(Mutex::new(self.load_draw_function(&lua)));
 
         {
@@ -199,7 +200,7 @@ impl Module<gtk::Box> for CairoModule {
 
                 let ptr = cr.to_glib_full();
 
-                if let Some(ref current_draw_function) = *draw_function.lock().expect("Mutex error")
+                if let Some(ref current_draw_function) = *draw_function.lock().expect("Mutex lock")
                 {
                     // mlua needs a valid return type, even if we don't return anything
                     if let Err(err) = draw_wrapper.call::<Option<bool>>((
@@ -228,8 +229,9 @@ impl Module<gtk::Box> for CairoModule {
             }
         });
         context.subscribe().recv_glib((), move |(), _ev| {
+            // Reload/replace on file change
             if let Some(function) = self.load_draw_function(&lua) {
-                draw_function.lock().expect("Mutex error").replace(function);
+                draw_function.lock().expect("Mutex lock").replace(function);
             }
         });
 
