@@ -200,7 +200,7 @@ impl Module<gtk::Box> for CairoModule {
 
                 let ptr = cr.to_glib_full();
 
-                if let Some(ref current_draw_function) = *draw_function.lock().expect("Mutex lock")
+                if let Some(ref current_draw_function) = *lock!(draw_function)
                 {
                     // mlua needs a valid return type, even if we don't return anything
                     if let Err(err) = draw_wrapper.call::<Option<bool>>((
