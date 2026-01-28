@@ -2,6 +2,7 @@ use crate::channels::{AsyncSenderExt, BroadcastReceiverExt};
 use crate::clients::lua::LuaEngine;
 use crate::config::{CommonConfig, ConfigLocation};
 use crate::modules::{Module, ModuleInfo, ModuleParts, WidgetContext};
+use crate::{arc_mut, lock};
 use crate::{module_impl, spawn};
 use glib::translate::ToGlibPtr;
 use gtk::DrawingArea;
@@ -12,8 +13,6 @@ use notify::event::ModifyKind;
 use notify::{Event, EventKind, RecursiveMode, Watcher, recommended_watcher};
 use serde::Deserialize;
 use std::path::PathBuf;
-use std::rc::Rc;
-use std::sync::Mutex;
 use std::time::Duration;
 use tokio::sync::mpsc::Receiver;
 use tokio::time::sleep;
@@ -183,7 +182,7 @@ impl Module<gtk::Box> for CairoModule {
         let lua = context.ironbar.clients.borrow_mut().lua(&config_dir);
 
         // Keep draw function in a mutex so it can be replaced on file change
-        let draw_function = Rc::new(Mutex::new(self.load_draw_function(&lua)));
+        let draw_function = arc_mut!(self.load_draw_function(&lua));
 
         {
             let draw_function = draw_function.clone();
@@ -200,8 +199,7 @@ impl Module<gtk::Box> for CairoModule {
 
                 let ptr = cr.to_glib_full();
 
-                if let Some(ref current_draw_function) = *lock!(draw_function)
-                {
+                if let Some(ref current_draw_function) = *lock!(draw_function) {
                     // mlua needs a valid return type, even if we don't return anything
                     if let Err(err) = draw_wrapper.call::<Option<bool>>((
                         current_draw_function,
@@ -231,7 +229,7 @@ impl Module<gtk::Box> for CairoModule {
         context.subscribe().recv_glib((), move |(), _ev| {
             // Reload/replace on file change
             if let Some(function) = self.load_draw_function(&lua) {
-                draw_function.lock().expect("Mutex lock").replace(function);
+                lock!(draw_function).replace(function);
             }
         });
 
