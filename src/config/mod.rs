@@ -52,7 +52,7 @@ use crate::modules::workspaces::WorkspacesModule;
 pub use self::common::{CommonConfig, ModuleJustification, ModuleOrientation, TransitionType};
 pub use self::layout::LayoutConfig;
 pub use self::marquee::{MarqueeMode, MarqueeOnHover};
-pub use self::profiles::{Profile, ProfileUpdateEvent, Profiles};
+pub use self::profiles::{Profile, ProfileUpdateEvent, Profiles, State};
 pub use self::truncate::{EllipsizeMode, TruncateMode};
 
 use gtk::prelude::ObjectExt;
