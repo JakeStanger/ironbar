@@ -105,7 +105,7 @@ pub struct MenuModule {
     /// Size of the `label_icon` image.
     pub(super) label_icon_size: i32,
 
-    /// Size of the `app_icon_size` images.
+    /// Size of the icon to display in menu entries.
     pub(super) app_icon_size: i32,
 
     // -- common --
