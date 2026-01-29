@@ -1,16 +1,16 @@
 use crate::channels::{AsyncSenderExt, BroadcastReceiverExt};
+use crate::clients::lua::LuaEngine;
 use crate::config::{CommonConfig, ConfigLocation};
 use crate::modules::{Module, ModuleInfo, ModuleParts, WidgetContext};
-use crate::{module_impl, spawn};
+use crate::{module_impl, rc_mut, spawn};
 use glib::translate::ToGlibPtr;
 use gtk::DrawingArea;
 use gtk::cairo::{Format, ImageSurface};
 use gtk::prelude::*;
-use mlua::{Error, Function, LightUserData};
+use mlua::{Error, Function, LightUserData, MetaMethod, Value};
 use notify::event::ModifyKind;
 use notify::{Event, EventKind, RecursiveMode, Watcher, recommended_watcher};
 use serde::Deserialize;
-use std::fs;
 use std::path::PathBuf;
 use std::time::Duration;
 use tokio::sync::mpsc::Receiver;
@@ -56,6 +56,49 @@ impl Default for CairoModule {
             width: 42,
             height: 42,
             common: Some(CommonConfig::default()),
+        }
+    }
+}
+
+impl CairoModule {
+    fn load_draw_function(&self, lua: &LuaEngine) -> Option<Value> {
+        // Expect the script to return a drawing function/callable
+        // In case of a syntax error we leave it empty for now
+        let value = match lua.load(self.path.clone()).call::<Value>(()) {
+            Ok(value) => value,
+            Err(Error::SyntaxError { message, .. }) => {
+                error!("[lua syntax error]: {message}");
+                return None;
+            }
+            Err(Error::RuntimeError(message)) => {
+                error!("[lua runtime error]: {message}");
+                return None;
+            }
+            Err(err) => {
+                error!("{err}");
+                return None;
+            }
+        };
+
+        // Check if the result is callable
+        match &value {
+            Value::Function(_) => Some(value),
+            Value::Table(table) => {
+                if let Some(metatable) = table.metatable()
+                    && metatable
+                        .contains_key(MetaMethod::Call.name())
+                        .unwrap_or_default()
+                {
+                    Some(value)
+                } else {
+                    error!("[lua error]: {:?} is not callable", value);
+                    None
+                }
+            }
+            _ => {
+                error!("[lua error]: Expected callable, but got {:?}", value);
+                None
+            }
         }
     }
 }
@@ -121,8 +164,6 @@ impl Module<gtk::Box> for CairoModule {
     where
         <Self as Module<gtk::Box>>::SendMessage: Clone,
     {
-        let id = context.id.to_string();
-
         let container = gtk::Box::new(info.bar_position.orientation(), 0);
 
         let surface = ImageSurface::create(Format::ARgb32, self.width as i32, self.height as i32)?;
@@ -139,19 +180,12 @@ impl Module<gtk::Box> for CairoModule {
 
         let lua = context.ironbar.clients.borrow_mut().lua(&config_dir);
 
-        // this feels kinda dirty,
-        // but it keeps draw functions separate in the global scope
-        let script = fs::read_to_string(&self.path)?
-            .replace("function draw", format!("function __draw_{id}").as_str());
-        lua.load(&script).exec()?;
+        // Keep draw function in a mutex so it can be replaced on file change
+        let draw_function = rc_mut!(self.load_draw_function(&lua));
 
         {
-            let lua = lua.clone();
-            let id = id.clone();
-
-            let path = self.path.clone();
-
-            let function: Function = lua
+            let draw_function = draw_function.clone();
+            let draw_wrapper: Function = lua
                 .load(include_str!("../../lua/draw.lua"))
                 .eval()
                 .expect("to be valid");
@@ -164,15 +198,15 @@ impl Module<gtk::Box> for CairoModule {
 
                 let ptr = cr.to_glib_full();
 
-                // mlua needs a valid return type, even if we don't return anything
-                if let Err(err) =
-                    function.call::<Option<bool>>((id.as_str(), LightUserData(ptr.cast()), w, h))
-                {
-                    if let Error::RuntimeError(message) = err {
-                        let message = message.split_once(":").expect("to exist").1;
-                        error!("[lua runtime error] {}:{message}", path.display());
-                    } else {
-                        error!("{err}");
+                if let Some(ref current_draw_function) = *draw_function.borrow() {
+                    // mlua needs a valid return type, even if we don't return anything
+                    if let Err(err) = draw_wrapper.call::<Option<bool>>((
+                        current_draw_function,
+                        LightUserData(ptr.cast()),
+                        w,
+                        h,
+                    )) {
+                        error!("lua error: {err}");
                     }
                 }
 
@@ -191,21 +225,10 @@ impl Module<gtk::Box> for CairoModule {
                 glib::timeout_future(Duration::from_millis(self.frequency)).await;
             }
         });
-
         context.subscribe().recv_glib((), move |(), _ev| {
-            let res = fs::read_to_string(&self.path)
-                .map(|s| s.replace("function draw", format!("function __draw_{id}").as_str()));
-
-            match res {
-                Ok(script) => match lua.load(&script).exec() {
-                    Ok(()) => {}
-                    Err(Error::SyntaxError { message, .. }) => {
-                        let message = message.split_once(":").expect("to exist").1;
-                        error!("[lua syntax error] {}:{message}", self.path.display());
-                    }
-                    Err(err) => error!("lua error: {err:?}"),
-                },
-                Err(err) => error!("{err:?}"),
+            // Reload/replace on file change
+            if let Some(function) = self.load_draw_function(&lua) {
+                draw_function.borrow_mut().replace(function);
             }
         });
 

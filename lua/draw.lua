@@ -1,4 +1,4 @@
-function(id, ptr, width, height)
+function(draw_function, ptr, width, height)
     local cr = __lgi_core.record.new(cairo.Context, ptr)
-    _G['__draw_' .. id](cr, width, height)
+    draw_function(cr, width, height)
 end
