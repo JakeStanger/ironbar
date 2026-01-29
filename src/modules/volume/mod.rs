@@ -181,7 +181,7 @@ impl Module<Button> for VolumeModule {
             // attach to button as we want class there
             self.profiles.attach(
                 &button,
-                move |_, event: ProfileUpdateEvent<VolumeProfile, BarUiUpdate>| {
+                move |_, event: ProfileUpdateEvent<f64, VolumeProfile, BarUiUpdate>| {
                     let icons = &event.profile.icons;
                     let label = format
                         .replace(
@@ -192,7 +192,7 @@ impl Module<Button> for VolumeModule {
                                 &icons.volume
                             },
                         )
-                        .replace("{percentage}", &event.value.to_string())
+                        .replace("{percentage}", &event.state.to_string())
                         .replace("{name}", &event.data.description);
 
                     button_label.set_label_escaped(&label);
@@ -203,7 +203,7 @@ impl Module<Button> for VolumeModule {
         rx.recv_glib((), move |(), event| match event {
             Event::AddSink(sink) | Event::UpdateSink(sink) if sink.active => {
                 manager.update(
-                    sink.volume.percent() as i32,
+                    sink.volume.percent(),
                     BarUiUpdate {
                         muted: sink.muted,
                         description: sink.description,
@@ -322,7 +322,7 @@ impl Module<Button> for VolumeModule {
 
         let mut manager = self.profiles.attach(
             &btn_mute,
-            move |btn_mute, event: ProfileUpdateEvent<VolumeProfile, BtnMuteUiUpdate>| {
+            move |btn_mute, event: ProfileUpdateEvent<f64, VolumeProfile, BtnMuteUiUpdate>| {
                 btn_mute.set_active(event.data.muted);
 
                 let icons = &event.profile.icons;
@@ -361,7 +361,7 @@ impl Module<Button> for VolumeModule {
                             slider.set_value(info.volume.percent());
 
                             manager.update(
-                                info.volume.percent() as i32,
+                                info.volume.percent(),
                                 BtnMuteUiUpdate { muted: info.muted },
                             );
                         }
@@ -379,7 +379,7 @@ impl Module<Button> for VolumeModule {
                             }
 
                             manager.update(
-                                info.volume.percent() as i32,
+                                info.volume.percent(),
                                 BtnMuteUiUpdate { muted: info.muted },
                             );
                         }
@@ -425,10 +425,8 @@ impl Module<Button> for VolumeModule {
                         let btn_mute = ToggleButton::new();
                         btn_mute.add_css_class("btn-mute");
 
-                        manager.update(
-                            info.volume.percent() as i32,
-                            BtnMuteUiUpdate { muted: info.muted },
-                        );
+                        manager
+                            .update(info.volume.percent(), BtnMuteUiUpdate { muted: info.muted });
 
                         {
                             let tx = context.controller_tx.clone();
@@ -466,7 +464,7 @@ impl Module<Button> for VolumeModule {
 
                             ui.slider.set_sensitive(info.can_set_volume);
                             manager.update(
-                                info.volume.percent() as i32,
+                                info.volume.percent(),
                                 BtnMuteUiUpdate { muted: info.muted },
                             );
                         }

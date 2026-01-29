@@ -1,4 +1,6 @@
-use crate::config::{CommonConfig, LayoutConfig, MarqueeMode, ModuleOrientation, Profiles, TruncateMode};
+use crate::config::{
+    CommonConfig, LayoutConfig, MarqueeMode, ModuleOrientation, Profiles, TruncateMode,
+};
 use crate::profiles;
 use serde::Deserialize;
 
@@ -20,10 +22,10 @@ impl VolumeProfile {
     }
 }
 
-pub(super) fn default_profiles() -> Profiles<VolumeProfile> {
+pub(super) fn default_profiles() -> Profiles<f64, VolumeProfile> {
     profiles!(
-        "low":33 => VolumeProfile::for_volume_icon("󰕿"),
-        "medium":67 => VolumeProfile::for_volume_icon("󰖀")
+        "low":33.0 => VolumeProfile::for_volume_icon("󰕿"),
+        "medium":66.66 => VolumeProfile::for_volume_icon("󰖀")
     )
 }
 
@@ -50,7 +52,7 @@ pub struct VolumeModule {
 
     /// See [profiles](profiles).
     #[serde(flatten)]
-    pub(super) profiles: Profiles<VolumeProfile>,
+    pub(super) profiles: Profiles<f64, VolumeProfile>,
 
     // -- Common --
     /// See [truncate options](module-level-options#truncate-mode).

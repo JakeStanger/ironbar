@@ -2,6 +2,7 @@ use glib::prelude::*;
 use gtk::Widget;
 use gtk::prelude::WidgetExt;
 use serde::Deserialize;
+use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::marker::PhantomData;
 
@@ -89,12 +90,13 @@ impl State for f64 {}
 #[derive(Debug, Default, Clone, Deserialize)]
 #[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
 #[serde(default)]
-pub struct Profiles<T>
+pub struct Profiles<S, T>
 where
+    S: State,
     T: Default + Clone,
 {
     /// A map of named profiles.
-    profiles: HashMap<String, ProfileEntry<T>>,
+    profiles: HashMap<String, ProfileEntry<S, T>>,
 
     /// The default profile.
     #[serde(flatten)]
@@ -162,22 +164,24 @@ where
 /// and the configuration associated with it.
 #[derive(Debug, Default, Clone, Deserialize)]
 #[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
-pub struct Profile<T>
+pub struct Profile<S, T>
 where
+    S: State,
     T: Default + Clone,
 {
     /// The 'state' value threshold at which this profile should be activated.
     /// Values *less than or equal to* this will activate it
     /// (assuming the current value does not fall into a profile below this one).
-    value: i32,
+    when: S,
 
     /// The configuration data attached to this profile.
     #[serde(flatten)]
     data: T,
 }
 
-impl<T> Profile<T>
+impl<S, T> Profile<S, T>
 where
+    S: State,
     T: Default + Clone,
 {
     /// Creates a new profile for this matcher `when`,
@@ -187,8 +191,9 @@ where
     }
 }
 
-impl<T> Profiles<T>
+impl<S, T> Profiles<S, T>
 where
+    S: State,
     T: Default + Clone,
 {
     /// Merges a default profile set into this one,
@@ -208,7 +213,7 @@ where
     ///   }
     /// }
     /// ```
-    pub fn setup_defaults(&mut self, defaults: Profiles<T>) {
+    pub fn setup_defaults(&mut self, defaults: Profiles<S, T>) {
         for (name, profile) in defaults.profiles {
             self.profiles.entry(name).or_insert(profile);
         }
@@ -227,20 +232,21 @@ where
     ///     );
     /// });
     /// ```
-    pub fn attach<W, F, D>(&self, widget: &W, on_update: F) -> ProfilesManager<T, W, F, D>
+    pub fn attach<W, F, D>(&self, widget: &W, on_update: F) -> ProfilesManager<S, T, W, F, D>
     where
         W: IsA<Widget>,
-        F: Fn(&W, ProfileUpdateEvent<T, D>),
+        F: Fn(&W, ProfileUpdateEvent<S, T, D>),
     {
         ProfilesManager::new(self.clone(), widget.to_owned(), on_update)
     }
 }
 
-impl<T> From<HashMap<String, Profile<T>>> for Profiles<T>
+impl<S, T> From<HashMap<String, Profile<S, T>>> for Profiles<S, T>
 where
+    S: State,
     T: Default + Clone,
 {
-    fn from(profiles: HashMap<String, Profile<T>>) -> Self {
+    fn from(profiles: HashMap<String, Profile<S, T>>) -> Self {
         Self {
             profiles: profiles
                 .into_iter()
@@ -254,13 +260,14 @@ where
 /// A manager for a set of profiles,
 /// used to determine which profile to load and
 /// send updates to the attached callback.
-pub struct ProfilesManager<T, W, F, D>
+pub struct ProfilesManager<S, T, W, F, D>
 where
+    S: State,
     T: Default + Clone,
     W: IsA<Widget>,
-    F: Fn(&W, ProfileUpdateEvent<T, D>),
+    F: Fn(&W, ProfileUpdateEvent<S, T, D>),
 {
-    profiles: Profiles<T>,
+    profiles: Profiles<S, T>,
     widget: W,
     on_update: F,
 
@@ -271,24 +278,26 @@ where
 }
 
 /// An event sent by a `ProfilesManager` when `update` is called.
-pub struct ProfileUpdateEvent<'a, T, D> {
+pub struct ProfileUpdateEvent<'a, S, T, D> {
     /// The state provided in the update.
     /// Note this is not the state matcher of the profile itself.
-    pub value: i32,
+    pub state: S,
     /// The profile configuration data.
     pub profile: &'a T,
     /// Any additional non-profile data passed in the update.
     pub data: D,
 }
 
-impl<T, W, F, D> ProfilesManager<T, W, F, D>
+impl<S, T, W, F, D> ProfilesManager<S, T, W, F, D>
 where
+    S: State,
     T: Default + Clone,
     W: IsA<Widget>,
-    F: Fn(&W, ProfileUpdateEvent<T, D>),
+    F: Fn(&W, ProfileUpdateEvent<S, T, D>),
 {
-    fn new(profiles: Profiles<T>, widget: W, on_update: F) -> Self {
+    fn new(profiles: Profiles<S, T>, widget: W, on_update: F) -> Self {
         let p_map = &profiles.profiles;
+
         let mut profile_keys = p_map.keys().map(ToOwned::to_owned).collect::<Vec<_>>();
 
         profile_keys.sort_by(|a, b| {
@@ -320,7 +329,7 @@ where
     ///
     /// Note that the `on_update` callback runs every time this is called,
     /// regardless of whether the profile has changed.
-    pub fn update(&mut self, value: i32, data: D) {
+    pub fn update(&mut self, value: S, data: D) {
         let new_profile_name = self.profile_keys.iter().find(|&name| {
             let profile = &self.profiles.profiles[name];
             profile.when().matches(&value)
@@ -340,7 +349,7 @@ where
         }
 
         let update_data = ProfileUpdateEvent {
-            value,
+            state: value,
             profile,
             data,
         };
