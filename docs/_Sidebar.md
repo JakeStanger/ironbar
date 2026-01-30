@@ -24,6 +24,7 @@
 
 - [Power Menu](power-menu)
 - [Weather](weather)
+- [Cairo CPU Graph](cpu-cores-graph)
 
 # Modules
 
