@@ -19,6 +19,7 @@ pub fn make_entry<R>(
     image_provider: &image::Provider,
     truncate_mode: TruncateMode,
     launch_command_str: &str,
+    app_icon_size: i32,
 ) -> (Button, Option<gtk::Box>)
 where
     R: Send + Clone + 'static,
@@ -34,7 +35,7 @@ where
     label.truncate(truncate_mode);
 
     if let Some(icon_name) = entry.icon() {
-        let image = IconLabel::new(&format!("icon:{icon_name}"), 16, image_provider);
+        let image = IconLabel::new(&format!("icon:{icon_name}"), app_icon_size, image_provider);
         image.set_halign(Align::Start);
         button_container.append(&*image);
     }
@@ -79,7 +80,7 @@ where
 
                 glib::spawn_future_local(async move {
                     image_provider
-                        .load_into_picture_silent(&icon_name, 16, true, &gtk_image)
+                        .load_into_picture_silent(&icon_name, app_icon_size, true, &gtk_image)
                         .await;
                 });
 

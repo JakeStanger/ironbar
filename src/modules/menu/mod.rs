@@ -287,6 +287,7 @@ impl Module<Button> for MenuModule {
                                 &image_provider,
                                 truncate_mode,
                                 &self.launch_command,
+                                self.app_icon_size,
                             );
 
                             if let Some(sub_menu) = sub_menu.clone() {

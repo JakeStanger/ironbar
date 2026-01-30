@@ -105,6 +105,9 @@ pub struct MenuModule {
     /// Size of the `label_icon` image.
     pub(super) label_icon_size: i32,
 
+    /// Size of the icon to display in menu entries.
+    pub(super) app_icon_size: i32,
+
     // -- common --
     /// Truncate options to apply to (sub)menu item labels.
     ///
@@ -135,6 +138,7 @@ impl Default for MenuModule {
             label: Some("≡".to_string()),
             label_icon: None,
             label_icon_size: default::IconSize::Tiny as i32,
+            app_icon_size: default::IconSize::Tiny as i32,
             common: Some(CommonConfig::default()),
             launch_command: default::launch_command(),
         }
