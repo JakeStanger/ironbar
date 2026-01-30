@@ -220,7 +220,7 @@ impl ModuleConfig {
             #[cfg(feature = "bindmode")]
             ModuleConfig::Bindmode(_) => "Bindmode",
             #[cfg(feature = "cairo")]
-            ModuleConfig::Cairo(_) => "Cario",
+            ModuleConfig::Cairo(_) => "Cairo",
             #[cfg(feature = "clipboard")]
             ModuleConfig::Clipboard(_) => "Clipboard",
             #[cfg(feature = "clock")]
