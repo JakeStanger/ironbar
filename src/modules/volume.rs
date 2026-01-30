@@ -24,13 +24,22 @@ use tracing::trace;
 #[serde(default)]
 pub struct VolumeModule {
     /// The format string to use for the widget button label.
-    /// For available tokens, see [below](#formatting-tokens).
+    ///
+    /// The following tokens can be used:
+    ///
+    /// | Token          | Description                               |
+    /// |----------------|-------------------------------------------|
+    /// | `{percentage}` | The active device volume percentage.      |
+    /// | `{icon}`       | The icon representing the current volume. |
+    /// | `{name}`       | The active device name.                   |
     ///
     /// **Default**: `{icon} {percentage}%`
     format: String,
 
     /// Maximum value to allow volume sliders to reach.
-    /// Pulse supports values > 100 but this may result in distortion.
+    /// Pulse supports values > 100 but this may result in distortion,
+    /// painfully loud sounds or potentially damage to yourself or audio device.
+    /// Use at your own risk.
     ///
     /// **Default**: `100`
     max_volume: f64,
