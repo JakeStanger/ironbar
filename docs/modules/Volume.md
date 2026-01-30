@@ -65,7 +65,7 @@ This requires PulseAudio to function (`pipewire-pulse` is supported).
 [[end]]
 type = "volume"
 format = "{icon} {percentage}%"
-sink_slider_orientation = "vertical",
+sink_slider_orientation = "vertical"
 max_volume = 100
 truncate = "middle"
 
