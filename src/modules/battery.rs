@@ -10,15 +10,13 @@ use crate::modules::{
 };
 use crate::{module_impl, spawn};
 use color_eyre::Result;
-use futures_lite::stream::StreamExt;
 use gtk::{Button, prelude::*};
 use gtk::{Label, Orientation};
 use serde::Deserialize;
 use std::cmp::Ordering;
 use std::collections::HashMap;
-use std::fmt::{Display, Formatter, Write};
+use std::fmt::Write;
 use tokio::sync::mpsc;
-use zbus::zvariant::OwnedValue;
 
 const DAY: i64 = 24 * 60 * 60;
 const HOUR: i64 = 60 * 60;
@@ -100,17 +98,8 @@ impl Default for BatteryModule {
     }
 }
 
-#[derive(Clone, Debug, Default)]
-pub struct UpowerProperties {
-    percentage: f64,
-    icon_name: String,
-    state: BatteryState,
-    time_to_full: i64,
-    time_to_empty: i64,
-}
-
 impl Module<Button> for BatteryModule {
-    type SendMessage = UpowerProperties;
+    type SendMessage = upower::State;
     type ReceiveMessage = ();
 
     module_impl!("battery");
@@ -123,47 +112,15 @@ impl Module<Button> for BatteryModule {
     ) -> Result<()> {
         let tx = context.tx.clone();
 
-        let display_proxy = context.try_client::<upower::Client>()?;
+        let client = context.try_client::<upower::Client>()?;
 
         spawn(async move {
-            let mut prop_changed_stream = display_proxy.receive_properties_changed().await?;
+            let properties = client.state().await?;
+            tx.send_update(properties).await;
 
-            let mut properties: UpowerProperties = display_proxy
-                .get_all(display_proxy.interface_name.clone())
-                .await?
-                .try_into()?;
-
-            tx.send_update(properties.clone()).await;
-
-            while let Some(signal) = prop_changed_stream.next().await {
-                let args = signal.args().expect("Invalid signal arguments");
-                if args.interface_name != display_proxy.interface_name {
-                    continue;
-                }
-
-                for (key, value) in args.changed_properties {
-                    match key {
-                        "Percentage" => {
-                            properties.percentage = value.downcast::<f64>().unwrap_or_default();
-                        }
-                        "IconName" => {
-                            properties.icon_name = value.downcast::<String>().unwrap_or_default();
-                        }
-                        "State" => {
-                            properties.state =
-                                value.downcast_ref::<BatteryState>().unwrap_or_default();
-                        }
-                        "TimeToFull" => {
-                            properties.time_to_full = value.downcast::<i64>().unwrap_or_default();
-                        }
-                        "TimeToEmpty" => {
-                            properties.time_to_empty = value.downcast::<i64>().unwrap_or_default();
-                        }
-                        _ => {}
-                    }
-                }
-
-                tx.send_update(properties.clone()).await;
+            let mut rx = client.subscribe();
+            while let Ok(properties) = rx.recv().await {
+                tx.send_update(properties).await;
             }
 
             Result::<()>::Ok(())
