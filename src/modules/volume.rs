@@ -1,6 +1,6 @@
 use crate::channels::{AsyncSenderExt, BroadcastReceiverExt};
 use crate::clients::volume::{self, Event};
-use crate::config::{CommonConfig, LayoutConfig, MarqueeMode, TruncateMode};
+use crate::config::{CommonConfig, LayoutConfig, MarqueeMode, ModuleOrientation, TruncateMode};
 use crate::gtk_helpers::{IronbarLabelExt, OverflowLabel};
 use crate::modules::{
     Module, ModuleInfo, ModuleParts, ModulePopup, ModuleUpdateEvent, PopupButton, WidgetContext,
@@ -28,6 +28,11 @@ pub struct VolumeModule {
     ///
     /// **Default**: `{icon} {percentage}%`
     format: String,
+
+    /// The orientation of the sink slider
+    ///
+    /// **Default**: vertical
+    sink_slider_orientation: ModuleOrientation,
 
     /// Maximum value to allow volume sliders to reach.
     /// Pulse supports values > 100 but this may result in distortion.
@@ -63,6 +68,7 @@ impl Default for VolumeModule {
     fn default() -> Self {
         Self {
             format: "{icon} {percentage}%".to_string(),
+            sink_slider_orientation: ModuleOrientation::Vertical,
             max_volume: 100.0,
             icons: Icons::default(),
             truncate: None,
@@ -350,11 +356,16 @@ impl Module<Button> for VolumeModule {
 
         sink_container.append(&sink_selector);
 
-        let slider = Scale::builder()
-            .orientation(Orientation::Vertical)
-            .height_request(100)
-            .inverted(true)
-            .build();
+        let slider = match self.sink_slider_orientation {
+            ModuleOrientation::Horizontal => Scale::builder()
+                .orientation(Orientation::Horizontal)
+                .build(),
+            ModuleOrientation::Vertical => Scale::builder()
+                .orientation(Orientation::Vertical)
+                .height_request(100)
+                .inverted(true)
+                .build(),
+        };
 
         slider.add_css_class("slider");
 

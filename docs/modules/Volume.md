@@ -14,6 +14,7 @@ This requires PulseAudio to function (`pipewire-pulse` is supported).
 | Name                            | Type                                                 | Default                | Description                                                                                                                       |
 |---------------------------------|------------------------------------------------------|------------------------|-----------------------------------------------------------------------------------------------------------------------------------|
 | `format`                        | `string`                                             | `{icon} {percentage}%` | Format string to use for the widget button label.                                                                                 |
+| `sink_slider_orientation`       | `'vertical'` or `'horizontal'`                       | `vertical`             | The orientation of the sink slider.                                                                                               |
 | `max_volume`                    | `float`                                              | `100`                  | Maximum value to allow volume sliders to reach. Pulse supports values > 100 but this may result in distortion.                    |
 | `icons.volume_high`             | `string`                                             | `󰕾`                    | Icon to show for high volume levels.                                                                                              |
 | `icons.volume_medium`           | `string`                                             | `󰖀`                    | Icon to show for medium volume levels.                                                                                            |
@@ -40,6 +41,7 @@ This requires PulseAudio to function (`pipewire-pulse` is supported).
     {
       "type": "volume",
       "format": "{icon} {percentage}%",
+      "sink_slider_orientation": "vertical",
       "max_volume": 100,
       "truncate": "middle",
       "icons": {
@@ -63,6 +65,7 @@ This requires PulseAudio to function (`pipewire-pulse` is supported).
 [[end]]
 type = "volume"
 format = "{icon} {percentage}%"
+sink_slider_orientation = "vertical"
 max_volume = 100
 truncate = "middle"
 
@@ -82,6 +85,7 @@ muted = "󰝟"
 end:
   - type: "volume"
     format: "{icon} {percentage}%"
+    sink_slider_orientation: "vertical"
     max_volume: 100
     truncate: "middle"
     icons:
@@ -102,6 +106,7 @@ end:
     {
       type = "volume"
       format = "{icon} {percentage}%"
+      sink_slider_orientation = "vertical"
       max_volume = 100
       truncate = "end"
       icons.volume_high = "󰕾"
