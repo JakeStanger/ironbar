@@ -22,7 +22,7 @@ const DAY: i64 = 24 * 60 * 60;
 const HOUR: i64 = 60 * 60;
 const MINUTE: i64 = 60;
 
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Deserialize, Clone, PartialEq)]
 #[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
 #[serde(default)]
 pub struct BatteryModule {

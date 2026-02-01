@@ -51,7 +51,7 @@ pub enum TrayClickAction {
 }
 
 /// Click action handlers for tray icons
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, PartialEq)]
 #[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
 #[serde(default)]
 pub struct TrayClickHandlers {
@@ -138,7 +138,7 @@ impl Default for TrayClickAction {
     }
 }
 
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Deserialize, Clone, PartialEq)]
 #[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
 #[serde(default)]
 pub struct TrayModule {

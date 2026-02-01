@@ -9,7 +9,8 @@ pub fn handle_command(command: StyleCommand, ironbar: &Ironbar) -> Response {
     match command {
         StyleCommand::LoadCss { path } => {
             if path.exists() {
-                load_css(&CssSource::File(path));
+                let hot_reload = ironbar.config.borrow().hot_reload.is_styles_enabled();
+                load_css(&CssSource::File(path), hot_reload);
                 Response::Ok
             } else {
                 Response::error("File not found")

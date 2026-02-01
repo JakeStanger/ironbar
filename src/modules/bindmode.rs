@@ -11,7 +11,7 @@ use serde::Deserialize;
 use tokio::sync::mpsc;
 use tracing::{info, trace};
 
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Deserialize, Clone, PartialEq)]
 #[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
 pub struct Bindmode {
     // -- Common --

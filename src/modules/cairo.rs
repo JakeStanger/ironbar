@@ -17,7 +17,7 @@ use tokio::sync::mpsc::Receiver;
 use tokio::time::sleep;
 use tracing::{debug, error};
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, PartialEq)]
 #[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
 #[serde(default)]
 pub struct CairoModule {
