@@ -45,7 +45,7 @@ jobs:
         run: cargo clippy --no-default-features --features config+json
         env:
           # Allow some warnings through as we'll never get it perfect in a zero-feature situation
-          RUSTFLAGS: '-Dwarnings -A unused-imports -A unused-variables -A unused-mut -A dead-code'
+          RUSTFLAGS: '-Dwarnings -A unused-imports -A unused-variables -A unused-mut -A unused-macros -A dead-code'
 
 
   clippy-all:
@@ -140,4 +140,4 @@ jobs:
         run: cargo check --no-default-features --features ${{ matrix.feature }}
         env:
           # Allow some warnings through as we'll never get it perfect
-          RUSTFLAGS: '-Dwarnings -A unused-imports -A unused-variables -A unused-mut -A dead-code'
+          RUSTFLAGS: '-Dwarnings -A unused-imports -A unused-variables -A unused-mut -A unused-macros -A dead-code'
