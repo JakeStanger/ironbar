@@ -120,6 +120,9 @@ niri = ["dep:serde_json"]
 
 extras = ["dep:schemars", "dep:clap_complete"]
 
+# -- test features --
+"battery.test" = ["battery"]
+
 [dependencies]
 # core
 gtk = { package = "gtk4", version = "0.10.0", features = ["v4_12"] }

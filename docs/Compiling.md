@@ -162,6 +162,8 @@ cargo build --release --no-default-features \
 | workspaces+niri     | Enables the `workspaces` module with support for Niri.                                                               |
 | **Other**           |                                                                                                                      |
 | extra               | Enables JSON schema support, shell completion support, and the CLI `--print-schema` and `--print-completions` flags. |
+| battery.test        | Enables the `battery` module with a mock client in place of the upower one.                                          |
+
 
 ## Shell completions
 
