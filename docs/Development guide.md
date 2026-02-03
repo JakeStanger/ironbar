@@ -274,6 +274,107 @@ The value of this is taken at module creation time, so is not accessible from th
 > Future versions of Ironbar will generate module documentation directly from the config structs.
 > Documentation should therefore be included on each config field when writing the module.
 
+#### Profiles
+
+Profiles can be added to a module's configuration to allow users to apply different configurations depending on a module's state.
+This is normally based off a simple numerical metric, such as the volume or battery percentage. 
+Additional values can be attached to state where required.
+
+Within a configuration struct you'd place a `profiles` field of type `Profiles<S, T>`. 
+
+- `S` represents the state/matcher type, which must implement the `State` trait.
+- `T` represents the configuration contained within a profile. This is any deserializable type.
+
+You **must** include `#[serde(flatten)]` on the field to avoid a double `profiles.profiles` syntax 
+and ensure the default is merged at the top-level correctly.
+
+```rust
+struct VolumeModule {
+  #[serde(flatten)]
+  pub(super) profiles: Profiles<f64, VolumeProfile>,
+}
+```
+
+```rust
+struct BatteryModule {
+    #[serde(flatten)]
+    profiles: Profiles<ProfileState, BatteryProfile>,
+}
+```
+
+Profile state should aim to be as simple as possible, and only include what is absolutely necessary.
+The profile configuration can be as complex as desired, but again should only include options that make sense to include.
+For example, changing the click behaviour based on module state would likely be undesirable. 
+
+Each module should provide a default implementation for its profile type, 
+and a set of appropriate default profiles where appropriate.
+
+```rs
+#[derive(Debug, Default, Clone, Deserialize)]
+#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
+#[serde(default)]
+pub struct VolumeProfile {
+    pub(super) icons: Icons,
+}
+
+impl Default for Icons {
+    fn default() -> Self {
+        Self {
+            volume: "󰕾".to_string(),
+            muted: "󰝟".to_string(),
+        }
+    }
+}
+```
+
+### Compound state
+
+Implementations for numeric types are provided, 
+however complex state objects must manually implement the `PartialOrd` and `State` traits. 
+Deriving `PartialOrd` will likely produce an incorrect sorter.
+
+The `PartialOrd` implementation must obey the following rules:
+
+- The primary field must be sorted first (eg battery percentage)
+- For optional fields, a `Some` variant is *less* than a `None`. 
+  This is because internally the first matching profile is used.
+
+```rs
+impl PartialOrd for ProfileState {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        if self.percent == other.percent {
+            match (self.charging, other.charging) {
+                (Some(_), Some(_)) | (None, None) => Some(Ordering::Equal),
+                (None, Some(_)) => Some(Ordering::Greater),
+                (Some(_), None) => Some(Ordering::Less),
+            }
+        } else {
+            self.percent.partial_cmp(&other.percent)
+        }
+    }
+}
+```
+
+The state implementation requires a single method, 
+which checks whether an input state matches the profile matcher. 
+Again optional fields need to be considered here - 
+if omitted in `&self` (the config value), matching should ignore this field.
+
+```rs
+impl State for ProfileState {
+    fn matches(&self, value: &Self) -> bool {
+        match self.charging {
+            Some(charging) => {
+                charging == value.charging.expect("value should exist")
+                    && value.percent <= self.percent
+            }
+            None => value.percent <= self.percent,
+        }
+    }
+}
+```
+
+
 ### Implementation
 
 The module behaviour itself is implemented using the `crate::modules::Module` trait. 
@@ -312,6 +413,13 @@ impl Module<Button> for ClockModule {
     // ...
 }
 ```
+
+Modules may also provide an implementation for `on_create`.
+This runs immediately after the module is created, and before the controller.
+It takes `&mut self`, allowing for minor tweaks to the configuration where appropriate.
+This may be used for example to work around Serde limitations.
+
+In general, the body of `on_create` should be as minimal as possible.
 
 #### Controller
 

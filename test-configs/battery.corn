@@ -1,3 +1,30 @@
 {
-    end = [ {type = "battery"} ]
+    end = [ {
+        type = "battery"
+
+        format = "HIGH {percentage}%"
+
+        profiles = {
+            low.when = { percent = 20 }
+            low.format = "LOW {percentage}%"
+
+            low-charging.when = { percent = 20 charging = true }
+            low-charging.format = "LOW (CHARGING) {percentage}%"
+
+            medium.when = { percent = 50 charging = false }
+            medium.format = "MEDIUM {percentage}%"
+
+            medium-charging.when = { percent = 50 }
+            medium-charging.format = "MEDIUM (CHARGING) {percentage}%"
+
+            good.when = { percent = 75 charging = false }
+            good.format = "GOOD {percentage}%"
+
+            good-charging.when = { percent = 75 charging = true }
+            good-charging.format = "GOOD (CHARGING) {percentage}%"
+
+            empty = { percent = 1 charging = true }
+        }
+    } ]
 }
+
