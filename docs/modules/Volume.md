@@ -7,6 +7,17 @@ This requires PulseAudio to function (`pipewire-pulse` is supported).
 
 ![The volume widget, with its popup open. A single stream is playing audio.](https://f.jstanger.dev/github/ironbar/modules/volume.png)
 
+## Jargon
+
+The volume module uses [PulseAudio](https://www.freedesktop.org/wiki/Software/PulseAudio/) under the hood and therefore
+inherits some of its termonology to define its behavior and implementation. Here are a few common terms related that
+pulseaudio uses to describe sources of audio:
+
+- `Sink` = a sound device producing audio coming out of your machine (speakers)
+- `Source` = sound device recieving audio going into your machine (microphone)
+- `SinkInput` = an application/program sending sound to an existing sink (app using speakers)
+- `SourceOutput` = an application/program recieving audio from a source (app using microphone)
+
 ## Configuration
 
 > Type: `volume`
