@@ -225,9 +225,9 @@ impl Module<Button> for VolumeModule {
             self.profiles.attach(
                 &button,
                 move |_, event: ProfileUpdateEvent<f64, VolumeProfile, BarUiUpdate>| {
+                    let icons = &event.profile.icons;
                     let (button_label, fmt, icon, desc) = match event.data {
                         BarUiUpdate::Sink { muted, description } => {
-                            let icons = &event.profile.icons;
                             let (fmt, icon) = if muted {
                                 sink_label.add_css_class("muted");
                                 (&mute_format, &icons.muted)
@@ -238,13 +238,12 @@ impl Module<Button> for VolumeModule {
                             (&sink_label, fmt, icon, description)
                         }
                         BarUiUpdate::Source { muted, description } => {
-                            let icons = &event.profile.mic_icons;
                             let (fmt, icon) = if muted {
                                 source_label.add_css_class("muted");
-                                (&mute_format, &icons.muted)
+                                (&mute_format, &icons.mic_muted)
                             } else {
                                 source_label.remove_css_class("muted");
-                                (&format, &icons.volume)
+                                (&format, &icons.mic_volume)
                             };
                             (&source_label, fmt, icon, description)
                         }
@@ -499,11 +498,11 @@ impl Module<Button> for VolumeModule {
                 let btn = event.data.button.as_ref().unwrap_or(btn_mute);
                 btn.set_active(event.data.muted);
 
-                let icons = &event.profile.mic_icons;
+                let icons = &event.profile.icons;
                 btn.set_label(if event.data.muted {
-                    &icons.muted
+                    &icons.mic_muted
                 } else {
-                    &icons.volume
+                    &icons.mic_volume
                 });
             },
         );

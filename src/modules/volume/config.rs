@@ -8,20 +8,15 @@ use serde::Deserialize;
 #[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
 #[serde(default)]
 pub struct VolumeProfile {
-    pub(super) icons: SinkIcons,
-    pub(super) mic_icons: SourceIcons,
+    pub(super) icons: Icons,
 }
 
 impl VolumeProfile {
     fn for_volume_icon(sink_icon: &str) -> Self {
         Self {
-            icons: SinkIcons {
+            icons: Icons {
                 volume: sink_icon.to_string(),
-                ..SinkIcons::default()
-            },
-            mic_icons: SourceIcons {
-                volume: ''.to_string(),
-                ..SourceIcons::default()
+                ..Icons::default()
             },
         }
     }
@@ -121,7 +116,7 @@ impl Default for VolumeModule {
 #[derive(Debug, Clone, Deserialize)]
 #[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
 #[serde(default)]
-pub struct SinkIcons {
+pub struct Icons {
     /// Icon to show to represent each volume level.
     ///
     ///  **Default**: `󰕾`
@@ -131,37 +126,25 @@ pub struct SinkIcons {
     ///
     /// **Default**: `󰝟`
     pub(super) muted: String,
-}
 
-impl Default for SinkIcons {
-    fn default() -> Self {
-        Self {
-            volume: "󰕾".to_string(),
-            muted: "󰝟".to_string(),
-        }
-    }
-}
-
-#[derive(Debug, Clone, Deserialize)]
-#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
-#[serde(default)]
-pub struct SourceIcons {
-    /// Icon to show to represent each volume level.
+    /// Icon to show to represent each microphone volume level.
     ///
     ///  **Default**: ``
-    pub(super) volume: String,
+    pub(super) mic_volume: String,
 
     /// Icon to show for muted inputs.
     ///
     /// **Default**: ``
-    pub(super) muted: String,
+    pub(super) mic_muted: String,
 }
 
-impl Default for SourceIcons {
+impl Default for Icons {
     fn default() -> Self {
         Self {
-            volume: "".to_string(),
-            muted: "".to_string(),
+            volume: "󰕾".to_string(),
+            muted: "󰝟".to_string(),
+            mic_volume: "".to_string(),
+            mic_muted: "".to_string(),
         }
     }
 }
