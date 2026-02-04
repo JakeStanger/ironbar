@@ -204,7 +204,16 @@ impl IronbarLabelExt for Label {
         if label.contains("<span") {
             self.set_label(label);
         } else {
-            self.set_label(&markup_escape_text(label));
+            //NOTE: `markup_escape_text` escapes single-quotes as `&apos;`
+            // which reads poorly when placed within UI labels.
+            //
+            // Items such as volume input/output names may contain these
+            // quotes, so after escaping the entire label text the
+            // escaped representation for a single-quote is converted back
+            // into its original value.
+            let text = markup_escape_text(label);
+            let text = text.as_str().replace("&apos;", "'");
+            self.set_label(&text);
         }
     }
 
