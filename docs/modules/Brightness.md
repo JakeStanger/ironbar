@@ -1,18 +1,19 @@
-Brightness information about screen or led brighness levels in percent.
+Brightness information about screen or led brightness levels in percent.
 Allows to change the respective value via scrolling.
 
 ## Configuration
 
 > Type: `brightness`
 
-| Name                            | Type                                 | Default                                                                                                | Description                                                                     |
-|---------------------------------|--------------------------------------|--------------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------|
-| `format`                        | `string`                             | `{icon} {percentage}%`                                                                                 | Format string to use for the widget button label.                               |
-| `icons.brighness`               | `(integer, string)[]`                | `[(0, ""), (12, ""), (24, ""), (36, ""), (48, ""), (60,""), (72, ""), (84, ""), (100, "")]` | Icons to show, based on the respective brightness level. Needs to be sorted     |
-| `mode.type`                     | `systemd` or `keyboard`              | `systemd`                                                                                              | The data backend of the brightness module, this can be either the KdbBrightness dbus which is good for keyboard data, or the more general login1 dbus in combination with /sys/class/<subsystem> filesystem which is provided by systemd |
-| `mode.subsystem`                | `backlight` or `leds`                | `backlight`                                                                                            | The name of the subsystem use on the filesystem                                 |
-| `mode.name`                     | `string` or `null`                   | `null`                                                                                                 | When set, using the specific directory, within /sys/class/<subsystem> . If null the module will try to find a reasonable default          |
-| `smooth_scroll_speed`           | `float`                              | `1.0`                                                                                                  | Controls how fast the brightness is changed, e.g. in case touchpad scrolling is used. Negative values swap the scroll direction |
+| Name                  | Type                    | Default                | Profile? | Description                                                                                                                                                                                     |
+|-----------------------|-------------------------|------------------------|----------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `format`              | `string`                | `{percentage}%`        | Yes      | Format string to use for the widget button label.                                                                                                                                               |
+| `mode.type`           | `systemd` or `keyboard` | `systemd`              | No       | The data backend of the brightness module, this can be either the KdbBrightness dbus which is good for keyboard data, or the more general login1 dbus in combination with /sys/class/<subsystem>. |
+| `mode.subsystem`      | `backlight` or `leds`   | `backlight`            | No       | The name of the subsystem use on the filesystem.                                                                                                                                                |
+| `mode.name`           | `string` or `null`      | `null`                 | No       | When set, using the specific directory, within /sys/class/<subsystem> . If null the module will try to find a reasonable default.                                                                |
+| `smooth_scroll_speed` | `float`                 | `1.0`                  | No       | Controls how fast the brightness is changed, e.g. in case touchpad scrolling is used. Negative values swap the scroll direction.                                                                 |
+
+Information on the profiles system can be found [here](profiles).
 
 <details>
 <summary>JSON</summary>
@@ -22,19 +23,22 @@ Allows to change the respective value via scrolling.
   "end": [
     {
       "type": "brightness",
-      "format": "{icon} {percentage}%",
+      "format": "{percentage}%",
       "smooth_scroll_speed": 0.5,
       "mode": {
         "type": "systemd",
         "subsystem": "backlight",
         "name": "amdgpu_bl1"
       },
-      "icons": {
-        "brightness": [
-          [0, ""],
-          [50, ""],
-          [100, ""]
-        ]
+      "profiles": {
+        "low": {
+          "when": 25,
+          "format": " {percentage}%"
+        },
+        "high": {
+          "when": 100,
+          "format": " {percentage}%"
+        }
       }
     }
   ]
@@ -49,7 +53,7 @@ Allows to change the respective value via scrolling.
 ```toml
 [[end]]
 type = "brightness"
-format = "{icon} {percentage}%"
+format = "{percentage}%"
 smooth_scroll_speed = 0.5
 
 [end.mode]
@@ -57,12 +61,13 @@ type = "systemd"
 subsystem = "backlight"
 name = "amdgpu_bl1"
 
-[end.icons]
-brightness = [
-    [0,   ""],
-    [50,  ""],
-    [100, ""]
-]
+[end.profiles.low]
+when = 25
+format = " {percentage}%"
+
+[end.profiles.high]
+when = 100
+format = " {percentage}%"
 ```
 
 </details>
@@ -73,7 +78,7 @@ brightness = [
 ```yaml
 end:
   - type: brightness
-    format: "{icon} {percentage}%"
+    format: "{percentage}%"
     smooth_scroll_speed: 0.5
 
     mode:
@@ -81,11 +86,13 @@ end:
       subsystem: backlight
       name: amdgpu_bl1
 
-    icons:
-      brightness:
-        - [0, ""]
-        - [50, ""]
-        - [100, ""]
+    profiles:
+      low:
+        when: 25
+        format: " {percentage}%"
+      high:
+        when: 100
+        format: " {percentage}%"
 ```
 
 </details>
@@ -98,20 +105,32 @@ end:
   end = [
     {
       type = "brightness"
-      format = "{icon} {percentage}%"
+      format = "{percentage}%"
       smooth_scroll_speed = 0.5
 
       mode.type = "systemd"
       mode.subsystem = "backlight"
       mode.name = "amdgpu_bl1"
 
-      icons.brightness = [ [ 0 "" ] [ 50 " ] [ 100 "" ] ]
+      profiles.low.when = 25
+      profiles.low.format = " {percentage}%"
+
+      profiles.high.when = 100
+      profiles.high.format = " {percentage}%"
     }
   ]
 }
 ```
 
 </details>
+
+### Formatting Tokens
+
+The following tokens can be used in the `format` config option:
+
+| Token          | Description                            |
+|----------------|----------------------------------------|
+| `{percentage}` | The active brightness percentage.      |
 
 ## Styling
 

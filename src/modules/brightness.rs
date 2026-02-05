@@ -1,7 +1,8 @@
 use crate::channels::{AsyncSenderExt, BroadcastReceiverExt};
 use crate::clients::brightness::{self, brightness, default_resource_name, max_brightness};
-use crate::config::{CommonConfig, LayoutConfig, TruncateMode};
+use crate::config::{CommonConfig, LayoutConfig, ProfileUpdateEvent, Profiles, TruncateMode};
 use crate::modules::{Module, ModuleInfo, ModuleParts, WidgetContext};
+use crate::profiles;
 use crate::{module_impl, spawn};
 use color_eyre::Result;
 use gtk::{Button, Label};
@@ -33,17 +34,53 @@ pub enum BrightnessDataSource {
 #[derive(Debug, Clone, Deserialize)]
 #[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
 #[serde(default)]
-pub struct BrightnessModule {
+pub struct BrightnessProfile {
     /// The format string to use for the widget button label.
     /// For available tokens, see [below](#formatting-tokens).
     ///
-    /// **Default**: `{icon} {percentage}%`
+    /// **Default**: `{percentage}%`
     format: String,
+}
 
-    /// Brightness state icons.
-    ///
-    /// See [icons](#icons).
-    icons: Icons,
+impl Default for BrightnessProfile {
+    fn default() -> Self {
+        Self {
+            format: "{percentage}%".to_string(),
+        }
+    }
+}
+
+impl BrightnessProfile {
+    fn with_prefix(prefix: &str) -> Self {
+        Self {
+            format: format!("{prefix}{{percentage}}%"),
+        }
+    }
+}
+
+fn default_profiles() -> Profiles<f64, BrightnessProfile> {
+    profiles!(
+        "level0":5.0 => BrightnessProfile::with_prefix(" "),
+        "level10":15.0 => BrightnessProfile::with_prefix(" "),
+        "level20":25.0 => BrightnessProfile::with_prefix(" "),
+        "level30":35.0 => BrightnessProfile::with_prefix(" "),
+        "level40":45.0 => BrightnessProfile::with_prefix(" "),
+        "level50":55.0 => BrightnessProfile::with_prefix(" "),
+        "level60":65.0 => BrightnessProfile::with_prefix(" "),
+        "level70":75.0 => BrightnessProfile::with_prefix(" "),
+        "level80":85.0 => BrightnessProfile::with_prefix(" "),
+        "level90":95.0 => BrightnessProfile::with_prefix(" "),
+        "level100":100.0 => BrightnessProfile::with_prefix(" ")
+    )
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
+#[serde(default)]
+pub struct BrightnessModule {
+    /// See [profiles](profiles).
+    #[serde(flatten)]
+    profiles: Profiles<f64, BrightnessProfile>,
 
     /// Where to get the brightness data from
     ///
@@ -74,8 +111,7 @@ pub struct BrightnessModule {
 impl Default for BrightnessModule {
     fn default() -> Self {
         Self {
-            format: "{icon} {percentage}%".to_string(),
-            icons: Icons::default(),
+            profiles: Profiles::default(),
             mode: BrightnessDataSource::default(),
             smooth_scroll_speed: 1.0,
             truncate: None,
@@ -94,53 +130,9 @@ impl Default for BrightnessDataSource {
     }
 }
 
-#[derive(Debug, Clone, Deserialize)]
-#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
-#[serde(default)]
-pub struct Icons {
-    /// Icon to show for respective brightness levels. Needs to be sorted.
-    ///
-    /// **Default**: `[(0, ""), (12, ""), (24, ""), (36, ""), (48, ""), (60,""), (72, ""), (84, ""), (100, "")]`
-    brightness: Vec<(u32, String)>,
-}
-
-impl Default for Icons {
-    fn default() -> Self {
-        Self {
-            brightness: [
-                (0, ""),
-                (12, ""),
-                (24, ""),
-                (36, ""),
-                (48, ""),
-                (60, ""),
-                (72, ""),
-                (84, ""),
-                (100, ""),
-            ]
-            .into_iter()
-            .map(|(b, i)| (b, i.to_string()))
-            .collect(),
-        }
-    }
-}
-
-impl Icons {
-    fn brightness_icon(&self, percent: f64) -> String {
-        let percent = percent as u32;
-        self.brightness
-            .iter()
-            .rev()
-            .find(|&&(v, _)| percent >= v)
-            .map(|(_, label)| label.clone())
-            .unwrap_or_default()
-    }
-}
-
 #[derive(Clone, Debug, Default)]
 pub struct BrightnessProperties {
     screen_brightness: f64,
-    icon_name: String,
 }
 
 struct BrightnessData {
@@ -236,6 +228,10 @@ impl Module<Button> for BrightnessModule {
 
     module_impl!("brightness");
 
+    fn on_create(&mut self) {
+        self.profiles.setup_defaults(default_profiles());
+    }
+
     fn spawn_controller(
         &self,
         _info: &ModuleInfo,
@@ -246,7 +242,6 @@ impl Module<Button> for BrightnessModule {
         let tx = context.tx.clone();
         let controller_tx = context.controller_tx.clone();
         let client = context.try_client::<brightness::Client>()?;
-        let icons = self.icons.clone();
         let datasource = self.mode.clone();
         let scroll_speed = self.smooth_scroll_speed;
         let default_resource_name =
@@ -315,7 +310,6 @@ impl Module<Button> for BrightnessModule {
                 }
 
                 tx.send_update(BrightnessProperties {
-                    icon_name: icons.brightness_icon(percent).to_string(),
                     screen_brightness: percent,
                 })
                 .await;
@@ -355,13 +349,22 @@ impl Module<Button> for BrightnessModule {
 
         let rx = context.subscribe();
 
-        rx.recv_glib(&self.format, move |format, properties| {
-            let percentage = properties.screen_brightness;
-            let format = format
-                .replace("{icon}", &properties.icon_name)
-                .replace("{percentage}", &percentage.round().to_string());
+        let mut manager = self.profiles.attach(
+            &button,
+            move |_, event: ProfileUpdateEvent<f64, BrightnessProfile, ()>| {
+                let percentage = event.state.round();
+                let format = event
+                    .profile
+                    .format
+                    .replace("{percentage}", &percentage.to_string());
 
-            button_label.set_label(&format);
+                button_label.set_label(&format);
+            },
+        );
+
+        rx.recv_glib((), move |(), properties| {
+            let percentage = properties.screen_brightness;
+            manager.update(percentage, ());
         });
 
         Ok(ModuleParts::new(button, None))
