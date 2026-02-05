@@ -258,6 +258,7 @@ impl Module<Button> for VolumeModule {
             )
         };
 
+        let show_monitors = self.show_monitors;
         rx.recv_glib((), move |(), event| match event {
             Event::AddSink(sink) | Event::UpdateSink(sink) if sink.active => {
                 manager.update(
@@ -268,7 +269,9 @@ impl Module<Button> for VolumeModule {
                     },
                 );
             }
-            Event::AddSource(source) | Event::UpdateSource(source) if source.active => {
+            Event::AddSource(source) | Event::UpdateSource(source)
+                if source.active && (!source.monitor || show_monitors) =>
+            {
                 manager.update(
                     source.volume.percent(),
                     BarUiUpdate::Source {
@@ -539,22 +542,22 @@ impl Module<Button> for VolumeModule {
                         if !info.monitor || show_monitors {
                             source_options
                                 .append(&DropdownItem::new(&info.name, &info.description));
+
+                            if info.active {
+                                source_selector.set_selected(sources.len() as u32);
+                                source_slider.set_value(info.volume.percent());
+
+                                source_manager.update(
+                                    info.volume.percent(),
+                                    BtnMuteUiUpdate {
+                                        muted: info.muted,
+                                        button: None,
+                                    },
+                                );
+                            }
+
+                            sources.push(info);
                         }
-
-                        if info.active {
-                            source_selector.set_selected(sources.len() as u32);
-                            source_slider.set_value(info.volume.percent());
-
-                            source_manager.update(
-                                info.volume.percent(),
-                                BtnMuteUiUpdate {
-                                    muted: info.muted,
-                                    button: None,
-                                },
-                            );
-                        }
-
-                        sources.push(info);
                     }
                     Event::UpdateSink(info) => {
                         if info.active
@@ -577,6 +580,7 @@ impl Module<Button> for VolumeModule {
                     Event::UpdateSource(info) => {
                         if info.active
                             && let Some(pos) = sources.iter().position(|s| s.name == info.name)
+                            && (!info.monitor || show_monitors)
                         {
                             source_selector.set_selected(pos as u32);
                             if !source_slider.has_css_class("dragging") {
