@@ -99,6 +99,12 @@ impl ObjectSubclass for DropdownItemData {
 }
 
 impl VolumeModule {
+    fn overflow_label(&self, name: &str, css_class: &str) -> OverflowLabel {
+        let label = OverflowLabel::new(Label::new(None), self.truncate, self.marquee.clone());
+        label.label().add_css_class(css_class);
+        label.set_label_escaped(name);
+        label
+    }
     fn new_slider(&self) -> Scale {
         let slider = match self.source_slider_orientation {
             ModuleOrientation::Horizontal => Scale::builder()
@@ -148,6 +154,28 @@ impl VolumeModule {
                 let muted = btn.is_active();
                 tx.send_spawn(func(item.key(), muted));
             }
+        });
+    }
+    fn simple_slider_notify<F>(&self, scale: &Scale, tx: Sender<Update>, i: u32, func: F)
+    where
+        F: Fn(u32, f64) -> Update + 'static,
+    {
+        let max_volume = self.max_volume;
+        scale.connect_value_changed(move |scale| {
+            if scale.has_css_class("dragging") {
+                // GTK will send values outside min/max range
+                let val = scale.value().clamp(0.0, max_volume);
+                tx.send_spawn(func(i, val));
+            }
+        });
+    }
+    fn simple_button_notify<F>(&self, btn: &ToggleButton, tx: Sender<Update>, i: u32, func: F)
+    where
+        F: Fn(u32, bool) -> Update + 'static,
+    {
+        btn.connect_toggled(move |btn| {
+            let muted = btn.is_active();
+            tx.send_spawn(func(i, muted));
         });
     }
 }
@@ -525,256 +553,210 @@ impl Module<Button> for VolumeModule {
         let mut sources = vec![];
 
         let show_monitors = self.show_monitors;
-        context
-            .subscribe()
-            .recv_glib(&input_container, move |input_container, event| {
-                match event {
-                    Event::AddSink(info) => {
-                        sink_options.append(&DropdownItem::new(&info.name, &info.description));
+        context.subscribe().recv_glib(
+            &input_container,
+            move |input_container, event| match event {
+                Event::AddSink(info) => {
+                    sink_options.append(&DropdownItem::new(&info.name, &info.description));
+
+                    if info.active {
+                        sink_selector.set_selected(sinks.len() as u32);
+                        sink_slider.set_value(info.volume.percent());
+
+                        sink_manager
+                            .update(info.volume.percent(), BtnMuteUiUpdate::muted(info.muted));
+                    }
+
+                    sinks.push(info);
+                }
+                Event::AddSource(info) => {
+                    if !info.monitor || show_monitors {
+                        source_options.append(&DropdownItem::new(&info.name, &info.description));
 
                         if info.active {
-                            sink_selector.set_selected(sinks.len() as u32);
-                            sink_slider.set_value(info.volume.percent());
-
-                            sink_manager
-                                .update(info.volume.percent(), BtnMuteUiUpdate::muted(info.muted));
-                        }
-
-                        sinks.push(info);
-                    }
-                    Event::AddSource(info) => {
-                        if !info.monitor || show_monitors {
-                            source_options
-                                .append(&DropdownItem::new(&info.name, &info.description));
-
-                            if info.active {
-                                source_selector.set_selected(sources.len() as u32);
-                                source_slider.set_value(info.volume.percent());
-
-                                source_manager.update(
-                                    info.volume.percent(),
-                                    BtnMuteUiUpdate::muted(info.muted),
-                                );
-                            }
-
-                            sources.push(info);
-                        }
-                    }
-                    Event::UpdateSink(info) => {
-                        if info.active
-                            && let Some(pos) = sinks.iter().position(|s| s.name == info.name)
-                        {
-                            sink_selector.set_selected(pos as u32);
-                            if !sink_slider.has_css_class("dragging") {
-                                sink_slider.set_value(info.volume.percent());
-                            }
-
-                            sink_manager
-                                .update(info.volume.percent(), BtnMuteUiUpdate::muted(info.muted));
-                        }
-                    }
-                    Event::UpdateSource(info) => {
-                        if info.active
-                            && let Some(pos) = sources.iter().position(|s| s.name == info.name)
-                            && (!info.monitor || show_monitors)
-                        {
-                            source_selector.set_selected(pos as u32);
-                            if !source_slider.has_css_class("dragging") {
-                                source_slider.set_value(info.volume.percent());
-                            }
+                            source_selector.set_selected(sources.len() as u32);
+                            source_slider.set_value(info.volume.percent());
 
                             source_manager
                                 .update(info.volume.percent(), BtnMuteUiUpdate::muted(info.muted));
                         }
-                    }
-                    Event::RemoveSink(name) => {
-                        if let Some(pos) = sinks.iter().position(|s| s.name == name) {
-                            sink_options.remove(pos as u32);
-                            sinks.remove(pos);
-                        }
-                    }
-                    Event::RemoveSource(name) => {
-                        if let Some(pos) = sources.iter().position(|s| s.name == name) {
-                            source_options.remove(pos as u32);
-                            sources.remove(pos);
-                        }
-                    }
-                    Event::AddInput(info) => {
-                        let index = info.index;
 
-                        let item_container = gtk::Box::new(Orientation::Vertical, 0);
-                        item_container.add_css_class("app-box");
-                        item_container.add_css_class("input-box");
-
-                        let title_label = OverflowLabel::new(
-                            Label::new(None),
-                            self.truncate,
-                            self.marquee.clone(),
-                        );
-                        title_label.label().add_css_class("title");
-                        title_label.set_label_escaped(&info.name);
-                        item_container.append(title_label.widget());
-
-                        let slider = Scale::builder().sensitive(info.can_set_volume).build();
-                        slider.set_range(0.0, self.max_volume);
-                        slider.set_value(info.volume.percent());
-                        slider.add_css_class("slider");
-
-                        {
-                            let tx = context.controller_tx.clone();
-                            slider.connect_value_changed(move |scale| {
-                                if scale.has_css_class("dragging") {
-                                    // GTK will send values outside min/max range
-                                    let val = scale.value().clamp(0.0, self.max_volume);
-                                    tx.send_spawn(Update::InputVolume(index, val));
-                                }
-                            });
-                        }
-
-                        let btn_mute = ToggleButton::new();
-                        btn_mute.add_css_class("btn-mute");
-                        btn_mute.add_css_class("sink-mute");
-
-                        {
-                            let tx = context.controller_tx.clone();
-                            btn_mute.connect_toggled(move |btn| {
-                                let muted = btn.is_active();
-                                tx.send_spawn(Update::InputMute(index, muted));
-                            });
-                        }
-
-                        item_container.append(&slider);
-                        item_container.append(&btn_mute);
-                        input_container.append(&item_container);
-
-                        sink_manager.update(
-                            info.volume.percent(),
-                            BtnMuteUiUpdate::muted_with(info.muted, btn_mute.clone()),
-                        );
-
-                        inputs.insert(
-                            info.index,
-                            VolumeUi {
-                                container: item_container,
-                                button: btn_mute,
-                                title_label,
-                                slider,
-                                label_raw: info.name.clone(),
-                            },
-                        );
-                    }
-                    Event::AddOutput(info) => {
-                        let index = info.index;
-
-                        let item_container = gtk::Box::new(Orientation::Vertical, 0);
-                        item_container.add_css_class("app-box");
-                        item_container.add_css_class("output-box");
-
-                        let title_label = OverflowLabel::new(
-                            Label::new(None),
-                            self.truncate,
-                            self.marquee.clone(),
-                        );
-                        title_label.label().add_css_class("title");
-                        title_label.set_label_escaped(&info.name);
-                        item_container.append(title_label.widget());
-
-                        let slider = Scale::builder().sensitive(info.can_set_volume).build();
-                        slider.set_range(0.0, self.max_volume);
-                        slider.set_value(info.volume.percent());
-                        slider.add_css_class("slider");
-
-                        {
-                            let tx = context.controller_tx.clone();
-                            slider.connect_value_changed(move |scale| {
-                                if scale.has_css_class("dragging") {
-                                    // GTK will send values outside min/max range
-                                    let val = scale.value().clamp(0.0, self.max_volume);
-                                    tx.send_spawn(Update::OutputVolume(index, val));
-                                }
-                            });
-                        }
-
-                        let btn_mute = ToggleButton::new();
-                        btn_mute.add_css_class("btn-mute");
-                        btn_mute.add_css_class("source-mute");
-
-                        {
-                            let tx = context.controller_tx.clone();
-                            btn_mute.connect_toggled(move |btn| {
-                                let muted = btn.is_active();
-                                tx.send_spawn(Update::OutputMute(index, muted));
-                            });
-                        }
-
-                        item_container.append(&slider);
-                        item_container.append(&btn_mute);
-                        output_container.append(&item_container);
-
-                        source_manager.update(
-                            info.volume.percent(),
-                            BtnMuteUiUpdate::muted_with(info.muted, btn_mute.clone()),
-                        );
-
-                        outputs.insert(
-                            info.index,
-                            VolumeUi {
-                                container: item_container,
-                                button: btn_mute,
-                                title_label,
-                                slider,
-                                label_raw: info.name.clone(),
-                            },
-                        );
-                    }
-                    Event::UpdateInput(info) => {
-                        if let Some(ui) = inputs.get_mut(&info.index) {
-                            if ui.label_raw != info.name {
-                                ui.title_label.set_label_escaped(&info.name);
-                                ui.label_raw = info.name.clone();
-                            }
-
-                            if !ui.slider.has_css_class("dragging") {
-                                ui.slider.set_value(info.volume.percent());
-                            }
-
-                            ui.slider.set_sensitive(info.can_set_volume);
-                            sink_manager.update(
-                                info.volume.percent(),
-                                BtnMuteUiUpdate::muted_with(info.muted, ui.button.clone()),
-                            );
-                        }
-                    }
-                    Event::UpdateOutput(info) => {
-                        if let Some(ui) = outputs.get_mut(&info.index) {
-                            if ui.label_raw != info.name {
-                                ui.title_label.set_label_escaped(&info.name);
-                                ui.label_raw = info.name.clone();
-                            }
-
-                            if !ui.slider.has_css_class("dragging") {
-                                ui.slider.set_value(info.volume.percent());
-                            }
-
-                            ui.slider.set_sensitive(info.can_set_volume);
-                            source_manager.update(
-                                info.volume.percent(),
-                                BtnMuteUiUpdate::muted_with(info.muted, ui.button.clone()),
-                            );
-                        }
-                    }
-                    Event::RemoveInput(index) => {
-                        if let Some(ui) = inputs.remove(&index) {
-                            input_container.remove(&ui.container);
-                        }
-                    }
-                    Event::RemoveOutput(index) => {
-                        if let Some(ui) = outputs.remove(&index) {
-                            output_container.remove(&ui.container);
-                        }
+                        sources.push(info);
                     }
                 }
-            });
+                Event::UpdateSink(info) => {
+                    if info.active
+                        && let Some(pos) = sinks.iter().position(|s| s.name == info.name)
+                    {
+                        sink_selector.set_selected(pos as u32);
+                        if !sink_slider.has_css_class("dragging") {
+                            sink_slider.set_value(info.volume.percent());
+                        }
+
+                        sink_manager
+                            .update(info.volume.percent(), BtnMuteUiUpdate::muted(info.muted));
+                    }
+                }
+                Event::UpdateSource(info) => {
+                    if info.active
+                        && let Some(pos) = sources.iter().position(|s| s.name == info.name)
+                        && (!info.monitor || show_monitors)
+                    {
+                        source_selector.set_selected(pos as u32);
+                        if !source_slider.has_css_class("dragging") {
+                            source_slider.set_value(info.volume.percent());
+                        }
+
+                        source_manager
+                            .update(info.volume.percent(), BtnMuteUiUpdate::muted(info.muted));
+                    }
+                }
+                Event::RemoveSink(name) => {
+                    if let Some(pos) = sinks.iter().position(|s| s.name == name) {
+                        sink_options.remove(pos as u32);
+                        sinks.remove(pos);
+                    }
+                }
+                Event::RemoveSource(name) => {
+                    if let Some(pos) = sources.iter().position(|s| s.name == name) {
+                        source_options.remove(pos as u32);
+                        sources.remove(pos);
+                    }
+                }
+                Event::AddInput(info) => {
+                    let index = info.index;
+
+                    let item_container = gtk::Box::new(Orientation::Vertical, 0);
+                    item_container.add_css_class("app-box");
+                    item_container.add_css_class("input-box");
+
+                    let title_label = self.overflow_label(&info.name, "title");
+                    item_container.append(title_label.widget());
+
+                    let tx = context.controller_tx.clone();
+                    let slider = Scale::builder().sensitive(info.can_set_volume).build();
+                    slider.set_range(0.0, self.max_volume);
+                    slider.set_value(info.volume.percent());
+                    slider.add_css_class("slider");
+                    self.simple_slider_notify(&slider, tx, index, Update::InputVolume);
+
+                    let tx = context.controller_tx.clone();
+                    let btn_mute = ToggleButton::new();
+                    btn_mute.add_css_class("btn-mute");
+                    btn_mute.add_css_class("sink-mute");
+                    self.simple_button_notify(&btn_mute, tx, index, Update::InputMute);
+
+                    item_container.append(&slider);
+                    item_container.append(&btn_mute);
+                    input_container.append(&item_container);
+
+                    sink_manager.update(
+                        info.volume.percent(),
+                        BtnMuteUiUpdate::muted_with(info.muted, btn_mute.clone()),
+                    );
+
+                    inputs.insert(
+                        info.index,
+                        VolumeUi {
+                            container: item_container,
+                            button: btn_mute,
+                            title_label,
+                            slider,
+                            label_raw: info.name.clone(),
+                        },
+                    );
+                }
+                Event::AddOutput(info) => {
+                    let index = info.index;
+
+                    let item_container = gtk::Box::new(Orientation::Vertical, 0);
+                    item_container.add_css_class("app-box");
+                    item_container.add_css_class("output-box");
+
+                    let title_label = self.overflow_label(&info.name, "title");
+                    item_container.append(title_label.widget());
+
+                    let tx = context.controller_tx.clone();
+                    let slider = Scale::builder().sensitive(info.can_set_volume).build();
+                    slider.set_range(0.0, self.max_volume);
+                    slider.set_value(info.volume.percent());
+                    slider.add_css_class("slider");
+                    self.simple_slider_notify(&slider, tx, index, Update::OutputVolume);
+
+                    let tx = context.controller_tx.clone();
+                    let btn_mute = ToggleButton::new();
+                    btn_mute.add_css_class("btn-mute");
+                    btn_mute.add_css_class("source-mute");
+                    self.simple_button_notify(&btn_mute, tx, index, Update::OutputMute);
+
+                    item_container.append(&slider);
+                    item_container.append(&btn_mute);
+                    output_container.append(&item_container);
+
+                    source_manager.update(
+                        info.volume.percent(),
+                        BtnMuteUiUpdate::muted_with(info.muted, btn_mute.clone()),
+                    );
+
+                    outputs.insert(
+                        info.index,
+                        VolumeUi {
+                            container: item_container,
+                            button: btn_mute,
+                            title_label,
+                            slider,
+                            label_raw: info.name.clone(),
+                        },
+                    );
+                }
+                Event::UpdateInput(info) => {
+                    if let Some(ui) = inputs.get_mut(&info.index) {
+                        if ui.label_raw != info.name {
+                            ui.title_label.set_label_escaped(&info.name);
+                            ui.label_raw = info.name.clone();
+                        }
+
+                        if !ui.slider.has_css_class("dragging") {
+                            ui.slider.set_value(info.volume.percent());
+                        }
+
+                        ui.slider.set_sensitive(info.can_set_volume);
+                        sink_manager.update(
+                            info.volume.percent(),
+                            BtnMuteUiUpdate::muted_with(info.muted, ui.button.clone()),
+                        );
+                    }
+                }
+                Event::UpdateOutput(info) => {
+                    if let Some(ui) = outputs.get_mut(&info.index) {
+                        if ui.label_raw != info.name {
+                            ui.title_label.set_label_escaped(&info.name);
+                            ui.label_raw = info.name.clone();
+                        }
+
+                        if !ui.slider.has_css_class("dragging") {
+                            ui.slider.set_value(info.volume.percent());
+                        }
+
+                        ui.slider.set_sensitive(info.can_set_volume);
+                        source_manager.update(
+                            info.volume.percent(),
+                            BtnMuteUiUpdate::muted_with(info.muted, ui.button.clone()),
+                        );
+                    }
+                }
+                Event::RemoveInput(index) => {
+                    if let Some(ui) = inputs.remove(&index) {
+                        input_container.remove(&ui.container);
+                    }
+                }
+                Event::RemoveOutput(index) => {
+                    if let Some(ui) = outputs.remove(&index) {
+                        output_container.remove(&ui.container);
+                    }
+                }
+            },
+        );
 
         Some(container)
     }
