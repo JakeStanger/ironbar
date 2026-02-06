@@ -1,16 +1,13 @@
 use std::sync::{Arc, Mutex};
 
-use libpulse_binding::callbacks::ListResult;
 use libpulse_binding::context::Context;
 use libpulse_binding::context::introspect::SourceInfo;
 use libpulse_binding::context::subscribe::Operation;
 use libpulse_binding::def::SourceState;
 use tokio::sync::broadcast;
-use tracing::{debug, error, instrument, trace};
+use tracing::{debug, instrument};
 
-use super::{Client, Event, VolumeLevels};
-use crate::channels::SyncSenderExt;
-use crate::clients::volume::{ArcMutVec, ConnectionState};
+use super::{ArcMutVec, Client, ConnectionState, Event, HasIndex, PulseObject, VolumeLevels};
 use crate::lock;
 
 #[derive(Debug, Clone)]
@@ -43,6 +40,47 @@ impl From<&SourceInfo<'_>> for Source {
             active: value.state == SourceState::Running,
             monitor: value.monitor_of_sink.is_some(),
         }
+    }
+}
+
+impl<'a> HasIndex for SourceInfo<'a> {
+    fn index(&self) -> u32 {
+        self.index
+    }
+}
+
+impl HasIndex for Source {
+    fn index(&self) -> u32 {
+        self.index
+    }
+}
+
+impl<'a> PulseObject<'a> for Source {
+    type Inner = SourceInfo<'a>;
+
+    #[inline]
+    fn name(&self) -> String {
+        self.name.clone()
+    }
+    #[inline]
+    fn active(&self) -> bool {
+        self.active
+    }
+    #[inline]
+    fn set_active(&mut self, active: bool) {
+        self.active = active;
+    }
+    #[inline]
+    fn add_event(info: Self) -> Event {
+        Event::AddSource(info)
+    }
+    #[inline]
+    fn update_event(info: Self) -> Event {
+        Event::UpdateSource(info)
+    }
+    #[inline]
+    fn remove_event(info: Self) -> Event {
+        Event::RemoveSource(info.name)
     }
 }
 
@@ -88,105 +126,41 @@ impl Client {
     }
 }
 
-pub fn on_event(
-    context: &Arc<Mutex<Context>>,
-    sources: &ArcMutVec<Source>,
-    default_source: &Arc<Mutex<Option<String>>>,
-    tx: &broadcast::Sender<Event>,
-    op: Operation,
-    i: u32,
-) {
-    let introspect = lock!(context).introspect();
+impl Source {
+    pub(super) fn on_event(
+        context: &Arc<Mutex<Context>>,
+        sources: &ArcMutVec<Source>,
+        default_source: &Arc<Mutex<Option<String>>>,
+        tx: &broadcast::Sender<Event>,
+        op: Operation,
+        i: u32,
+    ) {
+        let introspect = lock!(context).introspect();
 
-    match op {
-        Operation::New => {
-            debug!("new source");
-            introspect.get_source_info_by_index(i, {
-                let sources = sources.clone();
-                let tx = tx.clone();
+        match op {
+            Operation::New => {
+                debug!("new source");
+                introspect.get_source_info_by_index(i, {
+                    let sources = sources.clone();
+                    let tx = tx.clone();
 
-                move |info| add(info, &sources, &tx)
-            });
+                    move |info| Self::add(info, &sources, &tx)
+                });
+            }
+            Operation::Changed => {
+                debug!("source changed");
+                introspect.get_source_info_by_index(i, {
+                    let source = sources.clone();
+                    let default_source = default_source.clone();
+                    let tx = tx.clone();
+
+                    move |info| Self::update(info, &source, Some(&default_source), &tx)
+                });
+            }
+            Operation::Removed => {
+                debug!("source removed");
+                Self::remove(i, sources, tx);
+            }
         }
-        Operation::Changed => {
-            debug!("source changed");
-            introspect.get_source_info_by_index(i, {
-                let source = sources.clone();
-                let default_source = default_source.clone();
-                let tx = tx.clone();
-
-                move |info| update(info, &source, &default_source, &tx)
-            });
-        }
-        Operation::Removed => {
-            debug!("source removed");
-            remove(i, sources, tx);
-        }
-    }
-}
-
-pub fn add(
-    info: ListResult<&SourceInfo>,
-    sources: &ArcMutVec<Source>,
-    tx: &broadcast::Sender<Event>,
-) {
-    let ListResult::Item(info) = info else {
-        return;
-    };
-
-    trace!("adding {info:?}");
-    lock!(sources).push(info.into());
-    tx.send_expect(Event::AddSource(info.into()));
-}
-
-fn update(
-    info: ListResult<&SourceInfo>,
-    sources: &ArcMutVec<Source>,
-    default_source: &Arc<Mutex<Option<String>>>,
-    tx: &broadcast::Sender<Event>,
-) {
-    let ListResult::Item(info) = info else {
-        return;
-    };
-
-    trace!("updating {info:?}");
-
-    {
-        let mut sources = lock!(sources);
-        let Some(pos) = sources.iter().position(|source| source.index == info.index) else {
-            error!("received update to untracked source input");
-            return;
-        };
-
-        sources[pos] = info.into();
-
-        // update in local copy
-        if !sources[pos].active
-            && let Some(default_source) = &*lock!(default_source)
-        {
-            sources[pos].active = &sources[pos].name == default_source;
-        }
-    }
-
-    let mut source: Source = info.into();
-
-    // update in broadcast copy
-    if !source.active
-        && let Some(default_source) = &*lock!(default_source)
-    {
-        source.active = &source.name == default_source;
-    }
-
-    tx.send_expect(Event::UpdateSource(source));
-}
-
-fn remove(index: u32, sources: &ArcMutVec<Source>, tx: &broadcast::Sender<Event>) {
-    trace!("removing {index}");
-
-    let mut sources = lock!(sources);
-
-    if let Some(pos) = sources.iter().position(|s| s.index == index) {
-        let info = sources.remove(pos);
-        tx.send_expect(Event::RemoveSource(info.name));
     }
 }

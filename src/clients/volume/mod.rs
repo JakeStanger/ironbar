@@ -25,6 +25,93 @@ use tracing::{debug, error, info, trace, warn};
 
 type ArcMutVec<T> = Arc<Mutex<Vec<T>>>;
 
+trait HasIndex {
+    fn index(&self) -> u32;
+}
+
+trait PulseObject<'a>: Sized + HasIndex {
+    type Inner: 'a + Debug + HasIndex;
+
+    fn name(&self) -> String;
+    fn active(&self) -> bool;
+    fn set_active(&mut self, active: bool);
+
+    fn add_event(info: Self) -> Event;
+    fn update_event(info: Self) -> Event;
+    fn remove_event(info: Self) -> Event;
+
+    fn add(
+        result: ListResult<&'a Self::Inner>,
+        items: &ArcMutVec<Self>,
+        tx: &broadcast::Sender<Event>,
+    ) where
+        Self: From<&'a Self::Inner>,
+    {
+        let ListResult::Item(info) = result else {
+            return;
+        };
+
+        trace!("adding {info:?}");
+        lock!(items).push(info.into());
+        tx.send_expect(Self::add_event(info.into()));
+    }
+
+    fn update(
+        result: ListResult<&'a Self::Inner>,
+        items: &ArcMutVec<Self>,
+        default: Option<&Arc<Mutex<Option<String>>>>,
+        tx: &broadcast::Sender<Event>,
+    ) where
+        Self: From<&'a Self::Inner>,
+    {
+        let ListResult::Item(info) = result else {
+            return;
+        };
+
+        trace!("updating {info:?}");
+        {
+            let mut items = lock!(items);
+            let Some(pos) = items.iter().position(|item| item.index() == info.index()) else {
+                error!("received update to untracked item");
+                return;
+            };
+            items[pos] = info.into();
+
+            // update in local copy
+            if let Some(default) = default.as_ref() {
+                if !items[pos].active()
+                    && let Some(default_item) = &*lock!(default)
+                {
+                    let name = &items[pos].name();
+                    items[pos].set_active(name == default_item);
+                }
+            }
+        }
+
+        // update in broadcast copy
+        let mut item: Self = info.into();
+        if let Some(default) = default.as_ref() {
+            if !item.active()
+                && let Some(default_item) = &*lock!(default)
+            {
+                item.set_active(&item.name() == default_item);
+            }
+        }
+
+        tx.send_expect(Self::update_event(item));
+    }
+
+    fn remove(index: u32, items: &ArcMutVec<Self>, tx: &broadcast::Sender<Event>) {
+        trace!("removing {index}");
+
+        let mut sources = lock!(items);
+        if let Some(pos) = sources.iter().position(|s| s.index() == index) {
+            let info = sources.remove(pos);
+            tx.send_expect(Self::remove_event(info));
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub enum Event {
     AddSink(Sink),
@@ -195,7 +282,7 @@ fn on_state_change(context: &Arc<Mutex<Context>>, data: &Data, tx: &broadcast::S
                 let tx = tx.clone();
 
                 move |info| match info {
-                    ListResult::Item(_) => sink::add(info, &sinks, &tx),
+                    ListResult::Item(_) => Sink::add(info, &sinks, &tx),
                     ListResult::End => {
                         introspect_sink.get_server_info({
                             let sinks = sinks.clone();
@@ -216,7 +303,7 @@ fn on_state_change(context: &Arc<Mutex<Context>>, data: &Data, tx: &broadcast::S
                 let tx = tx.clone();
 
                 move |info| match info {
-                    ListResult::Item(_) => source::add(info, &sources, &tx),
+                    ListResult::Item(_) => Source::add(info, &sources, &tx),
                     ListResult::End => {
                         introspect_source.get_server_info({
                             let sources = sources.clone();
@@ -233,15 +320,13 @@ fn on_state_change(context: &Arc<Mutex<Context>>, data: &Data, tx: &broadcast::S
             introspect.get_sink_input_info_list({
                 let inputs = data.sink_inputs.clone();
                 let tx = tx.clone();
-
-                move |info| sink_input::add(info, &inputs, &tx)
+                move |info| SinkInput::add(info, &inputs, &tx)
             });
 
             introspect.get_source_output_info_list({
                 let outputs = data.source_outputs.clone();
                 let tx = tx.clone();
-
-                move |info| source_output::add(info, &outputs, &tx)
+                move |info| SourceOutput::add(info, &outputs, &tx)
             });
 
             let subscribe_callback = Box::new({
@@ -291,12 +376,12 @@ fn on_event(
             &data.default_source_name,
             tx,
         ),
-        Facility::Sink => sink::on_event(context, &data.sinks, &data.default_sink_name, tx, op, i),
+        Facility::Sink => Sink::on_event(context, &data.sinks, &data.default_sink_name, tx, op, i),
         Facility::Source => {
-            source::on_event(context, &data.sources, &data.default_source_name, tx, op, i)
+            Source::on_event(context, &data.sources, &data.default_source_name, tx, op, i)
         }
-        Facility::SinkInput => sink_input::on_event(context, &data.sink_inputs, tx, op, i),
-        Facility::SourceOutput => source_output::on_event(context, &data.source_outputs, tx, op, i),
+        Facility::SinkInput => SinkInput::on_event(context, &data.sink_inputs, tx, op, i),
+        Facility::SourceOutput => SourceOutput::on_event(context, &data.source_outputs, tx, op, i),
         _ => error!("Received unhandled facility: {facility:?}"),
     }
 }
