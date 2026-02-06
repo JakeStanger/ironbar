@@ -1,6 +1,9 @@
 use crate::channels::{AsyncSenderExt, BroadcastReceiverExt};
 use crate::clients::brightness::{self, brightness, default_resource_name, max_brightness};
-use crate::config::{CommonConfig, LayoutConfig, ProfileUpdateEvent, Profiles, TruncateMode};
+use crate::config::{
+    CommonConfig, LayoutConfig, ProfileUpdateEvent, Profiles, TruncateMode, default,
+};
+use crate::image::IconLabel;
 use crate::modules::{Module, ModuleInfo, ModuleParts, WidgetContext};
 use crate::profiles;
 use crate::{module_impl, spawn};
@@ -40,37 +43,45 @@ pub struct BrightnessProfile {
     ///
     /// **Default**: `{percentage}%`
     format: String,
+
+    /// The icon to show on the bar widget button.
+    /// Supports [image](images) icons.
+    ///
+    /// **Default**: null
+    icon_label: Option<String>,
 }
 
 impl Default for BrightnessProfile {
     fn default() -> Self {
         Self {
             format: "{percentage}%".to_string(),
+            icon_label: None,
         }
     }
 }
 
 impl BrightnessProfile {
-    fn with_prefix(prefix: &str) -> Self {
+    fn with_icon(icon: &str) -> Self {
         Self {
-            format: format!("{prefix}{{percentage}}%"),
+            format: "{percentage}%".to_string(),
+            icon_label: Some(icon.to_string()),
         }
     }
 }
 
 fn default_profiles() -> Profiles<f64, BrightnessProfile> {
     profiles!(
-        "level0":5.0 => BrightnessProfile::with_prefix(" "),
-        "level10":15.0 => BrightnessProfile::with_prefix(" "),
-        "level20":25.0 => BrightnessProfile::with_prefix(" "),
-        "level30":35.0 => BrightnessProfile::with_prefix(" "),
-        "level40":45.0 => BrightnessProfile::with_prefix(" "),
-        "level50":55.0 => BrightnessProfile::with_prefix(" "),
-        "level60":65.0 => BrightnessProfile::with_prefix(" "),
-        "level70":75.0 => BrightnessProfile::with_prefix(" "),
-        "level80":85.0 => BrightnessProfile::with_prefix(" "),
-        "level90":95.0 => BrightnessProfile::with_prefix(" "),
-        "level100":100.0 => BrightnessProfile::with_prefix(" ")
+        "level0":5.0 => BrightnessProfile::with_icon(""),
+        "level10":15.0 => BrightnessProfile::with_icon(""),
+        "level20":25.0 => BrightnessProfile::with_icon(""),
+        "level30":35.0 => BrightnessProfile::with_icon(""),
+        "level40":45.0 => BrightnessProfile::with_icon(""),
+        "level50":55.0 => BrightnessProfile::with_icon(""),
+        "level60":65.0 => BrightnessProfile::with_icon(""),
+        "level70":75.0 => BrightnessProfile::with_icon(""),
+        "level80":85.0 => BrightnessProfile::with_icon(""),
+        "level90":95.0 => BrightnessProfile::with_icon(""),
+        "level100":100.0 => BrightnessProfile::with_icon("")
     )
 }
 
@@ -322,7 +333,7 @@ impl Module<Button> for BrightnessModule {
     fn into_widget(
         self,
         context: WidgetContext<Self::SendMessage, Self::ReceiveMessage>,
-        _: &ModuleInfo,
+        info: &ModuleInfo,
     ) -> color_eyre::Result<ModuleParts<Button>>
     where
         <Self as Module<Button>>::SendMessage: Clone,
@@ -333,8 +344,20 @@ impl Module<Button> for BrightnessModule {
             .css_classes(["label"])
             .build();
 
+        let button_icon = IconLabel::new(
+            "",
+            default::IconSize::Small as i32,
+            &context.ironbar.image_provider(),
+        );
+        button_icon.add_css_class("icon");
+
+        let container = gtk::Box::new(self.layout.orientation(info), 5);
+        container.add_css_class("contents");
+        container.append(&*button_icon);
+        container.append(&button_label);
+
         let button = Button::new();
-        button.set_child(Some(&button_label));
+        button.set_child(Some(&container));
 
         let controller_tx = context.controller_tx.clone();
 
@@ -359,6 +382,7 @@ impl Module<Button> for BrightnessModule {
                     .replace("{percentage}", &percentage.to_string());
 
                 button_label.set_label(&format);
+                button_icon.set_label(event.profile.icon_label.as_deref());
             },
         );
 

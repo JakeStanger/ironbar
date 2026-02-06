@@ -122,6 +122,7 @@ impl Deref for IconButton {
 #[cfg(any(
     feature = "battery",
     feature = "bluetooth",
+    feature = "brightness",
     feature = "keyboard",
     feature = "menu",
     feature = "music",
@@ -139,6 +140,7 @@ pub struct IconLabel {
 #[cfg(any(
     feature = "battery",
     feature = "bluetooth",
+    feature = "brightness",
     feature = "keyboard",
     feature = "menu",
     feature = "music",
@@ -235,6 +237,7 @@ impl IconLabel {
 #[cfg(any(
     feature = "battery",
     feature = "bluetooth",
+    feature = "brightness",
     feature = "keyboard",
     feature = "menu",
     feature = "music",
