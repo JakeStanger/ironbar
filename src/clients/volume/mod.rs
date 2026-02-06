@@ -78,24 +78,22 @@ trait PulseObject<'a>: Sized + HasIndex {
             items[pos] = info.into();
 
             // update in local copy
-            if let Some(default) = default.as_ref() {
-                if !items[pos].active()
-                    && let Some(default_item) = &*lock!(default)
-                {
-                    let name = &items[pos].name();
-                    items[pos].set_active(name == default_item);
-                }
+            if let Some(default) = default.as_ref()
+                && !items[pos].active()
+                && let Some(default_item) = &*lock!(default)
+            {
+                let name = &items[pos].name();
+                items[pos].set_active(name == default_item);
             }
         }
 
         // update in broadcast copy
         let mut item: Self = info.into();
-        if let Some(default) = default.as_ref() {
-            if !item.active()
-                && let Some(default_item) = &*lock!(default)
-            {
-                item.set_active(&item.name() == default_item);
-            }
+        if let Some(default) = default.as_ref()
+            && !item.active()
+            && let Some(default_item) = &*lock!(default)
+        {
+            item.set_active(&item.name() == default_item);
         }
 
         tx.send_expect(Self::update_event(item));
