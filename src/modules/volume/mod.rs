@@ -1,13 +1,7 @@
 mod config;
 
-use crate::channels::{AsyncSenderExt, BroadcastReceiverExt};
-use crate::clients::volume::{self, Event};
-use crate::config::{ModuleOrientation, ProfileUpdateEvent};
-use crate::gtk_helpers::{IronbarLabelExt, OverflowLabel};
-use crate::modules::{
-    Module, ModuleInfo, ModuleParts, ModulePopup, ModuleUpdateEvent, PopupButton, WidgetContext,
-};
-use crate::{lock, module_impl, spawn};
+use std::cell::RefCell;
+use std::collections::HashMap;
 
 use glib::subclass::prelude::*;
 use glib::{Object, Properties};
@@ -16,10 +10,17 @@ use gtk::{
     Button, DropDown, Expression, Label, ListItem, Orientation, Scale, SignalListItemFactory,
     ToggleButton, gio,
 };
-use std::cell::RefCell;
-use std::collections::HashMap;
-use tokio::sync::mpsc;
+use tokio::sync::mpsc::{self, Sender};
 use tracing::trace;
+
+use crate::channels::{AsyncSenderExt, BroadcastReceiverExt};
+use crate::clients::volume::{self, Event};
+use crate::config::{ModuleOrientation, ProfileUpdateEvent};
+use crate::gtk_helpers::{IronbarLabelExt, OverflowLabel};
+use crate::modules::{
+    Module, ModuleInfo, ModuleParts, ModulePopup, ModuleUpdateEvent, PopupButton, WidgetContext,
+};
+use crate::{lock, module_impl, spawn};
 
 pub use config::VolumeModule;
 use config::VolumeProfile;
@@ -51,6 +52,21 @@ struct BtnMuteUiUpdate {
     button: Option<ToggleButton>,
 }
 
+impl BtnMuteUiUpdate {
+    fn muted(muted: bool) -> Self {
+        Self {
+            muted,
+            button: None,
+        }
+    }
+    fn muted_with(muted: bool, button: ToggleButton) -> Self {
+        Self {
+            muted,
+            button: Some(button),
+        }
+    }
+}
+
 glib::wrapper! {
     pub struct DropdownItem(ObjectSubclass<DropdownItemData>);
 }
@@ -80,6 +96,60 @@ impl ObjectImpl for DropdownItemData {}
 impl ObjectSubclass for DropdownItemData {
     const NAME: &'static str = "DropdownItem";
     type Type = DropdownItem;
+}
+
+impl VolumeModule {
+    fn new_slider(&self) -> Scale {
+        let slider = match self.source_slider_orientation {
+            ModuleOrientation::Horizontal => Scale::builder()
+                .orientation(Orientation::Horizontal)
+                .build(),
+            ModuleOrientation::Vertical => Scale::builder()
+                .orientation(Orientation::Vertical)
+                .height_request(100)
+                .inverted(true)
+                .build(),
+        };
+        slider.set_range(0.0, self.max_volume);
+        slider.set_value(50.0);
+        slider
+    }
+    fn select_notify<F>(&self, selector: &DropDown, tx: Sender<Update>, func: F)
+    where
+        F: Fn(String) -> Update + 'static,
+    {
+        selector.connect_selected_notify(move |selector| {
+            if let Some(item) = selector.selected_item().and_downcast_ref::<DropdownItem>() {
+                tx.send_spawn(func(item.key()));
+            }
+        });
+    }
+    fn slider_notify<F>(&self, scale: Scale, selector: DropDown, tx: Sender<Update>, func: F)
+    where
+        F: Fn(String, f64) -> Update + 'static,
+    {
+        let max_volume = self.max_volume;
+        scale.connect_value_changed(move |scale| {
+            if scale.has_css_class("dragging")
+                && let Some(item) = selector.selected_item().and_downcast_ref::<DropdownItem>()
+            {
+                // GTK will send values outside min/max range
+                let val = scale.value().clamp(0.0, max_volume);
+                tx.send_spawn(func(item.key(), val));
+            }
+        });
+    }
+    fn button_notify<F>(&self, btn: &ToggleButton, selector: DropDown, tx: Sender<Update>, func: F)
+    where
+        F: Fn(String, bool) -> Update + 'static,
+    {
+        btn.connect_toggled(move |btn| {
+            if let Some(item) = selector.selected_item().and_downcast_ref::<DropdownItem>() {
+                let muted = btn.is_active();
+                tx.send_spawn(func(item.key(), muted));
+            }
+        });
+    }
 }
 
 impl Module<Button> for VolumeModule {
@@ -364,11 +434,7 @@ impl Module<Button> for VolumeModule {
         sink_selector.add_css_class("sink-selector");
         {
             let tx = context.controller_tx.clone();
-            sink_selector.connect_selected_notify(move |selector| {
-                if let Some(item) = selector.selected_item().and_downcast_ref::<DropdownItem>() {
-                    tx.send_spawn(Update::SinkChange(item.key()));
-                }
-            });
+            self.select_notify(&sink_selector, tx, Update::SinkChange);
         }
         sink_container.append(&sink_selector);
 
@@ -378,75 +444,30 @@ impl Module<Button> for VolumeModule {
         source_selector.add_css_class("source-selector");
         {
             let tx = context.controller_tx.clone();
-            source_selector.connect_selected_notify(move |selector| {
-                if let Some(item) = selector.selected_item().and_downcast_ref::<DropdownItem>() {
-                    tx.send_spawn(Update::SourceChange(item.key()));
-                }
-            });
+            self.select_notify(&source_selector, tx, Update::SourceChange);
         }
         source_container.append(&source_selector);
 
-        let sink_slider = match self.sink_slider_orientation {
-            ModuleOrientation::Horizontal => Scale::builder()
-                .orientation(Orientation::Horizontal)
-                .build(),
-            ModuleOrientation::Vertical => Scale::builder()
-                .orientation(Orientation::Vertical)
-                .height_request(100)
-                .inverted(true)
-                .build(),
-        };
+        let sink_slider = self.new_slider();
         sink_slider.add_css_class("slider");
         sink_slider.add_css_class("sink-slider");
-        sink_slider.set_range(0.0, self.max_volume);
-        sink_slider.set_value(50.0);
         sink_container.append(&sink_slider);
         {
             let tx = context.controller_tx.clone();
-            let selector = sink_selector.clone();
-
+            let select = sink_selector.clone();
             let scale = sink_slider.clone();
-            scale.connect_value_changed(move |scale| {
-                if scale.has_css_class("dragging")
-                    && let Some(sink) = selector.selected_item().and_downcast_ref::<DropdownItem>()
-                {
-                    // GTK will send values outside min/max range
-                    let val = scale.value().clamp(0.0, self.max_volume);
-                    tx.send_spawn(Update::SinkVolume(sink.key(), val));
-                }
-            });
+            self.slider_notify(scale, select, tx, Update::SinkVolume);
         }
 
-        let source_slider = match self.source_slider_orientation {
-            ModuleOrientation::Horizontal => Scale::builder()
-                .orientation(Orientation::Horizontal)
-                .build(),
-            ModuleOrientation::Vertical => Scale::builder()
-                .orientation(Orientation::Vertical)
-                .height_request(100)
-                .inverted(true)
-                .build(),
-        };
+        let source_slider = self.new_slider();
         source_slider.add_css_class("slider");
         source_slider.add_css_class("source-slider");
-        source_slider.set_range(0.0, self.max_volume);
-        source_slider.set_value(50.0);
         source_container.append(&source_slider);
         {
             let tx = context.controller_tx.clone();
-            let selector = source_selector.clone();
-
+            let select = source_selector.clone();
             let scale = source_slider.clone();
-            scale.connect_value_changed(move |scale| {
-                if scale.has_css_class("dragging")
-                    && let Some(source) =
-                        selector.selected_item().and_downcast_ref::<DropdownItem>()
-                {
-                    // GTK will send values outside min/max range
-                    let val = scale.value().clamp(0.0, self.max_volume);
-                    tx.send_spawn(Update::SourceVolume(source.key(), val));
-                }
-            });
+            self.slider_notify(scale, select, tx, Update::SourceVolume);
         }
 
         let sink_mute = ToggleButton::new();
@@ -455,14 +476,8 @@ impl Module<Button> for VolumeModule {
         sink_container.append(&sink_mute);
         {
             let tx = context.controller_tx.clone();
-            let selector = sink_selector.clone();
-
-            sink_mute.connect_toggled(move |btn| {
-                if let Some(sink) = selector.selected_item().and_downcast_ref::<DropdownItem>() {
-                    let muted = btn.is_active();
-                    tx.send_spawn(Update::SinkMute(sink.key(), muted));
-                }
-            });
+            let select = sink_selector.clone();
+            self.button_notify(&sink_mute, select, tx, Update::SinkMute);
         }
 
         let source_mute = ToggleButton::new();
@@ -472,13 +487,7 @@ impl Module<Button> for VolumeModule {
         {
             let tx = context.controller_tx.clone();
             let selector = source_selector.clone();
-
-            source_mute.connect_toggled(move |btn| {
-                if let Some(source) = selector.selected_item().and_downcast_ref::<DropdownItem>() {
-                    let muted = btn.is_active();
-                    tx.send_spawn(Update::SourceMute(source.key(), muted));
-                }
-            });
+            self.button_notify(&source_mute, selector, tx, Update::SourceMute);
         }
 
         let mut sink_manager = self.profiles.attach(
@@ -527,13 +536,8 @@ impl Module<Button> for VolumeModule {
                             sink_selector.set_selected(sinks.len() as u32);
                             sink_slider.set_value(info.volume.percent());
 
-                            sink_manager.update(
-                                info.volume.percent(),
-                                BtnMuteUiUpdate {
-                                    muted: info.muted,
-                                    button: None,
-                                },
-                            );
+                            sink_manager
+                                .update(info.volume.percent(), BtnMuteUiUpdate::muted(info.muted));
                         }
 
                         sinks.push(info);
@@ -549,10 +553,7 @@ impl Module<Button> for VolumeModule {
 
                                 source_manager.update(
                                     info.volume.percent(),
-                                    BtnMuteUiUpdate {
-                                        muted: info.muted,
-                                        button: None,
-                                    },
+                                    BtnMuteUiUpdate::muted(info.muted),
                                 );
                             }
 
@@ -568,13 +569,8 @@ impl Module<Button> for VolumeModule {
                                 sink_slider.set_value(info.volume.percent());
                             }
 
-                            sink_manager.update(
-                                info.volume.percent(),
-                                BtnMuteUiUpdate {
-                                    muted: info.muted,
-                                    button: None,
-                                },
-                            );
+                            sink_manager
+                                .update(info.volume.percent(), BtnMuteUiUpdate::muted(info.muted));
                         }
                     }
                     Event::UpdateSource(info) => {
@@ -587,13 +583,8 @@ impl Module<Button> for VolumeModule {
                                 source_slider.set_value(info.volume.percent());
                             }
 
-                            source_manager.update(
-                                info.volume.percent(),
-                                BtnMuteUiUpdate {
-                                    muted: info.muted,
-                                    button: None,
-                                },
-                            );
+                            source_manager
+                                .update(info.volume.percent(), BtnMuteUiUpdate::muted(info.muted));
                         }
                     }
                     Event::RemoveSink(name) => {
@@ -658,10 +649,7 @@ impl Module<Button> for VolumeModule {
 
                         sink_manager.update(
                             info.volume.percent(),
-                            BtnMuteUiUpdate {
-                                muted: info.muted,
-                                button: Some(btn_mute.clone()),
-                            },
+                            BtnMuteUiUpdate::muted_with(info.muted, btn_mute.clone()),
                         );
 
                         inputs.insert(
@@ -725,10 +713,7 @@ impl Module<Button> for VolumeModule {
 
                         source_manager.update(
                             info.volume.percent(),
-                            BtnMuteUiUpdate {
-                                muted: info.muted,
-                                button: Some(btn_mute.clone()),
-                            },
+                            BtnMuteUiUpdate::muted_with(info.muted, btn_mute.clone()),
                         );
 
                         outputs.insert(
@@ -756,10 +741,7 @@ impl Module<Button> for VolumeModule {
                             ui.slider.set_sensitive(info.can_set_volume);
                             sink_manager.update(
                                 info.volume.percent(),
-                                BtnMuteUiUpdate {
-                                    muted: info.muted,
-                                    button: Some(ui.button.clone()),
-                                },
+                                BtnMuteUiUpdate::muted_with(info.muted, ui.button.clone()),
                             );
                         }
                     }
@@ -777,10 +759,7 @@ impl Module<Button> for VolumeModule {
                             ui.slider.set_sensitive(info.can_set_volume);
                             source_manager.update(
                                 info.volume.percent(),
-                                BtnMuteUiUpdate {
-                                    muted: info.muted,
-                                    button: Some(ui.button.clone()),
-                                },
+                                BtnMuteUiUpdate::muted_with(info.muted, ui.button.clone()),
                             );
                         }
                     }
