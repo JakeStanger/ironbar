@@ -1,9 +1,8 @@
 use std::sync::{Arc, Mutex};
 
 use libpulse_binding::context::Context;
-use libpulse_binding::context::introspect::SinkInfo;
+use libpulse_binding::context::introspect::SourceOutputInfo;
 use libpulse_binding::context::subscribe::Operation;
-use libpulse_binding::def::SinkState;
 use tokio::sync::broadcast;
 use tracing::{debug, instrument};
 
@@ -11,17 +10,17 @@ use super::{ArcMutVec, Client, ConnectionState, Event, HasIndex, PulseObject, Vo
 use crate::lock;
 
 #[derive(Debug, Clone)]
-pub struct Sink {
-    index: u32,
+pub struct SourceOutput {
+    pub index: u32,
     pub name: String,
-    pub description: String,
     pub volume: VolumeLevels,
     pub muted: bool,
-    pub active: bool,
+
+    pub can_set_volume: bool,
 }
 
-impl From<&SinkInfo<'_>> for Sink {
-    fn from(value: &SinkInfo) -> Self {
+impl From<&SourceOutputInfo<'_>> for SourceOutput {
+    fn from(value: &SourceOutputInfo) -> Self {
         Self {
             index: value.index,
             name: value
@@ -29,32 +28,27 @@ impl From<&SinkInfo<'_>> for Sink {
                 .as_ref()
                 .map(ToString::to_string)
                 .unwrap_or_default(),
-            description: value
-                .description
-                .as_ref()
-                .map(ToString::to_string)
-                .unwrap_or_default(),
             muted: value.mute,
             volume: value.volume.into(),
-            active: value.state == SinkState::Running,
+            can_set_volume: value.has_volume && value.volume_writable,
         }
     }
 }
 
-impl<'a> HasIndex for SinkInfo<'a> {
+impl<'a> HasIndex for SourceOutputInfo<'a> {
     fn index(&self) -> u32 {
         self.index
     }
 }
 
-impl HasIndex for Sink {
+impl HasIndex for SourceOutput {
     fn index(&self) -> u32 {
         self.index
     }
 }
 
-impl<'a> PulseObject<'a> for Sink {
-    type Inner = SinkInfo<'a>;
+impl<'a> PulseObject<'a> for SourceOutput {
+    type Inner = SourceOutputInfo<'a>;
 
     #[inline]
     fn name(&self) -> String {
@@ -62,46 +56,38 @@ impl<'a> PulseObject<'a> for Sink {
     }
     #[inline]
     fn active(&self) -> bool {
-        self.active
+        true
     }
     #[inline]
-    fn set_active(&mut self, active: bool) {
-        self.active = active;
-    }
+    fn set_active(&mut self, _active: bool) {}
+
     #[inline]
     fn add_event(info: Self) -> Event {
-        Event::AddSink(info)
+        Event::AddOutput(info)
     }
     #[inline]
     fn update_event(info: Self) -> Event {
-        Event::UpdateSink(info)
+        Event::UpdateOutput(info)
     }
     #[inline]
     fn remove_event(info: Self) -> Event {
-        Event::RemoveSink(info.name)
+        Event::RemoveOutput(info.index)
     }
 }
 
 impl Client {
     #[instrument(level = "trace")]
-    pub fn sinks(&self) -> ArcMutVec<Sink> {
-        self.data.sinks.clone()
+    pub fn source_outputs(&self) -> ArcMutVec<SourceOutput> {
+        self.data.source_outputs.clone()
     }
 
     #[instrument(level = "trace")]
-    pub fn set_default_sink(&self, name: &str) {
-        if let ConnectionState::Connected { context, .. } = &*lock!(self.connection) {
-            lock!(context).set_default_sink(name, |_| {});
-        }
-    }
-
-    #[instrument(level = "trace")]
-    pub fn set_sink_volume(&self, name: &str, volume: f64) {
+    pub fn set_output_volume(&self, index: u32, volume_percent: f64) {
         if let ConnectionState::Connected { introspector, .. } = &mut *lock!(self.connection) {
             let Some(mut volume_levels) = ({
-                let sinks = self.sinks();
-                lock!(sinks).iter().find_map(|s| {
-                    if s.name == name {
+                let outputs = self.source_outputs();
+                lock!(outputs).iter().find_map(|s| {
+                    if s.index == index {
                         Some(s.volume.clone())
                     } else {
                         None
@@ -111,24 +97,23 @@ impl Client {
                 return;
             };
 
-            volume_levels.set_percent(volume);
-            introspector.set_sink_volume_by_name(name, &volume_levels.into(), None);
+            volume_levels.set_percent(volume_percent);
+            introspector.set_source_output_volume(index, &volume_levels.into(), None);
         }
     }
 
     #[instrument(level = "trace")]
-    pub fn set_sink_muted(&self, name: &str, muted: bool) {
+    pub fn set_output_muted(&self, index: u32, muted: bool) {
         if let ConnectionState::Connected { introspector, .. } = &mut *lock!(self.connection) {
-            introspector.set_sink_mute_by_name(name, muted, None);
+            introspector.set_source_output_mute(index, muted, None);
         }
     }
 }
 
-impl Sink {
+impl SourceOutput {
     pub(super) fn on_event(
         context: &Arc<Mutex<Context>>,
-        sinks: &ArcMutVec<Sink>,
-        default_sink: &Arc<Mutex<Option<String>>>,
+        outputs: &ArcMutVec<SourceOutput>,
         tx: &broadcast::Sender<Event>,
         op: Operation,
         i: u32,
@@ -137,27 +122,26 @@ impl Sink {
 
         match op {
             Operation::New => {
-                debug!("new sink");
-                introspect.get_sink_info_by_index(i, {
-                    let sinks = sinks.clone();
+                debug!("new source output");
+                introspect.get_source_output_info(i, {
+                    let outputs = outputs.clone();
                     let tx = tx.clone();
 
-                    move |info| Self::add(info, &sinks, &tx)
+                    move |info| Self::add(info, &outputs, &tx)
                 });
             }
             Operation::Changed => {
-                debug!("sink changed");
-                introspect.get_sink_info_by_index(i, {
-                    let sinks = sinks.clone();
-                    let default_sink = default_sink.clone();
+                debug!("source output changed");
+                introspect.get_source_output_info(i, {
+                    let outputs = outputs.clone();
                     let tx = tx.clone();
 
-                    move |info| Self::update(info, &sinks, Some(&default_sink), &tx)
+                    move |info| Self::update(info, &outputs, None, &tx)
                 });
             }
             Operation::Removed => {
-                debug!("sink removed");
-                Self::remove(i, sinks, tx);
+                debug!("source output removed");
+                Self::remove(i, outputs, tx);
             }
         }
     }
