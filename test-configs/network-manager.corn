@@ -1,0 +1,16 @@
+{
+  end = [
+    {
+      type = "network_manager"
+      icon_size = 24
+      types_blacklist = ["loopback" "bridge"]
+      icon = "network-wireless"
+      profiles = {
+        vpn_connected.when = { type = "Vpn"  state = "Connected" }
+        vpn_connected.icon = "icon:channel-secure-symbolic"
+        wifi_connected_good.when = { type = "Wifi"  state = "Connected" signal_strength = 50 }
+        wifi_connected_good.icon = "icon:community-supported-symbolic"
+      }
+    }
+  ]
+}
