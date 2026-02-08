@@ -1,8 +1,9 @@
 use crate::channels::{AsyncSenderExt, BroadcastReceiverExt};
 use crate::clients::networkmanager::state::DeviceTypeData;
 use crate::clients::networkmanager::{Client, DeviceState, DeviceType, NetworkManagerUpdate};
-use crate::config::{CommonConfig, default};
+use crate::config::{CommonConfig, Profiles, default};
 use crate::gtk_helpers::IronbarGtkExt;
+use crate::image::Provider;
 use crate::modules::{Module, ModuleInfo, ModuleParts, WidgetContext};
 use crate::{module_impl, spawn};
 
@@ -49,9 +50,9 @@ pub struct NetworkManagerModule {
     /// The size of the icon for each network device, in pixels.
     icon_size: i32,
 
-    /// The configuraiton for the icons used to represent network devices.
-    #[serde(default)]
-    icons: config::Icons,
+    /// See [profiles](profiles).
+    #[serde(flatten)]
+    profiles: Profiles<config::ProfileState, config::NetworkManagerProfile>,
 
     /// Any device with a type in this list will not be shown. The type is a string matching
     /// [`DeviceType`] variants (e.g. `"Wifi"`, `"Ethernet", etc.).
@@ -75,12 +76,30 @@ pub struct NetworkManagerModule {
     pub common: Option<CommonConfig>,
 }
 impl NetworkManagerModule {
-    async fn update_icon(
+    fn get_tooltip(&self, device: &crate::clients::networkmanager::state::Device) -> String {
+        let mut tooltip = device.interface.clone();
+        if let Some(ip) = &device.ip4_config {
+            for x in &ip.address_data {
+                tooltip.push('\n');
+                tooltip.push_str(&x.address);
+                tooltip.push('/');
+                tooltip.push_str(&x.prefix.to_string());
+            }
+        }
+        if let DeviceTypeData::Wireless(wireless) = &device.device_type_data
+            && let Some(connection) = &wireless.active_access_point
+        {
+            tooltip.push('\n');
+            tooltip.push_str(&String::from_utf8_lossy(&connection.ssid));
+        };
+
+        tooltip
+    }
+
+    fn get_profile_state(
         &self,
-        image_provider: &crate::image::Provider,
         device: &crate::clients::networkmanager::state::Device,
-        icon: &Picture,
-    ) {
+    ) -> Option<config::ProfileState> {
         fn whitelisted<T: PartialEq>(list: &[T], x: &T) -> bool {
             list.is_empty() || list.contains(x)
         }
@@ -92,79 +111,57 @@ impl NetworkManagerModule {
 
         if !type_whitelisted || !interface_whitelisted || type_blacklisted || interface_blacklisted
         {
-            icon.set_visible(false);
-            return;
-        }
-
-        let mut tooltip = device.interface.clone();
-        if let Some(ip) = &device.ip4_config {
-            for x in &ip.address_data {
-                tooltip.push('\n');
-                tooltip.push_str(&x.address);
-                tooltip.push('/');
-                tooltip.push_str(&x.prefix.to_string());
-            }
+            return None;
         }
 
         let state = State::from(device.state);
 
-        let icon_name = match device.device_type {
+        let state = match device.device_type {
             DeviceType::Wifi => match state {
-                State::Acquiring => self.icons.wifi.acquiring.as_str(),
-                State::Disconnected => self.icons.wifi.disconnected.as_str(),
+                State::Acquiring => config::ProfileState::Wifi(config::WifiState::Acquiring),
+                State::Disconnected => config::ProfileState::Wifi(config::WifiState::Disconnected),
                 State::Connected => match &device.device_type_data {
                     DeviceTypeData::Wireless(wireless) => match &wireless.active_access_point {
                         Some(connection) => {
-                            tooltip.push('\n');
-                            tooltip.push_str(&String::from_utf8_lossy(&connection.ssid));
-
-                            if self.icons.wifi.levels.is_empty() {
-                                ""
-                            } else {
-                                let level = strength_to_level(
-                                    connection.strength,
-                                    self.icons.wifi.levels.len(),
-                                );
-                                self.icons.wifi.levels[level].as_str()
-                            }
+                            config::ProfileState::Wifi(config::WifiState::Connected {
+                                signal_strength: connection.strength,
+                            })
                         }
-                        None => self.icons.wifi.disconnected.as_str(),
+                        None => config::ProfileState::Wifi(config::WifiState::Disconnected),
                     },
-                    _ => self.icons.unknown.as_str(),
+                    _ => config::ProfileState::Unknown,
                 },
             },
             DeviceType::Modem | DeviceType::Wimax => match state {
-                State::Acquiring => self.icons.cellular.acquiring.as_ref(),
-                State::Disconnected => self.icons.cellular.disconnected.as_ref(),
-                State::Connected => self.icons.cellular.connected.as_ref(),
+                State::Acquiring => {
+                    config::ProfileState::Cellular(config::CellularState::Acquiring)
+                }
+                State::Disconnected => {
+                    config::ProfileState::Cellular(config::CellularState::Disconnected)
+                }
+                State::Connected => {
+                    config::ProfileState::Cellular(config::CellularState::Connected)
+                }
             },
             DeviceType::Wireguard
             | DeviceType::Tun
             | DeviceType::IpTunnel
             | DeviceType::Vxlan
             | DeviceType::Macsec => match state {
-                State::Acquiring => self.icons.vpn.acquiring.as_ref(),
-                State::Disconnected => self.icons.vpn.disconnected.as_ref(),
-                State::Connected => self.icons.vpn.connected.as_ref(),
+                State::Acquiring => config::ProfileState::Vpn(config::VpnState::Acquiring),
+                State::Disconnected => config::ProfileState::Vpn(config::VpnState::Disconnected),
+                State::Connected => config::ProfileState::Vpn(config::VpnState::Connected),
             },
             _ => match state {
-                State::Acquiring => self.icons.wired.acquiring.as_ref(),
-                State::Disconnected => self.icons.wired.disconnected.as_ref(),
-                State::Connected => self.icons.wired.connected.as_ref(),
+                State::Acquiring => config::ProfileState::Wired(config::WiredState::Acquiring),
+                State::Disconnected => {
+                    config::ProfileState::Wired(config::WiredState::Disconnected)
+                }
+                State::Connected => config::ProfileState::Wired(config::WiredState::Connected),
             },
         };
 
-        if icon_name.is_empty() {
-            icon.set_visible(false);
-            return;
-        }
-
-        image_provider
-            .load_into_picture_silent(icon_name, self.icon_size, false, icon)
-            .await;
-        icon.set_tooltip_text(Some(&tooltip));
-
-        icon.set_visible(true);
+        return Some(state);
     }
 }
 
@@ -173,7 +170,7 @@ impl Default for NetworkManagerModule {
         Self {
             icon_size: default::IconSize::Small as i32,
             common: Some(CommonConfig::default()),
-            icons: config::Icons::default(),
+            profiles: Profiles::default(),
             types_blacklist: Vec::new(),
             types_whitelist: Vec::new(),
             interface_blacklist: Vec::new(),
@@ -187,6 +184,10 @@ impl Module<GtkBox> for NetworkManagerModule {
     type ReceiveMessage = ();
 
     module_impl!("network_manager");
+
+    fn on_create(&mut self) {
+        self.profiles.setup_defaults(config::default_profiles());
+    }
 
     fn spawn_controller(
         &self,
@@ -217,10 +218,35 @@ impl Module<GtkBox> for NetworkManagerModule {
         let image_provider = context.ironbar.image_provider();
 
         let container_clone = container.clone();
+        let icon_size = self.icon_size;
         context.subscribe().recv_glib_async((), move |(), update| {
             let container = container.clone();
             let image_provider = image_provider.clone();
             let this = self.clone();
+
+            fn is_static<T: 'static>(x: T) -> T {
+                x
+            }
+
+            let manager = self.profiles.attach(&container, move |_, event| {
+                let (widget, image_provider): (gtk::Widget, Provider) = event.data;
+                let icon_name = event.profile.icon.clone();
+                tracing::debug!("profiles update: icon_name={icon_name}");
+                if icon_name.is_empty() {
+                    widget.set_visible(false);
+                    return;
+                }
+
+                crate::await_sync(image_provider.load_into_picture_silent(
+                    &icon_name,
+                    icon_size,
+                    false,
+                    widget.downcast_ref::<Picture>().expect("should be Picture"),
+                ));
+                widget.set_visible(true);
+            });
+            let mut manager = is_static(manager);
+
             async move {
                 match update {
                     NetworkManagerUpdate::Devices(devices) => {
@@ -244,12 +270,17 @@ impl Module<GtkBox> for NetworkManagerModule {
 
                         // update each icon to match the device state
                         for (device, widget) in devices.iter().zip(container.children()) {
-                            this.update_icon(
-                                &image_provider,
-                                device,
-                                widget.downcast_ref::<Picture>().expect("should be Picture"),
-                            )
-                            .await;
+                            match this.get_profile_state(device) {
+                                Some(state) => {
+                                    let tooltip = this.get_tooltip(device);
+                                    widget.set_tooltip_text(Some(&tooltip));
+                                    manager.update(state, (widget, image_provider.clone()));
+                                }
+                                _ => {
+                                    widget.set_visible(false);
+                                    continue;
+                                }
+                            };
                         }
                     }
                     NetworkManagerUpdate::Device(idx, device) => {
@@ -259,12 +290,16 @@ impl Module<GtkBox> for NetworkManagerModule {
                         );
                         tracing::trace!("NetworkManager device {idx} updated: {device:#?}");
                         if let Some(widget) = container.children().nth(idx) {
-                            this.update_icon(
-                                &image_provider,
-                                &device,
-                                widget.downcast_ref::<Picture>().expect("should be Picture"),
-                            )
-                            .await;
+                            match this.get_profile_state(&device) {
+                                Some(state) => {
+                                    let tooltip = this.get_tooltip(&device);
+                                    widget.set_tooltip_text(Some(&tooltip));
+                                    manager.update(state, (widget, image_provider.clone()));
+                                }
+                                _ => {
+                                    widget.set_visible(false);
+                                }
+                            };
                         } else {
                             tracing::warn!("No widget found for device index {idx}");
                         }
@@ -275,67 +310,4 @@ impl Module<GtkBox> for NetworkManagerModule {
 
         Ok(ModuleParts::new(container_clone, None))
     }
-}
-
-/// Convert strength level (from 0-100), to a level (from 0 to `number_of_levels-1`).
-fn strength_to_level(strength: u8, levels: usize) -> usize {
-    // Strength levels based for the one show by [`nmcli dev wifi list`](https://github.com/NetworkManager/NetworkManager/blob/83a259597000a88217f3ccbdfe71c8114242e7a6/src/libnmc-base/nm-client-utils.c#L700-L727):
-    // match strength {
-    //     0..=4 => 0,
-    //     5..=29 => 1,
-    //     30..=54 => 2,
-    //     55..=79 => 3,
-    //     80.. => 4,
-    // }
-
-    // to make it work with a custom number of levels, we approach the logic above with a
-    // piece-wise linear interpolation:
-    // - 0 to 5 -> 0 to 0.2
-    // - 5 to 80 -> 0.2 to 0.8
-    // - 80 to 100 -> 0.8 to 1.0
-
-    if levels <= 1 {
-        return 0;
-    }
-
-    let strength = strength.clamp(0, 100);
-
-    let pos = if strength < 5 {
-        // Linear interpolation between 0..5
-        (strength as f32 / 5.0) * 0.2
-    } else if strength < 80 {
-        // Linear interpolation between 5..80
-        0.2 + ((strength - 5) as f32 / 75.0) * 0.6
-    } else {
-        // Linear interpolation between 80..100
-        0.8 + ((strength as f32 - 80.0) / 20.0) * 0.2
-    };
-
-    // Scale to discrete levels
-    let level = (pos * levels as f32).floor() as usize;
-    level.min(levels - 1)
-}
-
-// Just to make sure the implementation still follow the reference logic
-#[cfg(test)]
-#[test]
-fn test_strength_to_level() {
-    for levels in 0..=10 {
-        println!("Levels: {}", levels);
-        for strength in (0..=100).step_by(5) {
-            let level = strength_to_level(strength, levels);
-            println!("  Strength: {:3} => Level: {}", strength, level);
-        }
-    }
-    assert_eq!(strength_to_level(0, 5), 0);
-    assert_eq!(strength_to_level(4, 5), 0);
-    assert_eq!(strength_to_level(5, 5), 1);
-    assert_eq!(strength_to_level(6, 5), 1);
-    assert_eq!(strength_to_level(29, 5), 1);
-    assert_eq!(strength_to_level(30, 5), 2);
-    assert_eq!(strength_to_level(54, 5), 2);
-    assert_eq!(strength_to_level(55, 5), 3);
-    assert_eq!(strength_to_level(79, 5), 3);
-    assert_eq!(strength_to_level(80, 5), 4);
-    assert_eq!(strength_to_level(100, 5), 4);
 }
