@@ -7,7 +7,7 @@ use zbus::proxy;
 )]
 pub trait Login1Session {
     /// Sets the current brightness level.
-    fn set_brightness(&self, subsystem: String, name: String, value: u32) -> zbus::Result<()>;
+    fn set_brightness(&self, subsystem: &str, name: &str, value: u32) -> zbus::Result<()>;
 }
 
 #[proxy(

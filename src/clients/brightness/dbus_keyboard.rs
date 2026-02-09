@@ -21,5 +21,5 @@ pub trait KbdBacklight {
 
     /// BrightnessChangedWithSource signal
     #[zbus(signal)]
-    fn brightness_changed_with_source(&self, value: i32, source: String) -> zbus::Result<()>;
+    fn brightness_changed_with_source(&self, value: i32, source: &str) -> zbus::Result<()>;
 }

@@ -174,9 +174,9 @@ impl BrightnessModule {
     async fn get_brightness(
         client: &brightness::Client,
         datasource: &BrightnessDataSource,
-        default_resource_name: &Option<String>,
+        default_resource_name: Option<&str>,
     ) -> Result<BrightnessData> {
-        let (current, max): (i32, i32) = match &datasource {
+        let (current, max): (i32, i32) = match datasource {
             BrightnessDataSource::Keyboard => {
                 let brightness_kbd = client.keyboard().get_brightness().await?;
                 let max_brightness_kbd = client.keyboard().get_max_brightness().await?;
@@ -184,11 +184,11 @@ impl BrightnessModule {
             }
             BrightnessDataSource::Systemd { subsystem, name } => {
                 let name = name
-                    .clone()
-                    .or_else(|| default_resource_name.clone())
+                    .as_deref()
+                    .or(default_resource_name)
                     .ok_or(SystemdError::NoResourceName)?;
-                let brightness_screen = brightness(subsystem, &name)?;
-                let max_brightness_screen = max_brightness(subsystem, &name)?;
+                let brightness_screen = brightness(subsystem, name)?;
+                let max_brightness_screen = max_brightness(subsystem, name)?;
                 (brightness_screen, max_brightness_screen)
             }
         };
@@ -205,21 +205,21 @@ impl BrightnessModule {
     async fn set_brightness(
         client: &brightness::Client,
         datasource: &BrightnessDataSource,
-        default_resource_name: &Option<String>,
+        default_resource_name: Option<&str>,
         brightness: i32,
     ) -> Result<()> {
-        match &datasource {
+        match datasource {
             BrightnessDataSource::Keyboard => {
                 client.keyboard().set_brightness(brightness).await?;
             }
             BrightnessDataSource::Systemd { subsystem, name } => {
                 let name = name
-                    .clone()
-                    .or_else(|| default_resource_name.clone())
+                    .as_deref()
+                    .or(default_resource_name)
                     .ok_or(SystemdError::NoResourceName)?;
                 client
                     .screen_writer()
-                    .set_brightness(subsystem.to_string(), name, brightness as u32)
+                    .set_brightness(subsystem, name, brightness as u32)
                     .await?;
             }
         };
@@ -278,7 +278,13 @@ impl Module<Button> for BrightnessModule {
                     mut percent,
                     current,
                     max,
-                } = match Self::get_brightness(&client, &datasource, &default_resource_name).await {
+                } = match Self::get_brightness(
+                    &client,
+                    &datasource,
+                    default_resource_name.as_deref(),
+                )
+                .await
+                {
                     Ok(d) => d,
                     Err(err) => match err.downcast::<SystemdError>() {
                         Ok(err) => {
@@ -310,7 +316,7 @@ impl Module<Button> for BrightnessModule {
                         if let Err(err) = Self::set_brightness(
                             &client,
                             &datasource,
-                            &default_resource_name,
+                            default_resource_name.as_deref(),
                             new_brightness,
                         )
                         .await
