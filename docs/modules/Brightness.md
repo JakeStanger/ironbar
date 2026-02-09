@@ -135,8 +135,7 @@ end:
 
 ### Icons
 
-The icon is configured per profile using the `icon_label` option. The icon is rendered separately from the `format` label,
-so you can include it in `format` if you prefer, or leave `format` as text-only.
+The icon is configured per profile using the `icon_label` option.
 
 Brightness ships with default profiles that set icons for percentage ranges:
 
@@ -164,9 +163,10 @@ The following tokens can be used in the `format` config option:
 
 ## Styling
 
-| Selector              | Description                           |
-|-----------------------|---------------------------------------|
-| `.brightness`         | Brightness widget button              |
-| `.brightness .label`  | Notifications widget button           |
+| Selector              | Description                                |
+|-----------------------|--------------------------------------------|
+| `.brightness`         | Brightness widget button                   |
+| `.brightness .label`  | text, which is controlled via `format`     |
+| `.brightness .icon`   | icon, which is controlled via `icon_label` |
 
 For more information on styling, please see the [styling guide](styling-guide).

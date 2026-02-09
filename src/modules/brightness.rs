@@ -284,7 +284,7 @@ impl Module<Button> for BrightnessModule {
                         Ok(err) => {
                             tracing::error!(
                                 ?err,
-                                "Could not retrieve brightness levels. Error is unrecoverable, fix the config! Stopping brightness module"
+                                "Could not retrieve brightness levels. Error is unrecoverable."
                             );
                             break;
                         }

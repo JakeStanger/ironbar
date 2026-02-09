@@ -66,7 +66,7 @@ pub fn default_resource_name(subsystem: &str) -> Option<String> {
 
     match subsystem {
         "backlight" => {
-            // harded list of common names
+            // list of common names
             const TO_CHECK: [&str; 10] = [
                 "amdgpu_bl0",
                 "amdgpu_bl1",
