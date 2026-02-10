@@ -31,6 +31,7 @@
 
 - [Battery](battery)
 - [Bindmode](bindmode)
+- [Brightness](brightness)
 - [Bluetooth](bluetooth)
 - [Clipboard](clipboard)
 - [Clock](clock)
