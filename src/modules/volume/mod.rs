@@ -309,8 +309,13 @@ impl Module<Button> for VolumeModule {
             .build();
 
         let container = gtk::Box::new(Orientation::Horizontal, 5);
-        container.append(&sink_label);
-        container.append(&source_label);
+        if self.show_sinks {
+            container.append(&sink_label);
+        }
+
+        if self.show_sources {
+            container.append(&source_label);
+        }
 
         let button = Button::new();
         button.set_child(Some(&container));
@@ -414,8 +419,13 @@ impl Module<Button> for VolumeModule {
 
         let device_container = gtk::Box::new(Orientation::Vertical, 5);
         device_container.add_css_class("device-box");
-        device_container.append(&sink_container);
-        device_container.append(&source_container);
+
+        if self.show_sinks {
+            device_container.append(&sink_container);
+        }
+        if self.show_sources {
+            device_container.append(&source_container);
+        }
 
         let sink_input_container = gtk::Box::new(Orientation::Vertical, 5);
         sink_input_container.add_css_class("sink-input-box");
@@ -425,8 +435,14 @@ impl Module<Button> for VolumeModule {
 
         let app_container = gtk::Box::new(Orientation::Vertical, 5);
         app_container.add_css_class("apps-box");
-        app_container.append(&input_container);
-        app_container.append(&output_container);
+
+        if self.show_sinks {
+            app_container.append(&sink_input_container);
+        }
+
+        if self.show_sources {
+            app_container.append(&source_output_container);
+        }
 
         container.append(&device_container);
         container.append(&app_container);

@@ -66,6 +66,12 @@ pub struct VolumeModule {
     /// **Default**: vertical
     pub(super) source_slider_orientation: ModuleOrientation,
 
+    /// Show sinks (speakers) on the bar and in the popup.
+    pub(super) show_sinks: bool,
+
+    /// Show sources (microphones) on the bar and in the popup.
+    pub(super) show_sources: bool,
+
     /// Show pulseaudio sink monitors for mic outputs
     ///
     /// **Default**: false
@@ -101,10 +107,10 @@ impl Default for VolumeModule {
             mute_format: "{icon} {percentage}%".to_string(),
             max_volume: 100.0,
             popup_orientation: ModuleOrientation::Horizontal,
-            sink_slider_orientation: ModuleOrientation::Vertical,
-            source_slider_orientation: ModuleOrientation::Vertical,
             sink_slider_orientation: ModuleOrientation::Horizontal,
             source_slider_orientation: ModuleOrientation::Horizontal,
+            show_sinks: true,
+            show_sources: true,
             show_monitors: false,
             profiles: Profiles::default(),
             truncate: None,
