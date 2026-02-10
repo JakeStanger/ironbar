@@ -22,6 +22,8 @@ pub mod battery;
 pub mod bindmode;
 #[cfg(feature = "bluetooth")]
 pub mod bluetooth;
+#[cfg(feature = "brightness")]
+pub mod brightness;
 #[cfg(feature = "cairo")]
 pub mod cairo;
 #[cfg(feature = "clipboard")]

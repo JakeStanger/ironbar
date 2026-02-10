@@ -12,6 +12,8 @@ use crate::modules::battery::BatteryModule;
 use crate::modules::bindmode::Bindmode;
 #[cfg(feature = "bluetooth")]
 use crate::modules::bluetooth::BluetoothModule;
+#[cfg(feature = "brightness")]
+use crate::modules::brightness::BrightnessModule;
 #[cfg(feature = "cairo")]
 use crate::modules::cairo::CairoModule;
 #[cfg(feature = "clipboard")]
@@ -118,6 +120,8 @@ pub enum ModuleConfig {
     Bindmode(Box<Bindmode>),
     #[cfg(feature = "bluetooth")]
     Bluetooth(Box<BluetoothModule>),
+    #[cfg(feature = "brightness")]
+    Brightness(Box<BrightnessModule>),
     #[cfg(feature = "cairo")]
     Cairo(Box<CairoModule>),
     #[cfg(feature = "clipboard")]
@@ -176,6 +180,8 @@ impl ModuleConfig {
             Self::Bindmode(module) => create!(module),
             #[cfg(feature = "bluetooth")]
             Self::Bluetooth(module) => create!(module),
+            #[cfg(feature = "brightness")]
+            Self::Brightness(module) => create!(module),
             #[cfg(feature = "cairo")]
             Self::Cairo(module) => create!(module),
             #[cfg(feature = "clipboard")]
@@ -221,6 +227,8 @@ impl ModuleConfig {
             ModuleConfig::Battery(_) => "Battery",
             #[cfg(feature = "bindmode")]
             ModuleConfig::Bindmode(_) => "Bindmode",
+            #[cfg(feature = "brightness")]
+            ModuleConfig::Brightness(_) => "Brightness",
             #[cfg(feature = "cairo")]
             ModuleConfig::Cairo(_) => "Cairo",
             #[cfg(feature = "clipboard")]
