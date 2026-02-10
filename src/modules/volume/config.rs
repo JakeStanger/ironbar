@@ -103,6 +103,8 @@ impl Default for VolumeModule {
             popup_orientation: ModuleOrientation::Horizontal,
             sink_slider_orientation: ModuleOrientation::Vertical,
             source_slider_orientation: ModuleOrientation::Vertical,
+            sink_slider_orientation: ModuleOrientation::Horizontal,
+            source_slider_orientation: ModuleOrientation::Horizontal,
             show_monitors: false,
             profiles: Profiles::default(),
             truncate: None,
