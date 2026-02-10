@@ -253,13 +253,17 @@ impl Module<GtkBox> for NetworkManagerModule {
                     return;
                 }
 
-                crate::await_sync(image_provider.load_into_picture_silent(
-                    &icon_name,
-                    icon_size,
-                    false,
-                    widget.downcast_ref::<Picture>().expect("should be Picture"),
-                ));
-                widget.set_visible(true);
+                glib::spawn_future_local(async move {
+                    image_provider
+                        .load_into_picture_silent(
+                            &icon_name,
+                            icon_size,
+                            false,
+                            widget.downcast_ref::<Picture>().expect("should be Picture"),
+                        )
+                        .await;
+                    widget.set_visible(true)
+                });
             });
             let mut manager = is_static(manager);
 
