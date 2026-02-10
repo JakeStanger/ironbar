@@ -177,7 +177,7 @@ impl NetworkManagerModule {
             },
         };
 
-        return Some(state);
+        Some(state)
     }
 }
 
