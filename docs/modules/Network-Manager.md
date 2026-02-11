@@ -6,26 +6,16 @@ disconnected).
 
 > Type: `network_manager`
 
-| Name                          | Type       | Default                                    | Description                                                                         |
-| ----------------------------- | ---------- | ------------------------------------------ | ----------------------------------------------------------------------------------- |
-| `icon_size`                   | `integer`  | `24`                                       | Size to render icon at.                                                             |
-| `types_blacklist`             | `string[]` | `[]`                                       | Any device with a type in this list will not be shown.                              |
-| `types_whitelist`             | `string[]` | `[]`                                       | If not empty, only devices with a type in this list will be shown.                  |
-| `interface_blacklist`         | `string[]` | `[]`                                       | Any device whose interface name is in this list will not be shown.                  |
-| `interface_whitelist`         | `string[]` | `[]`                                       | If not empty, only devices whose interface name is in this list will be shown.      |
-| `icons.wired.connected`       | `string`   | `icon:network-wired-symbolic`              | Icon for connected wired device.                                                    |
-| `icons.wired.acquiring`       | `string`   | `icon:network-wired-acquiring-symbolic`    | Icon for acquiring wired device.                                                    |
-| `icons.wired.disconnected`    | `string`   | `""`                                       | Icon for disconnected wired device.                                                 |
-| `icons.wifi.levels`           | `string[]` | See below                                  | Icon for each strengh level of a connected wifi connection, from lowest to highest. |
-| `icons.wifi.acquiring`        | `string`   | `icon:network-wireless-acquiring-symbolic` | Icon for acquiring wifi device.                                                     |
-| `icons.wifi.disconnected`     | `string`   | `""`                                       | Icon for disconnected wifi connection.                                              |
-| `icons.cellular.connected`    | `string`   | `icon:network-cellular-connected-symbolic` | Icon for connected cellular device.                                                 |
-| `icons.cellular.acquiring`    | `string`   | `icon:network-cellular-acquiring-symbolic` | Icon for acquiring cellular device.                                                 |
-| `icons.cellular.disconnected` | `string`   | `""`                                       | Icon for disconnected cellular device.                                              |
-| `icons.vpn.connected`         | `string`   | `icon:network-vpn-symbolic`                | Icon for connected VPN device.                                                      |
-| `icons.vpn.acquiring`         | `string`   | `icon:network-vpn-acquiring-symbolic`      | Icon for acquiring VPN device.                                                      |
-| `icons.vpn.disconnected`      | `string`   | `""`                                       | Icon for disconnected VPN device.                                                   |
-| `unkown`                      | `string`   | `icon:dialog-question-symbolic`            | Icon for device in unkown state.                                                    |
+| Name                  | Type       | Default                       | Profile? | Description                                                                    |
+| --------------------- | ---------- | ----------------------------- | -------- | ------------------------------------------------------------------------------ |
+| `icon_size`           | `integer`  | `24`                          | No       | Size to render icon at.                                                        |
+| `types_blacklist`     | `string[]` | `[]`                          | No       | Any device with a type in this list will not be shown.                         |
+| `types_whitelist`     | `string[]` | `[]`                          | No       | If not empty, only devices with a type in this list will be shown.             |
+| `interface_blacklist` | `string[]` | `[]`                          | No       | Any device whose interface name is in this list will not be shown.             |
+| `interface_whitelist` | `string[]` | `[]`                          | No       | If not empty, only devices whose interface name is in this list will be shown. |
+| `icon`                | `string`   | `icon:network-wired-symbolic` | Yes      | Icon for connected wired device.                                               |
+
+Information on the profiles system can be found [here](profiles).
 
 **Device Types:** The device types used in `types_whitelist` and
 `types_blacklists` are the same as those used by NetworkManager. You can find
@@ -36,14 +26,6 @@ terminal. The possible device types are: `unknown`, `ethernet`, `wifi`, `bt`,
 `dummy`, `ppp`, `ovs_interface`, `ovs_port`, `ovs_bridge`, `wpan`, `six_lowpan`,
 `wireguard`, `wifi_p2p`, `vrf`, `loopback`, `hsr` and `ipvlan`.
 
-**Default `icons.wifi.levels`:** Contains the 5 GTK symbolic icons for wireless signal strength:
-
-- `"icon:network-wireless-signal-none-symbolic"`
-- `"icon:network-wireless-signal-weak-symbolic"`
-- `"icon:network-wireless-signal-ok-symbolic"`
-- `"icon:network-wireless-signal-good-symbolic"`
-- `"icon:network-wireless-signal-excellent-symbolic"`
-
 <details>
 <summary>JSON</summary>
 
@@ -53,7 +35,13 @@ terminal. The possible device types are: `unknown`, `ethernet`, `wifi`, `bt`,
     {
       "type": "network_manager",
       "icon_size": 24,
-      "types_blacklist": ["loopback", "bridge"]
+      "types_blacklist": ["loopback", "bridge"],
+      "profiles": {
+        "wired_disconnected": {
+          "when": { "type": "Wired", "state": "Disconnected" },
+          "icon": "icon:network-wired-disconnected-symbolic"
+        }
+      }
     }
   ]
 }
@@ -69,6 +57,10 @@ terminal. The possible device types are: `unknown`, `ethernet`, `wifi`, `bt`,
 type = "network_manager"
 icon_size = 24
 types_blacklist = ["loopback", "bridge"]
+
+[end.profiles.wired_disconnected]
+when = { type = "Wired", state = "Disconnected" }
+icon = "icon:network-wired-disconnected-symbolic"
 ```
 
 </details>
@@ -83,6 +75,12 @@ end:
     types_blacklist:
       - loopback
       - bridge
+    profiles:
+      wired_disconnected:
+        when:
+          type: "Wired"
+          state: "Disconnected"
+        icon: "icon:network-wired-disconnected-symbolic"
 ```
 
 </details>
@@ -97,12 +95,97 @@ end:
       type = "network_manager"
       icon_size = 24
       types_blacklist = [ "loopback" "bridge" ]
+      profiles = {
+        wired_disconnected = {
+          when = { type = "Wired" state = "Disconnected" }
+          icon = "icon:network-wired-disconnected-symbolic"
+        }
+      }
     }
   ]
 }
 ```
 
 </details>
+
+<details>
+<summary> <b>Default profiles:</b> </summary>
+
+```
+profiles = {
+wired_disconnected = {
+  when = { type = "Wired" state = "Disconnected" }
+  icon = ""
+}
+wired_acquiring = {
+  when = { type = "Wired" state = "Acquiring" }
+  icon = "icon:network-wired-acquiring-symbolic"
+}
+wired_connected = {
+  when = { type = "Wired" state = "Connected" }
+  icon = "icon:network-wired-symbolic"
+}
+wifi_disconnected = {
+  when = { type = "Wifi" state = "Disconnected" }
+  icon = ""
+}
+wifi_acquiring = {
+  when = { type = "Wifi" state = "Acquiring" }
+  icon = "icon:network-wireless-acquiring-symbolic"
+}
+wifi_connected_none = {
+  when = { type = "Wifi" state = "Connected" signal_strength = 20 }
+  icon = "icon:network-wireless-signal-none-symbolic"
+}
+wifi_connected_weak = {
+  when = { type = "Wifi" state = "Connected" signal_strength = 40 }
+  icon = "icon:network-wireless-signal-weak-symbolic"
+}
+wifi_connected_ok = {
+  when = { type = "Wifi" state = "Connected" signal_strength = 50 }
+  icon = "icon:network-wireless-signal-ok-symbolic"
+}
+wifi_connected_good = {
+  when = { type = "Wifi" state = "Connected" signal_strength = 80 }
+  icon = "icon:network-wireless-signal-good-symbolic"
+}
+wifi_connected_excellent = {
+  when = { type = "Wifi" state = "Connected" signal_strength = 100 }
+  icon = "icon:network-wireless-signal-excellent-symbolic"
+}
+cellular_disconnected = {
+  when = { type = "Cellular" state = "Disconnected" }
+  icon = ""
+}
+cellular_acquiring = {
+  when = { type = "Cellular" state = "Acquiring" }
+  icon = "icon:network-cellular-acquiring-symbolic"
+}
+cellular_connected = {
+  when = { type = "Cellular" state = "Connected" }
+  icon = "icon:network-cellular-connected-symbolic"
+}
+vpn_disconnected = {
+  when = { type = "Vpn" state = "Disconnected" }
+  icon = ""
+}
+vpn_acquiring = {
+  when = { type = "Vpn" state = "Acquiring" }
+  icon = "icon:network-vpn-acquiring-symbolic"
+}
+vpn_connected = {
+  when = { type = "Vpn" state = "Connected" }
+  icon = "icon:network-vpn-symbolic"
+}
+unknown = {
+  when = { type = "Unknown" }
+  icon = "icon:dialog-question-symbolic"
+}
+}
+```
+
+</details>
+
 
 ## Styling
 
