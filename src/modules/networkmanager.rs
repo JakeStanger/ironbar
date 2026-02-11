@@ -1,7 +1,7 @@
+mod config;
+
 use crate::channels::{AsyncSenderExt, BroadcastReceiverExt};
-use crate::clients::networkmanager::state::DeviceTypeData;
-use crate::clients::networkmanager::{Client, DeviceType, NetworkManagerUpdate};
-use crate::config::{CommonConfig, Profiles, default};
+use crate::clients::networkmanager::{Client, NetworkManagerUpdate};
 use crate::gtk_helpers::IronbarGtkExt;
 use crate::image::Provider;
 use crate::modules::{Module, ModuleInfo, ModuleParts, WidgetContext};
@@ -11,160 +11,9 @@ use color_eyre::Result;
 use gtk::prelude::WidgetExt;
 use gtk::prelude::*;
 use gtk::{Box as GtkBox, ContentFit, Picture};
-use serde::Deserialize;
 use tokio::sync::mpsc::Receiver;
 
-use self::config::ConnectionState;
-
-mod config;
-
-#[derive(Debug, Deserialize, Clone)]
-#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
-#[serde(default)]
-pub struct NetworkManagerModule {
-    /// The size of the icon for each network device, in pixels.
-    icon_size: i32,
-
-    /// See [profiles](profiles).
-    #[serde(flatten)]
-    profiles: Profiles<config::ProfileState, config::NetworkManagerProfile>,
-
-    /// Any device with a type in this list will not be shown. The type is a string matching
-    /// [`DeviceType`] variants (e.g. `"Wifi"`, `"Ethernet", etc.).
-    #[serde(default)]
-    types_blacklist: Vec<DeviceType>,
-
-    /// If not empty, only devices with a type in this list will be shown. The type is a string
-    /// matching [`DeviceType`] variants (e.g. `"Wifi"`, `"Ethernet", etc.).
-    #[serde(default)]
-    types_whitelist: Vec<DeviceType>,
-
-    /// Any device whose interface name is in this list will not be shown.
-    #[serde(default)]
-    interface_blacklist: Vec<String>,
-
-    /// If not empty, only devices whose interface name is in this list will be shown.
-    #[serde(default)]
-    interface_whitelist: Vec<String>,
-
-    #[serde(flatten)]
-    pub common: Option<CommonConfig>,
-}
-impl NetworkManagerModule {
-    fn get_tooltip(&self, device: &crate::clients::networkmanager::state::Device) -> String {
-        let mut tooltip = device.interface.clone();
-        if let Some(ip) = &device.ip4_config {
-            for x in &ip.address_data {
-                tooltip.push('\n');
-                tooltip.push_str(&x.address);
-                tooltip.push('/');
-                tooltip.push_str(&x.prefix.to_string());
-            }
-        }
-        if let DeviceTypeData::Wireless(wireless) = &device.device_type_data
-            && let Some(connection) = &wireless.active_access_point
-        {
-            tooltip.push('\n');
-            tooltip.push_str(&String::from_utf8_lossy(&connection.ssid));
-        };
-
-        tooltip
-    }
-
-    fn get_profile_state(
-        &self,
-        device: &crate::clients::networkmanager::state::Device,
-    ) -> Option<config::ProfileState> {
-        fn whitelisted<T: PartialEq>(list: &[T], x: &T) -> bool {
-            list.is_empty() || list.contains(x)
-        }
-
-        let type_whitelisted = whitelisted(&self.types_whitelist, &device.device_type);
-        let interface_whitelisted = whitelisted(&self.interface_whitelist, &device.interface);
-        let type_blacklisted = self.types_blacklist.contains(&device.device_type);
-        let interface_blacklisted = self.interface_blacklist.contains(&device.interface);
-
-        if !type_whitelisted || !interface_whitelisted || type_blacklisted || interface_blacklisted
-        {
-            return None;
-        }
-
-        let state = ConnectionState::from(device.state);
-
-        let state = match device.device_type {
-            DeviceType::Wifi => match state {
-                ConnectionState::Acquiring => {
-                    config::ProfileState::Wifi(config::WifiConnectionState::Acquiring)
-                }
-                ConnectionState::Disconnected => {
-                    config::ProfileState::Wifi(config::WifiConnectionState::Disconnected)
-                }
-                ConnectionState::Connected => match &device.device_type_data {
-                    DeviceTypeData::Wireless(wireless) => match &wireless.active_access_point {
-                        Some(connection) => {
-                            config::ProfileState::Wifi(config::WifiConnectionState::Connected {
-                                signal_strength: connection.strength,
-                            })
-                        }
-                        None => {
-                            config::ProfileState::Wifi(config::WifiConnectionState::Disconnected)
-                        }
-                    },
-                    _ => config::ProfileState::Unknown,
-                },
-            },
-            DeviceType::Modem | DeviceType::Wimax => match state {
-                ConnectionState::Acquiring => {
-                    config::ProfileState::Cellular(ConnectionState::Acquiring)
-                }
-                ConnectionState::Disconnected => {
-                    config::ProfileState::Cellular(ConnectionState::Disconnected)
-                }
-                ConnectionState::Connected => {
-                    config::ProfileState::Cellular(ConnectionState::Connected)
-                }
-            },
-            DeviceType::Wireguard
-            | DeviceType::Tun
-            | DeviceType::IpTunnel
-            | DeviceType::Vxlan
-            | DeviceType::Macsec => match state {
-                ConnectionState::Acquiring => config::ProfileState::Vpn(ConnectionState::Acquiring),
-                ConnectionState::Disconnected => {
-                    config::ProfileState::Vpn(ConnectionState::Disconnected)
-                }
-                ConnectionState::Connected => config::ProfileState::Vpn(ConnectionState::Connected),
-            },
-            _ => match state {
-                ConnectionState::Acquiring => {
-                    config::ProfileState::Wired(ConnectionState::Acquiring)
-                }
-                ConnectionState::Disconnected => {
-                    config::ProfileState::Wired(ConnectionState::Disconnected)
-                }
-                ConnectionState::Connected => {
-                    config::ProfileState::Wired(ConnectionState::Connected)
-                }
-            },
-        };
-
-        Some(state)
-    }
-}
-
-impl Default for NetworkManagerModule {
-    fn default() -> Self {
-        Self {
-            icon_size: default::IconSize::Small as i32,
-            common: Some(CommonConfig::default()),
-            profiles: Profiles::default(),
-            types_blacklist: Vec::new(),
-            types_whitelist: Vec::new(),
-            interface_blacklist: Vec::new(),
-            interface_whitelist: Vec::new(),
-        }
-    }
-}
+pub use config::NetworkManagerModule;
 
 impl Module<GtkBox> for NetworkManagerModule {
     type SendMessage = NetworkManagerUpdate;
