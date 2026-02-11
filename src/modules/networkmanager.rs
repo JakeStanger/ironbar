@@ -1,7 +1,8 @@
 mod config;
 
 use crate::channels::{AsyncSenderExt, BroadcastReceiverExt};
-use crate::clients::networkmanager::{Client, NetworkManagerUpdate};
+use crate::clients::networkmanager::state::DeviceTypeData;
+use crate::clients::networkmanager::{Client, DeviceType, NetworkManagerUpdate};
 use crate::gtk_helpers::IronbarGtkExt;
 use crate::image::Provider;
 use crate::modules::{Module, ModuleInfo, ModuleParts, WidgetContext};
@@ -14,6 +15,92 @@ use gtk::{Box as GtkBox, ContentFit, Picture};
 use tokio::sync::mpsc::Receiver;
 
 pub use config::NetworkManagerModule;
+
+use self::config::{ConnectionState, ProfileState, WifiConnectionState};
+
+impl NetworkManagerModule {
+    fn get_tooltip(&self, device: &crate::clients::networkmanager::state::Device) -> String {
+        let mut tooltip = device.interface.clone();
+        if let Some(ip) = &device.ip4_config {
+            for x in &ip.address_data {
+                tooltip.push('\n');
+                tooltip.push_str(&x.address);
+                tooltip.push('/');
+                tooltip.push_str(&x.prefix.to_string());
+            }
+        }
+        if let DeviceTypeData::Wireless(wireless) = &device.device_type_data
+            && let Some(connection) = &wireless.active_access_point
+        {
+            tooltip.push('\n');
+            tooltip.push_str(&String::from_utf8_lossy(&connection.ssid));
+        };
+
+        tooltip
+    }
+
+    fn get_profile_state(
+        &self,
+        device: &crate::clients::networkmanager::state::Device,
+    ) -> Option<ProfileState> {
+        fn whitelisted<T: PartialEq>(list: &[T], x: &T) -> bool {
+            list.is_empty() || list.contains(x)
+        }
+
+        let type_whitelisted = whitelisted(&self.types_whitelist, &device.device_type);
+        let interface_whitelisted = whitelisted(&self.interface_whitelist, &device.interface);
+        let type_blacklisted = self.types_blacklist.contains(&device.device_type);
+        let interface_blacklisted = self.interface_blacklist.contains(&device.interface);
+
+        if !type_whitelisted || !interface_whitelisted || type_blacklisted || interface_blacklisted
+        {
+            return None;
+        }
+
+        let state = ConnectionState::from(device.state);
+
+        let state = match device.device_type {
+            DeviceType::Wifi => match state {
+                ConnectionState::Acquiring => ProfileState::Wifi(WifiConnectionState::Acquiring),
+                ConnectionState::Disconnected => {
+                    ProfileState::Wifi(WifiConnectionState::Disconnected)
+                }
+                ConnectionState::Connected => match &device.device_type_data {
+                    DeviceTypeData::Wireless(wireless) => match &wireless.active_access_point {
+                        Some(connection) => ProfileState::Wifi(WifiConnectionState::Connected {
+                            signal_strength: connection.strength,
+                        }),
+                        None => ProfileState::Wifi(WifiConnectionState::Disconnected),
+                    },
+                    _ => ProfileState::Unknown,
+                },
+            },
+            DeviceType::Modem | DeviceType::Wimax => match state {
+                ConnectionState::Acquiring => ProfileState::Cellular(ConnectionState::Acquiring),
+                ConnectionState::Disconnected => {
+                    ProfileState::Cellular(ConnectionState::Disconnected)
+                }
+                ConnectionState::Connected => ProfileState::Cellular(ConnectionState::Connected),
+            },
+            DeviceType::Wireguard
+            | DeviceType::Tun
+            | DeviceType::IpTunnel
+            | DeviceType::Vxlan
+            | DeviceType::Macsec => match state {
+                ConnectionState::Acquiring => ProfileState::Vpn(ConnectionState::Acquiring),
+                ConnectionState::Disconnected => ProfileState::Vpn(ConnectionState::Disconnected),
+                ConnectionState::Connected => ProfileState::Vpn(ConnectionState::Connected),
+            },
+            _ => match state {
+                ConnectionState::Acquiring => ProfileState::Wired(ConnectionState::Acquiring),
+                ConnectionState::Disconnected => ProfileState::Wired(ConnectionState::Disconnected),
+                ConnectionState::Connected => ProfileState::Wired(ConnectionState::Connected),
+            },
+        };
+
+        Some(state)
+    }
+}
 
 impl Module<GtkBox> for NetworkManagerModule {
     type SendMessage = NetworkManagerUpdate;
