@@ -1,6 +1,6 @@
 use crate::channels::{AsyncSenderExt, BroadcastReceiverExt};
 use crate::clients::networkmanager::state::DeviceTypeData;
-use crate::clients::networkmanager::{Client, DeviceState, DeviceType, NetworkManagerUpdate};
+use crate::clients::networkmanager::{Client, DeviceType, NetworkManagerUpdate};
 use crate::config::{CommonConfig, Profiles, default};
 use crate::gtk_helpers::IronbarGtkExt;
 use crate::image::Provider;
@@ -17,24 +17,6 @@ use tokio::sync::mpsc::Receiver;
 use self::config::ConnectionState;
 
 mod config;
-
-fn device_state_to_connection_state(state: DeviceState) -> ConnectionState {
-    match state {
-        DeviceState::Unknown
-        | DeviceState::Unmanaged
-        | DeviceState::Unavailable
-        | DeviceState::Deactivating
-        | DeviceState::Failed
-        | DeviceState::Disconnected => ConnectionState::Disconnected,
-        DeviceState::Prepare
-        | DeviceState::Config
-        | DeviceState::NeedAuth
-        | DeviceState::IpConfig
-        | DeviceState::IpCheck
-        | DeviceState::Secondaries => ConnectionState::Acquiring,
-        DeviceState::Activated => ConnectionState::Connected,
-    }
-}
 
 #[derive(Debug, Deserialize, Clone)]
 #[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
@@ -107,7 +89,7 @@ impl NetworkManagerModule {
             return None;
         }
 
-        let state = device_state_to_connection_state(device.state);
+        let state = ConnectionState::from(device.state);
 
         let state = match device.device_type {
             DeviceType::Wifi => match state {

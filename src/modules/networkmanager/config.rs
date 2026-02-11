@@ -1,3 +1,4 @@
+use crate::clients::networkmanager::DeviceState;
 use crate::config::{Profiles, State};
 use crate::profiles;
 use serde::Deserialize;
@@ -10,6 +11,26 @@ pub enum ConnectionState {
     Disconnected,
     Acquiring,
     Connected,
+}
+
+impl From<DeviceState> for ConnectionState {
+    fn from(state: DeviceState) -> Self {
+        match state {
+            DeviceState::Unknown
+            | DeviceState::Unmanaged
+            | DeviceState::Unavailable
+            | DeviceState::Deactivating
+            | DeviceState::Failed
+            | DeviceState::Disconnected => ConnectionState::Disconnected,
+            DeviceState::Prepare
+            | DeviceState::Config
+            | DeviceState::NeedAuth
+            | DeviceState::IpConfig
+            | DeviceState::IpCheck
+            | DeviceState::Secondaries => ConnectionState::Acquiring,
+            DeviceState::Activated => ConnectionState::Connected,
+        }
+    }
 }
 
 #[derive(Default, Debug, Deserialize, Clone, Copy, PartialOrd, PartialEq, Eq)]
