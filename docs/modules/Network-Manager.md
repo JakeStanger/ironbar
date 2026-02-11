@@ -38,7 +38,7 @@ terminal. The possible device types are: `unknown`, `ethernet`, `wifi`, `bt`,
       "types_blacklist": ["loopback", "bridge"],
       "profiles": {
         "wired_disconnected": {
-          "when": { "type": "Wired", "state": "Disconnected" },
+          "when": { "type": "wired", "state": "disconnected" },
           "icon": "icon:network-wired-disconnected-symbolic"
         }
       }
@@ -59,7 +59,7 @@ icon_size = 24
 types_blacklist = ["loopback", "bridge"]
 
 [end.profiles.wired_disconnected]
-when = { type = "Wired", state = "Disconnected" }
+when = { type = "wired", state = "disconnected" }
 icon = "icon:network-wired-disconnected-symbolic"
 ```
 
@@ -78,8 +78,8 @@ end:
     profiles:
       wired_disconnected:
         when:
-          type: "Wired"
-          state: "Disconnected"
+          type: "wired"
+          state: "disconnected"
         icon: "icon:network-wired-disconnected-symbolic"
 ```
 
@@ -97,7 +97,7 @@ end:
       types_blacklist = [ "loopback" "bridge" ]
       profiles = {
         wired_disconnected = {
-          when = { type = "Wired" state = "Disconnected" }
+          when = { type = "wired" state = "disconnected" }
           icon = "icon:network-wired-disconnected-symbolic"
         }
       }
@@ -114,71 +114,71 @@ end:
 ```corn
 profiles = {
 wired_disconnected = {
-  when = { type = "Wired" state = "Disconnected" }
+  when = { type = "wired" state = "disconnected" }
   icon = ""
 }
 wired_acquiring = {
-  when = { type = "Wired" state = "Acquiring" }
+  when = { type = "wired" state = "acquiring" }
   icon = "icon:network-wired-acquiring-symbolic"
 }
 wired_connected = {
-  when = { type = "Wired" state = "Connected" }
+  when = { type = "wired" state = "connected" }
   icon = "icon:network-wired-symbolic"
 }
 wifi_disconnected = {
-  when = { type = "Wifi" state = "Disconnected" }
+  when = { type = "wifi" state = "disconnected" }
   icon = ""
 }
 wifi_acquiring = {
-  when = { type = "Wifi" state = "Acquiring" }
+  when = { type = "wifi" state = "acquiring" }
   icon = "icon:network-wireless-acquiring-symbolic"
 }
 wifi_connected_none = {
-  when = { type = "Wifi" state = "Connected" signal_strength = 20 }
+  when = { type = "wifi" state = "connected" signal_strength = 20 }
   icon = "icon:network-wireless-signal-none-symbolic"
 }
 wifi_connected_weak = {
-  when = { type = "Wifi" state = "Connected" signal_strength = 40 }
+  when = { type = "wifi" state = "connected" signal_strength = 40 }
   icon = "icon:network-wireless-signal-weak-symbolic"
 }
 wifi_connected_ok = {
-  when = { type = "Wifi" state = "Connected" signal_strength = 50 }
+  when = { type = "wifi" state = "connected" signal_strength = 50 }
   icon = "icon:network-wireless-signal-ok-symbolic"
 }
 wifi_connected_good = {
-  when = { type = "Wifi" state = "Connected" signal_strength = 80 }
+  when = { type = "wifi" state = "connected" signal_strength = 80 }
   icon = "icon:network-wireless-signal-good-symbolic"
 }
 wifi_connected_excellent = {
-  when = { type = "Wifi" state = "Connected" signal_strength = 100 }
+  when = { type = "wifi" state = "connected" signal_strength = 100 }
   icon = "icon:network-wireless-signal-excellent-symbolic"
 }
 cellular_disconnected = {
-  when = { type = "Cellular" state = "Disconnected" }
+  when = { type = "cellular" state = "disconnected" }
   icon = ""
 }
 cellular_acquiring = {
-  when = { type = "Cellular" state = "Acquiring" }
+  when = { type = "cellular" state = "acquiring" }
   icon = "icon:network-cellular-acquiring-symbolic"
 }
 cellular_connected = {
-  when = { type = "Cellular" state = "Connected" }
+  when = { type = "cellular" state = "connected" }
   icon = "icon:network-cellular-connected-symbolic"
 }
 vpn_disconnected = {
-  when = { type = "Vpn" state = "Disconnected" }
+  when = { type = "vpn" state = "disconnected" }
   icon = ""
 }
 vpn_acquiring = {
-  when = { type = "Vpn" state = "Acquiring" }
+  when = { type = "vpn" state = "acquiring" }
   icon = "icon:network-vpn-acquiring-symbolic"
 }
 vpn_connected = {
-  when = { type = "Vpn" state = "Connected" }
+  when = { type = "vpn" state = "connected" }
   icon = "icon:network-vpn-symbolic"
 }
 unknown = {
-  when = { type = "Unknown" }
+  when = { type = "unknown" }
   icon = "icon:dialog-question-symbolic"
 }
 }
