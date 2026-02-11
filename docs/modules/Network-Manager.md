@@ -111,7 +111,7 @@ end:
 <details>
 <summary> <b>Default profiles:</b> </summary>
 
-```
+```corn
 profiles = {
 wired_disconnected = {
   when = { type = "Wired" state = "Disconnected" }
