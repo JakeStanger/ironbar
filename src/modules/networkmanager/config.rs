@@ -2,7 +2,7 @@ use crate::config::{Profiles, State};
 use crate::profiles;
 use serde::Deserialize;
 
-#[derive(Default, Debug, Deserialize, Clone, PartialOrd, PartialEq, Eq)]
+#[derive(Default, Debug, Deserialize, Clone, Copy, PartialOrd, PartialEq, Eq)]
 #[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
 #[serde(tag = "state", rename_all = "snake_case")]
 pub enum ConnectionState {
@@ -12,7 +12,7 @@ pub enum ConnectionState {
     Connected,
 }
 
-#[derive(Default, Debug, Deserialize, Clone, PartialOrd, PartialEq, Eq)]
+#[derive(Default, Debug, Deserialize, Clone, Copy, PartialOrd, PartialEq, Eq)]
 #[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
 #[serde(tag = "state", rename_all = "snake_case")]
 pub enum WifiConnectionState {
@@ -25,7 +25,7 @@ pub enum WifiConnectionState {
     },
 }
 
-#[derive(Default, Debug, Deserialize, Clone, PartialOrd, PartialEq, Eq)]
+#[derive(Default, Debug, Deserialize, Clone, Copy, PartialOrd, PartialEq, Eq)]
 #[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum ProfileState {
