@@ -9,6 +9,10 @@
           when = { type = "Wired" state = "Disconnected" }
           icon = "icon:network-wired-disconnected-symbolic"
         }
+        wifi_connected_excellent = {
+          when = { type = "Wifi" state = "Connected" signal_strength = 100 }
+          icon = "icon:community-supported-symbolic"
+        }
       }
     }
   ]

@@ -111,62 +111,58 @@ impl NetworkManagerModule {
 
         let state = match device.device_type {
             DeviceType::Wifi => match state {
-                ConnectionState::Acquiring => config::ProfileState::Wifi {
-                    state: config::WifiConnectionState::Acquiring,
-                },
-                ConnectionState::Disconnected => config::ProfileState::Wifi {
-                    state: config::WifiConnectionState::Disconnected,
-                },
+                ConnectionState::Acquiring => {
+                    config::ProfileState::Wifi(config::WifiConnectionState::Acquiring)
+                }
+                ConnectionState::Disconnected => {
+                    config::ProfileState::Wifi(config::WifiConnectionState::Disconnected)
+                }
                 ConnectionState::Connected => match &device.device_type_data {
                     DeviceTypeData::Wireless(wireless) => match &wireless.active_access_point {
-                        Some(connection) => config::ProfileState::Wifi {
-                            state: config::WifiConnectionState::Connected {
+                        Some(connection) => {
+                            config::ProfileState::Wifi(config::WifiConnectionState::Connected {
                                 signal_strength: connection.strength,
-                            },
-                        },
-                        None => config::ProfileState::Wifi {
-                            state: config::WifiConnectionState::Disconnected,
-                        },
+                            })
+                        }
+                        None => {
+                            config::ProfileState::Wifi(config::WifiConnectionState::Disconnected)
+                        }
                     },
                     _ => config::ProfileState::Unknown,
                 },
             },
             DeviceType::Modem | DeviceType::Wimax => match state {
-                ConnectionState::Acquiring => config::ProfileState::Cellular {
-                    state: ConnectionState::Acquiring,
-                },
-                ConnectionState::Disconnected => config::ProfileState::Cellular {
-                    state: ConnectionState::Disconnected,
-                },
-                ConnectionState::Connected => config::ProfileState::Cellular {
-                    state: ConnectionState::Connected,
-                },
+                ConnectionState::Acquiring => {
+                    config::ProfileState::Cellular(ConnectionState::Acquiring)
+                }
+                ConnectionState::Disconnected => {
+                    config::ProfileState::Cellular(ConnectionState::Disconnected)
+                }
+                ConnectionState::Connected => {
+                    config::ProfileState::Cellular(ConnectionState::Connected)
+                }
             },
             DeviceType::Wireguard
             | DeviceType::Tun
             | DeviceType::IpTunnel
             | DeviceType::Vxlan
             | DeviceType::Macsec => match state {
-                ConnectionState::Acquiring => config::ProfileState::Vpn {
-                    state: ConnectionState::Acquiring,
-                },
-                ConnectionState::Disconnected => config::ProfileState::Vpn {
-                    state: ConnectionState::Disconnected,
-                },
-                ConnectionState::Connected => config::ProfileState::Vpn {
-                    state: ConnectionState::Connected,
-                },
+                ConnectionState::Acquiring => config::ProfileState::Vpn(ConnectionState::Acquiring),
+                ConnectionState::Disconnected => {
+                    config::ProfileState::Vpn(ConnectionState::Disconnected)
+                }
+                ConnectionState::Connected => config::ProfileState::Vpn(ConnectionState::Connected),
             },
             _ => match state {
-                ConnectionState::Acquiring => config::ProfileState::Wired {
-                    state: ConnectionState::Acquiring,
-                },
-                ConnectionState::Disconnected => config::ProfileState::Wired {
-                    state: ConnectionState::Disconnected,
-                },
-                ConnectionState::Connected => config::ProfileState::Wired {
-                    state: ConnectionState::Connected,
-                },
+                ConnectionState::Acquiring => {
+                    config::ProfileState::Wired(ConnectionState::Acquiring)
+                }
+                ConnectionState::Disconnected => {
+                    config::ProfileState::Wired(ConnectionState::Disconnected)
+                }
+                ConnectionState::Connected => {
+                    config::ProfileState::Wired(ConnectionState::Connected)
+                }
             },
         };
 
