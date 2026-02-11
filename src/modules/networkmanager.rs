@@ -14,32 +14,25 @@ use gtk::{Box as GtkBox, ContentFit, Picture};
 use serde::Deserialize;
 use tokio::sync::mpsc::Receiver;
 
+use self::config::ConnectionState;
+
 mod config;
 
-/// A simplified version of [`DeviceState`] used for icon selection.
-enum State {
-    Disconnected,
-    Acquiring,
-    Connected,
-}
-
-impl From<DeviceState> for State {
-    fn from(state: DeviceState) -> Self {
-        match state {
-            DeviceState::Unknown
-            | DeviceState::Unmanaged
-            | DeviceState::Unavailable
-            | DeviceState::Deactivating
-            | DeviceState::Failed
-            | DeviceState::Disconnected => State::Disconnected,
-            DeviceState::Prepare
-            | DeviceState::Config
-            | DeviceState::NeedAuth
-            | DeviceState::IpConfig
-            | DeviceState::IpCheck
-            | DeviceState::Secondaries => State::Acquiring,
-            DeviceState::Activated => State::Connected,
-        }
+fn device_state_to_connection_state(state: DeviceState) -> ConnectionState {
+    match state {
+        DeviceState::Unknown
+        | DeviceState::Unmanaged
+        | DeviceState::Unavailable
+        | DeviceState::Deactivating
+        | DeviceState::Failed
+        | DeviceState::Disconnected => ConnectionState::Disconnected,
+        DeviceState::Prepare
+        | DeviceState::Config
+        | DeviceState::NeedAuth
+        | DeviceState::IpConfig
+        | DeviceState::IpCheck
+        | DeviceState::Secondaries => ConnectionState::Acquiring,
+        DeviceState::Activated => ConnectionState::Connected,
     }
 }
 
@@ -114,39 +107,39 @@ impl NetworkManagerModule {
             return None;
         }
 
-        let state = State::from(device.state);
+        let state = device_state_to_connection_state(device.state);
 
         let state = match device.device_type {
             DeviceType::Wifi => match state {
-                State::Acquiring => config::ProfileState::Wifi {
-                    state: config::WifiState::Acquiring,
+                ConnectionState::Acquiring => config::ProfileState::Wifi {
+                    state: config::WifiConnectionState::Acquiring,
                 },
-                State::Disconnected => config::ProfileState::Wifi {
-                    state: config::WifiState::Disconnected,
+                ConnectionState::Disconnected => config::ProfileState::Wifi {
+                    state: config::WifiConnectionState::Disconnected,
                 },
-                State::Connected => match &device.device_type_data {
+                ConnectionState::Connected => match &device.device_type_data {
                     DeviceTypeData::Wireless(wireless) => match &wireless.active_access_point {
                         Some(connection) => config::ProfileState::Wifi {
-                            state: config::WifiState::Connected {
+                            state: config::WifiConnectionState::Connected {
                                 signal_strength: connection.strength,
                             },
                         },
                         None => config::ProfileState::Wifi {
-                            state: config::WifiState::Disconnected,
+                            state: config::WifiConnectionState::Disconnected,
                         },
                     },
                     _ => config::ProfileState::Unknown,
                 },
             },
             DeviceType::Modem | DeviceType::Wimax => match state {
-                State::Acquiring => config::ProfileState::Cellular {
-                    state: config::CellularState::Acquiring,
+                ConnectionState::Acquiring => config::ProfileState::Cellular {
+                    state: ConnectionState::Acquiring,
                 },
-                State::Disconnected => config::ProfileState::Cellular {
-                    state: config::CellularState::Disconnected,
+                ConnectionState::Disconnected => config::ProfileState::Cellular {
+                    state: ConnectionState::Disconnected,
                 },
-                State::Connected => config::ProfileState::Cellular {
-                    state: config::CellularState::Connected,
+                ConnectionState::Connected => config::ProfileState::Cellular {
+                    state: ConnectionState::Connected,
                 },
             },
             DeviceType::Wireguard
@@ -154,25 +147,25 @@ impl NetworkManagerModule {
             | DeviceType::IpTunnel
             | DeviceType::Vxlan
             | DeviceType::Macsec => match state {
-                State::Acquiring => config::ProfileState::Vpn {
-                    state: config::VpnState::Acquiring,
+                ConnectionState::Acquiring => config::ProfileState::Vpn {
+                    state: ConnectionState::Acquiring,
                 },
-                State::Disconnected => config::ProfileState::Vpn {
-                    state: config::VpnState::Disconnected,
+                ConnectionState::Disconnected => config::ProfileState::Vpn {
+                    state: ConnectionState::Disconnected,
                 },
-                State::Connected => config::ProfileState::Vpn {
-                    state: config::VpnState::Connected,
+                ConnectionState::Connected => config::ProfileState::Vpn {
+                    state: ConnectionState::Connected,
                 },
             },
             _ => match state {
-                State::Acquiring => config::ProfileState::Wired {
-                    state: config::WiredState::Acquiring,
+                ConnectionState::Acquiring => config::ProfileState::Wired {
+                    state: ConnectionState::Acquiring,
                 },
-                State::Disconnected => config::ProfileState::Wired {
-                    state: config::WiredState::Disconnected,
+                ConnectionState::Disconnected => config::ProfileState::Wired {
+                    state: ConnectionState::Disconnected,
                 },
-                State::Connected => config::ProfileState::Wired {
-                    state: config::WiredState::Connected,
+                ConnectionState::Connected => config::ProfileState::Wired {
+                    state: ConnectionState::Connected,
                 },
             },
         };
