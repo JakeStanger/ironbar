@@ -13,6 +13,10 @@
           when = { type = "wifi" state = "connected" signal_strength = 100 }
           icon = "icon:community-supported-symbolic"
         }
+        wifi_connected = {
+          when = { type = "wifi" state = "connected" }
+          icon = "icon:community-supported-symbolic"
+        }
       }
     }
   ]

@@ -21,8 +21,14 @@ pub enum WifiConnectionState {
     Acquiring,
     Connected {
         /// The signal strength of the wifi connection, from 0 to 100.
+        #[serde(default = "default_signal_strength")]
         signal_strength: u8,
     },
+}
+
+fn default_signal_strength() -> u8 {
+    // 255 so it matches any signal strength.
+    255
 }
 
 #[derive(Default, Debug, Deserialize, Clone, Copy, PartialOrd, PartialEq, Eq)]
