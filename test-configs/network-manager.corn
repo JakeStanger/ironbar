@@ -6,11 +6,11 @@
       types_blacklist = [ "loopback" "bridge" ]
       profiles = {
         wired_disconnected = {
-          when = { type = "Wired" state = "Disconnected" }
+          when = { type = "wired" state = "disconnected" }
           icon = "icon:network-wired-disconnected-symbolic"
         }
         wifi_connected_excellent = {
-          when = { type = "Wifi" state = "Connected" signal_strength = 100 }
+          when = { type = "wifi" state = "connected" signal_strength = 100 }
           icon = "icon:community-supported-symbolic"
         }
       }
