@@ -1,0 +1,18 @@
+rustflags= [
+    "-Clinker-plugin-lto",
+    "-Clink-arg=-Wl,-z,pack-relative-relocs",
+    "-Clink-arg=-Wl,-O1",
+    "-Clink-arg=-Wl,--gc-sections",
+    "-Clink-arg=-Wl,--as-needed",
+    "-Clink-arg=-Wl,-z,now",
+    "-Clink-arg=-Wl,-z,relro",
+]
+
+[profile.release]
+strip = true
+codegen-units = 16
+
+[profile.tagged-release]
+inherits = "release"
+codegen-units = 1
+lto = true
