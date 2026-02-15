@@ -19,6 +19,11 @@ Displays system power information such as the battery percentage, and estimated 
 | `show_icon`  | `boolean` | `true`          | No       | Whether to show the icon.                         |
 | `show_label` | `boolean` | `true`          | No       | Whether to show the label.                        |
 
+This module uses **a compound threshold** with 1-2 values for profiles:
+
+- `percent` - `0-100`
+- `charging` - `true`/`false` (optional)
+
 Information on the profiles system can be found [here](profiles).
 
 <details>
@@ -30,9 +35,12 @@ Information on the profiles system can be found [here](profiles).
     {
       "type": "battery",
       "format": "{percentage}%",
-      "thresholds": {
+      "profiles": {
         "warning": 20,
-        "critical": 5
+        "critical": {
+          "when": { "percent":  5, "charging": false },
+          "format": "[LOW] {percentage}%"
+        }
       }
     }
   ]
@@ -50,9 +58,12 @@ Information on the profiles system can be found [here](profiles).
 type = "battery"
 format = "{percentage}%"
 
-[end.thresholds]
+[end.profiles]
 warning = 20
-critical = 5
+
+[end.profiles.critical]
+when = { percent = 5, charging = false }
+format = "[LOW] {percentage}%"
 ```
 
 </details>
@@ -64,9 +75,13 @@ critical = 5
 end:
   - type: "battery"
     format: "{percentage}%"
-    thresholds:
+    profiles:
       warning: 20
-      critical: 5
+      critical:
+        when:
+          percent: 5
+          charging: false
+        format: "[LOW] {percentage}%"
 ```
 
 </details>
@@ -80,8 +95,10 @@ end:
     {
       type = "battery"
       format = "{percentage}%"
-      thresholds.warning = 20
-      thresholds.critical = 5
+      profiles.warning = 20
+      
+      profiles.critical.when = { percent = 5 charging = false }
+      profiles.critical.format = "[LOW] {percentage}%"
     }
   ]
 }

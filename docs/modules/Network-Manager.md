@@ -7,13 +7,19 @@ disconnected).
 > Type: `network_manager`
 
 | Name                  | Type       | Default                       | Profile? | Description                                                                    |
-| --------------------- | ---------- | ----------------------------- | -------- | ------------------------------------------------------------------------------ |
+|-----------------------|------------|-------------------------------|----------|--------------------------------------------------------------------------------|
 | `icon_size`           | `integer`  | `24`                          | No       | Size to render icon at.                                                        |
 | `types_blacklist`     | `string[]` | `[]`                          | No       | Any device with a type in this list will not be shown.                         |
 | `types_whitelist`     | `string[]` | `[]`                          | No       | If not empty, only devices with a type in this list will be shown.             |
 | `interface_blacklist` | `string[]` | `[]`                          | No       | Any device whose interface name is in this list will not be shown.             |
 | `interface_whitelist` | `string[]` | `[]`                          | No       | If not empty, only devices whose interface name is in this list will be shown. |
 | `icon`                | `string`   | `icon:network-wired-symbolic` | Yes      | Icon for connected wired device.                                               |
+
+This module uses **a compound threshold** with 2-3 values for profiles:
+
+- `type` - device type
+- `state` - device connection state
+- `signal_strength` (optional, when `type="wifi"`)
 
 Information on the profiles system can be found [here](profiles).
 
@@ -112,75 +118,77 @@ end:
 <summary> <b>Default profiles:</b> </summary>
 
 ```corn
-profiles = {
-wired_disconnected = {
-  when = { type = "wired" state = "disconnected" }
-  icon = ""
-}
-wired_acquiring = {
-  when = { type = "wired" state = "acquiring" }
-  icon = "icon:network-wired-acquiring-symbolic"
-}
-wired_connected = {
-  when = { type = "wired" state = "connected" }
-  icon = "icon:network-wired-symbolic"
-}
-wifi_disconnected = {
-  when = { type = "wifi" state = "disconnected" }
-  icon = ""
-}
-wifi_acquiring = {
-  when = { type = "wifi" state = "acquiring" }
-  icon = "icon:network-wireless-acquiring-symbolic"
-}
-wifi_connected_none = {
-  when = { type = "wifi" state = "connected" signal_strength = 20 }
-  icon = "icon:network-wireless-signal-none-symbolic"
-}
-wifi_connected_weak = {
-  when = { type = "wifi" state = "connected" signal_strength = 40 }
-  icon = "icon:network-wireless-signal-weak-symbolic"
-}
-wifi_connected_ok = {
-  when = { type = "wifi" state = "connected" signal_strength = 50 }
-  icon = "icon:network-wireless-signal-ok-symbolic"
-}
-wifi_connected_good = {
-  when = { type = "wifi" state = "connected" signal_strength = 80 }
-  icon = "icon:network-wireless-signal-good-symbolic"
-}
-wifi_connected_excellent = {
-  when = { type = "wifi" state = "connected" signal_strength = 100 }
-  icon = "icon:network-wireless-signal-excellent-symbolic"
-}
-cellular_disconnected = {
-  when = { type = "cellular" state = "disconnected" }
-  icon = ""
-}
-cellular_acquiring = {
-  when = { type = "cellular" state = "acquiring" }
-  icon = "icon:network-cellular-acquiring-symbolic"
-}
-cellular_connected = {
-  when = { type = "cellular" state = "connected" }
-  icon = "icon:network-cellular-connected-symbolic"
-}
-vpn_disconnected = {
-  when = { type = "vpn" state = "disconnected" }
-  icon = ""
-}
-vpn_acquiring = {
-  when = { type = "vpn" state = "acquiring" }
-  icon = "icon:network-vpn-acquiring-symbolic"
-}
-vpn_connected = {
-  when = { type = "vpn" state = "connected" }
-  icon = "icon:network-vpn-symbolic"
-}
-unknown = {
-  when = { type = "unknown" }
-  icon = "icon:dialog-question-symbolic"
-}
+{
+    profiles = {
+        wired_disconnected = {
+            when = { type = "wired" state = "disconnected" }
+            icon = ""
+        }
+        wired_acquiring = {
+            when = { type = "wired" state = "acquiring" }
+            icon = "icon:network-wired-acquiring-symbolic"
+        }
+        wired_connected = {
+            when = { type = "wired" state = "connected" }
+            icon = "icon:network-wired-symbolic"
+        }
+        wifi_disconnected = {
+            when = { type = "wifi" state = "disconnected" }
+            icon = ""
+        }
+        wifi_acquiring = {
+            when = { type = "wifi" state = "acquiring" }
+            icon = "icon:network-wireless-acquiring-symbolic"
+        }
+        wifi_connected_none = {
+            when = { type = "wifi" state = "connected" signal_strength = 20 }
+            icon = "icon:network-wireless-signal-none-symbolic"
+        }
+        wifi_connected_weak = {
+            when = { type = "wifi" state = "connected" signal_strength = 40 }
+            icon = "icon:network-wireless-signal-weak-symbolic"
+        }
+        wifi_connected_ok = {
+            when = { type = "wifi" state = "connected" signal_strength = 50 }
+            icon = "icon:network-wireless-signal-ok-symbolic"
+        }
+        wifi_connected_good = {
+            when = { type = "wifi" state = "connected" signal_strength = 80 }
+            icon = "icon:network-wireless-signal-good-symbolic"
+        }
+        wifi_connected_excellent = {
+            when = { type = "wifi" state = "connected" signal_strength = 100 }
+            icon = "icon:network-wireless-signal-excellent-symbolic"
+        }
+        cellular_disconnected = {
+            when = { type = "cellular" state = "disconnected" }
+            icon = ""
+        }
+        cellular_acquiring = {
+            when = { type = "cellular" state = "acquiring" }
+            icon = "icon:network-cellular-acquiring-symbolic"
+        }
+        cellular_connected = {
+            when = { type = "cellular" state = "connected" }
+            icon = "icon:network-cellular-connected-symbolic"
+        }
+        vpn_disconnected = {
+            when = { type = "vpn" state = "disconnected" }
+            icon = ""
+        }
+        vpn_acquiring = {
+            when = { type = "vpn" state = "acquiring" }
+            icon = "icon:network-vpn-acquiring-symbolic"
+        }
+        vpn_connected = {
+            when = { type = "vpn" state = "connected" }
+            icon = "icon:network-vpn-symbolic"
+        }
+        unknown = {
+            when = { type = "unknown" }
+            icon = "icon:dialog-question-symbolic"
+        }
+    }
 }
 ```
 
@@ -190,7 +198,7 @@ unknown = {
 ## Styling
 
 | Selector                 | Description                      |
-| ------------------------ | -------------------------------- |
+|--------------------------|----------------------------------|
 | `.network_manager`       | NetworkManager widget container. |
 | `.network_manager .icon` | NetworkManager widget icons.     |
 
