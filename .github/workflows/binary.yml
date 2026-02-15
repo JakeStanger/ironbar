@@ -43,7 +43,7 @@ jobs:
         run: cargo add openssl --features vendored
 
       - name: Build Release
-        run: cargo build --locked --release
+        run: cargo build --locked --profile tagged-release
 
       - name: Compress the built binary
         run: tar -zcvf ironbar-${{needs.get_last_release.outputs.latest_release_tag}}-${{matrix.platform.name}}.tar.gz -C target/release ironbar
