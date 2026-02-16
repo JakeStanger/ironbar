@@ -17,6 +17,10 @@
     font-family: monospace;
 }
 
+.popup-volume .slider > * {
+    border: var(--margin-sm) solid grey;
+}
+
 #bar, popover, popover contents, calendar {
     background-color: var(--color-dark-primary);
 }
