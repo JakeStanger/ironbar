@@ -203,4 +203,4 @@ serde_json = { version = "1.0.149", optional = true } # ipc, niri
 
 # extras
 schemars = { version = "1.2.1", optional = true, features = ["indexmap2"] }
-clap_complete = {  version = "4.5.65", optional = true }
+clap_complete = {  version = "4.5.66", optional = true }
