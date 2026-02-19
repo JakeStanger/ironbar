@@ -14,7 +14,7 @@ use serde::Deserialize;
 use tokio::sync::mpsc;
 use tokio::time::sleep;
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, PartialEq, Eq)]
 #[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum BrightnessDataSource {
@@ -34,7 +34,7 @@ pub enum BrightnessDataSource {
     },
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, PartialEq, Eq)]
 #[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
 #[serde(default)]
 pub struct BrightnessProfile {
@@ -85,7 +85,7 @@ fn default_profiles() -> Profiles<f64, BrightnessProfile> {
     )
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, PartialEq)]
 #[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
 #[serde(default)]
 pub struct BrightnessModule {

@@ -4,7 +4,7 @@ use crate::config::{
 use crate::profiles;
 use serde::Deserialize;
 
-#[derive(Debug, Default, Clone, Deserialize)]
+#[derive(Debug, Default, Clone, Deserialize, PartialEq)]
 #[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
 #[serde(default)]
 pub struct VolumeProfile {
@@ -29,7 +29,7 @@ pub(super) fn default_profiles() -> Profiles<f64, VolumeProfile> {
     )
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, PartialEq)]
 #[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
 #[serde(default)]
 pub struct VolumeModule {
@@ -121,7 +121,7 @@ impl Default for VolumeModule {
     }
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, PartialEq, Eq)]
 #[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
 #[serde(default)]
 pub struct Icons {

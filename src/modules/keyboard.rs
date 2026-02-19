@@ -14,7 +14,7 @@ use crate::config::{CommonConfig, LayoutConfig};
 use crate::image::{IconButton, IconLabel};
 use crate::{module_impl, spawn};
 
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Deserialize, Clone, PartialEq)]
 #[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
 #[serde(default)]
 pub struct KeyboardModule {
@@ -80,7 +80,7 @@ impl Default for KeyboardModule {
     }
 }
 
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Deserialize, Clone, PartialEq)]
 #[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
 #[serde(default)]
 struct Icons {

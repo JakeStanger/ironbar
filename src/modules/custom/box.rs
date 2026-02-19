@@ -5,7 +5,7 @@ use crate::modules::custom::WidgetConfig;
 use gtk::prelude::*;
 use serde::Deserialize;
 
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Deserialize, Clone, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
 #[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
 pub enum ModuleAlignment {
@@ -30,7 +30,7 @@ impl From<ModuleAlignment> for gtk::Align {
     }
 }
 
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Deserialize, Clone, PartialEq)]
 #[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
 pub struct BoxWidget {
     /// Widget name.
