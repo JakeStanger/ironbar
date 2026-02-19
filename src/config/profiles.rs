@@ -95,7 +95,13 @@ where
     S: State,
     T: Default + Clone,
 {
-    /// A map of named profiles.
+    /// A map of named profiles against profile entries.
+    /// Entries can be provided in two formats.
+    ///
+    /// The profile entry object differs per-module-
+    /// check module property documentation to see if they are supported.
+    ///
+    /// See [profiles] for more information.
     profiles: HashMap<String, ProfileEntry<S, T>>,
 
     /// The default profile.

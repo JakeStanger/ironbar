@@ -12,22 +12,21 @@ use tracing::error;
 
 #[derive(Debug, Deserialize, Clone)]
 #[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "extras", schemars(extend("required" = ["cmd"])))]
 #[serde(default)]
 pub struct ScriptModule {
     /// Path to script to execute.
     ///
     /// This can be an absolute path,
     /// or relative to the working directory.
-    ///
-    /// **Required**
     cmd: String,
 
     /// Script execution mode.
-    /// See [modes](#modes) for more info.
     ///
-    /// **Valid options**: `poll`, `watch`
-    /// <br />
-    /// **Default**: `poll`
+    /// - Use `poll` to run the script wait for it to exit. On exit, the label is updated to show everything the script wrote to `stdout`.
+    /// - Use `watch` to start a long-running script. Every time the script writes to `stdout`, the label is updated to show the latest line.
+    ///   Note this does not work for all programs as they may use block-buffering instead of line-buffering when they detect output being piped.
+    #[cfg_attr(feature = "extras", schemars(extend("default" = "'poll'")))]
     mode: ScriptMode,
 
     /// Time in milliseconds between executions.

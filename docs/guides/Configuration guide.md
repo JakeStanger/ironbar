@@ -42,51 +42,7 @@ and make it more complex if required.
 
 Place the bar config inside the top-level object. This is automatically applied to each of your monitors.
 
-<details>
-<summary>JSON</summary>
-
-```json
-{
-  "position": "bottom",
-  "height": 42,
-  "start": [],
-  "center": [],
-  "end": []
-}
-```
-
-</details>
-
-<details>
-<summary>TOML</summary>
-
-```toml
-position = "bottom"
-height = 42
-start = []
-center = []
-end = []
-```
-
-</details>
-
-<details>
-<summary>YAML</summary>
-
-```yaml
-position: "bottom"
-height: 42
-start: [ ]
-center: [ ]
-end: [ ]
-```
-
-</details>
-
-<details>
-<summary>Corn</summary>
-
-```
+```corn
 {
   position = "bottom"
   height = 42
@@ -95,8 +51,6 @@ end: [ ]
   end = []
 }
 ```
-
-</details>
 
 ### b) I want my config to differ across one or more monitors
 
@@ -116,62 +70,7 @@ Alternatively, leave the top-level `start`, `center` and `end` keys null to hide
 > [!TIP]
 > To find your output names, run `wayland-info | grep wl_output -A1`.
 
-<details>
-<summary>JSON</summary>
-
-```json
-{
-  "monitors": {
-    "DP-1": {
-      "start": []
-    },
-    "DP-2": {
-      "position": "bottom",
-      "height": 30,
-      "start": []
-    }
-  }
-}
-```
-
-</details>
-
-<details>
-<summary>TOML</summary>
-
-```toml
-[monitors]
-
-[monitors.DP-1]
-start = []
-
-[monitors.DP-2]
-position = "bottom"
-height = 30
-start = []
-```
-
-</details>
-
-<details>
-<summary>YAML</summary>
-
-```yaml
-monitors:
-  DP-1:
-    start: [ ]
-  DP-2:
-    position: "bottom"
-    height: 30
-    start: [ ]
-```
-
-</details>
-
-<details>
-<summary>Corn</summary>
-
-```
+```corn
 {
   monitors.DP-1.start = []
   monitors.DP-2 = {
@@ -181,8 +80,6 @@ monitors:
   }
 }
 ```
-
-</details>
 
 ### c) I want one or more monitors to have multiple bars
 
@@ -197,75 +94,8 @@ Output names can be supplied in two formats:
 - Descriptions (`ASUSTek COMPUTER INC PA278QV M4LMQS060475`).
   A `starts_with` is applied allowing you to omit part of the description if convenient.
 
-
-To find your output names, run `wayland-info | grep wl_output -A1`.
-
-<details>
-<summary>JSON</summary>
-
-```json
-{
-  "monitors": {
-    "DP-1": [
-      {
-        "start": []
-      },
-      {
-        "position": "top",
-        "start": []
-      }
-    ],
-    "DP-2": {
-      "position": "bottom",
-      "height": 30,
-      "start": []
-    }
-  }
-}
-```
-
-</details>
-
-<details>
-<summary>TOML</summary>
-
-```toml
-[monitors]
-
-[[monitors.DP-1]]
-start = []
-
-[[monitors.DP-2]]
-position = "top"
-start = []
-
-[monitors.DP-2]
-position = "bottom"
-height = 30
-start = []
-```
-
-</details>
-
-<details>
-<summary>YAML</summary>
-
-```yaml
-monitors:
-  DP-1:
-    - start: [ ]
-    - position: "top"
-      start: [ ]
-  DP-2:
-    position: "bottom"
-    height: 30
-    start: [ ]
-```
-
-</details>
-
-<details>
-<summary>Corn</summary>
+> [!TIP]
+> To find your output names, run `wayland-info | grep wl_output -A1`.
 
 ```corn
 {
@@ -280,8 +110,6 @@ monitors:
   }
 }
 ```
-
-</details>
 
 ## 3. Write your bar config(s)
 
@@ -311,25 +139,7 @@ The following table lists each of the top-level bar config options:
 
 The following table lists each of the bar-level bar config options:
 
-| Name              | Type                                           | Default                                  | Description                                                                                                                |
-|-------------------|------------------------------------------------|------------------------------------------|----------------------------------------------------------------------------------------------------------------------------|
-| `name`            | `string`                                       | `bar-<n>`                                | A unique identifier for the bar, used for controlling it over IPC. If not set, uses a generated integer suffix.            |
-| `position`        | `top` or `bottom` or `left` or `right`         | `bottom`                                 | The bar's position on screen.                                                                                              |
-| `anchor_to_edges` | `boolean`                                      | `false`                                  | Whether to anchor the bar to the edges of the screen. Setting to false centres the bar.                                    |
-| `height`          | `integer`                                      | `42`                                     | The bar's height in pixels.                                                                                                |
-| `margin.top`      | `integer`                                      | `0`                                      | The margin on the top of the bar                                                                                           |
-| `margin.bottom`   | `integer`                                      | `0`                                      | The margin on the bottom of the bar                                                                                        |
-| `margin.left`     | `integer`                                      | `0`                                      | The margin on the left of the bar                                                                                          |
-| `margin.right`    | `integer`                                      | `0`                                      | The margin on the right of the bar                                                                                         |
-| `layer`           | `background` or `bottom` or `top` or `overlay` | `top`                                    | The layer-shell layer to place the bar on.                                                                                 |
-| `exclusive_zone`  | `boolean`                                      | `true` unless `start_hidden` is enabled. | Whether the bar should reserve an exclusive zone around it.                                                                |
-| `popup_gap`       | `integer`                                      | `5`                                      | The gap between the bar and popup window.                                                                                  |
-| `popup_autohide`  | `boolean`                                      | `false`                                  | Whether to close the popup on outside click. On some compositors, this can aggressively steal kb/m focus.                  |
-| `start_hidden`    | `boolean`                                      | `false`, or `true` if `autohide` set     | Whether the bar should be hidden when the application starts. Enabled by default when `autohide` is set.                   |
-| `autohide`        | `integer`                                      | `null`                                   | The duration in milliseconds before the bar is hidden after the cursor leaves. Leave unset to disable auto-hide behaviour. |
-| `start`           | `Module[]`                                     | `[]`                                     | Array of left or top modules.                                                                                              |
-| `center`          | `Module[]`                                     | `[]`                                     | Array of center modules.                                                                                                   |
-| `end`             | `Module[]`                                     | `[]`                                     | Array of right or bottom modules.                                                                                          |
+%{properties:BarConfig}%
 
 ### 3.2 Module-level options
 

@@ -51,7 +51,9 @@ pub enum SortOrder {
 #[serde(untagged)]
 #[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
 pub enum Favorites {
+    /// A map of monitor names, where each value is a list of favourites.
     ByMonitor(HashMap<String, Vec<String>>),
+    /// A list of favourites shared across all monitors.
     Global(Vec<String>),
 }
 
@@ -65,7 +67,9 @@ impl Default for Favorites {
 #[serde(untagged)]
 #[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
 pub enum Format {
+    /// Format shared by both named and unnamed workspaces.
     String(String),
+    /// Allows setting named and unnamed workspace formats individually.
     Pair {
         #[serde(default = "default_format")]
         named: String,
@@ -111,17 +115,20 @@ pub struct WorkspacesModule {
     /// # Example
     ///
     /// ```corn
-    /// // array format
-    /// {
-    ///   type = "workspaces"
-    ///   favorites = ["1", "2", "3"]
-    /// }
+    /// let {
+    ///   $array_format = {
+    ///     type = "workspaces"
+    ///     favorites = [ "1" "2" "3" ]
+    ///   }
     ///
-    /// // map format
-    /// {
-    ///   type = "workspaces"
-    ///   favorites.DP-1 = ["1", "2", "3"]
-    ///   favorites.DP-2 = ["4", "5", "6"]
+    ///   $map_format = {
+    ///     type = "workspaces"
+    ///     favorites.'DP-1' = ["1" "2" "3"]
+    ///     favorites.'DP-2' = ["4" "5" "6"]
+    ///   }
+    /// } in {
+    ///   array_format = $array_format
+    ///   map_format = $map_format
     /// }
     /// ```
     #[serde(default)]
@@ -158,15 +165,23 @@ pub struct WorkspacesModule {
     /// **Default**: `32`
     icon_size: i32,
 
-    /// The format string for named workspaces.
+    /// The format string for displaying workspaces.
     ///
-    /// The following placeholders are supported:
-    /// - `{label}`: The display label (from `name_map` or the workspace name).
-    /// - `{name}`: The actual workspace name.
-    /// - `{index}`: The workspace index.
+    /// Two syntaxes are supported,
+    /// allowing you to control which workspace types the format is applied to if desired.
+    ///
+    /// The following tokens are supported:
+    ///
+    /// | Token | Description                                      |
+    /// |-------------|--------------------------------------------------|
+    /// | `{label}`   | The display label (from `name_map` or the name). |
+    /// | `{name}`    | The actual workspace name.                       |
+    /// | `{index}`   | The workspace index.                             |
+    ///
     ///
     /// **Default**: `"{label}"`
     #[serde(default)]
+    #[cfg_attr(feature = "extras", schemars(extend("default" = "'{label}'")))]
     format: Format,
 
     // -- Common --

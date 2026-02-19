@@ -34,6 +34,7 @@ impl From<EllipsizeMode> for GtkEllipsizeMode {
 #[derive(Debug, Deserialize, Clone, Copy)]
 #[serde(untagged)]
 #[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "extras", schemars(_unstable_ref_variants))] // fix unit variant showing as null
 pub enum TruncateMode {
     /// Do not truncate content.
     ///

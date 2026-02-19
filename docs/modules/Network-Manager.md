@@ -2,97 +2,7 @@ Displays the state of each network device managed by NetworkManager. Each device
 type will show an icon representing its current state (connected, acquiring,
 disconnected).
 
-## Configuration
-
-> Type: `network_manager`
-
-| Name                  | Type       | Default                       | Profile? | Description                                                                    |
-|-----------------------|------------|-------------------------------|----------|--------------------------------------------------------------------------------|
-| `icon_size`           | `integer`  | `24`                          | No       | Size to render icon at.                                                        |
-| `types_blacklist`     | `string[]` | `[]`                          | No       | Any device with a type in this list will not be shown.                         |
-| `types_whitelist`     | `string[]` | `[]`                          | No       | If not empty, only devices with a type in this list will be shown.             |
-| `interface_blacklist` | `string[]` | `[]`                          | No       | Any device whose interface name is in this list will not be shown.             |
-| `interface_whitelist` | `string[]` | `[]`                          | No       | If not empty, only devices whose interface name is in this list will be shown. |
-| `icon`                | `string`   | `icon:network-wired-symbolic` | Yes      | Icon for connected wired device.                                               |
-
-This module uses **a compound threshold** with 2-3 values for profiles:
-
-- `type` - device type
-- `state` - device connection state
-- `signal_strength` (optional, when `type="wifi"`)
-
-Information on the profiles system can be found [here](profiles).
-
-**Device Types:** The device types used in `types_whitelist` and
-`types_blacklists` are the same as those used by NetworkManager. You can find
-the type of the devices on your system by running `nmcli device status` in a
-terminal. The possible device types are: `unknown`, `ethernet`, `wifi`, `bt`,
-`olpc_mesh`, `wimax`, `modem`, `infiniband`, `bond`, `vlan`, `adsl`, `bridge`,
-`generic`, `team`, `tun`, `ip_tunnel`, `macvlan`, `vxlan`, `veth`, `macsec`,
-`dummy`, `ppp`, `ovs_interface`, `ovs_port`, `ovs_bridge`, `wpan`, `six_lowpan`,
-`wireguard`, `wifi_p2p`, `vrf`, `loopback`, `hsr` and `ipvlan`.
-
-<details>
-<summary>JSON</summary>
-
-```json
-{
-  "end": [
-    {
-      "type": "network_manager",
-      "icon_size": 24,
-      "types_blacklist": ["loopback", "bridge"],
-      "profiles": {
-        "wired_disconnected": {
-          "when": { "type": "wired", "state": "disconnected" },
-          "icon": "icon:network-wired-disconnected-symbolic"
-        }
-      }
-    }
-  ]
-}
-```
-
-</details>
-
-<details>
-<summary>TOML</summary>
-
-```toml
-[[end]]
-type = "network_manager"
-icon_size = 24
-types_blacklist = ["loopback", "bridge"]
-
-[end.profiles.wired_disconnected]
-when = { type = "wired", state = "disconnected" }
-icon = "icon:network-wired-disconnected-symbolic"
-```
-
-</details>
-
-<details>
-<summary>YAML</summary>
-
-```yaml
-end:
-  - type: "network_manager"
-    icon_size: 24
-    types_blacklist:
-      - loopback
-      - bridge
-    profiles:
-      wired_disconnected:
-        when:
-          type: "wired"
-          state: "disconnected"
-        icon: "icon:network-wired-disconnected-symbolic"
-```
-
-</details>
-
-<details>
-<summary>Corn</summary>
+## Example
 
 ```corn
 {
@@ -112,7 +22,18 @@ end:
 }
 ```
 
-</details>
+
+## Configuration
+
+> Type: `network_manager`
+
+> [!NOTE]
+> This module does not support module-level [layout options](module-level-options#layout).
+
+
+%{properties}%
+
+---
 
 <details>
 <summary> <b>Default profiles:</b> </summary>

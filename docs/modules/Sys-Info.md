@@ -7,104 +7,7 @@ Options can be provided in a token to specify operations, units and formatting.
 
 ![Screenshot showing sys-info module with widgets for CPU and memory usage percentages](https://f.jstanger.dev/github/ironbar/modules/sysinfo.png)
 
-## Configuration
-
-> Type: `sys_info`
-
-| Name               | Type                                                       | Default        | Description                                                                                                                    |
-|--------------------|------------------------------------------------------------|----------------|--------------------------------------------------------------------------------------------------------------------------------|
-| `format`           | `string[]`                                                 | `null`         | Array of strings including formatting tokens. For available tokens see below.                                                  |
-| `interval`         | `integer` or `Map`                                         | `5`            | Seconds between refreshing. Can be a single value for all data or a map of individual refresh values for different data types. |
-| `interval.memory`  | `integer`                                                  | `5`            | Seconds between refreshing memory data.                                                                                        |
-| `interval.cpu`     | `integer`                                                  | `5`            | Seconds between refreshing cpu data.                                                                                           |
-| `interval.temps`   | `integer`                                                  | `5`            | Seconds between refreshing temperature data.                                                                                   |
-| `interval.disks`   | `integer`                                                  | `5`            | Seconds between refreshing disk data.                                                                                          |
-| `interval.network` | `integer`                                                  | `5`            | Seconds between refreshing network data.                                                                                       |
-| `orientation`      | `'horizontal'` or `'vertical'` (shorthand: `'h'` or `'v'`) | `'horizontal'` | Orientation of the labels.                                                                                                     |
-| `direction`        | `'horizontal'` or `'vertical'` (shorthand: `'h'` or `'v'`) | `'horizontal'` | How the labels are laid out (not the rotation of an individual label).                                                         |
-
-<details>
-<summary>JSON</summary>
-
-```json
-{
-  "end": [
-    {
-      "format": [
-        " {cpu_percent}% | {cpu_frequency} GHz | {temp_c@CPUTIN}°C",
-        " {memory_used} / {memory_total} GB ({memory_available} | {memory_percent}%) | {swap_used} / {swap_total} GB ({swap_free} | {swap_percent}%)",
-        "󰋊 {disk_used#T@/:.1} / {disk_total#T@/:.1} TB ({disk_percent@/}%) | {disk_read} / {disk_write} MB/s",
-        "󰓢 {net_down@enp39s0} / {net_up@enp39s0} Mbps",
-        "󰖡 {load_average_1} | {load_average_5} | {load_average_15}",
-        "󰥔 {uptime}"
-      ],
-      "interval": {
-        "cpu": 1,
-        "disks": 300,
-        "memory": 30,
-        "networks": 3,
-        "temps": 5
-      },
-      "type": "sys_info"
-    }
-  ]
-}
-```
-
-</details>
-
-<details>
-<summary>TOML</summary>
-
-```toml
-[[end]]
-type = 'sys_info'
-format = [
-    " {cpu_percent}% | {cpu_frequency} GHz | {temp_c@CPUTIN}°C",
-    " {memory_used} / {memory_total} GB ({memory_available} | {memory_percent}%) | {swap_used} / {swap_total} GB ({swap_free} | {swap_percent}%)",
-    "󰋊 {disk_used#T@/:.1} / {disk_total#T@/:.1} TB ({disk_percent@/}%) | {disk_read} / {disk_write} MB/s",
-    "󰓢 {net_down@enp39s0} / {net_up@enp39s0} Mbps",
-    "󰖡 {load_average_1} | {load_average_5} | {load_average_15}",
-    "󰥔 {uptime}"
-]
-
-[end.interval]
-cpu = 1
-disks = 300
-memory = 30
-networks = 3
-temps = 5
-
-
-```
-
-</details>
-
-<details>
-<summary>YAML</summary>
-
-```yaml
-end:
-- format:
-  - " {cpu_percent}% | {cpu_frequency} GHz | {temp_c@CPUTIN}°C"
-  - " {memory_used} / {memory_total} GB ({memory_available} | {memory_percent2}%) | {swap_used} / {swap_total} GB ({swap_free} | {swap_percent}%)"
-  - "󰋊 {disk_used#T@/:.1} / {disk_total#T@/:.1} TB ({disk_percent@/}%) | {disk_read} / {disk_write} MB/s"
-  - "󰓢 {net_down@enp39s0} / {net_up@enp39s0} Mbps"
-  - "󰖡 {load_average_1} | {load_average_5} | {load_average_15}"
-  - "󰥔 {uptime}"
-  interval:
-    cpu: 1
-    disks: 300
-    memory: 30
-    networks: 3
-    temps: 5
-  type: sys_info
-```
-
-</details>
-
-<details>
-<summary>Corn</summary>
+## Examples
 
 ```corn
 {
@@ -131,9 +34,13 @@ end:
 }
 ```
 
-</details>
+## Configuration
 
-### Formatting Tokens
+> Type: `sys_info`
+
+%{properties}%
+
+## Formatting Tokens
 
 The below table lists the tokens which can be used in the `format` configuration option. 
 More information about each of these and the additional options can be found further below.
@@ -172,7 +79,7 @@ More information about each of these and the additional options can be found fur
 | `{load_average_15}`      | N/A              | -            | `.2`               | 
 | `{uptime}`               | N/A              | ???          | ???                |
 
-#### Functions and names
+### Functions and names
 
 Many of the tokens operate on a value set, as opposed to an individual value:
 
@@ -229,7 +136,7 @@ To show total CPU utilization where each core represents 100% (like `htop` etc):
 > 
 > Sensor names are pulled from `hwmon` and should vaguely line up with the output of `sensors`
 
-#### Prefixes and units
+### Prefixes and units
 
 For tokens which return an appropriate unit, you can specify the SI prefix (or unit in some special cases).
 The following options can be supplied:
@@ -258,7 +165,7 @@ To specify a prefix or unit, use a `#`. For example, to show free total disk spa
 "{disk_free#T} TB"
 ```
 
-#### Formatting
+### Formatting
 
 To control the formatting of the resultant number, 
 a subset of Rust's string formatting is implemented. This includes:
@@ -269,7 +176,7 @@ a subset of Rust's string formatting is implemented. This includes:
 
 Formatting is specified with a `:` and MUST be the last part of a token.
 
-##### Width
+#### Width
 
 The width controls the minimum string length of the value. 
 Specifying just a width will left-pad the value with `0` until the value reaches the target length.
@@ -282,7 +189,7 @@ For example, to render CPU usage as `045%`:
 "{cpu_usage:3}%"
 ```
 
-##### Fill/Alignment
+#### Fill/Alignment
 
 These options can be used to control the `width` property.
 
@@ -299,7 +206,7 @@ For example, to render CPU usage as ` 45%`:
 "{cpu_usage: <3}%"
 ```
 
-##### Precision
+#### Precision
 
 The number of decimal places a value is shown to can be controlled using precision.
 Any value is supported.
@@ -314,7 +221,7 @@ For example, to render used disk space to 2dp:
 
 ---
 
-#### Combining Options
+### Combining Options
 
 Each of the token options can be combined to create more complex solutions.
 

@@ -8,68 +8,7 @@ Supports plain text and images.
 
 ![Screenshot of clipboard popup open, with two textual values and an image copied. Several other unrelated widgets are visible on the bar.](https://f.jstanger.dev/github/ironbar/modules/clipboard.png)
 
-## Configuration
-
-> Type: `clipboard`
-
-| Name                  | Type                                                 | Default | Description                                                                                                                                           |
-|-----------------------|------------------------------------------------------|---------|-------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `icon`                | `string` or [image](images)                          | `󰨸`    | Icon to show on the widget button.                                                                                                                    |
-| `icon_size`           | `integer`                                            | `32`    | Size to render icon at (image icons only).                                                                                                            |
-| `max_items`           | `integer`                                            | `10`    | Maximum number of items to show in the popup.                                                                                                         |
-| `image_max_width`     | `float`                                              | `256.0` | The maximum width to render copied images at.                                                                                                         |
-| `image_max_height`    | `float`                                              | `64.0`  | The maximum height to render copied images at.                                                                                                        |
-| `truncate`            | `'start'` or `'middle'` or `'end'` or `off` or `Map` | `off`   | The location of the ellipses and where to truncate text from. Leave null to avoid truncating. Use the long-hand `Map` version if specifying a length. |
-| `truncate.mode`       | `'start'` or `'middle'` or `'end'` or `off`          | `off`   | The location of the ellipses and where to truncate text from. Leave null to avoid truncating.                                                         |
-| `truncate.length`     | `integer`                                            | `null`  | The fixed width (in chars) of the widget. Leave blank to let GTK automatically handle.                                                                |
-| `truncate.max_length` | `integer`                                            | `null`  | The maximum number of characters before truncating. Leave blank to let GTK automatically handle.                                                      |
-
-<details>
-<summary>JSON</summary>
-
-```json
-{
-  "end": {
-    "type": "clipboard",
-    "max_items": 3,
-    "truncate": {
-      "mode": "end",
-      "length": 50
-    }
-  }
-}
-```
-</details>
-
-<details>
-<summary>TOML</summary>
-
-```toml
-[[end]]
-type = "clipboard"
-max_items = 3
-
-[end.truncate]
-mode = "end"
-length = 50
-```
-</details>
-
-<details>
-<summary>YAML</summary>
-
-```yaml
-end:
-  - type: 'clipboard'
-    max_items: 3
-    truncate:
-      mode: 'end'
-      length: 50
-```
-</details>
-
-<details>
-<summary>Corn</summary>
+## Example
 
 ```corn
 {
@@ -81,7 +20,12 @@ end:
     } ] 
 }
 ```
-</details>
+
+## Configuration
+
+> Type: `clipboard`
+
+%{properties}%
 
 ## Styling
 

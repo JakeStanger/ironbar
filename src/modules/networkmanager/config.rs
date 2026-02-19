@@ -17,11 +17,27 @@ pub struct NetworkManagerModule {
 
     /// Any device with a type in this list will not be shown. The type is a string matching
     /// [`DeviceType`] variants (e.g. `"Wifi"`, `"Ethernet", etc.).
+    ///
+    /// You can find the type of the devices on your system by running `nmcli device status`.
+    ///
+    /// The possible device types are: `unknown`, `ethernet`, `wifi`, `bt`,
+    /// `olpc_mesh`, `wimax`, `modem`, `infiniband`, `bond`, `vlan`, `adsl`, `bridge`,
+    /// `generic`, `team`, `tun`, `ip_tunnel`, `macvlan`, `vxlan`, `veth`, `macsec`,
+    /// `dummy`, `ppp`, `ovs_interface`, `ovs_port`, `ovs_bridge`, `wpan`, `six_lowpan`,
+    /// `wireguard`, `wifi_p2p`, `vrf`, `loopback`, `hsr` and `ipvlan`.
     #[serde(default)]
     pub(super) types_blacklist: Vec<DeviceType>,
 
     /// If not empty, only devices with a type in this list will be shown. The type is a string
     /// matching [`DeviceType`] variants (e.g. `"Wifi"`, `"Ethernet", etc.).
+    ///
+    /// You can find the type of the devices on your system by running `nmcli device status`.
+    ///
+    /// The possible device types are: `unknown`, `ethernet`, `wifi`, `bt`,
+    /// `olpc_mesh`, `wimax`, `modem`, `infiniband`, `bond`, `vlan`, `adsl`, `bridge`,
+    /// `generic`, `team`, `tun`, `ip_tunnel`, `macvlan`, `vxlan`, `veth`, `macsec`,
+    /// `dummy`, `ppp`, `ovs_interface`, `ovs_port`, `ovs_bridge`, `wpan`, `six_lowpan`,
+    /// `wireguard`, `wifi_p2p`, `vrf`, `loopback`, `hsr` and `ipvlan`.
     #[serde(default)]
     pub(super) types_whitelist: Vec<DeviceType>,
 

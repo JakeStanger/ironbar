@@ -1,4 +1,4 @@
-#![doc = include_str!("../../docs/Dynamic values.md")]
+#![doc = include_str!("../../docs/dynamic content/Dynamic values.md")]
 
 mod dynamic_bool;
 mod dynamic_string;
