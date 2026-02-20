@@ -17,6 +17,21 @@
     font-family: monospace;
 }
 
+scale > trough {
+    background-color: var(--color-dark-secondary);
+}
+
+scale > trough > highlight {
+    background-color: var(--color-active);
+    border-style: solid;
+    border-color: var(--color-active);
+    border-width: var(--margin-sm);
+}
+
+scale > trough > slider {
+    background-color: var(--color-white);
+}
+
 #bar, popover, popover contents, calendar {
     background-color: var(--color-dark-primary);
 }
