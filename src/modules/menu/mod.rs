@@ -136,23 +136,35 @@ impl Module<Button> for MenuModule {
         }
 
         let tx = context.tx.clone();
-        let controller_tx = context.controller_tx.clone();
         button.connect_clicked(move |button| {
             let popup_id = button.popup_id();
             tx.send_spawn(ModuleUpdateEvent::TogglePopup(popup_id));
+        });
 
-            // channel will close after init event
-            if !controller_tx.is_closed() {
-                controller_tx.send_spawn(());
+        // we want to delay loading the .desktop files until the initial click
+        // as it's very heavy. we do that here by listening on the popup directly.
+        // this ensures that opening the popup via ipc still works.
+        context.popup.popover.connect_show({
+            let button = button.clone();
+            let tx = context.tx.clone();
+            let controller_tx = context.controller_tx.clone();
 
-                // FIXME: the init event causes the popup to close for an unknown reason.
-                //  We work around this by sending a second open event after a delay
-                //  so that the menu definitely displays, but this is a hacky workaround.
-                let tx = tx.clone();
-                spawn(async move {
-                    sleep(Duration::from_millis(50)).await;
-                    tx.send_expect(ModuleUpdateEvent::OpenPopup(popup_id)).await;
-                });
+            move |_| {
+                let popup_id = button.popup_id();
+
+                // channel will close after init event
+                if !controller_tx.is_closed() {
+                    controller_tx.send_spawn(());
+
+                    // FIXME: the init event causes the popup to close for an unknown reason.
+                    //  We work around this by sending a second open event after a delay
+                    //  so that the menu definitely displays, but this is a hacky workaround.
+                    let tx = tx.clone();
+                    spawn(async move {
+                        sleep(Duration::from_millis(50)).await;
+                        tx.send_expect(ModuleUpdateEvent::OpenPopup(popup_id)).await;
+                    });
+                }
             }
         });
 
