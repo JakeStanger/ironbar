@@ -25,7 +25,7 @@ scale > trough > highlight {
     background-color: var(--color-active);
     border-style: solid;
     border-color: var(--color-active);
-    border-width: var(--margin-sm);
+    border-width: 0.3em;
 }
 
 scale > trough > slider {
