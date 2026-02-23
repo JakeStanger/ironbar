@@ -32,6 +32,18 @@ scale > trough > slider {
     background-color: var(--color-white);
 }
 
+switch > slider {
+    background-color: var(--color-white);
+}
+
+switch:checked {
+    background-color: var(--color-active);
+}
+
+switch:not(:checked) {
+  background-color: var(--color-dark-secondary);
+}
+
 #bar, popover, popover contents, calendar {
     background-color: var(--color-dark-primary);
 }
