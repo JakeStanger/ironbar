@@ -5,10 +5,10 @@ use crate::channels::{AsyncSenderExt, BroadcastReceiverExt};
 use crate::clients::tray;
 use crate::config::{CommonConfig, ModuleOrientation, default};
 use crate::modules::{Module, ModuleInfo, ModuleParts, ModuleUpdateEvent, WidgetContext};
-use crate::{lock, module_impl, spawn};
+use crate::{image, lock, module_impl, spawn};
 use color_eyre::{Report, Result};
 use gtk::prelude::*;
-use gtk::{IconTheme, Orientation};
+use gtk::{ContentFit, IconTheme, Orientation, Picture};
 use interface::TrayMenu;
 use serde::Deserialize;
 use std::collections::HashMap;
@@ -285,17 +285,21 @@ impl Module<gtk::Box> for TrayModule {
             let activated_channel = context.controller_tx.clone();
 
             let provider = context.ironbar.image_provider();
+            let icon_theme = provider.icon_theme().clone();
+            let image_provider = provider.clone();
+
             let icon_config = IconConfig {
-                theme: provider.icon_theme().clone(),
+                theme: icon_theme,
                 size: self.icon_size,
                 prefer_theme: self.prefer_theme_icons,
             };
 
-            // listen for UI updates
             let click_handlers = self.click_handlers.clone();
 
+            // listen for UI updates
             context.subscribe().recv_glib((), move |(), update| {
                 on_update(
+                    image_provider.clone(),
                     update,
                     &container,
                     &mut menus,
@@ -328,6 +332,7 @@ impl Module<gtk::Box> for TrayModule {
 /// Handles UI updates as callback,
 /// getting the diff since the previous update and applying it to the menu.
 fn on_update(
+    image_provider: image::Provider,
     update: Event,
     container: &gtk::Box,
     menus: &mut HashMap<Box<str>, TrayMenu>,
@@ -345,7 +350,20 @@ fn on_update(
             let x: Option<&gtk::Widget> = None;
             container.insert_child_after(&menu_item.widget, x);
 
-            if let Ok(image) = icon::get_image(
+            if let Some(icon_name) = menu_item.icon_name() {
+                let icon_name = icon_name.clone();
+                let gtk_image = Picture::builder()
+                    .content_fit(ContentFit::ScaleDown)
+                    .build();
+                menu_item.set_image(&gtk_image);
+                let image_provider = image_provider.clone();
+                let icon_size = icon_config.size;
+                glib::spawn_future_local(async move {
+                    image_provider
+                        .load_into_picture_silent(&icon_name, icon_size as i32, true, &gtk_image)
+                        .await;
+                });
+            } else if let Ok(image) = icon::get_image(
                 &menu_item,
                 icon_config.size,
                 icon_config.prefer_theme,
@@ -383,16 +401,36 @@ fn on_update(
                         menu_item.icon_pixmap = icon_pixmap;
                         menu_item.set_icon_name(icon_name);
 
-                        match icon::get_image(
-                            menu_item,
-                            icon_config.size,
-                            icon_config.prefer_theme,
-                            &icon_config.theme,
-                        ) {
-                            Ok(image) => menu_item.set_image(&image),
-                            Err(e) => {
-                                error!("error loading icon: {e}");
-                                menu_item.show_label();
+                        if let Some(icon_name) = menu_item.icon_name() {
+                            let icon_name = icon_name.clone();
+                            let gtk_image = Picture::builder()
+                                .content_fit(ContentFit::ScaleDown)
+                                .build();
+                            menu_item.set_image(&gtk_image);
+                            let image_provider = image_provider.clone();
+                            let icon_size = icon_config.size;
+                            glib::spawn_future_local(async move {
+                                image_provider
+                                    .load_into_picture_silent(
+                                        &icon_name,
+                                        icon_size as i32,
+                                        true,
+                                        &gtk_image,
+                                    )
+                                    .await;
+                            });
+                        } else {
+                            match icon::get_image(
+                                menu_item,
+                                icon_config.size,
+                                icon_config.prefer_theme,
+                                &icon_config.theme,
+                            ) {
+                                Ok(image) => menu_item.set_image(&image),
+                                Err(e) => {
+                                    error!("error loading icon: {e}");
+                                    menu_item.show_label();
+                                }
                             }
                         }
                     }
