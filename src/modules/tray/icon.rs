@@ -151,7 +151,7 @@ fn find_approx_size(v: &[IconPixmap], size: u32) -> Option<&IconPixmap> {
 mod tests {
     #[test]
     fn test_find_approx_height() {
-        use super::{find_approx_size, IconPixmap};
+        use super::{IconPixmap, find_approx_size};
 
         macro_rules! make_list {
             ($heights:expr) => {
