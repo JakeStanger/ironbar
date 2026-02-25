@@ -67,11 +67,11 @@ pub mod volume;
 #[cfg(feature = "workspaces")]
 pub mod workspaces;
 
-#[derive(Clone)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum ModuleLocation {
-    Left,
+    Start,
     Center,
-    Right,
+    End,
 }
 
 #[derive(Clone)]
@@ -156,6 +156,7 @@ pub struct ModuleRef {
     pub name: String,
     pub root_widget: Widget,
     pub popup: Option<ModulePopupParts>,
+    pub location: ModuleLocation,
 }
 
 pub struct ModuleParts<W: IsA<Widget>> {
@@ -403,6 +404,7 @@ pub trait ModuleFactory {
             name: instance_name,
             root_widget: module_parts.widget.upcast(),
             popup: module_parts.popup,
+            location: info.location,
         })
     }
 

@@ -5,7 +5,7 @@ use crate::{
     config::CommonConfig,
 };
 
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Deserialize, Clone, PartialEq)]
 #[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
 #[serde(default)]
 pub struct BluetoothModule {
@@ -44,7 +44,7 @@ impl Default for BluetoothModule {
     }
 }
 
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Deserialize, Clone, PartialEq)]
 #[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
 #[serde(default)]
 pub struct FormatConfig {
@@ -86,7 +86,7 @@ impl Default for FormatConfig {
     }
 }
 
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Deserialize, Clone, PartialEq, Eq)]
 #[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
 #[serde(rename_all = "lowercase")]
 pub enum SizeLimit {
@@ -94,7 +94,7 @@ pub enum SizeLimit {
     Pixels(i32),
 }
 
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Deserialize, Clone, PartialEq)]
 #[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
 #[serde(default)]
 pub struct PopupConfig {
@@ -130,7 +130,7 @@ impl Default for PopupConfig {
     }
 }
 
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Deserialize, Clone, PartialEq)]
 #[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
 #[serde(default)]
 pub struct AdapterStatus {
@@ -172,7 +172,7 @@ impl Default for AdapterStatus {
     }
 }
 
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Deserialize, Clone, PartialEq)]
 #[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
 #[serde(default)]
 pub struct DeviceStatus {
@@ -208,7 +208,7 @@ impl Default for DeviceStatus {
     }
 }
 
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Deserialize, Clone, PartialEq)]
 #[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
 #[serde(default)]
 pub struct PopupDeviceConfig {

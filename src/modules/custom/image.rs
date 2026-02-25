@@ -6,7 +6,7 @@ use gtk::prelude::*;
 use gtk::{ContentFit, Picture};
 use serde::Deserialize;
 
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Deserialize, Clone, PartialEq)]
 #[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
 #[serde(default)]
 pub struct ImageWidget {
