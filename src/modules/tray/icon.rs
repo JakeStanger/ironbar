@@ -1,27 +1,34 @@
 use crate::gtk_helpers::IronbarPaintableExt;
 use crate::image;
-use crate::modules::tray::interface::TrayMenu;
 use color_eyre::{Report, Result};
 use gtk::gdk::Texture;
 use gtk::gdk_pixbuf::{Colorspace, Pixbuf};
+use gtk::prelude::WidgetExt;
 use gtk::{ContentFit, Picture};
+use std::path::Path;
 use system_tray::item::IconPixmap;
 
 /// Attempts to get a GTK `Picture` for the tray item's icon.
-/// Tries icon name first (via image provider, which handles SVGs),
+///
+/// If `prefer_icons` is true (or there is no pixmap), tries the icon name first
+/// via the image provider (which handles SVGs, theme icons, and local files),
 /// then falls back to raw pixmap data.
+///
+/// If `prefer_icons` is false and a pixmap is available, uses the pixmap directly.
 pub async fn get_image(
-    item: &TrayMenu,
+    icon_name: Option<&str>,
+    icon_theme_path: Option<&Path>,
+    icon_pixmap: Option<&[IconPixmap]>,
     size: u32,
     prefer_icons: bool,
     image_provider: &image::Provider,
 ) -> Result<Picture> {
-    if !prefer_icons && item.icon_pixmap.is_some() {
-        get_image_from_pixmap(item.icon_pixmap.as_deref(), size)
+    if !prefer_icons && icon_pixmap.is_some() {
+        get_image_from_pixmap(icon_pixmap, size)
     } else {
-        get_image_from_icon_name(item, size, image_provider)
+        get_image_from_icon_name(icon_name, icon_theme_path, size, image_provider)
             .await
-            .or_else(|_| get_image_from_pixmap(item.icon_pixmap.as_deref(), size))
+            .or_else(|_| get_image_from_pixmap(icon_pixmap, size))
     }
 }
 
@@ -29,14 +36,15 @@ pub async fn get_image(
 /// using the image provider, which correctly handles SVGs, theme icons,
 /// and local files.
 async fn get_image_from_icon_name(
-    item: &TrayMenu,
+    icon_name: Option<&str>,
+    icon_theme_path: Option<&Path>,
     size: u32,
     image_provider: &image::Provider,
 ) -> Result<Picture> {
     // Add custom icon theme search path if the item specifies one.
-    // icon_theme() returns a clone of the GObject reference,
-    // so add_search_path mutates the shared underlying GTK IconTheme.
-    if let Some(path) = item.icon_theme_path.as_ref()
+    // icon_theme() returns a clone of the GObject reference, so
+    // add_search_path mutates the shared underlying GTK IconTheme.
+    if let Some(path) = icon_theme_path
         && !path.as_os_str().is_empty()
     {
         let icon_theme = image_provider.icon_theme();
@@ -45,9 +53,7 @@ async fn get_image_from_icon_name(
         }
     }
 
-    let icon_name = item
-        .icon_name
-        .as_ref()
+    let icon_name = icon_name
         .filter(|i| !i.is_empty())
         .ok_or_else(|| Report::msg("no icon name"))?;
 
@@ -56,7 +62,7 @@ async fn get_image_from_icon_name(
         .build();
 
     // use_fallback=false so we get Ok(false) rather than a fallback icon,
-    // allowing the caller to try pixmap next.
+    // allowing the caller to try the pixmap path next.
     let found = image_provider
         .load_into_picture(icon_name, size as i32, false, &picture)
         .await?;
@@ -146,7 +152,7 @@ fn find_approx_size(v: &[IconPixmap], size: u32) -> Option<&IconPixmap> {
 mod tests {
     #[test]
     fn test_find_approx_height() {
-        use super::{IconPixmap, find_approx_size};
+        use super::{find_approx_size, IconPixmap};
 
         macro_rules! make_list {
             ($heights:expr) => {

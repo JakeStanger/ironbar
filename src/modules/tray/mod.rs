@@ -13,8 +13,10 @@ use gtk::{ContentFit, Orientation, Picture};
 use interface::TrayMenu;
 use serde::Deserialize;
 use std::collections::HashMap;
+use std::path::PathBuf;
 use system_tray::client::Event;
 use system_tray::client::{ActivateRequest, UpdateEvent};
+use system_tray::item::IconPixmap;
 use tokio::sync::mpsc;
 use tracing::{debug, error, trace, warn};
 
@@ -276,6 +278,8 @@ impl Module<gtk::Box> for TrayModule {
             .direction
             .map_or(info.bar_position.orientation(), Orientation::from);
 
+        // We use a `Box` here instead of the (supposedly correct) `MenuBar`
+        // as the latter has issues on Sway with menus focus-stealing from the bar.
         let container = gtk::Box::new(orientation, 0);
 
         {
@@ -324,52 +328,49 @@ impl Module<gtk::Box> for TrayModule {
     }
 }
 
-/// Loads an icon asynchronously into an already-registered `Picture` widget.
+/// Spawns an async task that loads an icon via `icon::get_image` into an
+/// already-registered `Picture` widget.
 ///
-/// This is used when we need to call `set_image` synchronously (to register
-/// the widget) but load the actual image content asynchronously (for SVG support).
+/// The `Picture` is registered with the `TrayMenu` synchronously (via
+/// `set_image`) before this is called, so the widget tree is always consistent.
+/// The image content is then populated asynchronously, which is required to
+/// support SVG icons.
 ///
-/// On failure, attempts pixmap fallback by swapping the paintable on the
-/// existing picture. If that also fails, logs a warning and hides the picture.
+/// On failure, logs a warning and hides the picture widget.
 fn load_icon_async(
     picture: Picture,
-    icon_name: String,
-    icon_theme_path: Option<std::path::PathBuf>,
-    icon_pixmap: Option<Vec<system_tray::item::IconPixmap>>,
+    icon_name: Option<String>,
+    icon_theme_path: Option<PathBuf>,
+    icon_pixmap: Option<Vec<IconPixmap>>,
     size: u32,
     prefer_theme: bool,
     provider: image::Provider,
 ) {
     glib::spawn_future_local(async move {
-        // Add custom theme search path if needed.
-        // icon_theme() clones the GObject reference, so this mutates the shared theme.
-        if let Some(path) = icon_theme_path.as_ref()
-            && !path.as_os_str().is_empty()
+        match icon::get_image(
+            icon_name.as_deref(),
+            icon_theme_path.as_deref(),
+            icon_pixmap.as_deref(),
+            size,
+            prefer_theme,
+            &provider,
+        )
+        .await
         {
-            let icon_theme = provider.icon_theme();
-            if !icon_theme.search_path().contains(path) {
-                icon_theme.add_search_path(path);
+            Ok(result) => {
+                // Swap the paintable onto the pre-registered picture widget
+                // rather than replacing the widget itself, since we can no
+                // longer access &mut TrayMenu here.
+                if let Some(paintable) = result.paintable() {
+                    picture.set_paintable(Some(&paintable));
+                }
             }
-        }
-
-        let loaded = provider
-            .load_into_picture(&icon_name, size as i32, false, &picture)
-            .await
-            .unwrap_or(false);
-
-        if !loaded {
-            // Attempt pixmap fallback: swap the paintable on the existing picture widget
-            // rather than replacing the widget itself (which would require &mut TrayMenu).
-            match icon::get_image_from_pixmap(icon_pixmap.as_deref(), size) {
-                Ok(fallback) => {
-                    if let Some(paintable) = fallback.paintable() {
-                        picture.set_paintable(Some(&paintable));
-                    }
-                }
-                Err(_) => {
-                    warn!("failed to load icon '{icon_name}' and no pixmap fallback available");
-                    picture.set_visible(false);
-                }
+            Err(_) => {
+                warn!(
+                    "failed to load icon '{:?}': no icon name or pixmap available",
+                    icon_name
+                );
+                picture.set_visible(false);
             }
         }
     });
@@ -395,42 +396,25 @@ fn on_update(
             let x: Option<&gtk::Widget> = None;
             container.insert_child_after(&menu_item.widget, x);
 
-            let has_icon_name = menu_item
-                .icon_name
-                .as_deref()
-                .is_some_and(|n| !n.is_empty());
-            let has_pixmap = menu_item.icon_pixmap.is_some();
+            // Register an empty picture synchronously so the widget tree is
+            // always in a consistent state, then populate it asynchronously.
+            // This is necessary because icon::get_image is async (SVG loading
+            // requires it) but set_image needs &mut self which cannot be held
+            // across an await point.
+            let picture = Picture::builder()
+                .content_fit(ContentFit::ScaleDown)
+                .build();
+            menu_item.set_image(&picture);
 
-            if has_icon_name && (icon_config.prefer_theme || !has_pixmap) {
-                // Async path: register the picture widget immediately,
-                // then load its content asynchronously so SVGs work.
-                let picture = Picture::builder()
-                    .content_fit(ContentFit::ScaleDown)
-                    .build();
-                menu_item.set_image(&picture);
-
-                load_icon_async(
-                    picture,
-                    menu_item.icon_name.clone().unwrap(),
-                    menu_item.icon_theme_path.clone(),
-                    menu_item.icon_pixmap.clone(),
-                    icon_config.size,
-                    icon_config.prefer_theme,
-                    icon_config.provider.clone(),
-                );
-            } else if has_pixmap {
-                // Sync path: pixmap is preferred or no icon name available.
-                match icon::get_image_from_pixmap(menu_item.icon_pixmap.as_deref(), icon_config.size) {
-                    Ok(image) => menu_item.set_image(&image),
-                    Err(_) => {
-                        let label = menu_item.title.clone().unwrap_or(address.clone());
-                        menu_item.set_label(&label);
-                    }
-                }
-            } else {
-                let label = menu_item.title.clone().unwrap_or(address.clone());
-                menu_item.set_label(&label);
-            }
+            load_icon_async(
+                picture,
+                menu_item.icon_name.clone(),
+                menu_item.icon_theme_path.clone(),
+                menu_item.icon_pixmap.clone(),
+                icon_config.size,
+                icon_config.prefer_theme,
+                icon_config.provider.clone(),
+            );
 
             menus.insert(address.into(), menu_item);
         }
@@ -458,40 +442,21 @@ fn on_update(
                         menu_item.icon_pixmap = icon_pixmap.clone();
                         menu_item.set_icon_name(icon_name.clone());
 
-                        let has_icon_name =
-                            icon_name.as_deref().is_some_and(|n| !n.is_empty());
-                        let has_pixmap = icon_pixmap.is_some();
+                        // Register a fresh picture synchronously, then load async.
+                        let picture = Picture::builder()
+                            .content_fit(ContentFit::ScaleDown)
+                            .build();
+                        menu_item.set_image(&picture);
 
-                        if has_icon_name && (icon_config.prefer_theme || !has_pixmap) {
-                            // Async path: create a new picture and swap it in.
-                            let picture = Picture::builder()
-                                .content_fit(ContentFit::ScaleDown)
-                                .build();
-                            menu_item.set_image(&picture);
-
-                            load_icon_async(
-                                picture,
-                                icon_name.unwrap(),
-                                menu_item.icon_theme_path.clone(),
-                                icon_pixmap,
-                                icon_config.size,
-                                icon_config.prefer_theme,
-                                icon_config.provider.clone(),
-                            );
-                        } else if has_pixmap {
-                            match icon::get_image_from_pixmap(
-                                icon_pixmap.as_deref(),
-                                icon_config.size,
-                            ) {
-                                Ok(image) => menu_item.set_image(&image),
-                                Err(e) => {
-                                    error!("error loading icon: {e}");
-                                    menu_item.show_label();
-                                }
-                            }
-                        } else {
-                            menu_item.show_label();
-                        }
+                        load_icon_async(
+                            picture,
+                            icon_name,
+                            menu_item.icon_theme_path.clone(),
+                            icon_pixmap,
+                            icon_config.size,
+                            icon_config.prefer_theme,
+                            icon_config.provider.clone(),
+                        );
                     }
                 }
                 UpdateEvent::OverlayIcon(_icon) => {
