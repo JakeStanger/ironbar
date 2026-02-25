@@ -3,7 +3,6 @@ use crate::image;
 use color_eyre::{Report, Result};
 use gtk::gdk::Texture;
 use gtk::gdk_pixbuf::{Colorspace, Pixbuf};
-use gtk::prelude::WidgetExt;
 use gtk::{ContentFit, Picture};
 use std::path::Path;
 use system_tray::item::IconPixmap;
@@ -48,7 +47,7 @@ async fn get_image_from_icon_name(
         && !path.as_os_str().is_empty()
     {
         let icon_theme = image_provider.icon_theme();
-        if !icon_theme.search_path().contains(path) {
+        if !icon_theme.search_path().contains(&path.to_path_buf()) {
             icon_theme.add_search_path(path);
         }
     }

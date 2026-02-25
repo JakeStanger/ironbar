@@ -336,9 +336,11 @@ impl Module<gtk::Box> for TrayModule {
 /// The image content is then populated asynchronously, which is required to
 /// support SVG icons.
 ///
-/// On failure, logs a warning and hides the picture widget.
+/// If loading fails entirely, hides the picture and shows the `fallback_label`
+/// (which was pre-registered synchronously via `set_label`).
 fn load_icon_async(
     picture: Picture,
+    fallback_label: gtk::Label,
     icon_name: Option<String>,
     icon_theme_path: Option<PathBuf>,
     icon_pixmap: Option<Vec<IconPixmap>>,
@@ -371,6 +373,7 @@ fn load_icon_async(
                     icon_name
                 );
                 picture.set_visible(false);
+                fallback_label.set_visible(true);
             }
         }
     });
@@ -396,18 +399,30 @@ fn on_update(
             let x: Option<&gtk::Widget> = None;
             container.insert_child_after(&menu_item.widget, x);
 
-            // Register an empty picture synchronously so the widget tree is
-            // always in a consistent state, then populate it asynchronously.
-            // This is necessary because icon::get_image is async (SVG loading
-            // requires it) but set_image needs &mut self which cannot be held
-            // across an await point.
+            // Register both a picture and a fallback label synchronously so
+            // the widget tree is always consistent. The picture is populated
+            // asynchronously (required for SVG support). If loading fails, the
+            // picture is hidden and the label is shown instead.
+            // Both must be created before menu_item is moved into `menus`.
             let picture = Picture::builder()
                 .content_fit(ContentFit::ScaleDown)
                 .build();
             menu_item.set_image(&picture);
 
+            let fallback_text = menu_item.title.clone().unwrap_or_else(|| address.to_string());
+            // set_label hides the image and registers the label widget
+            menu_item.set_label(&fallback_text);
+            // Immediately re-show the picture and hide the label -
+            // load_icon_async will flip them back if loading fails.
+            menu_item.set_image(&picture);
+            let fallback_label = menu_item
+                .label_widget()
+                .expect("label widget to exist after set_label")
+                .clone();
+
             load_icon_async(
                 picture,
+                fallback_label,
                 menu_item.icon_name.clone(),
                 menu_item.icon_theme_path.clone(),
                 menu_item.icon_pixmap.clone(),
@@ -442,14 +457,27 @@ fn on_update(
                         menu_item.icon_pixmap = icon_pixmap.clone();
                         menu_item.set_icon_name(icon_name.clone());
 
-                        // Register a fresh picture synchronously, then load async.
+                        // Register a fresh picture and ensure a label widget exists,
+                        // then load the image asynchronously.
                         let picture = Picture::builder()
                             .content_fit(ContentFit::ScaleDown)
                             .build();
+
+                        // Ensure a label widget exists for the fallback.
+                        // show_label uses the existing label text if already set.
+                        if menu_item.label_widget().is_none() {
+                            let fallback_text = menu_item.title.clone().unwrap_or_default();
+                            menu_item.set_label(&fallback_text);
+                        }
                         menu_item.set_image(&picture);
+                        let fallback_label = menu_item
+                            .label_widget()
+                            .expect("label widget to exist")
+                            .clone();
 
                         load_icon_async(
                             picture,
+                            fallback_label,
                             icon_name,
                             menu_item.icon_theme_path.clone(),
                             icon_pixmap,
