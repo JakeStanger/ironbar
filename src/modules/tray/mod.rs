@@ -4,11 +4,12 @@ mod interface;
 use crate::channels::{AsyncSenderExt, BroadcastReceiverExt};
 use crate::clients::tray;
 use crate::config::{CommonConfig, ModuleOrientation, default};
+use crate::image;
 use crate::modules::{Module, ModuleInfo, ModuleParts, ModuleUpdateEvent, WidgetContext};
-use crate::{image, lock, module_impl, spawn};
+use crate::{lock, module_impl, spawn};
 use color_eyre::{Report, Result};
 use gtk::prelude::*;
-use gtk::{ContentFit, IconTheme, Orientation, Picture};
+use gtk::{ContentFit, Orientation, Picture};
 use interface::TrayMenu;
 use serde::Deserialize;
 use std::collections::HashMap;
@@ -19,7 +20,7 @@ use tracing::{debug, error, trace, warn};
 
 /// Icon configuration for tray items
 struct IconConfig {
-    theme: IconTheme,
+    provider: image::Provider,
     size: u32,
     prefer_theme: bool,
 }
@@ -275,8 +276,6 @@ impl Module<gtk::Box> for TrayModule {
             .direction
             .map_or(info.bar_position.orientation(), Orientation::from);
 
-        // We use a `Box` here instead of the (supposedly correct) `MenuBar`
-        // as the latter has issues on Sway with menus focus-stealing from the bar.
         let container = gtk::Box::new(orientation, 0);
 
         {
@@ -285,11 +284,8 @@ impl Module<gtk::Box> for TrayModule {
             let activated_channel = context.controller_tx.clone();
 
             let provider = context.ironbar.image_provider();
-            let icon_theme = provider.icon_theme().clone();
-            let image_provider = provider.clone();
-
             let icon_config = IconConfig {
-                theme: icon_theme,
+                provider: provider.clone(),
                 size: self.icon_size,
                 prefer_theme: self.prefer_theme_icons,
             };
@@ -299,7 +295,6 @@ impl Module<gtk::Box> for TrayModule {
             // listen for UI updates
             context.subscribe().recv_glib((), move |(), update| {
                 on_update(
-                    image_provider.clone(),
                     update,
                     &container,
                     &mut menus,
@@ -329,10 +324,60 @@ impl Module<gtk::Box> for TrayModule {
     }
 }
 
+/// Loads an icon asynchronously into an already-registered `Picture` widget.
+///
+/// This is used when we need to call `set_image` synchronously (to register
+/// the widget) but load the actual image content asynchronously (for SVG support).
+///
+/// On failure, attempts pixmap fallback by swapping the paintable on the
+/// existing picture. If that also fails, logs a warning and hides the picture.
+fn load_icon_async(
+    picture: Picture,
+    icon_name: String,
+    icon_theme_path: Option<std::path::PathBuf>,
+    icon_pixmap: Option<Vec<system_tray::item::IconPixmap>>,
+    size: u32,
+    prefer_theme: bool,
+    provider: image::Provider,
+) {
+    glib::spawn_future_local(async move {
+        // Add custom theme search path if needed.
+        // icon_theme() clones the GObject reference, so this mutates the shared theme.
+        if let Some(path) = icon_theme_path.as_ref()
+            && !path.as_os_str().is_empty()
+        {
+            let icon_theme = provider.icon_theme();
+            if !icon_theme.search_path().contains(path) {
+                icon_theme.add_search_path(path);
+            }
+        }
+
+        let loaded = provider
+            .load_into_picture(&icon_name, size as i32, false, &picture)
+            .await
+            .unwrap_or(false);
+
+        if !loaded {
+            // Attempt pixmap fallback: swap the paintable on the existing picture widget
+            // rather than replacing the widget itself (which would require &mut TrayMenu).
+            match icon::get_image_from_pixmap(icon_pixmap.as_deref(), size) {
+                Ok(fallback) => {
+                    if let Some(paintable) = fallback.paintable() {
+                        picture.set_paintable(Some(&paintable));
+                    }
+                }
+                Err(_) => {
+                    warn!("failed to load icon '{icon_name}' and no pixmap fallback available");
+                    picture.set_visible(false);
+                }
+            }
+        }
+    });
+}
+
 /// Handles UI updates as callback,
 /// getting the diff since the previous update and applying it to the menu.
 fn on_update(
-    image_provider: image::Provider,
     update: Event,
     container: &gtk::Box,
     menus: &mut HashMap<Box<str>, TrayMenu>,
@@ -350,26 +395,38 @@ fn on_update(
             let x: Option<&gtk::Widget> = None;
             container.insert_child_after(&menu_item.widget, x);
 
-            if let Some(icon_name) = menu_item.icon_name() {
-                let icon_name = icon_name.clone();
-                let gtk_image = Picture::builder()
+            let has_icon_name = menu_item
+                .icon_name
+                .as_deref()
+                .is_some_and(|n| !n.is_empty());
+            let has_pixmap = menu_item.icon_pixmap.is_some();
+
+            if has_icon_name && (icon_config.prefer_theme || !has_pixmap) {
+                // Async path: register the picture widget immediately,
+                // then load its content asynchronously so SVGs work.
+                let picture = Picture::builder()
                     .content_fit(ContentFit::ScaleDown)
                     .build();
-                menu_item.set_image(&gtk_image);
-                let image_provider = image_provider.clone();
-                let icon_size = icon_config.size;
-                glib::spawn_future_local(async move {
-                    image_provider
-                        .load_into_picture_silent(&icon_name, icon_size as i32, true, &gtk_image)
-                        .await;
-                });
-            } else if let Ok(image) = icon::get_image(
-                &menu_item,
-                icon_config.size,
-                icon_config.prefer_theme,
-                &icon_config.theme,
-            ) {
-                menu_item.set_image(&image);
+                menu_item.set_image(&picture);
+
+                load_icon_async(
+                    picture,
+                    menu_item.icon_name.clone().unwrap(),
+                    menu_item.icon_theme_path.clone(),
+                    menu_item.icon_pixmap.clone(),
+                    icon_config.size,
+                    icon_config.prefer_theme,
+                    icon_config.provider.clone(),
+                );
+            } else if has_pixmap {
+                // Sync path: pixmap is preferred or no icon name available.
+                match icon::get_image_from_pixmap(menu_item.icon_pixmap.as_deref(), icon_config.size) {
+                    Ok(image) => menu_item.set_image(&image),
+                    Err(_) => {
+                        let label = menu_item.title.clone().unwrap_or(address.clone());
+                        menu_item.set_label(&label);
+                    }
+                }
             } else {
                 let label = menu_item.title.clone().unwrap_or(address.clone());
                 menu_item.set_label(&label);
@@ -398,33 +455,33 @@ fn on_update(
                     let pixmap_changed = icon_pixmap != menu_item.icon_pixmap;
 
                     if name_changed || pixmap_changed {
-                        menu_item.icon_pixmap = icon_pixmap;
-                        menu_item.set_icon_name(icon_name);
+                        menu_item.icon_pixmap = icon_pixmap.clone();
+                        menu_item.set_icon_name(icon_name.clone());
 
-                        if let Some(icon_name) = menu_item.icon_name() {
-                            let icon_name = icon_name.clone();
-                            let gtk_image = Picture::builder()
+                        let has_icon_name =
+                            icon_name.as_deref().is_some_and(|n| !n.is_empty());
+                        let has_pixmap = icon_pixmap.is_some();
+
+                        if has_icon_name && (icon_config.prefer_theme || !has_pixmap) {
+                            // Async path: create a new picture and swap it in.
+                            let picture = Picture::builder()
                                 .content_fit(ContentFit::ScaleDown)
                                 .build();
-                            menu_item.set_image(&gtk_image);
-                            let image_provider = image_provider.clone();
-                            let icon_size = icon_config.size;
-                            glib::spawn_future_local(async move {
-                                image_provider
-                                    .load_into_picture_silent(
-                                        &icon_name,
-                                        icon_size as i32,
-                                        true,
-                                        &gtk_image,
-                                    )
-                                    .await;
-                            });
-                        } else {
-                            match icon::get_image(
-                                menu_item,
+                            menu_item.set_image(&picture);
+
+                            load_icon_async(
+                                picture,
+                                icon_name.unwrap(),
+                                menu_item.icon_theme_path.clone(),
+                                icon_pixmap,
                                 icon_config.size,
                                 icon_config.prefer_theme,
-                                &icon_config.theme,
+                                icon_config.provider.clone(),
+                            );
+                        } else if has_pixmap {
+                            match icon::get_image_from_pixmap(
+                                icon_pixmap.as_deref(),
+                                icon_config.size,
                             ) {
                                 Ok(image) => menu_item.set_image(&image),
                                 Err(e) => {
@@ -432,6 +489,8 @@ fn on_update(
                                     menu_item.show_label();
                                 }
                             }
+                        } else {
+                            menu_item.show_label();
                         }
                     }
                 }
