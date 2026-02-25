@@ -4,7 +4,6 @@ use crate::modules::tray::interface::TrayMenu;
 use color_eyre::{Report, Result};
 use gtk::gdk::Texture;
 use gtk::gdk_pixbuf::{Colorspace, Pixbuf};
-use gtk::prelude::WidgetExt;
 use gtk::{ContentFit, Picture};
 use system_tray::item::IconPixmap;
 
