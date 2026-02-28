@@ -148,8 +148,14 @@ impl Module<Button> for MenuModule {
             let button = button.clone();
             let tx = context.tx.clone();
             let controller_tx = context.controller_tx.clone();
+            let popup = context.popup.clone();
+            let id = context.id;
 
             move |_| {
+                if popup.current_widget() != Some(id) {
+                    return;
+                }
+
                 let popup_id = button.popup_id();
 
                 // channel will close after init event
