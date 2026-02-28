@@ -378,10 +378,12 @@ impl Module<gtk::Box> for WorkspacesModule {
                         btn.set_label(&label);
 
                         btn.button().set_tag("workspace_index", workspace.index);
+                        btn.set_empty(workspace.windows == 0);
                     } else if let Some(btn) = button_map.find_button_mut(&workspace) {
                         let label = item_context.format_label(&workspace.name, workspace.index);
                         btn.set_label(&label);
                         btn.button().set_tag("workspace_index", workspace.index);
+                        btn.set_empty(workspace.windows == 0);
                     } else {
                         let btn = Button::new(
                             workspace.id,
@@ -392,6 +394,7 @@ impl Module<gtk::Box> for WorkspacesModule {
                         );
 
                         btn.button().set_tag("workspace_index", workspace.index);
+                        btn.set_empty(workspace.windows == 0);
 
                         container.append(btn.button());
                         btn.button().set_visible(true);
@@ -523,6 +526,14 @@ impl Module<gtk::Box> for WorkspacesModule {
                             .or_else(|| button_map.find_button_by_id(id))
                         {
                             button.set_urgent(urgent);
+                        }
+                    }
+                    WorkspaceUpdate::Windows { id, windows } => {
+                        if let Some(button) = button_map
+                            .get(&Identifier::Id(id))
+                            .or_else(|| button_map.find_button_by_id(id))
+                        {
+                            button.set_empty(windows == 0);
                         }
                     }
                     WorkspaceUpdate::Unknown if has_initialized => {

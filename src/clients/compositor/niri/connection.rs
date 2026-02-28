@@ -64,6 +64,7 @@ impl From<&Workspace> for IronWorkspace {
             } else {
                 Visibility::Hidden
             },
+            windows: 0,
         }
     }
 }
