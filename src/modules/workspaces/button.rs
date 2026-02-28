@@ -82,6 +82,14 @@ impl Button {
         }
     }
 
+    pub fn set_empty(&self, empty: bool) {
+        if empty {
+            self.button.add_css_class("empty");
+        } else {
+            self.button.remove_css_class("empty");
+        }
+    }
+
     pub fn workspace_id(&self) -> i64 {
         self.workspace_id
     }

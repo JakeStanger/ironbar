@@ -166,6 +166,98 @@ impl Client {
             let lock = lock.clone();
             let active = active.clone();
 
+            event_listener.add_window_opened_handler(move |event| {
+                let _lock = lock!(lock);
+
+                let prev_workspace = lock!(active);
+
+                debug!("Received window open: {event:?}",);
+
+                let workspace =
+                    Self::get_workspace(event.workspace_name.as_str(), prev_workspace.as_ref());
+
+                match workspace {
+                    Ok(Some(workspace)) => Self::send_windows_change(workspace, &tx),
+                    Ok(None) => {
+                        error!("Unable to locate workspace");
+                    }
+                    Err(e) => error!("Failed to get workspace: {e:#}"),
+                    _ => {}
+                }
+            });
+        }
+
+        {
+            let tx = tx.clone();
+            let lock = lock.clone();
+            let active = active.clone();
+
+            event_listener.add_window_closed_handler(move |event| {
+                let _lock = lock!(lock);
+
+                let prev_workspace = lock!(active);
+
+                debug!("Received window close: {event:?}",);
+
+                let workspaces = match Workspaces::get() {
+                    Ok(workspaces) => workspaces,
+                    Err(_) => {
+                        error!("Unable to locate workspaces");
+                        return;
+                    }
+                };
+
+                for hworkspace in workspaces.iter() {
+                    let vis = Visibility::from((
+                        hworkspace,
+                        prev_workspace.as_ref().map(|w| w.name.as_ref()),
+                        &|w| create_is_visible()(w),
+                    ));
+
+                    let workspace = Workspace::from((vis, hworkspace.clone()));
+                    Self::send_windows_change(workspace, &tx);
+                }
+            });
+        }
+
+        {
+            let tx = tx.clone();
+            let lock = lock.clone();
+            let active = active.clone();
+
+            event_listener.add_window_moved_handler(move |event| {
+                let _lock = lock!(lock);
+
+                let prev_workspace = lock!(active);
+
+                debug!("Received window moved: {event:?}",);
+
+                let workspaces = match Workspaces::get() {
+                    Ok(workspaces) => workspaces,
+                    Err(_) => {
+                        error!("Unable to locate workspaces");
+                        return;
+                    }
+                };
+
+                for hworkspace in workspaces.iter() {
+                    let vis = Visibility::from((
+                        hworkspace,
+                        prev_workspace.as_ref().map(|w| w.name.as_ref()),
+                        &|w| create_is_visible()(w),
+                    ));
+
+                    let workspace = Workspace::from((vis, hworkspace.clone()));
+                    Self::send_windows_change(workspace, &tx);
+                }
+            });
+        }
+
+        {
+            let tx = tx.clone();
+            let lock = lock.clone();
+            let active = active.clone();
+
             event_listener.add_active_monitor_changed_handler(move |event_data| {
                 let _lock = lock!(lock);
                 let Some(workspace_type) = event_data.workspace_name else {
@@ -378,6 +470,15 @@ impl Client {
         prev_workspace.replace(workspace);
     }
 
+    /// Sends a `WorkspaceUpdate::Windows` event
+    #[cfg(feature = "workspaces+hyprland")]
+    fn send_windows_change(workspace: Workspace, tx: &Sender<WorkspaceUpdate>) {
+        tx.send_expect(WorkspaceUpdate::Windows {
+            id: workspace.id,
+            windows: workspace.windows,
+        });
+    }
+
     /// Gets a workspace by name from the server, given the active workspace if known.
     #[cfg(feature = "workspaces+hyprland")]
     fn get_workspace(name: &str, active: Option<&Workspace>) -> Result<Option<Workspace>> {
@@ -522,6 +623,7 @@ impl From<(Visibility, HWorkspace)> for Workspace {
             name: workspace.name,
             monitor: workspace.monitor,
             visibility,
+            windows: workspace.windows,
         }
     }
 }
