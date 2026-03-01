@@ -83,7 +83,9 @@ impl Module<Label> for ScriptModule {
         let (send, recv) = channel::<()>();
 
         if matches!(self.mode, ScriptMode::Watch) {
-            context.ironbar.register_or_terminate_script(&self.cmd, send)
+            context
+                .ironbar
+                .register_or_terminate_script(&self.cmd, send)
         }
 
         let script: Script = self.into();

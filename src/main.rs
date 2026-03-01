@@ -359,10 +359,10 @@ impl Ironbar {
     pub fn register_or_terminate_script(&self, cmd: &str, send: Sender<()>) {
         let mut set = self.scripts.borrow_mut();
 
-        if let Some(removed) = set.remove(cmd) {
-            if removed.send(()).is_err() {
-                error!("failed to send signal to script child process")
-            };
+        if let Some(removed) = set.remove(cmd)
+            && removed.send(()).is_err()
+        {
+            error!("failed to send signal to script child process")
         }
 
         set.insert(cmd.to_owned(), send);
