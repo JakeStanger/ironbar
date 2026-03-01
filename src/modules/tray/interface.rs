@@ -247,6 +247,10 @@ impl TrayMenu {
         self.box_content.append(image);
     }
 
+    pub fn image_widget(&self) -> Option<&Picture> {
+        self.image_widget.as_ref()
+    }
+
     pub fn label_widget(&self) -> Option<&Label> {
         self.label_widget.as_ref()
     }

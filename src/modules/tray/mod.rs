@@ -1,5 +1,6 @@
 mod icon;
 mod interface;
+
 use crate::channels::{AsyncSenderExt, BroadcastReceiverExt};
 use crate::clients::tray;
 use crate::config::{CommonConfig, ModuleOrientation, default};
@@ -18,12 +19,14 @@ use system_tray::client::{ActivateRequest, UpdateEvent};
 use system_tray::item::IconPixmap;
 use tokio::sync::mpsc;
 use tracing::{debug, error, trace, warn};
+
 /// Icon configuration for tray items
 struct IconConfig {
     provider: image::Provider,
     size: u32,
     prefer_theme: bool,
 }
+
 /// Reserved tray click actions
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
 #[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
@@ -38,6 +41,7 @@ pub enum ReservedTrayAction {
     /// Do nothing
     None,
 }
+
 /// Action to perform when clicking on a tray icon
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
 #[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
@@ -48,6 +52,7 @@ pub enum TrayClickAction {
     /// Run a custom shell command
     Custom(String),
 }
+
 /// Click action handlers for tray icons
 #[derive(Debug, Clone, Deserialize)]
 #[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
@@ -73,30 +78,35 @@ pub struct TrayClickHandlers {
     /// { on_click_left = "if [ '{name}' = 'copyq' ]; then copyq toggle; fi" }
     /// ```
     on_click_left: TrayClickAction,
+
     /// Action to perform on right-click.
     ///
     /// **Valid options**: `menu`, `default`, `secondary`, `none`, or any custom shell command
     /// <br>
     /// **Default**: `menu`
     on_click_right: TrayClickAction,
+
     /// Action to perform on middle-click.
     ///
     /// **Valid options**: `menu`, `default`, `secondary`, `none`, or any custom shell command
     /// <br>
     /// **Default**: `none`
     on_click_middle: TrayClickAction,
+
     /// Action to perform on double-left-click.
     ///
     /// **Valid options**: `menu`, `default`, `secondary`, `none`, or any custom shell command
     /// <br>
     /// **Default**: `none`
     on_click_left_double: TrayClickAction,
+
     /// Action to perform on double-right-click.
     ///
     /// **Valid options**: `menu`, `default`, `secondary`, `none`, or any custom shell command
     /// <br>
     /// **Default**: `none`
     on_click_right_double: TrayClickAction,
+
     /// Action to perform on double-middle-click.
     ///
     /// **Valid options**: `menu`, `default`, `secondary`, `none`, or any custom shell command
@@ -104,6 +114,7 @@ pub struct TrayClickHandlers {
     /// **Default**: `none`
     on_click_middle_double: TrayClickAction,
 }
+
 impl Default for TrayClickHandlers {
     fn default() -> Self {
         Self {
@@ -116,17 +127,20 @@ impl Default for TrayClickHandlers {
         }
     }
 }
+
 impl TrayClickAction {
     /// Returns true if this action is not None
     pub fn is_actionable(&self) -> bool {
         !matches!(self, Self::Reserved(ReservedTrayAction::None))
     }
 }
+
 impl Default for TrayClickAction {
     fn default() -> Self {
         Self::Reserved(ReservedTrayAction::None)
     }
 }
+
 #[derive(Debug, Deserialize, Clone)]
 #[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
 #[serde(default)]
@@ -136,23 +150,28 @@ pub struct TrayModule {
     ///
     /// **Default**: `true`
     prefer_theme_icons: bool,
+
     /// Size in pixels to display the tray icons as.
     ///
     /// **Default**: `16`
     icon_size: u32,
+
     /// The direction in which to pack tray icons.
     ///
     /// **Valid options**: `horizontal`, `vertical`
     /// <br>
     /// **Default**: `horizontal` for horizontal bars, `vertical` for vertical bars
     direction: Option<ModuleOrientation>,
+
     /// Click action handlers for tray icons
     #[serde(flatten)]
     click_handlers: TrayClickHandlers,
+
     /// See [common options](module-level-options#common-options).
     #[serde(flatten)]
     pub common: Option<CommonConfig>,
 }
+
 impl Default for TrayModule {
     fn default() -> Self {
         Self {
@@ -164,14 +183,18 @@ impl Default for TrayModule {
         }
     }
 }
+
 pub enum UiEvent {
     Menu(bool),
     Activate(ActivateRequest),
 }
+
 impl Module<gtk::Box> for TrayModule {
     type SendMessage = Event;
     type ReceiveMessage = UiEvent;
+
     module_impl!("tray");
+
     fn spawn_controller(
         &self,
         _info: &ModuleInfo,
@@ -179,25 +202,31 @@ impl Module<gtk::Box> for TrayModule {
         mut rx: mpsc::Receiver<Self::ReceiveMessage>,
     ) -> Result<()> {
         let tx = context.tx.clone();
+
         let client = context.try_client::<tray::Client>()?;
         let mut tray_rx = client.subscribe();
+
         let initial_items = {
             let items = client.items();
             lock!(items).clone()
         };
+
         // listen to tray updates
         spawn({
             let tx = tx.clone();
             async move {
                 let mut known_ids = std::collections::HashSet::new();
+
                 for (key, (item, menu)) in initial_items {
                     known_ids.insert(key.clone());
                     tx.send_update(Event::Add(key.clone(), item.into())).await;
+
                     if let Some(menu) = menu.clone() {
                         tx.send_update(Event::Update(key, UpdateEvent::Menu(menu)))
                             .await;
                     }
                 }
+
                 while let Ok(message) = tray_rx.recv().await {
                     match &message {
                         Event::Add(address, _) => {
@@ -211,10 +240,12 @@ impl Module<gtk::Box> for TrayModule {
                         }
                         _ => {}
                     }
+
                     tx.send_update(message).await;
                 }
             }
         });
+
         // send tray commands
         spawn(async move {
             while let Some(cmd) = rx.recv().await {
@@ -231,10 +262,13 @@ impl Module<gtk::Box> for TrayModule {
                     }
                 }
             }
+
             Ok::<_, Report>(())
         });
+
         Ok(())
     }
+
     fn into_widget(
         self,
         context: WidgetContext<Self::SendMessage, Self::ReceiveMessage>,
@@ -243,21 +277,26 @@ impl Module<gtk::Box> for TrayModule {
         let orientation = self
             .direction
             .map_or(info.bar_position.orientation(), Orientation::from);
+
         // We use a `Box` here instead of the (supposedly correct) `MenuBar`
         // as the latter has issues on Sway with menus focus-stealing from the bar.
         let container = gtk::Box::new(orientation, 0);
+
         {
             let container = container.clone();
             let mut menus = HashMap::new();
             let activated_channel = context.controller_tx.clone();
+
             let provider = context.ironbar.image_provider();
             let icon_config = IconConfig {
-                provider: provider.clone(),
+                provider,
                 size: self.icon_size,
                 prefer_theme: self.prefer_theme_icons,
             };
-            let click_handlers = self.click_handlers.clone();
+
             // listen for UI updates
+            let click_handlers = self.click_handlers.clone();
+
             context.subscribe().recv_glib((), move |(), update| {
                 on_update(
                     update,
@@ -269,11 +308,13 @@ impl Module<gtk::Box> for TrayModule {
                 );
             });
         };
+
         Ok(ModuleParts {
             widget: container,
             popup: None,
         })
     }
+
     fn into_popup(
         self,
         _context: WidgetContext<Self::SendMessage, Self::ReceiveMessage>,
@@ -286,6 +327,7 @@ impl Module<gtk::Box> for TrayModule {
         Some(gtk::Box::new(info.bar_position.orientation(), 0))
     }
 }
+
 /// Spawns an async task that loads an icon via `icon::get_image` into an
 /// already-registered `Picture` widget.
 ///
@@ -307,6 +349,7 @@ fn load_icon_async(
     let size = icon_config.size;
     let prefer_theme = icon_config.prefer_theme;
     let provider = icon_config.provider.clone();
+
     glib::spawn_future_local(async move {
         match icon::get_image(
             icon_name.as_deref(),
@@ -337,6 +380,7 @@ fn load_icon_async(
         }
     });
 }
+
 /// Handles UI updates as callback,
 /// getting the diff since the previous update and applying it to the menu.
 fn on_update(
@@ -350,32 +394,37 @@ fn on_update(
     match update {
         Event::Add(address, item) => {
             debug!("Received new tray item at '{address}': {item:?}");
+
             let mut menu_item =
                 TrayMenu::new(&address, *item, activated_channel.clone(), click_handlers);
+
             let x: Option<&gtk::Widget> = None;
             container.insert_child_after(&menu_item.widget, x);
-            // Register both a picture and a fallback label synchronously so
+
+            // Register both a fallback label and a picture synchronously so
             // the widget tree is always consistent. The picture is populated
             // asynchronously (required for SVG support). If loading fails, the
             // picture is hidden and the label is shown instead.
             // Both must be created before menu_item is moved into `menus`.
-            let picture = Picture::builder()
-                .content_fit(ContentFit::ScaleDown)
-                .build();
-            menu_item.set_image(&picture);
             let fallback_text = menu_item
                 .title
                 .clone()
                 .unwrap_or_else(|| address.to_string());
-            // set_label hides the image and registers the label widget
+
+            // Register the label first (no image to hide yet), then the image.
+            // set_image will hide the label and append the picture exactly once.
             menu_item.set_label(&fallback_text);
-            // Immediately re-show the picture and hide the label -
-            // load_icon_async will flip them back if loading fails.
+
+            let picture = Picture::builder()
+                .content_fit(ContentFit::ScaleDown)
+                .build();
             menu_item.set_image(&picture);
+
             let fallback_label = menu_item
                 .label_widget()
                 .expect("label widget to exist after set_label")
                 .clone();
+
             load_icon_async(
                 picture,
                 fallback_label,
@@ -384,15 +433,18 @@ fn on_update(
                 menu_item.icon_pixmap.clone(),
                 icon_config,
             );
+
             menus.insert(address.into(), menu_item);
         }
         Event::Update(address, update) => {
             debug!("Received tray update for '{address}'");
             trace!("Tray update for '{address}: {update:?}'");
+
             let Some(menu_item) = menus.get_mut(address.as_str()) else {
                 error!("Attempted to update menu at '{address}' but could not find it");
                 return;
             };
+
             match update {
                 UpdateEvent::AttentionIcon(_icon) => {
                     warn!("received unimplemented NewAttentionIcon event");
@@ -403,33 +455,34 @@ fn on_update(
                 } => {
                     let name_changed = icon_name.as_ref() != menu_item.icon_name();
                     let pixmap_changed = icon_pixmap != menu_item.icon_pixmap;
+
                     if name_changed || pixmap_changed {
                         menu_item.icon_pixmap = icon_pixmap.clone();
                         menu_item.set_icon_name(icon_name.clone());
-                        // Register a fresh picture and ensure a label widget exists,
-                        // then load the image asynchronously.
-                        let picture = Picture::builder()
-                            .content_fit(ContentFit::ScaleDown)
-                            .build();
-                        // Ensure a label widget exists for the fallback.
-                        // show_label uses the existing label text if already set.
-                        if menu_item.label_widget().is_none() {
-                            let fallback_text = menu_item.title.clone().unwrap_or_default();
-                            menu_item.set_label(&fallback_text);
+
+                        // Reuse the existing picture widget rather than creating a new one,
+                        // updating its paintable in place via load_icon_async.
+                        // label_widget is guaranteed to exist as Event::Add always calls
+                        // set_label before inserting into menus.
+                        if let Some(picture) = menu_item.image_widget().cloned() {
+                            // Reset visibility in case a previous load failed and hid the picture.
+                            picture.set_visible(true);
+
+                            let fallback_label = menu_item
+                                .label_widget()
+                                .expect("label widget to exist: set_label is always called in Event::Add")
+                                .clone();
+                            fallback_label.set_visible(false);
+
+                            load_icon_async(
+                                picture,
+                                fallback_label,
+                                icon_name,
+                                menu_item.icon_theme_path.clone(),
+                                icon_pixmap,
+                                icon_config,
+                            );
                         }
-                        menu_item.set_image(&picture);
-                        let fallback_label = menu_item
-                            .label_widget()
-                            .expect("label widget to exist")
-                            .clone();
-                        load_icon_async(
-                            picture,
-                            fallback_label,
-                            icon_name,
-                            menu_item.icon_theme_path.clone(),
-                            icon_pixmap,
-                            icon_config,
-                        );
                     }
                 }
                 UpdateEvent::OverlayIcon(_icon) => {
@@ -459,6 +512,7 @@ fn on_update(
         }
         Event::Remove(address) => {
             debug!("Removing tray item at '{address}'");
+
             if let Some(menu) = menus.get(address.as_str()) {
                 container.remove(&menu.widget);
             }
