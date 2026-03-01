@@ -8,6 +8,7 @@ use color_eyre::{Help, Report, Result};
 use gtk::Label;
 use serde::Deserialize;
 use tokio::sync::mpsc;
+use tokio::sync::oneshot::channel;
 use tracing::error;
 
 #[derive(Debug, Deserialize, Clone)]
@@ -79,11 +80,16 @@ impl Module<Label> for ScriptModule {
         context: &WidgetContext<Self::SendMessage, Self::ReceiveMessage>,
         _rx: mpsc::Receiver<Self::ReceiveMessage>,
     ) -> Result<()> {
-        let script: Script = self.into();
+        let (send, recv) = channel::<()>();
 
+        if matches!(self.mode, ScriptMode::Watch) {
+            context.ironbar.register_or_terminate_script(&self.cmd, send)
+        }
+
+        let script: Script = self.into();
         let tx = context.tx.clone();
         spawn(async move {
-            script.run(None, move |out, _| match out {
+            script.run_with_recv(None, recv, move |out, _| match out {
                OutputStream::Stdout(stdout) => {
                    tx.send_update_spawn(stdout);
                },

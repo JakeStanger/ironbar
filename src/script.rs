@@ -10,6 +10,7 @@ use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::process::Command;
 use tokio::select;
 use tokio::sync::mpsc;
+use tokio::sync::oneshot::{Receiver, channel};
 use tokio::time::sleep;
 use tracing::{debug, error, trace, warn};
 
@@ -193,24 +194,36 @@ impl Script {
     where
         F: Fn(OutputStream, bool),
     {
-        loop {
-            match self.mode {
-                ScriptMode::Poll => match self.get_output(args).await {
+        let (send, recv) = channel::<()>();
+        std::mem::forget(send);
+        self.run_with_recv(args, recv, callback).await
+    }
+
+    /// Runs the script, passing `args` if provided.
+    /// Uses the flag to determine if the script should be terminated.
+    /// Runs `f`, passing the output stream and whether the command returned 0.
+    pub async fn run_with_recv<F>(&self, args: Option<&[String]>, recv: Receiver<()>, callback: F)
+    where
+        F: Fn(OutputStream, bool),
+    {
+        match self.mode {
+            ScriptMode::Poll => loop {
+                match self.get_output(args).await {
                     Ok(output) => callback(output.0, output.1),
                     Err(err) => error!("{err:?}"),
-                },
-                ScriptMode::Watch => match self.spawn() {
-                    Ok(mut rx) => {
-                        while let Some(msg) = rx.recv().await {
-                            callback(msg, true);
-                        }
+                }
+            },
+            ScriptMode::Watch => match self.spawn(recv) {
+                Ok(mut rx) => {
+                    while let Some(msg) = rx.recv().await {
+                        callback(msg, true);
                     }
-                    Err(err) => error!("{err:?}"),
-                },
-            }
-
-            sleep(tokio::time::Duration::from_millis(self.interval)).await;
+                }
+                Err(err) => error!("{err:?}"),
+            },
         }
+
+        sleep(tokio::time::Duration::from_millis(self.interval)).await;
     }
 
     /// Attempts to execute a given command,
@@ -258,7 +271,7 @@ impl Script {
     /// Spawns a long-running process.
     /// Returns a `mpsc::Receiver` that sends a message
     /// every time a new line is written to `stdout` or `stderr`.
-    pub fn spawn(&self) -> Result<mpsc::Receiver<OutputStream>> {
+    pub fn spawn(&self, recv: Receiver<()>) -> Result<mpsc::Receiver<OutputStream>> {
         let mut handle = Command::new("/bin/sh")
             .args(["-c", &self.cmd])
             .stdout(Stdio::piped())
@@ -288,9 +301,17 @@ impl Script {
         let (tx, rx) = mpsc::channel(32);
 
         spawn(async move {
+            let mut recv = recv;
             loop {
                 select! {
                     _ = handle.wait() => break,
+                    _ = &mut recv => {
+                        if let Err(err) = handle.kill().await {
+                            error!("failed to terminate child process: {err:?}")
+                        };
+
+                        break;
+                    },
                     Ok(Some(line)) = stdout_lines.next_line() => {
                         debug!("sending stdout line: '{line}'");
                         tx.send_expect(OutputStream::Stdout(line)).await;
