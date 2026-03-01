@@ -152,6 +152,8 @@ pub struct Workspace {
     pub monitor: String,
     /// How visible the workspace is
     pub visibility: Visibility,
+    /// How many windows does the workspace have
+    pub windows: u16,
 }
 
 /// Indicates workspace visibility.
@@ -212,6 +214,11 @@ pub enum WorkspaceUpdate {
     Urgent {
         id: i64,
         urgent: bool,
+    },
+
+    Windows {
+        id: i64,
+        windows: u16,
     },
 
     /// An update was triggered by the compositor but this was not mapped by Ironbar.
