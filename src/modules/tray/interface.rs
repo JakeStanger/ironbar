@@ -234,21 +234,9 @@ impl TrayMenu {
             .set_label(text);
     }
 
-    /// Shows the label, using its current text.
-    /// The image is hidden if present.
-    pub fn show_label(&self) {
-        if let Some(image) = &self.image_widget {
-            image.set_visible(false);
-        }
-
-        if let Some(label) = &self.label_widget {
-            label.set_visible(true);
-        }
-    }
-
     /// Updates the image, and shows it in favour of the label.
     pub fn set_image(&mut self, image: &Picture) {
-        if let Some(label) = self.label_widget.take() {
+        if let Some(label) = &self.label_widget {
             label.set_visible(false);
         }
 
@@ -257,6 +245,10 @@ impl TrayMenu {
         }
 
         self.box_content.append(image);
+    }
+
+    pub fn image_widget(&self) -> Option<&Picture> {
+        self.image_widget.as_ref()
     }
 
     pub fn label_widget(&self) -> Option<&Label> {

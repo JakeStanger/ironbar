@@ -4,22 +4,25 @@ mod interface;
 use crate::channels::{AsyncSenderExt, BroadcastReceiverExt};
 use crate::clients::tray;
 use crate::config::{CommonConfig, ModuleOrientation, default};
+use crate::image;
 use crate::modules::{Module, ModuleInfo, ModuleParts, ModuleUpdateEvent, WidgetContext};
 use crate::{lock, module_impl, spawn};
 use color_eyre::{Report, Result};
 use gtk::prelude::*;
-use gtk::{IconTheme, Orientation};
+use gtk::{ContentFit, Orientation, Picture};
 use interface::TrayMenu;
 use serde::Deserialize;
 use std::collections::HashMap;
+use std::path::PathBuf;
 use system_tray::client::Event;
 use system_tray::client::{ActivateRequest, UpdateEvent};
+use system_tray::item::IconPixmap;
 use tokio::sync::mpsc;
 use tracing::{debug, error, trace, warn};
 
 /// Icon configuration for tray items
 struct IconConfig {
-    theme: IconTheme,
+    provider: image::Provider,
     size: u32,
     prefer_theme: bool,
 }
@@ -286,7 +289,7 @@ impl Module<gtk::Box> for TrayModule {
 
             let provider = context.ironbar.image_provider();
             let icon_config = IconConfig {
-                theme: provider.icon_theme().clone(),
+                provider,
                 size: self.icon_size,
                 prefer_theme: self.prefer_theme_icons,
             };
@@ -325,6 +328,59 @@ impl Module<gtk::Box> for TrayModule {
     }
 }
 
+/// Spawns an async task that loads an icon via `icon::get_image` into an
+/// already-registered `Picture` widget.
+///
+/// The `Picture` is registered with the `TrayMenu` synchronously (via
+/// `set_image`) before this is called, so the widget tree is always consistent.
+/// The image content is then populated asynchronously, which is required to
+/// support SVG icons.
+///
+/// If loading fails entirely, hides the picture and shows the `fallback_label`
+/// (which was pre-registered synchronously via `set_label`).
+fn load_icon_async(
+    picture: Picture,
+    fallback_label: gtk::Label,
+    icon_name: Option<String>,
+    icon_theme_path: Option<PathBuf>,
+    icon_pixmap: Option<Vec<IconPixmap>>,
+    icon_config: &IconConfig,
+) {
+    let size = icon_config.size;
+    let prefer_theme = icon_config.prefer_theme;
+    let provider = icon_config.provider.clone();
+
+    glib::spawn_future_local(async move {
+        match icon::get_image(
+            icon_name.as_deref(),
+            icon_theme_path.as_deref(),
+            icon_pixmap.as_deref(),
+            size,
+            prefer_theme,
+            &provider,
+        )
+        .await
+        {
+            Ok(result) => {
+                // Swap the paintable onto the pre-registered picture widget
+                // rather than replacing the widget itself, since we can no
+                // longer access &mut TrayMenu here.
+                if let Some(paintable) = result.paintable() {
+                    picture.set_paintable(Some(&paintable));
+                }
+            }
+            Err(_) => {
+                warn!(
+                    "failed to load icon '{:?}': no icon name or pixmap available",
+                    icon_name
+                );
+                picture.set_visible(false);
+                fallback_label.set_visible(true);
+            }
+        }
+    });
+}
+
 /// Handles UI updates as callback,
 /// getting the diff since the previous update and applying it to the menu.
 fn on_update(
@@ -345,17 +401,38 @@ fn on_update(
             let x: Option<&gtk::Widget> = None;
             container.insert_child_after(&menu_item.widget, x);
 
-            if let Ok(image) = icon::get_image(
-                &menu_item,
-                icon_config.size,
-                icon_config.prefer_theme,
-                &icon_config.theme,
-            ) {
-                menu_item.set_image(&image);
-            } else {
-                let label = menu_item.title.clone().unwrap_or(address.clone());
-                menu_item.set_label(&label);
-            }
+            // Register both a fallback label and a picture synchronously so
+            // the widget tree is always consistent. The picture is populated
+            // asynchronously (required for SVG support). If loading fails, the
+            // picture is hidden and the label is shown instead.
+            // Both must be created before menu_item is moved into `menus`.
+            let fallback_text = menu_item
+                .title
+                .clone()
+                .unwrap_or_else(|| address.to_string());
+
+            // Register the label first (no image to hide yet), then the image.
+            // set_image will hide the label and append the picture exactly once.
+            menu_item.set_label(&fallback_text);
+
+            let picture = Picture::builder()
+                .content_fit(ContentFit::ScaleDown)
+                .build();
+            menu_item.set_image(&picture);
+
+            let fallback_label = menu_item
+                .label_widget()
+                .expect("label widget to exist after set_label")
+                .clone();
+
+            load_icon_async(
+                picture,
+                fallback_label,
+                menu_item.icon_name.clone(),
+                menu_item.icon_theme_path.clone(),
+                menu_item.icon_pixmap.clone(),
+                icon_config,
+            );
 
             menus.insert(address.into(), menu_item);
         }
@@ -380,20 +457,31 @@ fn on_update(
                     let pixmap_changed = icon_pixmap != menu_item.icon_pixmap;
 
                     if name_changed || pixmap_changed {
-                        menu_item.icon_pixmap = icon_pixmap;
-                        menu_item.set_icon_name(icon_name);
+                        menu_item.icon_pixmap = icon_pixmap.clone();
+                        menu_item.set_icon_name(icon_name.clone());
 
-                        match icon::get_image(
-                            menu_item,
-                            icon_config.size,
-                            icon_config.prefer_theme,
-                            &icon_config.theme,
-                        ) {
-                            Ok(image) => menu_item.set_image(&image),
-                            Err(e) => {
-                                error!("error loading icon: {e}");
-                                menu_item.show_label();
-                            }
+                        // Reuse the existing picture widget rather than creating a new one,
+                        // updating its paintable in place via load_icon_async.
+                        // label_widget is guaranteed to exist as Event::Add always calls
+                        // set_label before inserting into menus.
+                        if let Some(picture) = menu_item.image_widget().cloned() {
+                            // Reset visibility in case a previous load failed and hid the picture.
+                            picture.set_visible(true);
+
+                            let fallback_label = menu_item
+                                .label_widget()
+                                .expect("label widget to exist: set_label is always called in Event::Add")
+                                .clone();
+                            fallback_label.set_visible(false);
+
+                            load_icon_async(
+                                picture,
+                                fallback_label,
+                                icon_name,
+                                menu_item.icon_theme_path.clone(),
+                                icon_pixmap,
+                                icon_config,
+                            );
                         }
                     }
                 }
