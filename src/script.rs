@@ -202,8 +202,15 @@ impl Script {
     /// Runs the script, passing `args` if provided.
     /// Uses the flag to determine if the script should be terminated.
     /// Runs `f`, passing the output stream and whether the command returned 0.
-    pub async fn run_with_recv<F>(&self, args: Option<&[String]>, recv: Receiver<()>, callback: F)
-    where
+    ///
+    /// The receiver (`rx_terminate`) is used as a signal to remotely tell the process
+    /// to terminate.
+    pub async fn run_with_recv<F>(
+        &self,
+        args: Option<&[String]>,
+        rx_terminate: Receiver<()>,
+        callback: F,
+    ) where
         F: Fn(OutputStream, bool),
     {
         match self.mode {
@@ -213,7 +220,7 @@ impl Script {
                     Err(err) => error!("{err:?}"),
                 }
             },
-            ScriptMode::Watch => match self.spawn(recv) {
+            ScriptMode::Watch => match self.spawn(rx_terminate) {
                 Ok(mut rx) => {
                     while let Some(msg) = rx.recv().await {
                         callback(msg, true);
@@ -271,7 +278,10 @@ impl Script {
     /// Spawns a long-running process.
     /// Returns a `mpsc::Receiver` that sends a message
     /// every time a new line is written to `stdout` or `stderr`.
-    pub fn spawn(&self, recv: Receiver<()>) -> Result<mpsc::Receiver<OutputStream>> {
+    ///
+    /// The receiver (`rx_terminate`) is used as a signal to remotely tell the process
+    /// to terminate.
+    pub fn spawn(&self, rx_terminate: Receiver<()>) -> Result<mpsc::Receiver<OutputStream>> {
         let mut handle = Command::new("/bin/sh")
             .args(["-c", &self.cmd])
             .stdout(Stdio::piped())
@@ -301,11 +311,11 @@ impl Script {
         let (tx, rx) = mpsc::channel(32);
 
         spawn(async move {
-            let mut recv = recv;
+            let mut rx_terminate = rx_terminate;
             loop {
                 select! {
                     _ = handle.wait() => break,
-                    _ = &mut recv => {
+                    _ = &mut rx_terminate => {
                         if let Err(err) = handle.kill().await {
                             error!("failed to terminate child process: {err:?}")
                         };

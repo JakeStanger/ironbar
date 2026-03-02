@@ -356,7 +356,10 @@ impl Ironbar {
     ///
     /// When ran it will terminate the previous script (if present) and register
     /// this as the "new" script.
-    pub fn register_or_terminate_script(&self, cmd: &str, send: Sender<()>) {
+    ///
+    /// The passed sender (`tx_terminate`) is used to remotely signal to a process
+    /// that it should terminate.
+    pub fn register_script(&self, cmd: &str, tx_terminate: Sender<()>) {
         let mut set = self.scripts.borrow_mut();
 
         if let Some(removed) = set.remove(cmd)
@@ -365,7 +368,7 @@ impl Ironbar {
             error!("failed to send signal to script child process")
         }
 
-        set.insert(cmd.to_owned(), send);
+        set.insert(cmd.to_owned(), tx_terminate);
     }
 
     /// Re-reads the config file from disk and replaces the active config.
