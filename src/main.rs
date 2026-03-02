@@ -2,6 +2,7 @@
 #![deny(clippy::unwrap_used)]
 
 use std::cell::RefCell;
+use std::collections::HashMap;
 use std::env;
 use std::future::Future;
 use std::process::exit;
@@ -18,6 +19,7 @@ use gtk::gdk::{Display, Monitor};
 use gtk::prelude::*;
 use smithay_client_toolkit::output::OutputInfo;
 use tokio::runtime::Runtime;
+use tokio::sync::oneshot::Sender;
 use tokio::task::{JoinHandle, block_in_place};
 use tracing::{debug, error, info};
 
@@ -150,7 +152,7 @@ pub struct Ironbar {
     css_source: Rc<CssSource>,
     config_location: ConfigLocation,
     css_location: Option<ConfigLocation>,
-
+    scripts: Rc<RefCell<HashMap<String, Sender<()>>>>,
     desktop_files: DesktopFiles,
     image_provider: image::Provider,
 }
@@ -178,6 +180,7 @@ impl Ironbar {
             css_source: Rc::new(css_source),
             config_location,
             css_location,
+            scripts: rc_mut!(HashMap::new()),
             desktop_files,
             image_provider,
         }
@@ -346,6 +349,26 @@ impl Ironbar {
             .filter(|&bar| bar.name() == name)
             .cloned()
             .collect()
+    }
+
+    /// Associates the command (`cmd`) of a script with a sender meant to
+    /// remotely kill the process.
+    ///
+    /// When ran it will terminate the previous script (if present) and register
+    /// this as the "new" script.
+    ///
+    /// The passed sender (`tx_terminate`) is used to remotely signal to a process
+    /// that it should terminate.
+    pub fn register_script(&self, cmd: &str, tx_terminate: Sender<()>) {
+        let mut set = self.scripts.borrow_mut();
+
+        if let Some(removed) = set.remove(cmd)
+            && removed.send(()).is_err()
+        {
+            error!("failed to send signal to script child process")
+        }
+
+        set.insert(cmd.to_owned(), tx_terminate);
     }
 
     /// Re-reads the config file from disk and replaces the active config.
