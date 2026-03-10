@@ -1,56 +1,72 @@
 use crate::gtk_helpers::IronbarPaintableExt;
-use crate::modules::tray::interface::TrayMenu;
+use crate::image;
 use color_eyre::{Report, Result};
 use gtk::gdk::Texture;
 use gtk::gdk_pixbuf::{Colorspace, Pixbuf};
-use gtk::prelude::WidgetExt;
-use gtk::{ContentFit, IconLookupFlags, IconTheme, Picture, TextDirection};
+use gtk::{ContentFit, Picture};
+use std::path::Path;
 use system_tray::item::IconPixmap;
 
-pub fn get_image(
-    item: &TrayMenu,
+/// Attempts to get a GTK `Picture` for the tray item's icon.
+///
+/// If `prefer_icons` is true (or there is no pixmap), tries the icon name first
+/// via the image provider (which handles SVGs, theme icons, and local files),
+/// then falls back to raw pixmap data.
+///
+/// If `prefer_icons` is false and a pixmap is available, uses the pixmap directly.
+pub async fn get_image(
+    icon_name: Option<&str>,
+    icon_theme_path: Option<&Path>,
+    icon_pixmap: Option<&[IconPixmap]>,
     size: u32,
     prefer_icons: bool,
-    icon_theme: &IconTheme,
+    image_provider: &image::Provider,
 ) -> Result<Picture> {
-    if !prefer_icons && item.icon_pixmap.is_some() {
-        get_image_from_pixmap(item.icon_pixmap.as_deref(), size)
+    if !prefer_icons && icon_pixmap.is_some() {
+        get_image_from_pixmap(icon_pixmap, size)
     } else {
-        get_image_from_icon_name(item, size, icon_theme)
-            .or_else(|_| get_image_from_pixmap(item.icon_pixmap.as_deref(), size))
+        get_image_from_icon_name(icon_name, icon_theme_path, size, image_provider)
+            .await
+            .or_else(|_| get_image_from_pixmap(icon_pixmap, size))
     }
 }
 
-/// Attempts to get a GTK `Image` component
-/// for the status notifier item's icon.
-fn get_image_from_icon_name(item: &TrayMenu, size: u32, icon_theme: &IconTheme) -> Result<Picture> {
-    if let Some(path) = item.icon_theme_path.as_ref()
+/// Attempts to get a GTK `Picture` for the status notifier item's icon
+/// using the image provider, which correctly handles SVGs, theme icons,
+/// and local files.
+async fn get_image_from_icon_name(
+    icon_name: Option<&str>,
+    icon_theme_path: Option<&Path>,
+    size: u32,
+    image_provider: &image::Provider,
+) -> Result<Picture> {
+    // Add custom icon theme search path if the item specifies one.
+    // icon_theme() returns a clone of the GObject reference, so
+    // add_search_path mutates the shared underlying GTK IconTheme.
+    if let Some(path) = icon_theme_path
         && !path.as_os_str().is_empty()
-        && !icon_theme.search_path().contains(path)
     {
-        icon_theme.add_search_path(path);
+        let icon_theme = image_provider.icon_theme();
+        if !icon_theme.search_path().contains(&path.to_path_buf()) {
+            icon_theme.add_search_path(path);
+        }
     }
 
-    let picture = Picture::new();
-    picture.set_content_fit(ContentFit::ScaleDown);
-
-    let paintable = item
-        .icon_name
-        .as_ref()
+    let icon_name = icon_name
         .filter(|i| !i.is_empty())
-        .map(|icon_name| {
-            icon_theme.lookup_icon(
-                icon_name,
-                &[],
-                size as i32,
-                picture.scale_factor(),
-                TextDirection::None,
-                IconLookupFlags::empty(),
-            )
-        });
+        .ok_or_else(|| Report::msg("no icon name"))?;
 
-    if let Some(paintable) = paintable {
-        picture.set_paintable(Some(&paintable));
+    let picture = Picture::builder()
+        .content_fit(ContentFit::ScaleDown)
+        .build();
+
+    // use_fallback=false so we get Ok(false) rather than a fallback icon,
+    // allowing the caller to try the pixmap path next.
+    let found = image_provider
+        .load_into_picture(icon_name, size as i32, false, &picture)
+        .await?;
+
+    if found {
         Ok(picture)
     } else {
         Err(Report::msg("could not find icon"))
@@ -61,9 +77,8 @@ fn get_image_from_icon_name(item: &TrayMenu, size: u32, icon_theme: &IconTheme) 
 ///
 /// The pixmap is supplied in ARGB32 format,
 /// which has 8 bits per sample and a bit stride of `4*width`.
-/// The Pixbuf expects RGBA32 format, so some channel shuffling
-/// is required.
-fn get_image_from_pixmap(item: Option<&[IconPixmap]>, size: u32) -> Result<Picture> {
+/// The Pixbuf expects RGBA32 format, so some channel shuffling is required.
+pub(super) fn get_image_from_pixmap(item: Option<&[IconPixmap]>, size: u32) -> Result<Picture> {
     const BITS_PER_SAMPLE: i32 = 8;
 
     let pixmap = item
@@ -106,9 +121,8 @@ fn get_image_from_pixmap(item: Option<&[IconPixmap]>, size: u32) -> Result<Pictu
     Ok(picture)
 }
 
-///  Finds the `IconPixmap`
-///  which is the smallest but bigger than wanted,
-///  or the biggest of all if no bigger than wanted.
+/// Finds the `IconPixmap` which is the smallest but bigger than wanted,
+/// or the biggest of all if none are bigger than wanted.
 fn find_approx_size(v: &[IconPixmap], size: u32) -> Option<&IconPixmap> {
     let size = size as i32;
 
