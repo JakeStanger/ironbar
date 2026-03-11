@@ -4,7 +4,7 @@ use crate::config::{CommonConfig, Profiles, State, default};
 use crate::profiles;
 use serde::Deserialize;
 
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Deserialize, Clone, PartialEq)]
 #[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
 #[serde(default)]
 pub struct NetworkManagerModule {
@@ -135,7 +135,7 @@ impl State for ProfileState {
     }
 }
 
-#[derive(Clone, Default, Deserialize, Debug)]
+#[derive(Clone, Default, Deserialize, Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
 #[serde(default)]
 pub struct NetworkManagerProfile {
