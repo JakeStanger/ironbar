@@ -27,12 +27,12 @@ use crate::bar::{Bar, create_bar};
 use crate::channels::SyncSenderExt;
 use crate::clients::Clients;
 use crate::clients::outputs::MonitorState;
-use crate::config::{Config, ConfigLocation, MonitorConfig};
+use crate::config::{Config, ConfigSource, CssSource, MonitorConfig, resolve_sources};
 use crate::desktop_file::DesktopFiles;
 use crate::error::ExitCode;
 #[cfg(any(feature = "ipc", feature = "cairo"))]
 use crate::ironvar::VariableManager;
-use crate::style::{CssSource, load_css};
+use crate::style::load_css;
 
 mod bar;
 mod channels;
@@ -64,8 +64,13 @@ fn main() {
         if #[cfg(feature = "cli")] {
             run_with_args();
         } else {
-            let config_location = ConfigLocation::from_env("IRONBAR_CONFIG").unwrap_or_default();
-            start_ironbar(false, config_location, ConfigLocation::from_env("IRONBAR_CSS"));
+            let (config_source, css_source) = resolve_sources(
+                None,
+                None,
+                std::env::var("IRONBAR_CONFIG").ok(),
+                std::env::var("IRONBAR_CSS").ok(),
+            );
+            start_ironbar(false, config_source, css_source);
         }
     }
 }
@@ -127,7 +132,13 @@ fn run_with_args() {
         None if args.validate_config > 0 => {
             let _guard = logging::install_logging(args.debug);
 
-            let (_, _, error_level) = Config::load(args.config.unwrap_or_default(), args.theme);
+            let (config_source, _) = resolve_sources(
+                args.config,
+                args.theme,
+                std::env::var("IRONBAR_CONFIG").ok(),
+                std::env::var("IRONBAR_CSS").ok(),
+            );
+            let (_, error_level) = Config::load(&config_source);
 
             let err = match args.validate_config {
                 1 => error_level >= config::ErrorLevel::Error,
@@ -140,7 +151,15 @@ fn run_with_args() {
 
             exit(err as i32);
         }
-        None => start_ironbar(args.debug, args.config.unwrap_or_default(), args.theme),
+        None => {
+            let (config_source, css_source) = resolve_sources(
+                args.config,
+                args.theme,
+                std::env::var("IRONBAR_CONFIG").ok(),
+                std::env::var("IRONBAR_CSS").ok(),
+            );
+            start_ironbar(args.debug, config_source, css_source);
+        }
     }
 }
 
@@ -150,24 +169,15 @@ pub struct Ironbar {
     clients: Rc<RefCell<Clients>>,
     config: Rc<RefCell<Config>>,
     css_source: Rc<CssSource>,
-    config_location: ConfigLocation,
-    css_location: Option<ConfigLocation>,
+    config_source: ConfigSource,
     scripts: Rc<RefCell<HashMap<String, Sender<()>>>>,
     desktop_files: DesktopFiles,
     image_provider: image::Provider,
 }
 
 impl Ironbar {
-    fn new(config_location: ConfigLocation, css_location: Option<ConfigLocation>) -> Self {
-        cfg_if!(
-            if #[cfg(feature = "config")] {
-                let (mut config, css_source, _) =
-                    Config::load(config_location.clone(), css_location.clone());
-            } else {
-                let (mut config, css_source) =
-                    Config::load(config_location.clone(), css_location.clone());
-            }
-        );
+    fn new(config_source: ConfigSource, css_source: CssSource) -> Self {
+        let (mut config, _) = Config::load(&config_source);
 
         let desktop_files = DesktopFiles::new();
         let image_provider =
@@ -178,8 +188,7 @@ impl Ironbar {
             clients: rc_mut!(Clients::new()),
             config: rc_mut!(config),
             css_source: Rc::new(css_source),
-            config_location,
-            css_location,
+            config_source,
             scripts: rc_mut!(HashMap::new()),
             desktop_files,
             image_provider,
@@ -375,19 +384,14 @@ impl Ironbar {
     /// Note this does *not* reload bars, which must be performed separately.
     #[cfg(feature = "ipc")]
     fn reload_config(&self) {
-        self.config
-            .replace(Config::load(self.config_location.clone(), self.css_location.clone()).0);
+        self.config.replace(Config::load(&self.config_source).0);
     }
 }
 
-fn start_ironbar(
-    debug: bool,
-    config_location: ConfigLocation,
-    css_location: Option<ConfigLocation>,
-) {
+fn start_ironbar(debug: bool, config_source: ConfigSource, css_source: CssSource) {
     let _guard = logging::install_logging(debug);
 
-    let ironbar = Ironbar::new(config_location, css_location);
+    let ironbar = Ironbar::new(config_source, css_source);
     ironbar.start();
 }
 
