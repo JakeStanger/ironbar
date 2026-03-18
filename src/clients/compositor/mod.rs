@@ -219,6 +219,8 @@ pub enum WorkspaceUpdate {
         old: Option<Workspace>,
         new: Workspace,
     },
+    /// used by systems that can have more than 1 focused workspace, e.g. ext-workspace
+    Unfocus(Workspace),
 
     Rename {
         id: i64,

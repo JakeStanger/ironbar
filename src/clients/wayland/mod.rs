@@ -900,25 +900,30 @@ impl Environment {
         let mut old_focused = HashMap::new();
         for entry in &old_snapshot {
             if entry.workspace.visibility.is_focused() {
-                old_focused.insert(entry.workspace.monitor.clone(), entry.workspace.clone());
+                old_focused.insert(entry.workspace.id, entry.workspace.clone());
             }
         }
 
         let mut new_focused = HashMap::new();
         for entry in &snapshot {
             if entry.workspace.visibility.is_focused() {
-                new_focused.insert(entry.workspace.monitor.clone(), entry.workspace.clone());
+                new_focused.insert(entry.workspace.id, entry.workspace.clone());
             }
         }
 
-        for (monitor, new_workspace) in &new_focused {
-            let old_workspace = old_focused.get(monitor).cloned();
-            let old_id = old_workspace.as_ref().map(|w| w.id);
-            if old_id != Some(new_workspace.id) {
+        // manually focus without old here and explicitly use unfocus later on. to comply with existing hyprland behavior but allow to go from like 5 Focused to 1 Focused workspace
+        for (id, new_workspace) in &new_focused {
+            if !old_focused.contains_key(id) {
                 updates.push(WorkspaceUpdate::Focus {
-                    old: old_workspace,
+                    old: None,
                     new: new_workspace.clone(),
                 });
+            }
+        }
+
+        for (id, old_workspace) in &old_focused {
+            if !new_focused.contains_key(id) {
+                updates.push(WorkspaceUpdate::Unfocus(old_workspace.clone()));
             }
         }
 

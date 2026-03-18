@@ -565,6 +565,16 @@ impl Module<gtk::Box> for WorkspacesModule {
                             button.set_open_state(OpenState::Focused);
                         }
                     }
+                    WorkspaceUpdate::Unfocus(workspace) if has_initialized => {
+                        if let Some(button) = button_map.find_button_mut(&workspace) {
+                            let open_state = if workspace.visibility.is_visible() {
+                                OpenState::Visible
+                            } else {
+                                OpenState::Hidden
+                            };
+                            button.set_open_state(open_state);
+                        }
+                    }
                     WorkspaceUpdate::Rename { id, name } if has_initialized => {
                         let button = if let Some(button) = button_map.get_mut(&Identifier::Id(id)) {
                             Some(button)
