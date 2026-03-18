@@ -32,6 +32,8 @@ pub enum Compositor {
     Hyprland,
     #[cfg(feature = "niri")]
     Niri,
+    #[cfg(feature = "workspaces")]
+    Workspaces,
     Unsupported,
 }
 
@@ -47,6 +49,8 @@ impl Display for Compositor {
                 Self::Hyprland => "Hyprland",
                 #[cfg(feature = "workspaces+niri")]
                 Self::Niri => "Niri",
+                #[cfg(feature = "workspaces")]
+                Self::Workspaces => "ext-workspace",
                 Self::Unsupported => "Unsupported",
             }
         )
@@ -72,6 +76,11 @@ impl Compositor {
                 if #[cfg(feature = "niri")] { Self::Niri }
                 else {tracing::error!("Not compiled with Niri support"); Self::Unsupported }
             }
+        } else if std::env::var("WAYLAND_DISPLAY").is_ok() {
+            cfg_if! {
+                if #[cfg(feature = "workspaces")] { Self::Workspaces }
+                else {tracing::error!("Not compiled with waylands ext-workspace support"); Self::Unsupported }
+            }
         } else {
             Self::Unsupported
         }
@@ -90,6 +99,7 @@ impl Compositor {
             Self::Hyprland => Ok(clients.hyprland()),
             #[cfg(feature = "niri")]
             Self::Niri => Err(Error::Unsupported("bindmode", &["sway", "hyprland"])),
+            Self::Workspaces => Err(Error::Unsupported("bindmode", &["sway", "hyprland"])),
             Self::Unsupported => Err(Error::Unsupported("bindmode", &["sway", "hyprland"])),
             #[allow(unreachable_patterns)]
             _ => Err(Error::Disabled("bindmode")),
@@ -109,6 +119,7 @@ impl Compositor {
             Self::Hyprland => Ok(clients.hyprland()),
             #[cfg(feature = "niri")]
             Self::Niri => Err(Error::Unsupported("keyboard", &["sway", "hyprland"])),
+            Self::Workspaces => Err(Error::Unsupported("keyboard", &["sway", "hyprland"])),
             Self::Unsupported => Err(Error::Unsupported("keyboard", &["sway", "hyprland"])),
             #[allow(unreachable_patterns)]
             _ => Err(Error::Disabled("keyboard")),
@@ -121,6 +132,11 @@ impl Compositor {
     pub fn create_workspace_client(
         clients: &mut super::Clients,
     ) -> Result<Arc<dyn WorkspaceClient + Send + Sync>> {
+        if std::env::var("WAYLAND_DISPLAY").is_ok() {
+            debug!("Getting workspace client for: ext-workspace");
+            return Ok(clients.wayland());
+        }
+
         let current = Self::get_current();
         debug!("Getting workspace client for: {current}");
         match current {
@@ -130,9 +146,10 @@ impl Compositor {
             Self::Hyprland => Ok(clients.hyprland()),
             #[cfg(feature = "workspaces+niri")]
             Self::Niri => Ok(Arc::new(niri::Client::new())),
+            Self::Workspaces => Ok(clients.wayland()),
             Self::Unsupported => Err(Error::Unsupported(
                 "workspaces",
-                &["sway", "hyprland", "niri"],
+                &["sway", "hyprland", "niri", "ext-workspace"],
             )),
             #[allow(unreachable_patterns)]
             _ => Err(Error::Disabled("workspaces")),
@@ -234,6 +251,24 @@ pub struct BindModeUpdate {
 pub trait WorkspaceClient: Debug + Send + Sync {
     /// Requests the workspace with this id is focused.
     fn focus(&self, id: i64);
+
+    /// Activates a workspace.
+    fn activate(&self, id: i64) {
+        self.focus(id);
+    }
+
+    /// Deactivates a workspace if supported by the backend.
+    fn deactivate(&self, _id: i64) {}
+
+    /// Toggles workspace activation if supported by the backend.
+    fn toggle(&self, id: i64) {
+        self.focus(id);
+    }
+
+    /// Activates this workspace and deactivates others on the same output if supported.
+    fn activate_exclusive(&self, id: i64) {
+        self.focus(id);
+    }
 
     /// Creates a new to workspace event receiver.
     fn subscribe(&self) -> broadcast::Receiver<WorkspaceUpdate>;

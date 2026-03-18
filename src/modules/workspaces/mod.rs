@@ -49,6 +49,21 @@ pub enum SortOrder {
     Index,
 }
 
+#[derive(Debug, Deserialize, Default, Clone, Copy, Eq, PartialEq)]
+#[serde(rename_all = "snake_case")]
+#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
+pub enum ClickBehavior {
+    /// Activates a workspace on click.
+    Activate,
+    /// Deactivates a workspace on click.
+    Deactivate,
+    /// Toggles workspace activation state on click.
+    Toggle,
+    /// Activates clicked workspace and deactivates others on the output.
+    #[default]
+    ActivateExclusive,
+}
+
 #[derive(Debug, Deserialize, Clone)]
 #[serde(untagged)]
 #[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
@@ -143,6 +158,14 @@ pub struct WorkspacesModule {
     /// **Default**: `false`
     all_monitors: bool,
 
+    /// Click behavior for workspace buttons.
+    ///
+    /// Valid options: `activate`, `deactivate`, `toggle`, `activate_exclusive`.
+    ///
+    /// **Default**: `activate_exclusive`
+    #[serde(default)]
+    click_behavior: ClickBehavior,
+
     /// The method used for sorting workspaces.
     ///
     /// - `added` always appends to the end.
@@ -192,6 +215,7 @@ impl Default for WorkspacesModule {
             favorites: Favorites::default(),
             hidden: vec![],
             all_monitors: false,
+            click_behavior: ClickBehavior::default(),
             sort: SortOrder::default(),
             icon_size: default::IconSize::Normal as i32,
             format: Format::default(),
@@ -305,13 +329,19 @@ impl Module<gtk::Box> for WorkspacesModule {
         });
 
         let client = context.try_client::<dyn WorkspaceClient>()?;
+        let click_behavior = self.click_behavior;
 
         // Change workspace focus
         spawn(async move {
             trace!("Setting up UI event handler");
 
             while let Some(id) = rx.recv().await {
-                client.focus(id);
+                match click_behavior {
+                    ClickBehavior::Activate => client.activate(id),
+                    ClickBehavior::Deactivate => client.deactivate(id),
+                    ClickBehavior::Toggle => client.toggle(id),
+                    ClickBehavior::ActivateExclusive => client.activate_exclusive(id),
+                }
             }
 
             Ok::<(), Report>(())

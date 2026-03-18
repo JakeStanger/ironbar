@@ -1,11 +1,9 @@
-use super::{Client, Environment};
-use group_handle::WorkspaceGroupHandleHandler;
-use handle::WorkspaceHandleHandler;
-use manager::WorkspaceManagerHandler;
+use super::{Client, Request, Response};
+use crate::channels::SyncSenderExt;
+use tokio::sync::broadcast;
 
-pub use wayland_protocols::ext::workspace::v1::client::{
-    ext_workspace_group_handle_v1::GroupCapabilities,
-    ext_workspace_handle_v1::{State, WorkspaceCapabilities},
+pub use wayland_protocols::ext::workspace::v1::client::ext_workspace_handle_v1::{
+    State, WorkspaceCapabilities,
 };
 
 pub mod group_handle;
@@ -27,10 +25,52 @@ pub struct Workspace {
     pub capabilities: WorkspaceCapabilities,
 }
 
-impl Client {}
+#[cfg(feature = "workspaces")]
+impl Client {
+    pub fn workspace_info_all(&self) -> Vec<crate::clients::compositor::Workspace> {
+        match self.send_request(Request::WorkspaceInfoAll) {
+            Response::WorkspaceInfoAll(workspaces) => workspaces,
+            _ => vec![],
+        }
+    }
 
-impl WorkspaceManagerHandler for Environment {}
+    pub fn subscribe_workspaces(
+        &self,
+    ) -> broadcast::Receiver<crate::clients::compositor::WorkspaceUpdate> {
+        self.workspace_channel.0.subscribe()
+    }
+}
 
-impl WorkspaceGroupHandleHandler for Environment {}
+#[cfg(feature = "workspaces")]
+impl crate::clients::compositor::WorkspaceClient for Client {
+    fn focus(&self, id: i64) {
+        self.activate_exclusive(id);
+    }
 
-impl WorkspaceHandleHandler for Environment {}
+    fn activate(&self, id: i64) {
+        self.send_request(Request::WorkspaceActivate(id));
+    }
+
+    fn deactivate(&self, id: i64) {
+        self.send_request(Request::WorkspaceDeactivate(id));
+    }
+
+    fn toggle(&self, id: i64) {
+        self.send_request(Request::WorkspaceToggle(id));
+    }
+
+    fn activate_exclusive(&self, id: i64) {
+        self.send_request(Request::WorkspaceActivateExclusive(id));
+    }
+
+    fn subscribe(&self) -> broadcast::Receiver<crate::clients::compositor::WorkspaceUpdate> {
+        let rx = self.subscribe_workspaces();
+        let workspaces = self.workspace_info_all();
+        self.workspace_channel
+            .0
+            .send_expect(crate::clients::compositor::WorkspaceUpdate::Init(
+                workspaces,
+            ));
+        rx
+    }
+}
