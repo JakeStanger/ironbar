@@ -1,9 +1,10 @@
 use super::open_state::OpenState;
 use crate::channels::AsyncSenderExt;
 use crate::image::IconButton;
-use crate::modules::workspaces::WorkspaceItemContext;
+use crate::modules::workspaces::{WorkspaceClickEvent, WorkspaceItemContext};
 use glib::signal::SignalHandlerId;
 use gtk::Button as GtkButton;
+use gtk::gdk;
 use gtk::prelude::*;
 use tokio::sync::mpsc;
 
@@ -11,8 +12,10 @@ use tokio::sync::mpsc;
 pub struct Button {
     button: IconButton,
     workspace_id: i64,
-    conn_id: Option<SignalHandlerId>,
-    tx: mpsc::Sender<i64>,
+    left_conn_id: Option<SignalHandlerId>,
+    right_click: gtk::GestureClick,
+    right_conn_id: Option<SignalHandlerId>,
+    tx: mpsc::Sender<WorkspaceClickEvent>,
 }
 
 impl Button {
@@ -31,14 +34,26 @@ impl Button {
 
         let tx = context.tx.clone();
 
-        let conn_id = button.connect_clicked(move |_item| {
-            tx.send_spawn(id);
+        let left_conn_id = button.connect_clicked(move |_item| {
+            tx.send_spawn(WorkspaceClickEvent::Left(id));
         });
+
+        let right_click = gtk::GestureClick::new();
+        right_click.set_button(gdk::BUTTON_SECONDARY);
+
+        let tx = context.tx.clone();
+        let right_conn_id = right_click.connect_pressed(move |_gesture, _, _, _| {
+            tx.send_spawn(WorkspaceClickEvent::Right(id));
+        });
+
+        button.add_controller(right_click.clone());
 
         let btn = Self {
             button,
             workspace_id: id,
-            conn_id: Some(conn_id),
+            left_conn_id: Some(left_conn_id),
+            right_click,
+            right_conn_id: Some(right_conn_id),
             tx: context.tx.clone(),
         };
 
@@ -88,13 +103,22 @@ impl Button {
 
     pub fn set_workspace_id(&mut self, id: i64) {
         self.workspace_id = id;
-        if let Some(conn_id) = self.conn_id.take() {
+        if let Some(conn_id) = self.left_conn_id.take() {
             self.button.disconnect(conn_id);
         }
+        if let Some(conn_id) = self.right_conn_id.take() {
+            self.right_click.disconnect(conn_id);
+        }
         let tx = self.tx.clone();
-        let conn_id = self.button.connect_clicked(move |_item| {
-            tx.send_spawn(id);
+        let left_conn_id = self.button.connect_clicked(move |_item| {
+            tx.send_spawn(WorkspaceClickEvent::Left(id));
         });
-        self.conn_id = Some(conn_id);
+        self.left_conn_id = Some(left_conn_id);
+
+        let tx = self.tx.clone();
+        let right_conn_id = self.right_click.connect_pressed(move |_gesture, _, _, _| {
+            tx.send_spawn(WorkspaceClickEvent::Right(id));
+        });
+        self.right_conn_id = Some(right_conn_id);
     }
 }
