@@ -1,10 +1,7 @@
 use super::group_handle::{WorkspaceGroupHandleData, WorkspaceGroupHandleHandler};
 use super::handle::{WorkspaceHandleData, WorkspaceHandleHandler};
-use super::{Workspace, WorkspaceGroup};
-use crate::arc_mut;
 use smithay_client_toolkit::error::GlobalError;
 use smithay_client_toolkit::globals::{GlobalData, ProvidesBoundGlobal};
-use std::sync::{Arc, Mutex};
 use tracing::{debug, error};
 use wayland_client::globals::{BindError, GlobalList};
 use wayland_client::{Connection, Dispatch, QueueHandle, event_created_child};
@@ -17,13 +14,6 @@ use wayland_protocols::ext::workspace::v1::client::{
 #[derive(Debug)]
 pub struct WorkspaceManagerState {
     manager: ExtWorkspaceManagerV1,
-    pending: Vec<WorkspaceGroup>,
-}
-
-#[derive(Debug, Default)]
-struct PendingState {
-    groups: Vec<WorkspaceGroup>,
-    workspaces: Vec<Workspace>,
 }
 
 impl WorkspaceManagerState {
@@ -34,14 +24,30 @@ impl WorkspaceManagerState {
         let manager = globals.bind(qh, 1..=1, GlobalData)?;
         debug!("Bound to ExtWorkspaceManagerV1 global");
 
-        Ok(Self {
-            manager,
-            pending: vec![],
-        })
+        Ok(Self { manager })
+    }
+
+    pub fn commit(&self) {
+        self.manager.commit();
     }
 }
 
-pub trait WorkspaceManagerHandler: Sized {}
+pub trait WorkspaceManagerHandler: Sized {
+    fn workspace_group_created(
+        &mut self,
+        conn: &Connection,
+        qh: &QueueHandle<Self>,
+        group: ExtWorkspaceGroupHandleV1,
+    );
+    fn workspace_created(
+        &mut self,
+        conn: &Connection,
+        qh: &QueueHandle<Self>,
+        workspace: ExtWorkspaceHandleV1,
+    );
+    fn workspace_done(&mut self, conn: &Connection, qh: &QueueHandle<Self>);
+    fn workspace_finished(&mut self, conn: &Connection, qh: &QueueHandle<Self>);
+}
 
 impl ProvidesBoundGlobal<ExtWorkspaceManagerV1, 1> for WorkspaceManagerState {
     fn bound_global(&self) -> Result<ExtWorkspaceManagerV1, GlobalError> {
@@ -69,16 +75,18 @@ where
         _proxy: &ExtWorkspaceManagerV1,
         event: Event,
         _data: &GlobalData,
-        _conn: &Connection,
-        _qhandle: &QueueHandle<D>,
+        conn: &Connection,
+        qhandle: &QueueHandle<D>,
     ) {
-        println!("EVENT: {event:?}");
-
         match event {
-            Event::WorkspaceGroup { workspace_group } => {}
-            Event::Workspace { workspace } => {}
-            Event::Done => {}
-            Event::Finished => {}
+            Event::WorkspaceGroup { workspace_group } => {
+                state.workspace_group_created(conn, qhandle, workspace_group);
+            }
+            Event::Workspace { workspace } => {
+                state.workspace_created(conn, qhandle, workspace);
+            }
+            Event::Done => state.workspace_done(conn, qhandle),
+            Event::Finished => state.workspace_finished(conn, qhandle),
             _ => {
                 error!("received unimplemented event {event:?}");
             }

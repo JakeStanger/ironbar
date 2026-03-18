@@ -1,6 +1,5 @@
 use crate::clients::wayland::ext_workspace::manager::WorkspaceManagerState;
-use crate::lock;
-use bluer::adv::Capabilities;
+use crate::{Ironbar, lock};
 use std::sync::{Arc, Mutex};
 use tracing::{error, warn};
 use wayland_client::{Connection, Dispatch, QueueHandle, WEnum};
@@ -45,8 +44,33 @@ pub struct WorkspaceHandleData {
 
 impl WorkspaceHandleData {}
 
+impl WorkspaceHandleData {
+    pub fn info(&self) -> WorkspaceHandleInfo {
+        let data = lock!(self.inner);
+        WorkspaceHandleInfo {
+            internal_id: data.internal_id,
+            protocol_id: data.id.clone(),
+            name: data.name.clone(),
+            coordinates: data.coordinates.clone(),
+            state: data.state,
+            capabilities: data.capabilities,
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct WorkspaceHandleInfo {
+    pub internal_id: i64,
+    pub protocol_id: String,
+    pub name: String,
+    pub coordinates: Vec<u32>,
+    pub state: State,
+    pub capabilities: WorkspaceCapabilities,
+}
+
 #[derive(Debug)]
 pub struct WorkspaceHandleDataInner {
+    internal_id: i64,
     id: String,
     name: String,
     coordinates: Vec<u32>,
@@ -57,6 +81,7 @@ pub struct WorkspaceHandleDataInner {
 impl Default for WorkspaceHandleDataInner {
     fn default() -> Self {
         Self {
+            internal_id: Ironbar::unique_id() as i64,
             id: String::new(),
             name: String::new(),
             coordinates: vec![],
@@ -76,7 +101,14 @@ impl WorkspaceHandleDataExt for WorkspaceHandleData {
     }
 }
 
-pub trait WorkspaceHandleHandler: Sized {}
+pub trait WorkspaceHandleHandler: Sized {
+    fn workspace_removed(
+        &mut self,
+        conn: &Connection,
+        qh: &QueueHandle<Self>,
+        handle: WorkspaceHandle,
+    );
+}
 
 impl<D, U> Dispatch<ExtWorkspaceHandleV1, U, D> for WorkspaceManagerState
 where
@@ -88,11 +120,9 @@ where
         proxy: &ExtWorkspaceHandleV1,
         event: Event,
         data: &U,
-        _conn: &Connection,
-        _qhandle: &QueueHandle<D>,
+        conn: &Connection,
+        qhandle: &QueueHandle<D>,
     ) {
-        println!("HANDLE EVENT: {event:?}");
-
         let data = data.workspace_handle_data();
 
         match event {
@@ -119,7 +149,16 @@ where
                 WEnum::Value(capabilities) => lock!(data.inner).capabilities = capabilities,
                 WEnum::Unknown(value) => warn!("received unknown capabilities: {value}"),
             },
-            Event::Removed => proxy.destroy(),
+            Event::Removed => {
+                state.workspace_removed(
+                    conn,
+                    qhandle,
+                    WorkspaceHandle {
+                        handle: proxy.clone(),
+                    },
+                );
+                proxy.destroy();
+            }
             _ => {
                 error!("received unimplemented event {event:?}");
             }
