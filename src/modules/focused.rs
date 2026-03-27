@@ -11,7 +11,7 @@ use serde::Deserialize;
 use tokio::sync::mpsc;
 use tracing::debug;
 
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Deserialize, Clone, PartialEq)]
 #[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
 #[serde(default)]
 pub struct FocusedModule {
