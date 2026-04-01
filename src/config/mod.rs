@@ -1,5 +1,7 @@
 mod common;
 pub mod default;
+pub mod diff;
+pub mod hot_reload;
 mod r#impl;
 mod layout;
 mod marquee;
@@ -110,7 +112,7 @@ use std::path::PathBuf;
 use std::str::FromStr;
 use tracing::{error, warn};
 
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Deserialize, Clone, PartialEq)]
 #[serde(tag = "type", rename_all = "snake_case")]
 #[cfg_attr(feature = "extras", derive(JsonSchema))]
 pub enum ModuleConfig {
@@ -273,7 +275,7 @@ impl ModuleConfig {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "extras", derive(JsonSchema))]
 pub enum MonitorConfig {
     Single(BarConfig),
@@ -307,7 +309,7 @@ pub struct MarginConfig {
 /// or within an object in the [monitors](#monitors) config,
 /// depending on your [use-case](#2-pick-your-use-case).
 ///
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Deserialize, Clone, PartialEq)]
 #[cfg_attr(feature = "extras", derive(JsonSchema))]
 #[serde(default)]
 pub struct BarConfig {
@@ -512,6 +514,58 @@ pub struct Config {
     /// **Default**: `250`
     #[serde(default)]
     pub double_click_time: DoubleClickTime,
+
+    /// Whether hot-reload is enabled for configuration/styles.
+    ///
+    /// Requires restart.
+    pub hot_reload: HotReload,
+}
+
+#[derive(Debug, Clone, Copy, Deserialize)]
+#[cfg_attr(feature = "extras", derive(JsonSchema))]
+#[serde(untagged)]
+pub enum HotReload {
+    All(bool),
+    Systems(SystemsHotReload),
+}
+
+impl Default for HotReload {
+    fn default() -> Self {
+        Self::All(true)
+    }
+}
+
+impl HotReload {
+    pub fn is_config_enabled(self) -> bool {
+        match self {
+            HotReload::All(enabled) => enabled,
+            HotReload::Systems(systems) => systems.config,
+        }
+    }
+
+    pub fn is_styles_enabled(self) -> bool {
+        match self {
+            HotReload::All(enabled) => enabled,
+            HotReload::Systems(systems) => systems.style,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, Deserialize)]
+#[cfg_attr(feature = "extras", derive(JsonSchema))]
+#[serde(default)]
+pub struct SystemsHotReload {
+    config: bool,
+    style: bool,
+}
+
+impl Default for SystemsHotReload {
+    fn default() -> Self {
+        Self {
+            config: true,
+            style: true,
+        }
+    }
 }
 
 /// Double-click time configuration
