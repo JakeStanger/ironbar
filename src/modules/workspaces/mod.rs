@@ -16,6 +16,8 @@ use gtk::prelude::*;
 use serde::Deserialize;
 use std::cmp::Ordering;
 use std::collections::HashMap;
+use std::ops::Deref;
+use std::rc::Rc;
 use tokio::sync::mpsc;
 use tracing::{debug, trace, warn};
 
@@ -344,10 +346,18 @@ impl Module<gtk::Box> for WorkspacesModule {
             Favorites::Global(vec) => Some(vec),
         }
         .unwrap_or_default();
+        let favorites = Rc::new(favorites);
 
-        for favorite in &favorites {
-            let index = favorite.parse::<i64>().unwrap_or(0);
-            let btn = Button::new(-1, index, favorite, OpenState::Closed, &item_context);
+        for favorite in favorites.deref() {
+            // Ensure numbered favorites actually refer to their respective numbered workspaces
+            let (id, index) = match favorite.parse::<i64>() {
+                Ok(num) => (num, num),
+                Err(_err) => {
+                    debug!("favorite name {favorite} failed to parse as i64");
+                    (-1, 0)
+                }
+            };
+            let btn = Button::new(id, index, favorite, OpenState::Closed, &item_context);
 
             btn.button().set_tag("workspace_index", index);
             container.append(btn.button());
@@ -365,6 +375,7 @@ impl Module<gtk::Box> for WorkspacesModule {
             let add_workspace = {
                 let container = container.clone();
                 let item_context = item_context.clone();
+                let favorites = favorites.clone();
                 move |workspace: Workspace, button_map: &mut ButtonMap| {
                     if favorites.contains(&workspace.name) {
                         let btn = button_map
@@ -403,8 +414,14 @@ impl Module<gtk::Box> for WorkspacesModule {
 
             let remove_workspace = {
                 let container = container.clone();
+                let favorites = favorites.clone();
                 move |id: i64, button_map: &mut ButtonMap| {
-                    // since favourites use name identifiers,
+                    // Prevent what ends up effectively being permanently disabling favorite
+                    // workspace buttons
+                    if favorites.contains(&id.to_string()) {
+                        return;
+                    }
+                    // since other favourites use name identifiers,
                     // we can safely remove using ID here and favourites will remain
                     if let Some(button) = button_map.remove(&Identifier::Id(id)) {
                         container.remove(button.button());
