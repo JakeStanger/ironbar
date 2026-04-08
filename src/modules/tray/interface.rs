@@ -237,6 +237,9 @@ impl TrayMenu {
     /// Updates the image, and shows it in favour of the label.
     pub fn set_image(&mut self, image: &Picture) {
         if let Some(label) = &self.label_widget {
+        let tooltip = self.widget.tooltip_text();
+
+        if let Some(label) = self.label_widget.take() {
             label.set_visible(false);
         }
 
@@ -245,6 +248,7 @@ impl TrayMenu {
         }
 
         self.box_content.append(image);
+        image.set_tooltip_text(tooltip.as_deref());
     }
 
     pub fn image_widget(&self) -> Option<&Picture> {
@@ -268,13 +272,16 @@ impl TrayMenu {
 
     pub fn set_tooltip(&self, tooltip: Option<Tooltip>) {
         let title = tooltip.map(|t| t.title);
+        let title = title.as_deref();
+
+        self.widget.set_tooltip_text(title);
 
         if let Some(widget) = &self.image_widget {
-            widget.set_tooltip_text(title.as_deref());
+            widget.set_tooltip_text(title);
         }
 
         if let Some(widget) = &self.label_widget {
-            widget.set_tooltip_text(title.as_deref());
+            widget.set_tooltip_text(title);
         }
     }
 
