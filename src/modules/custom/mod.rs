@@ -28,7 +28,7 @@ use std::rc::Rc;
 use tokio::sync::mpsc;
 use tracing::{debug, error};
 
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Deserialize, Clone, PartialEq)]
 #[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
 pub struct CustomModule {
     /// Modules and widgets to add to the bar container.
@@ -46,7 +46,7 @@ pub struct CustomModule {
     pub common: Option<CommonConfig>,
 }
 
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Deserialize, Clone, PartialEq)]
 #[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
 pub struct WidgetConfig {
     /// One of a custom module native Ironbar module.
@@ -58,7 +58,7 @@ pub struct WidgetConfig {
     common: CommonConfig,
 }
 
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Deserialize, Clone, PartialEq)]
 #[serde(untagged)]
 #[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
 pub enum WidgetOrModule {
@@ -69,7 +69,7 @@ pub enum WidgetOrModule {
     Module(ModuleConfig),
 }
 
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Deserialize, Clone, PartialEq)]
 #[serde(tag = "type", rename_all = "snake_case")]
 #[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
 pub enum Widget {

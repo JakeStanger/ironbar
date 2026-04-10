@@ -7,7 +7,7 @@ use cfg_if::cfg_if;
 use serde::Deserialize;
 use tokio::sync::mpsc;
 
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Deserialize, Clone, PartialEq)]
 #[serde(untagged)]
 #[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
 pub enum DynamicBool {
