@@ -7,7 +7,7 @@ use tracing::{debug, error, info, warn};
 use tracing_appender::non_blocking::{NonBlocking, WorkerGuard};
 use tracing_appender::rolling::Rotation;
 use tracing_error::ErrorLayer;
-use tracing_subscriber::fmt::{Layer, MakeWriter};
+use tracing_subscriber::fmt::MakeWriter;
 use tracing_subscriber::prelude::*;
 use tracing_subscriber::{EnvFilter, fmt};
 
@@ -56,7 +56,6 @@ fn install_tracing(debug: bool) -> Result<WorkerGuard> {
 
     let default_log = if debug { "debug" } else { "info" };
 
-    let fmt_layer = fmt::layer().with_target(true).with_line_number(true);
     let filter_layer =
         EnvFilter::try_from_env("IRONBAR_LOG").or_else(|_| EnvFilter::try_new(default_log))?;
 
@@ -74,16 +73,26 @@ fn install_tracing(debug: bool) -> Result<WorkerGuard> {
 
     let (file_writer, guard) = tracing_appender::non_blocking(appender);
 
+    macro_rules! base_layer {
+        () => {
+            fmt::layer()
+                .with_target(true)
+                .with_line_number(true)
+                .with_ansi_sanitization(false)
+        };
+    }
+
+    let console_layer = base_layer!().with_ansi(true);
+
+    let file_layer = base_layer!()
+        .with_writer(MakeFileWriter::new(file_writer))
+        .with_filter(file_filter_layer);
+
     tracing_subscriber::registry()
         .with(filter_layer)
-        .with(fmt_layer)
         .with(ErrorLayer::default())
-        .with(
-            Layer::default()
-                .with_writer(MakeFileWriter::new(file_writer))
-                .with_ansi(false)
-                .with_filter(file_filter_layer),
-        )
+        .with(file_layer)
+        .with(console_layer)
         .init();
 
     glib::log_set_writer_func(|level, fields| {
