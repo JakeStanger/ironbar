@@ -83,6 +83,16 @@ It is also recommended to install a [Nerd Font](https://www.nerdfonts.com/#home)
 
 [crate](https://crates.io/crates/ironbar)
 
+#### Using cargo-binstall
+
+Ensure you have [cargo-binstall](https://github.com/cargo-bins/cargo-binstall) and the [runtime depedencies](https://github.com/JakeStanger/ironbar/wiki/compiling#Build-requirements) installed. This installs the prebuilt binary from Github.
+
+```sh
+cargo binstall ironbar --locked
+```
+
+#### Cargo (from source)
+
 Ensure you have the [build dependencies](https://github.com/JakeStanger/ironbar/wiki/compiling#Build-requirements) installed.
 
 ```sh
