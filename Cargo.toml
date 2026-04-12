@@ -8,6 +8,9 @@ repository = "https://github.com/jakestanger/ironbar"
 categories = ["gui"]
 keywords = ["gtk", "bar", "wayland", "wlroots", "gtk-layer-shell"]
 
+[package.metadata.binstall]
+pkg-url = "{ repo }/releases/download/v{ version }/{ name }-v{ version }-{ target-arch }{ archive-suffix }"
+
 [features]
 default = [
     "battery",
