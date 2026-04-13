@@ -236,7 +236,6 @@ impl TrayMenu {
 
     /// Updates the image, and shows it in favour of the label.
     pub fn set_image(&mut self, image: &Picture) {
-        if let Some(label) = &self.label_widget {
         let tooltip = self.widget.tooltip_text();
 
         if let Some(label) = self.label_widget.take() {
