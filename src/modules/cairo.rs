@@ -64,7 +64,7 @@ impl CairoModule {
     fn load_draw_function(&self, lua: &LuaEngine) -> Option<Value> {
         // Expect the script to return a drawing function/callable
         // In case of a syntax error we leave it empty for now
-        let value = match lua.load(self.path.clone()).call::<Value>(()) {
+        let value = match lua.load(self.path()).call::<Value>(()) {
             Ok(value) => value,
             Err(Error::SyntaxError { message, .. }) => {
                 error!("[lua syntax error]: {message}");
@@ -101,6 +101,16 @@ impl CairoModule {
             }
         }
     }
+
+    fn path(&self) -> std::path::PathBuf {
+        if let Ok(path) = self.path.strip_prefix("~")
+            && let Ok(home) = std::env::var("HOME").map(std::path::PathBuf::from)
+        {
+            home.join(path)
+        } else {
+            self.path.clone()
+        }
+    }
 }
 
 impl Module<gtk::Box> for CairoModule {
@@ -118,7 +128,7 @@ impl Module<gtk::Box> for CairoModule {
     where
         <Self as Module<gtk::Box>>::SendMessage: Clone,
     {
-        let path = self.path.clone();
+        let path = self.path();
 
         let tx = context.tx.clone();
         spawn(async move {
