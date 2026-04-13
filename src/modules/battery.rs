@@ -282,7 +282,7 @@ impl Module<Button> for BatteryModule {
                     if ttf > 0 {
                         format!("Full in {}", seconds_to_string(ttf).unwrap_or_default())
                     } else {
-                        String::new()
+                        "Estimating charging speed".to_string()
                     }
                 }
                 BatteryState::Discharging | BatteryState::PendingDischarge => {
@@ -290,10 +290,12 @@ impl Module<Button> for BatteryModule {
                     if tte > 0 {
                         format!("Empty in {}", seconds_to_string(tte).unwrap_or_default())
                     } else {
-                        String::new()
+                        "Estimating battery usage".to_string()
                     }
                 }
-                _ => String::new(),
+                BatteryState::Unknown => "Battery state unknown".to_string(),
+                BatteryState::Empty => "Battery empty".to_string(),
+                BatteryState::FullyCharged => "Battery fully charged".to_string(),
             };
 
             label.set_label_escaped(&format);
