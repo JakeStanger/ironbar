@@ -219,6 +219,8 @@ impl Script {
                     Ok(output) => callback(output.0, output.1),
                     Err(err) => error!("{err:?}"),
                 }
+
+                sleep(tokio::time::Duration::from_millis(self.interval)).await;
             },
             ScriptMode::Watch => match self.spawn(rx_terminate) {
                 Ok(mut rx) => {
@@ -229,8 +231,6 @@ impl Script {
                 Err(err) => error!("{err:?}"),
             },
         }
-
-        sleep(tokio::time::Duration::from_millis(self.interval)).await;
     }
 
     /// Attempts to execute a given command,
