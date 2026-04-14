@@ -18,3 +18,14 @@ I welcome contributions of any kind with open arms. That said, please do stick t
 - For issues:
   - Please provide as much information as you can - share your config, any logs, steps to reproduce...
   - If reporting an error, please ensure you use `IRONBAR_LOG` or `IRONBAR_FILE_LOG` set to `debug`.
+
+## AI Policy
+
+Code generated using AI assistance is permitted, although discouraged. 
+Fully "vibed" code is not permitted.
+All contributions will be scrutinised during review to the same level regardless of origin,
+so you are expected to be able to understand and amend your code as required.
+
+My general preference would be that you avoid LLMs, 
+as they have a remarkably negative impact in just about every part of the world.
+I personally do not use AI for authoring code.
