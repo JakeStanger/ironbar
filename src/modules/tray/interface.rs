@@ -19,6 +19,7 @@ use tokio::sync::mpsc;
 use tracing::{debug, error, trace};
 
 /// Main tray icon to show on the bar
+#[derive(Debug)]
 pub(crate) struct TrayMenu {
     pub box_content: GtkBox,
     pub widget: Button,
@@ -221,24 +222,25 @@ impl TrayMenu {
 
     /// Updates the label text, and shows it in favour of the image.
     pub fn set_label(&mut self, text: &str) {
-        if let Some(image) = self.image_widget.take() {
+        if let Some(image) = &self.image_widget {
             image.set_visible(false);
         }
 
-        self.label_widget
-            .get_or_insert_with(|| {
-                let label = Label::new(None);
-                self.box_content.append(&label);
-                label
-            })
-            .set_label(text);
+        let label = self.label_widget.get_or_insert_with(|| {
+            let label = Label::new(None);
+            self.box_content.append(&label);
+            label
+        });
+
+        label.set_label(text);
+        label.set_visible(true);
     }
 
     /// Updates the image, and shows it in favour of the label.
     pub fn set_image(&mut self, image: &Picture) {
         let tooltip = self.widget.tooltip_text();
 
-        if let Some(label) = self.label_widget.take() {
+        if let Some(label) = &self.label_widget {
             label.set_visible(false);
         }
 
