@@ -3,7 +3,7 @@ mod config;
 use crate::channels::{AsyncSenderExt, BroadcastReceiverExt};
 use crate::clients::networkmanager::state::DeviceTypeData;
 use crate::clients::networkmanager::{Client, DeviceType, NetworkManagerUpdate};
-use crate::gtk_helpers::IronbarGtkExt;
+use crate::gtk_helpers::{IronbarGtkExt, IronbarLabelExt};
 use crate::image::Provider;
 use crate::modules::{Module, ModuleInfo, ModuleParts, WidgetContext};
 use crate::{module_impl, spawn};
@@ -11,7 +11,7 @@ use crate::{module_impl, spawn};
 use color_eyre::Result;
 use gtk::prelude::WidgetExt;
 use gtk::prelude::*;
-use gtk::{Box as GtkBox, ContentFit, Picture};
+use gtk::{Box as GtkBox, ContentFit, Label, Picture};
 use tokio::sync::mpsc::Receiver;
 
 pub use config::NetworkManagerModule;
@@ -142,7 +142,7 @@ impl Module<GtkBox> for NetworkManagerModule {
 
         let icon_size = self.icon_size;
         let mut manager = self.profiles.attach(&container, move |_, event| {
-            let (widget, image_provider): (gtk::Widget, Provider) = event.data;
+            let (widget, idx, image_provider): (gtk::Widget, usize, Provider) = event.data;
             let icon_name = event.profile.icon.clone();
             tracing::debug!("profiles update: icon_name={icon_name}");
             if icon_name.is_empty() {
@@ -150,17 +150,37 @@ impl Module<GtkBox> for NetworkManagerModule {
                 return;
             }
 
-            glib::spawn_future_local(async move {
-                image_provider
-                    .load_into_picture_silent(
-                        &icon_name,
-                        icon_size,
-                        false,
-                        widget.downcast_ref::<Picture>().expect("should be Picture"),
-                    )
-                    .await;
-                widget.set_visible(true)
-            });
+            let container = widget
+                .parent()
+                .expect("child should be owned")
+                .downcast::<gtk::Box>()
+                .expect("should be Box");
+
+            if icon_name.contains("icon:") {
+                let icon = build_if_no_correct_child(container, idx, || {
+                    Picture::builder()
+                        .content_fit(ContentFit::ScaleDown)
+                        .css_classes(["icon"])
+                        .build()
+                });
+
+                glib::spawn_future_local(async move {
+                    image_provider
+                        .load_into_picture_silent(&icon_name, icon_size, false, &icon)
+                        .await;
+                    icon.set_visible(true);
+                });
+            } else {
+                let label = build_if_no_correct_child(container, idx, || {
+                    Label::builder()
+                        .use_markup(true)
+                        .css_classes(["icon"])
+                        .build()
+                });
+
+                label.set_label_escaped(&icon_name);
+                label.set_visible(true);
+            }
         });
 
         let container_clone = container.clone();
@@ -181,17 +201,17 @@ impl Module<GtkBox> for NetworkManagerModule {
                                 .content_fit(ContentFit::ScaleDown)
                                 .css_classes(["icon"])
                                 .build();
-                            container.append(&icon);
+                            container.append(&icon); // default type
                         }
                     }
 
                     // update each icon to match the device state
-                    for (device, widget) in devices.iter().zip(container.children()) {
-                        match self.get_profile_state(device) {
+                    for (idx, widget) in container.children().enumerate() {
+                        match self.get_profile_state(&devices[idx]) {
                             Some(state) => {
-                                let tooltip = self.get_tooltip(device);
+                                let tooltip = self.get_tooltip(&devices[idx]);
                                 widget.set_tooltip_text(Some(&tooltip));
-                                manager.update(state, (widget, image_provider.clone()));
+                                manager.update(state, (widget, idx, image_provider.clone()));
                             }
                             _ => {
                                 widget.set_visible(false);
@@ -208,7 +228,7 @@ impl Module<GtkBox> for NetworkManagerModule {
                             Some(state) => {
                                 let tooltip = self.get_tooltip(&device);
                                 widget.set_tooltip_text(Some(&tooltip));
-                                manager.update(state, (widget, image_provider.clone()));
+                                manager.update(state, (widget, idx, image_provider.clone()));
                             }
                             _ => {
                                 widget.set_visible(false);
@@ -222,5 +242,45 @@ impl Module<GtkBox> for NetworkManagerModule {
         });
 
         Ok(ModuleParts::new(container_clone, None))
+    }
+}
+
+/// Rebuild the object if not in memory or of incorrect type
+///
+/// The building process is done with the provided `builder` function.
+fn build_if_no_correct_child<T: gtk::prelude::IsA<gtk::Widget>>(
+    container: gtk::Box,
+    idx: usize,
+    builder: impl Fn() -> T,
+) -> T {
+    let widget = container
+        .children()
+        .nth(idx)
+        .expect("should be Some Widget");
+
+    match widget.downcast::<T>() {
+        Ok(child) => child,
+        Err(_) => {
+            let child = builder();
+
+            replace_child(container, child.clone().into(), idx);
+
+            child
+        }
+    }
+}
+
+/// Replace a child in a given `container` list.
+///
+/// This function replaces the child at `idx` with `child`.
+fn replace_child(container: gtk::Box, child: gtk::Widget, idx: usize) {
+    container.remove(&container.children().nth(idx).expect("should exists"));
+
+    if idx > 1
+        && let Some(widget) = container.children().nth(idx - 1)
+    {
+        container.insert_after(&child, Some(&widget))
+    } else {
+        container.prepend(&child);
     }
 }
