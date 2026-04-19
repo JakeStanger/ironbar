@@ -262,7 +262,8 @@ Responds with `ok` if the stylesheet exists, otherwise `error`.
 
 ```json
 {
-  "command": "load_css",
+  "command": "style",
+  "subcommand": "load_css",
   "path": "/path/to/style.css"
 }
 ```
@@ -276,7 +277,8 @@ Response with `ok` if at least one module is found, otherwise `error`.
 
 ```json
 {
-  "command": "add_class",
+  "command": "style",
+  "subcommand": "add_class",
   "module_name": "clock",
   "name": "night"
 }
@@ -291,7 +293,8 @@ Response with `ok` if at least one module is found, otherwise `error`.
 
 ```json
 {
-  "command": "remove_class",
+  "command": "style",
+  "subcommand": "remove_class",
   "module_name": "clock",
   "name": "night"
 }
@@ -307,7 +310,8 @@ Response with `ok` if at least one module is found, otherwise `error`.
 
 ```json
 {
-  "command": "toggle_class",
+  "command": "style",
+  "subcommand": "toggle_class",
   "module_name": "clock",
   "name": "night"
 }
