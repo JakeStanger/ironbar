@@ -47,6 +47,11 @@ pub struct ClockModule {
     /// **Default**: `$LC_TIME` or `$LANG` or `'POSIX'`
     locale: String,
 
+    /// Whether to show the week numbers in the popup calendar
+    ///
+    /// **Default**: `false`
+    show_week_numbers: bool,
+
     /// See [layout options](module-level-options#layout)
     #[serde(flatten)]
     layout: LayoutConfig,
@@ -62,6 +67,7 @@ impl Default for ClockModule {
             format: "%d/%m/%Y %H:%M".to_string(),
             format_popup: "%H:%M:%S".to_string(),
             locale: default_locale(),
+            show_week_numbers: false,
             layout: LayoutConfig::default(),
             common: Some(CommonConfig::default()),
         }
@@ -156,6 +162,8 @@ impl Module<Button> for ClockModule {
 
         let calendar = Calendar::new();
         calendar.add_css_class("calendar");
+        calendar.set_show_week_numbers(self.show_week_numbers);
+
         container.append(&calendar);
 
         let format = self.format_popup;
