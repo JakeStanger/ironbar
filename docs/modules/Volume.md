@@ -140,6 +140,18 @@ end:
 
 </details>
 
+### Default profiles
+
+```corn
+{
+    low.when = 33.33
+    low.icons.volume = "󰕿"
+    
+    medium.when = 66.66
+    medium.icons.volume = "󰖀"
+}
+```
+
 ### Formatting Tokens
 
 The following tokens can be used in the `format` config option:

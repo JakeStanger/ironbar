@@ -107,6 +107,10 @@ end:
 
 </details>
 
+### Default profiles
+
+This module does not include any default profiles.
+
 ### Formatting Tokens
 
 The following tokens can be used in the `format` config option,

@@ -142,17 +142,61 @@ Brightness ships with default profiles that set icons for percentage ranges:
 
 | Profile    | Threshold (<=) | Icon |
 |------------|----------------|------|
-| `level0`   | `5`            | `` |
-| `level10`  | `15`           | `` |
-| `level20`  | `25`           | `` |
-| `level30`  | `35`           | `` |
-| `level40`  | `45`           | `` |
-| `level50`  | `55`           | `` |
-| `level60`  | `65`           | `` |
-| `level70`  | `75`           | `` |
-| `level80`  | `85`           | `` |
-| `level90`  | `95`           | `` |
-| `level100` | `100`          | `` |
+| `level0`   | `5`            | ``  |
+| `level10`  | `15`           | ``  |
+| `level20`  | `25`           | ``  |
+| `level30`  | `35`           | ``  |
+| `level40`  | `45`           | ``  |
+| `level50`  | `55`           | ``  |
+| `level60`  | `65`           | ``  |
+| `level70`  | `75`           | ``  |
+| `level80`  | `85`           | ``  |
+| `level90`  | `95`           | ``  |
+| `level100` | `100`          | ``  |
+
+### Default profiles
+
+<details>
+<summary>Show</summary>
+
+```corn
+{
+    level0.when = 5.0
+    level0.icon_label = ""
+
+    level10.when = 15.0
+    level10.icon_label = ""
+    
+    level20.when = 25.0
+    level20.icon_label = ""
+    
+    level30.when = 35.0
+    level30.icon_label = ""
+    
+    level40.when = 45.0
+    level40.icon_label = ""
+    
+    level50.when = 55.0
+    level50.icon_label = ""
+    
+    level60.when = 65.0
+    level60.icon_label = ""
+    
+    level70.when = 75.0
+    level70.icon_label = ""
+    
+    level80.when = 85.0
+    level80.icon_label = ""
+
+    level90.when = 95.0
+    level90.icon_label = ""
+    
+    level100.when = 100.0
+    level100.icon_label = ""
+}
+```
+
+</details>
 
 ### Formatting Tokens
 
