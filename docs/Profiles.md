@@ -123,3 +123,21 @@ let {
     end = [ $volume ] 
 }
 ```
+
+## Default profiles
+
+Modules that support the profiles system usually also provide a set of defaults.
+Naming a profile the same name as an existing default will override it.
+
+If you seek more control, you can disable them with `use_default_profiles = false`:
+
+```corn
+let { 
+    $volume = {
+        use_default_profiles = false
+        profiles.my-low = 20
+    }
+} in {
+    end = [ $volume ]
+}
+```

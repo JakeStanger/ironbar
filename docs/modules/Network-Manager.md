@@ -6,14 +6,15 @@ disconnected).
 
 > Type: `network_manager`
 
-| Name                  | Type       | Default                       | Profile? | Description                                                                    |
-|-----------------------|------------|-------------------------------|----------|--------------------------------------------------------------------------------|
-| `icon_size`           | `integer`  | `24`                          | No       | Size to render icon at.                                                        |
-| `types_blacklist`     | `string[]` | `[]`                          | No       | Any device with a type in this list will not be shown.                         |
-| `types_whitelist`     | `string[]` | `[]`                          | No       | If not empty, only devices with a type in this list will be shown.             |
-| `interface_blacklist` | `string[]` | `[]`                          | No       | Any device whose interface name is in this list will not be shown.             |
-| `interface_whitelist` | `string[]` | `[]`                          | No       | If not empty, only devices whose interface name is in this list will be shown. |
-| `icon`                | `string`   | `icon:network-wired-symbolic` | Yes      | Icon for connected wired device.                                               |
+| Name                   | Type       | Default                       | Profile? | Description                                                                    |
+|------------------------|------------|-------------------------------|----------|--------------------------------------------------------------------------------|
+| `icon_size`            | `integer`  | `24`                          | No       | Size to render icon at.                                                        |
+| `types_blacklist`      | `string[]` | `[]`                          | No       | Any device with a type in this list will not be shown.                         |
+| `types_whitelist`      | `string[]` | `[]`                          | No       | If not empty, only devices with a type in this list will be shown.             |
+| `interface_blacklist`  | `string[]` | `[]`                          | No       | Any device whose interface name is in this list will not be shown.             |
+| `interface_whitelist`  | `string[]` | `[]`                          | No       | If not empty, only devices whose interface name is in this list will be shown. |
+| `icon`                 | `string`   | `icon:network-wired-symbolic` | Yes      | Icon for connected wired device.                                               |
+| `use_default_profiles` | `boolean`  | `true`                        | No       | Whether default profiles should be used.                                       |
 
 This module uses **a compound threshold** with 2-3 values for profiles:
 
