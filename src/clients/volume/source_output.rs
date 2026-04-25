@@ -1,13 +1,12 @@
-use std::sync::{Arc, Mutex};
-
+use super::{ArcMutVec, Client, Event, HasIndex, PulseObject, Request, VolumeLevels};
+use crate::channels::SyncSenderExt;
+use crate::lock;
 use libpulse_binding::context::Context;
 use libpulse_binding::context::introspect::SourceOutputInfo;
 use libpulse_binding::context::subscribe::Operation;
+use std::sync::{Arc, Mutex};
 use tokio::sync::broadcast;
 use tracing::{debug, instrument};
-
-use super::{ArcMutVec, Client, ConnectionState, Event, HasIndex, PulseObject, VolumeLevels};
-use crate::lock;
 
 #[derive(Debug, Clone)]
 pub struct SourceOutput {
@@ -83,30 +82,29 @@ impl Client {
 
     #[instrument(level = "trace")]
     pub fn set_output_volume(&self, index: u32, volume_percent: f64) {
-        if let ConnectionState::Connected { introspector, .. } = &mut *lock!(self.connection) {
-            let Some(mut volume_levels) = ({
-                let outputs = self.source_outputs();
-                lock!(outputs).iter().find_map(|s| {
-                    if s.index == index {
-                        Some(s.volume.clone())
-                    } else {
-                        None
-                    }
-                })
-            }) else {
-                return;
-            };
+        let Some(mut volume_levels) = ({
+            let outputs = self.source_outputs();
+            lock!(outputs).iter().find_map(|s| {
+                if s.index == index {
+                    Some(s.volume.clone())
+                } else {
+                    None
+                }
+            })
+        }) else {
+            return;
+        };
 
-            volume_levels.set_percent(volume_percent);
-            introspector.set_source_output_volume(index, &volume_levels.into(), None);
-        }
+        volume_levels.set_percent(volume_percent);
+
+        self.req_tx
+            .send_expect(Request::SourceOutputVolume(index, volume_levels));
     }
 
     #[instrument(level = "trace")]
     pub fn set_output_muted(&self, index: u32, muted: bool) {
-        if let ConnectionState::Connected { introspector, .. } = &mut *lock!(self.connection) {
-            introspector.set_source_output_mute(index, muted, None);
-        }
+        self.req_tx
+            .send_expect(Request::SourceOutputMuted(index, muted));
     }
 }
 

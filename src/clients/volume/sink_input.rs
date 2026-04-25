@@ -1,13 +1,12 @@
-use std::sync::{Arc, Mutex};
-
+use super::{ArcMutVec, Client, Event, HasIndex, PulseObject, Request, VolumeLevels};
+use crate::channels::SyncSenderExt;
+use crate::lock;
 use libpulse_binding::context::Context;
 use libpulse_binding::context::introspect::SinkInputInfo;
 use libpulse_binding::context::subscribe::Operation;
+use std::sync::{Arc, Mutex};
 use tokio::sync::broadcast;
 use tracing::{debug, instrument};
-
-use super::{ArcMutVec, Client, ConnectionState, Event, HasIndex, PulseObject, VolumeLevels};
-use crate::lock;
 
 #[derive(Debug, Clone)]
 pub struct SinkInput {
@@ -94,30 +93,29 @@ impl Client {
 
     #[instrument(level = "trace")]
     pub fn set_input_volume(&self, index: u32, volume_percent: f64) {
-        if let ConnectionState::Connected { introspector, .. } = &mut *lock!(self.connection) {
-            let Some(mut volume_levels) = ({
-                let inputs = self.sink_inputs();
-                lock!(inputs).iter().find_map(|s| {
-                    if s.index == index {
-                        Some(s.volume.clone())
-                    } else {
-                        None
-                    }
-                })
-            }) else {
-                return;
-            };
+        let Some(mut volume_levels) = ({
+            let inputs = self.sink_inputs();
+            lock!(inputs).iter().find_map(|s| {
+                if s.index == index {
+                    Some(s.volume.clone())
+                } else {
+                    None
+                }
+            })
+        }) else {
+            return;
+        };
 
-            volume_levels.set_percent(volume_percent);
-            introspector.set_sink_input_volume(index, &volume_levels.into(), None);
-        }
+        volume_levels.set_percent(volume_percent);
+
+        self.req_tx
+            .send_expect(Request::SinkInputVolume(index, volume_levels));
     }
 
     #[instrument(level = "trace")]
     pub fn set_input_muted(&self, index: u32, muted: bool) {
-        if let ConnectionState::Connected { introspector, .. } = &mut *lock!(self.connection) {
-            introspector.set_sink_input_mute(index, muted, None);
-        }
+        self.req_tx
+            .send_expect(Request::SinkInputMuted(index, muted));
     }
 }
 

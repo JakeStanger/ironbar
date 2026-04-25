@@ -1,14 +1,14 @@
-use std::sync::{Arc, Mutex};
-
+use super::{ArcMutVec, Client, Event, HasIndex, PulseObject, Request, VolumeLevels};
+use crate::channels::SyncSenderExt;
+use crate::lock;
 use libpulse_binding::context::Context;
 use libpulse_binding::context::introspect::SinkInfo;
 use libpulse_binding::context::subscribe::Operation;
 use libpulse_binding::def::SinkState;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{Arc, Mutex};
 use tokio::sync::broadcast;
 use tracing::{debug, instrument};
-
-use super::{ArcMutVec, Client, ConnectionState, Event, HasIndex, PulseObject, VolumeLevels};
-use crate::lock;
 
 #[derive(Debug, Clone)]
 pub struct Sink {
@@ -90,37 +90,35 @@ impl Client {
 
     #[instrument(level = "trace")]
     pub fn set_default_sink(&self, name: &str) {
-        if let ConnectionState::Connected { context, .. } = &*lock!(self.connection) {
-            lock!(context).set_default_sink(name, |_| {});
-        }
+        self.req_tx
+            .send_expect(Request::SinkDefault(name.to_string()));
     }
 
     #[instrument(level = "trace")]
     pub fn set_sink_volume(&self, name: &str, volume: f64) {
-        if let ConnectionState::Connected { introspector, .. } = &mut *lock!(self.connection) {
-            let Some(mut volume_levels) = ({
-                let sinks = self.sinks();
-                lock!(sinks).iter().find_map(|s| {
-                    if s.name == name {
-                        Some(s.volume.clone())
-                    } else {
-                        None
-                    }
-                })
-            }) else {
-                return;
-            };
+        let Some(mut volume_levels) = ({
+            let sinks = self.sinks();
+            lock!(sinks).iter().find_map(|s| {
+                if s.name == name {
+                    Some(s.volume.clone())
+                } else {
+                    None
+                }
+            })
+        }) else {
+            return;
+        };
 
-            volume_levels.set_percent(volume);
-            introspector.set_sink_volume_by_name(name, &volume_levels.into(), None);
-        }
+        volume_levels.set_percent(volume);
+
+        self.req_tx
+            .send_expect(Request::SinkVolume(name.to_string(), volume_levels));
     }
 
     #[instrument(level = "trace")]
     pub fn set_sink_muted(&self, name: &str, muted: bool) {
-        if let ConnectionState::Connected { introspector, .. } = &mut *lock!(self.connection) {
-            introspector.set_sink_mute_by_name(name, muted, None);
-        }
+        self.req_tx
+            .send_expect(Request::SinkMuted(name.to_string(), muted));
     }
 }
 
@@ -133,6 +131,14 @@ impl Sink {
         op: Operation,
         i: u32,
     ) {
+        // introspection will return latest result -
+        // avoid multiple duplicate calls
+        static RUNNING: AtomicBool = AtomicBool::new(false);
+
+        if RUNNING.swap(true, Ordering::Relaxed) {
+            return;
+        }
+
         let introspect = lock!(context).introspect();
 
         match op {
@@ -152,7 +158,10 @@ impl Sink {
                     let default_sink = default_sink.clone();
                     let tx = tx.clone();
 
-                    move |info| Self::update(info, &sinks, Some(&default_sink), &tx)
+                    move |info| {
+                        Self::update(info, &sinks, Some(&default_sink), &tx);
+                        RUNNING.store(false, Ordering::Relaxed);
+                    }
                 });
             }
             Operation::Removed => {
