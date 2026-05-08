@@ -87,7 +87,7 @@ impl State for f64 {}
 /// to the field to avoid `profiles.profiles` syntax.
 ///
 /// `S` = State, `T` = Configuration data.
-#[derive(Debug, Default, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize)]
 #[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
 #[serde(default)]
 pub struct Profiles<S, T>
@@ -95,12 +95,35 @@ where
     S: State,
     T: Default + Clone,
 {
-    /// A map of named profiles.
+    /// A map of named profiles against profile entries.
+    /// Entries can be provided in two formats.
+    ///
+    /// The profile entry object differs per-module-
+    /// check module property documentation to see if they are supported.
+    ///
+    /// See [profiles](/guides/profiles) for more information.
     profiles: HashMap<String, ProfileEntry<S, T>>,
 
     /// The default profile.
     #[serde(flatten)]
     default: T,
+
+    /// Whether the default profile map should be merged in.
+    use_default_profiles: bool,
+}
+
+impl<S, T> Default for Profiles<S, T>
+where
+    S: State,
+    T: Default + Clone,
+{
+    fn default() -> Self {
+        Self {
+            profiles: HashMap::default(),
+            default: T::default(),
+            use_default_profiles: true,
+        }
+    }
 }
 
 /// Represents a single entry in the `profiles` map.
@@ -214,6 +237,10 @@ where
     /// }
     /// ```
     pub fn setup_defaults(&mut self, defaults: Profiles<S, T>) {
+        if !self.use_default_profiles {
+            return;
+        }
+
         for (name, profile) in defaults.profiles {
             self.profiles.entry(name).or_insert(profile);
         }
@@ -253,6 +280,7 @@ where
                 .map(|(name, profile)| (name, profile.into()))
                 .collect(),
             default: T::default(),
+            use_default_profiles: false,
         }
     }
 }

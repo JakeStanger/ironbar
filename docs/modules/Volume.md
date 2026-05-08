@@ -51,6 +51,7 @@ pulseaudio uses to describe sources of audio:
 | `marquee.pause_duration`    | `integer`                                            | `5000`                 | No       | Duration in milliseconds to pause at each loop point.                                                                                                                                                         |
 | `marquee.separator`         | `string`                                             | `"    "`               | No       | String displayed between the end and beginning of text as it loops.                                                                                                                                           |
 | `marquee.on_hover`          | `'none'` or `'pause'` or `'play'`                    | `'none'`               | No       | Controls marquee behavior on hover: `'none'` (always scroll), `'pause'` (pause on hover), or `'play'` (only scroll on hover).                                                                                 |
+| `use_default_profiles`      | `boolean`                                            | `true`                 | No       | Whether default profiles should be used.                                                                                                                                                                      |
 
 This module uses the volume percentage `0-100` for profile thresholds.
 
@@ -184,6 +185,18 @@ end:
 ```
 
 </details>
+
+### Default profiles
+
+```corn
+{
+    low.when = 33.33
+    low.icons.volume = "󰕿"
+    
+    medium.when = 66.66
+    medium.icons.volume = "󰖀"
+}
+```
 
 ### Formatting Tokens
 

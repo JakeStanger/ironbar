@@ -21,12 +21,25 @@ const DAY: i64 = 24 * 60 * 60;
 const HOUR: i64 = 60 * 60;
 const MINUTE: i64 = 60;
 
-#[derive(Debug, Default, Deserialize, Clone, PartialEq)]
+/// The battery module uses a compound state object.
+#[derive(Debug, Deserialize, Clone, PartialEq)]
 #[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
 #[serde(default)]
 struct ProfileState {
+    /// Battery charged percentage.
     percent: f64,
+    /// Whether the battery is currently charging.
+    /// Omit to match regardless of charging state.
     charging: Option<bool>,
+}
+
+impl Default for ProfileState {
+    fn default() -> Self {
+        Self {
+            percent: 100.0,
+            charging: None,
+        }
+    }
 }
 
 impl PartialOrd for ProfileState {
