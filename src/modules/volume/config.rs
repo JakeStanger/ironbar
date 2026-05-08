@@ -24,7 +24,7 @@ impl VolumeProfile {
 
 pub(super) fn default_profiles() -> Profiles<f64, VolumeProfile> {
     profiles!(
-        "low":33.0 => VolumeProfile::for_volume_icon("󰕿"),
+        "low":33.33 => VolumeProfile::for_volume_icon("󰕿"),
         "medium":66.66 => VolumeProfile::for_volume_icon("󰖀")
     )
 }
