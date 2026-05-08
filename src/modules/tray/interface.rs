@@ -265,9 +265,6 @@ impl TrayMenu {
     }
 
     pub fn set_icon_name(&mut self, icon_name: Option<String>) {
-        if let Some(icn) = &icon_name {
-            self.widget.set_icon_name(icn);
-        }
         self.icon_name = icon_name;
     }
 

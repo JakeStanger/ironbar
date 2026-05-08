@@ -337,7 +337,7 @@ impl Module<gtk::Box> for TrayModule {
 /// If loading fails entirely, hides the picture and shows the `fallback_label`
 /// (which was pre-registered synchronously via `set_label`).
 fn load_icon_async(
-    picture: Picture,
+    picture: &Picture,
     fallback_label: gtk::Label,
     icon_name: Option<String>,
     icon_theme_path: Option<PathBuf>,
@@ -347,6 +347,8 @@ fn load_icon_async(
     let size = icon_config.size;
     let prefer_theme = icon_config.prefer_theme;
     let provider = icon_config.provider.clone();
+
+    let picture = picture.clone();
 
     glib::spawn_future_local(async move {
         match icon::get_image(
@@ -424,7 +426,7 @@ fn on_update(
                 .clone();
 
             load_icon_async(
-                picture,
+                &picture,
                 fallback_label,
                 menu_item.icon_name.clone(),
                 menu_item.icon_theme_path.clone(),
@@ -465,6 +467,7 @@ fn on_update(
                         if let Some(picture) = menu_item.image_widget().cloned() {
                             // Reset visibility in case a previous load failed and hid the picture.
                             picture.set_visible(true);
+                            menu_item.set_image(&picture);
 
                             let fallback_label = menu_item
                                 .label_widget()
@@ -473,7 +476,7 @@ fn on_update(
                             fallback_label.set_visible(false);
 
                             load_icon_async(
-                                picture,
+                                &picture,
                                 fallback_label,
                                 icon_name,
                                 menu_item.icon_theme_path.clone(),
