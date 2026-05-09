@@ -12,6 +12,32 @@ use zbus::fdo::PropertiesProxy;
 use zbus::names::InterfaceName;
 use zbus::proxy::CacheProperties;
 
+/// Reads the kernel charge cap from `/sys/class/power_supply/*/charge_control_end_threshold`.
+/// Returns `None` when no battery exposes the file or the value is 0/100 (no effective cap).
+fn read_charge_cap_pct() -> Option<f64> {
+    std::fs::read_dir("/sys/class/power_supply")
+        .ok()?
+        .flatten()
+        .find_map(|e| {
+            std::fs::read_to_string(e.path().join("charge_control_end_threshold"))
+                .ok()
+                .and_then(|s| s.trim().parse::<u32>().ok())
+        })
+        .filter(|&t| (1..=99).contains(&t))
+        .map(f64::from)
+}
+
+/// Scales UPower `time_to_full` (seconds to 100%) to time-to-cap when a kernel
+/// charge cap is set. Returns the input unchanged when no cap applies or the
+/// battery is already at/past the cap.
+fn scale_ttf(ttf: i64, battery_pct: f64) -> i64 {
+    let Some(cap_pct) = read_charge_cap_pct().filter(|&cap| battery_pct < cap) else {
+        return ttf;
+    };
+    let scale = (cap_pct - battery_pct) / (100.0 - battery_pct);
+    (ttf as f64 * scale).round() as i64
+}
+
 #[derive(Debug)]
 pub struct Client {
     proxy: PropertiesProxy<'static>,
@@ -83,7 +109,9 @@ impl Client {
                         }
                     }
 
-                    tx.send_expect(state.clone());
+                    let mut emit = state.clone();
+                    emit.time_to_full = scale_ttf(emit.time_to_full, emit.percentage);
+                    tx.send_expect(emit);
                 }
 
                 Ok::<_, zbus::Error>(())
@@ -98,11 +126,13 @@ impl Client {
     }
 
     pub async fn state(&self) -> Result<State> {
-        Ok(self
+        let mut state: State = self
             .proxy
             .get_all(self.interface_name.clone())
             .await?
-            .try_into()?)
+            .try_into()?;
+        state.time_to_full = scale_ttf(state.time_to_full, state.percentage);
+        Ok(state)
     }
 
     pub fn subscribe(&self) -> broadcast::Receiver<State> {
