@@ -50,17 +50,6 @@ impl<'a> PulseObject<'a> for SourceOutput {
     type Inner = SourceOutputInfo<'a>;
 
     #[inline]
-    fn name(&self) -> String {
-        self.name.clone()
-    }
-    #[inline]
-    fn active(&self) -> bool {
-        true
-    }
-    #[inline]
-    fn set_active(&mut self, _active: bool) {}
-
-    #[inline]
     fn add_event(info: Self) -> Event {
         Event::AddOutput(info)
     }
@@ -134,7 +123,7 @@ impl SourceOutput {
                     let outputs = outputs.clone();
                     let tx = tx.clone();
 
-                    move |info| Self::update(info, &outputs, None, &tx)
+                    move |info| Self::update(info, &outputs, &tx)
                 });
             }
             Operation::Removed => {
