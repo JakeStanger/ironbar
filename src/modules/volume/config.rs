@@ -67,9 +67,13 @@ pub struct VolumeModule {
     pub(super) source_slider_orientation: ModuleOrientation,
 
     /// Show sinks (speakers) on the bar and in the popup.
+    ///
+    /// **Default**: true
     pub(super) show_sinks: bool,
 
     /// Show sources (microphones) on the bar and in the popup.
+    ///
+    /// **Default**: true
     pub(super) show_sources: bool,
 
     /// Show pulseaudio sink monitors for mic outputs
