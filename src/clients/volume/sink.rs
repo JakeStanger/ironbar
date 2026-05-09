@@ -4,7 +4,6 @@ use crate::lock;
 use libpulse_binding::context::Context;
 use libpulse_binding::context::introspect::SinkInfo;
 use libpulse_binding::context::subscribe::Operation;
-use libpulse_binding::def::SinkState;
 use std::sync::{Arc, Mutex};
 use tokio::sync::broadcast;
 use tracing::{debug, instrument};
@@ -16,7 +15,6 @@ pub struct Sink {
     pub description: String,
     pub volume: VolumeLevels,
     pub muted: bool,
-    pub active: bool,
 }
 
 impl From<&SinkInfo<'_>> for Sink {
@@ -35,7 +33,7 @@ impl From<&SinkInfo<'_>> for Sink {
                 .unwrap_or_default(),
             muted: value.mute,
             volume: value.volume.into(),
-            active: value.state == SinkState::Running,
+            // active: value.state == SinkState::Running,
         }
     }
 }
@@ -56,18 +54,6 @@ impl<'a> PulseObject<'a> for Sink {
     type Inner = SinkInfo<'a>;
 
     #[inline]
-    fn name(&self) -> String {
-        self.name.clone()
-    }
-    #[inline]
-    fn active(&self) -> bool {
-        self.active
-    }
-    #[inline]
-    fn set_active(&mut self, active: bool) {
-        self.active = active;
-    }
-    #[inline]
     fn add_event(info: Self) -> Event {
         Event::AddSink(info)
     }
@@ -85,6 +71,11 @@ impl Client {
     #[instrument(level = "trace")]
     pub fn sinks(&self) -> ArcMutVec<Sink> {
         self.data.sinks.clone()
+    }
+
+    #[instrument(level = "trace")]
+    pub fn default_sink(&self) -> Option<String> {
+        lock!(self.data.default_sink_name).clone()
     }
 
     #[instrument(level = "trace")]
@@ -125,7 +116,6 @@ impl Sink {
     pub(super) fn on_event(
         context: &Arc<Mutex<Context>>,
         sinks: &ArcMutVec<Sink>,
-        default_sink: &Arc<Mutex<Option<String>>>,
         tx: &broadcast::Sender<Event>,
         op: Operation,
         i: u32,
@@ -146,11 +136,10 @@ impl Sink {
                 debug!("sink changed");
                 introspect.get_sink_info_by_index(i, {
                     let sinks = sinks.clone();
-                    let default_sink = default_sink.clone();
                     let tx = tx.clone();
 
                     move |info| {
-                        Self::update(info, &sinks, Some(&default_sink), &tx);
+                        Self::update(info, &sinks, &tx);
                     }
                 });
             }

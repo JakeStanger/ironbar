@@ -6,7 +6,6 @@ use crate::lock;
 use libpulse_binding::context::Context;
 use libpulse_binding::context::introspect::SourceInfo;
 use libpulse_binding::context::subscribe::Operation;
-use libpulse_binding::def::SourceState;
 use tokio::sync::broadcast;
 use tracing::{debug, instrument};
 
@@ -17,7 +16,6 @@ pub struct Source {
     pub description: String,
     pub volume: VolumeLevels,
     pub muted: bool,
-    pub active: bool,
     pub monitor: bool,
 }
 
@@ -37,7 +35,6 @@ impl From<&SourceInfo<'_>> for Source {
                 .unwrap_or_default(),
             muted: value.mute,
             volume: value.volume.into(),
-            active: value.state == SourceState::Running,
             monitor: value.monitor_of_sink.is_some(),
         }
     }
@@ -59,18 +56,6 @@ impl<'a> PulseObject<'a> for Source {
     type Inner = SourceInfo<'a>;
 
     #[inline]
-    fn name(&self) -> String {
-        self.name.clone()
-    }
-    #[inline]
-    fn active(&self) -> bool {
-        self.active
-    }
-    #[inline]
-    fn set_active(&mut self, active: bool) {
-        self.active = active;
-    }
-    #[inline]
     fn add_event(info: Self) -> Event {
         Event::AddSource(info)
     }
@@ -88,6 +73,11 @@ impl Client {
     #[instrument(level = "trace")]
     pub fn sources(&self) -> ArcMutVec<Source> {
         self.data.sources.clone()
+    }
+
+    #[instrument(level = "trace")]
+    pub fn default_source(&self) -> Option<String> {
+        lock!(self.data.default_source_name).clone()
     }
 
     #[instrument(level = "trace")]
@@ -128,7 +118,6 @@ impl Source {
     pub(super) fn on_event(
         context: &Arc<Mutex<Context>>,
         sources: &ArcMutVec<Source>,
-        default_source: &Arc<Mutex<Option<String>>>,
         tx: &broadcast::Sender<Event>,
         op: Operation,
         i: u32,
@@ -149,10 +138,9 @@ impl Source {
                 debug!("source changed");
                 introspect.get_source_info_by_index(i, {
                     let source = sources.clone();
-                    let default_source = default_source.clone();
                     let tx = tx.clone();
 
-                    move |info| Self::update(info, &source, Some(&default_source), &tx)
+                    move |info| Self::update(info, &source, &tx)
                 });
             }
             Operation::Removed => {

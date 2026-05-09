@@ -31,10 +31,6 @@ trait HasIndex {
 trait PulseObject<'a>: Sized + HasIndex {
     type Inner: 'a + Debug + HasIndex;
 
-    fn name(&self) -> String;
-    fn active(&self) -> bool;
-    fn set_active(&mut self, active: bool);
-
     fn add_event(info: Self) -> Event;
     fn update_event(info: Self) -> Event;
     fn remove_event(info: Self) -> Event;
@@ -58,7 +54,6 @@ trait PulseObject<'a>: Sized + HasIndex {
     fn update(
         result: ListResult<&'a Self::Inner>,
         items: &ArcMutVec<Self>,
-        default: Option<&Arc<Mutex<Option<String>>>>,
         tx: &broadcast::Sender<Event>,
     ) where
         Self: From<&'a Self::Inner>,
@@ -75,25 +70,10 @@ trait PulseObject<'a>: Sized + HasIndex {
                 return;
             };
             items[pos] = info.into();
-
-            // update in local copy
-            if let Some(default) = default.as_ref()
-                && !items[pos].active()
-                && let Some(default_item) = &*lock!(default)
-            {
-                let name = &items[pos].name();
-                items[pos].set_active(name == default_item);
-            }
         }
 
         // update in broadcast copy
-        let mut item: Self = info.into();
-        if let Some(default) = default.as_ref()
-            && !item.active()
-            && let Some(default_item) = &*lock!(default)
-        {
-            item.set_active(&item.name() == default_item);
-        }
+        let item: Self = info.into();
 
         tx.send_expect(Self::update_event(item));
     }
@@ -114,10 +94,12 @@ pub enum Event {
     AddSink(Sink),
     UpdateSink(Sink),
     RemoveSink(String),
+    SetDefaultSink(String),
 
     AddSource(Source),
     UpdateSource(Source),
     RemoveSource(String),
+    SetDefaultSource(String),
 
     AddInput(SinkInput),
     UpdateInput(SinkInput),
@@ -400,10 +382,8 @@ fn on_event(
             &data.default_source_name,
             tx,
         ),
-        Facility::Sink => Sink::on_event(context, &data.sinks, &data.default_sink_name, tx, op, i),
-        Facility::Source => {
-            Source::on_event(context, &data.sources, &data.default_source_name, tx, op, i)
-        }
+        Facility::Sink => Sink::on_event(context, &data.sinks, tx, op, i),
+        Facility::Source => Source::on_event(context, &data.sources, tx, op, i),
         Facility::SinkInput => SinkInput::on_event(context, &data.sink_inputs, tx, op, i),
         Facility::SourceOutput => SourceOutput::on_event(context, &data.source_outputs, tx, op, i),
         _ => error!("Received unhandled facility: {facility:?}"),
@@ -443,12 +423,13 @@ fn set_default_sink(
     if default_sink_name != *lock!(default_sink)
         && let Some(ref default_sink_name) = default_sink_name
     {
+        debug!("Set sink default: {}", default_sink_name);
+        tx.send_expect(Event::SetDefaultSink(default_sink_name.clone()));
+
         if let Some(sink) = lock!(sinks)
             .iter_mut()
             .find(|s| s.name.as_str() == default_sink_name.as_str())
         {
-            sink.active = true;
-            debug!("Set sink active: {}", sink.name);
             tx.send_expect(Event::UpdateSink(sink.clone()));
         } else {
             warn!("Couldn't find sink: {}", default_sink_name);
@@ -469,12 +450,13 @@ fn set_default_source(
     if default_source_name != *lock!(default_source)
         && let Some(ref default_source_name) = default_source_name
     {
+        debug!("Set source active: {}", default_source_name);
+        tx.send_expect(Event::SetDefaultSource(default_source_name.clone()));
+
         if let Some(source) = lock!(sources)
             .iter_mut()
             .find(|s| s.name.as_str() == default_source_name.as_str())
         {
-            source.active = true;
-            debug!("Set source active: {}", source.name);
             tx.send_expect(Event::UpdateSource(source.clone()));
         } else {
             warn!("Couldn't find source: {}", default_source_name);

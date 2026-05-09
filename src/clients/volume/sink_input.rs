@@ -61,17 +61,6 @@ impl<'a> PulseObject<'a> for SinkInput {
     type Inner = SinkInputInfo<'a>;
 
     #[inline]
-    fn name(&self) -> String {
-        self.name.clone()
-    }
-    #[inline]
-    fn active(&self) -> bool {
-        true
-    }
-    #[inline]
-    fn set_active(&mut self, _active: bool) {}
-
-    #[inline]
     fn add_event(info: Self) -> Event {
         Event::AddInput(info)
     }
@@ -145,7 +134,7 @@ impl SinkInput {
                     let inputs = inputs.clone();
                     let tx = tx.clone();
 
-                    move |info| Self::update(info, &inputs, None, &tx)
+                    move |info| Self::update(info, &inputs, &tx)
                 });
             }
             Operation::Removed => {

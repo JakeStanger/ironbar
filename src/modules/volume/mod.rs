@@ -213,6 +213,12 @@ impl Module<Button> for VolumeModule {
             let tx = context.tx.clone();
 
             spawn(async move {
+                let default_sink = client.default_sink();
+                let default_source = client.default_source();
+
+                trace!("default sink: {default_sink:?}");
+                trace!("default source: {default_source:?}");
+
                 // init
                 let sinks = {
                     let sinks = client.sinks();
@@ -245,6 +251,15 @@ impl Module<Button> for VolumeModule {
                 };
 
                 trace!("initial outputs: {outputs:?}");
+
+                if let Some(default_sink) = default_sink {
+                    tx.send_update(Event::SetDefaultSink(default_sink)).await;
+                }
+
+                if let Some(default_source) = default_source {
+                    tx.send_update(Event::SetDefaultSource(default_source))
+                        .await;
+                }
 
                 for sink in sinks {
                     tx.send_update(Event::AddSink(sink)).await;
@@ -374,8 +389,18 @@ impl Module<Button> for VolumeModule {
         };
 
         let show_monitors = self.show_monitors;
+
+        let mut default_sink = None;
+        let mut default_source = None;
+
         rx.recv_glib((), move |(), event| match event {
-            Event::AddSink(sink) | Event::UpdateSink(sink) if sink.active => {
+            Event::SetDefaultSink(name) => default_sink = Some(name),
+            Event::SetDefaultSource(name) => default_source = Some(name),
+            Event::AddSink(sink) | Event::UpdateSink(sink)
+                if default_sink
+                    .as_deref()
+                    .is_some_and(|name| name == sink.name) =>
+            {
                 manager.update(
                     sink.volume.percent(),
                     BarUiUpdate::Sink {
@@ -385,7 +410,8 @@ impl Module<Button> for VolumeModule {
                 );
             }
             Event::AddSource(source) | Event::UpdateSource(source)
-                if source.active && (!source.monitor || show_monitors) =>
+                if Some(source.name.as_str()) == default_source.as_deref()
+                    && (!source.monitor || show_monitors) =>
             {
                 manager.update(
                     source.volume.percent(),
@@ -585,15 +611,24 @@ impl Module<Button> for VolumeModule {
         let mut sources = vec![];
 
         let show_monitors = self.show_monitors;
+
+        let mut default_sink = None;
+        let mut default_source = None;
+
         context
             .subscribe()
             .recv_glib(
                 &sink_input_container,
                 move |input_container, event| match event {
+                    Event::SetDefaultSink(name) => default_sink = Some(name),
+                    Event::SetDefaultSource(name) => default_source = Some(name),
                     Event::AddSink(info) => {
                         sink_options.append(&DropdownItem::new(&info.name, &info.description));
 
-                        if info.active {
+                        if default_sink
+                            .as_deref()
+                            .is_some_and(|name| name == info.name)
+                        {
                             let offset = sink_options.find(&no_sink).is_some() as usize;
                             sink_selector.set_selected((sinks.len() + offset) as u32);
                             sink_slider.set_value(info.volume.percent());
@@ -605,26 +640,30 @@ impl Module<Button> for VolumeModule {
                         sinks.push(info);
                     }
                     Event::AddSource(info) => {
-                        if !info.monitor || show_monitors {
-                            source_options
-                                .append(&DropdownItem::new(&info.name, &info.description));
-
-                            if info.active {
-                                let offset = source_options.find(&no_source).is_some() as usize;
-                                source_selector.set_selected((sources.len() + offset) as u32);
-                                source_slider.set_value(info.volume.percent());
-
-                                source_manager.update(
-                                    info.volume.percent(),
-                                    BtnMuteUiUpdate::muted(info.muted),
-                                );
-                            }
-
-                            sources.push(info);
+                        if !show_monitors && info.monitor {
+                            return;
                         }
+
+                        source_options.append(&DropdownItem::new(&info.name, &info.description));
+
+                        if default_source
+                            .as_deref()
+                            .is_some_and(|name| name == info.name)
+                        {
+                            let offset = source_options.find(&no_source).is_some() as usize;
+                            source_selector.set_selected((sources.len() + offset) as u32);
+                            source_slider.set_value(info.volume.percent());
+
+                            source_manager
+                                .update(info.volume.percent(), BtnMuteUiUpdate::muted(info.muted));
+                        }
+
+                        sources.push(info);
                     }
                     Event::UpdateSink(info) => {
-                        if info.active
+                        if default_sink
+                            .as_deref()
+                            .is_some_and(|name| name == info.name)
                             && let Some(pos) =
                                 sink_options.iter::<DropdownItem>().position(|s| match s {
                                     Ok(s) => s.key() == info.name,
@@ -645,7 +684,9 @@ impl Module<Button> for VolumeModule {
                         }
                     }
                     Event::UpdateSource(info) => {
-                        if info.active
+                        if default_source
+                            .as_deref()
+                            .is_some_and(|name| name == info.name)
                             && let Some(pos) =
                                 source_options.iter::<DropdownItem>().position(|s| match s {
                                     Ok(s) => s.key() == info.name,
