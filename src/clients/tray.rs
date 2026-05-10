@@ -49,7 +49,7 @@ impl Client {
                             lock!(menus).insert(
                                 address.clone().into_boxed_str(),
                                 MenuCache {
-                                    path: path.to_string(),
+                                    path: path.clone(),
                                     menu: None,
                                 },
                             );
@@ -86,7 +86,7 @@ impl Client {
         for (address, menu) in lock!(self.menus).iter() {
             self.tx.send_expect(Event::Update(
                 address.to_string(),
-                UpdateEvent::MenuConnect(menu.path.to_string()),
+                UpdateEvent::MenuConnect(menu.path.clone()),
             ));
 
             if let Some(menu) = &menu.menu {

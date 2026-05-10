@@ -80,7 +80,7 @@ impl IronbarUserData {
 
         match ns.get(&key) {
             Some(value) => Self::to_value(lua, value),
-            None => Err(Error::RuntimeError(format!("Variable not found: {}", key))),
+            None => Err(Error::RuntimeError(format!("Variable not found: {key}"))),
         }
     }
 
@@ -120,7 +120,7 @@ impl IronbarUserData {
     fn unixtime(lua: &Lua) -> Result<Value, Error> {
         let now = match SystemTime::now().duration_since(UNIX_EPOCH) {
             Ok(now) => now,
-            Err(err) => return Err(Error::RuntimeError(format!("SystemTime: {}", err))),
+            Err(err) => return Err(Error::RuntimeError(format!("SystemTime: {err}"))),
         };
         let table = lua.create_table()?;
         table.set("secs", now.as_secs_f64())?;

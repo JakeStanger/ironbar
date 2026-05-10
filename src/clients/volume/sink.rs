@@ -37,7 +37,7 @@ impl From<&SinkInfo<'_>> for Sink {
     }
 }
 
-impl<'a> HasIndex for SinkInfo<'a> {
+impl HasIndex for SinkInfo<'_> {
     fn index(&self) -> u32 {
         self.index
     }

@@ -21,7 +21,7 @@ pub use config::NetworkManagerModule;
 use self::config::{ConnectionState, ProfileState, WifiConnectionState};
 
 impl NetworkManagerModule {
-    fn get_tooltip(&self, device: &crate::clients::networkmanager::state::Device) -> String {
+    fn get_tooltip(device: &crate::clients::networkmanager::state::Device) -> String {
         let mut tooltip = device.interface.clone();
         if let Some(ip) = &device.ip4_config {
             for x in &ip.address_data {
@@ -36,7 +36,7 @@ impl NetworkManagerModule {
         {
             tooltip.push('\n');
             tooltip.push_str(&String::from_utf8_lossy(&connection.ssid));
-        };
+        }
 
         tooltip
     }
@@ -124,7 +124,7 @@ impl Module<GtkBox> for NetworkManagerModule {
         let tx = context.tx.clone();
 
         spawn(async move {
-            let mut client_signal = client.subscribe().await;
+            let mut client_signal = client.subscribe();
             while let Ok(state) = client_signal.recv().await {
                 tx.send_update(state).await;
             }
@@ -180,17 +180,13 @@ impl Module<GtkBox> for NetworkManagerModule {
 
                     // update each icon to match the device state
                     for (device, icon) in devices.iter().zip(icons.iter()) {
-                        match self.get_profile_state(device) {
-                            Some(state) => {
-                                let tooltip = self.get_tooltip(device);
-                                icon.set_tooltip_text(Some(&tooltip));
-                                manager.update(state, icon.clone());
-                            }
-                            _ => {
-                                icon.set_visible(false);
-                                continue;
-                            }
-                        };
+                        if let Some(state) = self.get_profile_state(device) {
+                            let tooltip = Self::get_tooltip(device);
+                            icon.set_tooltip_text(Some(&tooltip));
+                            manager.update(state, icon.clone());
+                        } else {
+                            icon.set_visible(false);
+                        }
                     }
                 }
                 NetworkManagerUpdate::Device(idx, device) => {
@@ -199,14 +195,14 @@ impl Module<GtkBox> for NetworkManagerModule {
                     if let Some(icon) = icons.get(idx) {
                         match self.get_profile_state(&device) {
                             Some(state) => {
-                                let tooltip = self.get_tooltip(&device);
+                                let tooltip = Self::get_tooltip(&device);
                                 icon.set_tooltip_text(Some(&tooltip));
                                 manager.update(state, icon.clone());
                             }
                             _ => {
                                 icon.set_visible(false);
                             }
-                        };
+                        }
                     } else {
                         tracing::warn!("No widget found for device index {idx}");
                     }

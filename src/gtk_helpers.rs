@@ -280,7 +280,7 @@ impl OverflowLabel {
     ///
     /// If `truncate` is provided, marquee is ignored. If marquee is enabled, the label
     /// is wrapped in a `ScrolledWindow` that handles scrolling logic.
-    pub fn new(label: Label, truncate: Option<TruncateMode>, marquee_mode: MarqueeMode) -> Self {
+    pub fn new(label: Label, truncate: Option<TruncateMode>, marquee_mode: &MarqueeMode) -> Self {
         if truncate.is_some() || !marquee_mode.enable {
             if let Some(truncate) = truncate {
                 label.truncate(truncate);
@@ -343,7 +343,7 @@ struct MarqueeInner {
 }
 
 impl MarqueeLabel {
-    fn new(label: Label, marquee_mode: MarqueeMode) -> Self {
+    fn new(label: Label, marquee_mode: &MarqueeMode) -> Self {
         let scrolled = ScrolledWindow::builder()
             .vscrollbar_policy(gtk::PolicyType::Never)
             .build();

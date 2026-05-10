@@ -45,7 +45,7 @@ impl From<&SinkInputInfo<'_>> for SinkInput {
     }
 }
 
-impl<'a> HasIndex for SinkInputInfo<'a> {
+impl HasIndex for SinkInputInfo<'_> {
     fn index(&self) -> u32 {
         self.index
     }

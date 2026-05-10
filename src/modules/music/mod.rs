@@ -188,7 +188,7 @@ impl Module<Button> for MusicModule {
             .justify(self.layout.justify.into())
             .build();
 
-        let label = OverflowLabel::new(label, self.truncate, self.marquee.clone());
+        let label = OverflowLabel::new(label, self.truncate, &self.marquee);
 
         button_contents.append(&*icon_pause);
         button_contents.append(&*icon_play);
@@ -274,7 +274,7 @@ impl Module<Button> for MusicModule {
         let title_overflow = OverflowLabel::new(
             Label::builder().use_markup(true).build(),
             self.truncate_popup_title,
-            self.marquee_popup_title.clone(),
+            &self.marquee_popup_title,
         );
         let title_label =
             IconPrefixedLabel::with_overflow(&icons.track, title_overflow, &image_provider);
@@ -282,7 +282,7 @@ impl Module<Button> for MusicModule {
         let album_overflow = OverflowLabel::new(
             Label::builder().use_markup(true).build(),
             self.truncate_popup_album,
-            self.marquee_popup_album.clone(),
+            &self.marquee_popup_album,
         );
         let album_label =
             IconPrefixedLabel::with_overflow(&icons.album, album_overflow, &image_provider);
@@ -290,7 +290,7 @@ impl Module<Button> for MusicModule {
         let artist_overflow = OverflowLabel::new(
             Label::builder().use_markup(true).build(),
             self.truncate_popup_artist,
-            self.marquee_popup_artist.clone(),
+            &self.marquee_popup_artist,
         );
         let artist_label =
             IconPrefixedLabel::with_overflow(&icons.artist, artist_overflow, &image_provider);
@@ -306,16 +306,16 @@ impl Module<Button> for MusicModule {
         let controls_box = gtk::Box::new(Orientation::Horizontal, 0);
         controls_box.add_css_class("controls");
 
-        let btn_prev = IconButton::new(&icons.prev, self.icon_size, image_provider.clone());
+        let btn_prev = IconButton::new(&icons.prev, self.icon_size, &image_provider);
         btn_prev.add_css_class("btn-prev");
 
-        let btn_play = IconButton::new(&icons.play, self.icon_size, image_provider.clone());
+        let btn_play = IconButton::new(&icons.play, self.icon_size, &image_provider);
         btn_play.add_css_class("btn-play");
 
-        let btn_pause = IconButton::new(&icons.pause, self.icon_size, image_provider.clone());
+        let btn_pause = IconButton::new(&icons.pause, self.icon_size, &image_provider);
         btn_pause.add_css_class("btn-pause");
 
-        let btn_next = IconButton::new(&icons.next, self.icon_size, image_provider.clone());
+        let btn_next = IconButton::new(&icons.next, self.icon_size, &image_provider);
         btn_next.add_css_class("btn-next");
 
         controls_box.append(&*btn_prev);

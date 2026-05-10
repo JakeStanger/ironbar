@@ -12,8 +12,8 @@ pub enum ReadParseError {
 impl fmt::Display for ReadParseError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            ReadParseError::Read(err) => write!(f, "I/O error: {}", err),
-            ReadParseError::Parse(err) => write!(f, "Parse error: {}", err),
+            ReadParseError::Read(err) => write!(f, "I/O error: {err}"),
+            ReadParseError::Parse(err) => write!(f, "Parse error: {err}"),
         }
     }
 }
@@ -83,7 +83,7 @@ pub fn default_resource_name(subsystem: &str) -> Option<String> {
             TO_CHECK
                 .iter()
                 .find(|item| possible_files.iter().any(|v| v == **item))
-                .map(|s| s.to_string())
+                .map(ToString::to_string)
         }
         "leds" => {
             // almost all leds have the same postfix

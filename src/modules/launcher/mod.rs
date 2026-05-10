@@ -219,8 +219,8 @@ impl Module<gtk::Box> for LauncherModule {
                     .iter()
                     .map(|app_id| {
                         (
-                            app_id.to_string(),
-                            Item::new(app_id.to_string(), OpenState::Closed, true),
+                            app_id.clone(),
+                            Item::new(app_id.clone(), OpenState::Closed, true),
                         )
                     })
                     .collect::<IndexMap<_, _>>()

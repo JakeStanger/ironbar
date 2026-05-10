@@ -25,7 +25,7 @@ impl Button {
     ) -> Self {
         let label = context.format_label(name, index);
 
-        let button = IconButton::new(&label, context.icon_size, context.image_provider.clone());
+        let button = IconButton::new(&label, context.icon_size, &context.image_provider);
         button.set_widget_name(name);
         button.add_css_class("item");
 

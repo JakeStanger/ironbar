@@ -220,6 +220,7 @@ impl Debug for ModulePopupParts {
             .field("container", &self.container)
             .field("buttons", &self.buttons)
             .field("button_finder", &self.button_finder.is_some())
+            .field("disable_autohide", &self.disable_autohide)
             .finish()
     }
 }

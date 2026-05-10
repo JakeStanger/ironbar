@@ -73,7 +73,7 @@ pub struct IconButton {
     feature = "workspaces",
 ))]
 impl IconButton {
-    pub fn new(input: &str, size: i32, image_provider: image::Provider) -> Self {
+    pub fn new(input: &str, size: i32, image_provider: &image::Provider) -> Self {
         let button = Button::new();
         let label = Label::builder().use_markup(true).build();
         label.set_label_escaped(input);
@@ -82,7 +82,7 @@ impl IconButton {
             let button_clone = button.clone();
             let label_clone = label.clone();
 
-            create_icon(input, size, &image_provider, move |result| match result {
+            create_icon(input, size, image_provider, move |result| match result {
                 Ok(widget) => button_clone.set_child(Some(&widget)),
                 Err(()) => button_clone.set_child(Some(&label_clone)),
             });
@@ -164,13 +164,12 @@ impl IconLabel {
             let container_clone = container.clone();
             let current_icon_clone = current_icon.clone();
 
-            create_icon(input, size, image_provider, move |result| match result {
-                Ok(widget) => {
+            create_icon(input, size, image_provider, move |result| {
+                if let Ok(widget) = result {
                     // This executes after the label is appended below, so prepend is used to keep the order.
                     container_clone.prepend(&widget);
                     *current_icon_clone.borrow_mut() = Some(widget);
-                }
-                Err(()) => {
+                } else {
                     label_clone.set_label_escaped(&input_str);
                     label_clone.set_visible(true);
                 }
@@ -205,21 +204,15 @@ impl IconLabel {
                 let container_clone = self.container.clone();
                 let current_icon_clone = self.current_icon.clone();
 
-                create_icon(
-                    input,
-                    self.size,
-                    &self.provider,
-                    move |result| match result {
-                        Ok(widget) => {
-                            container_clone.prepend(&widget);
-                            *current_icon_clone.borrow_mut() = Some(widget);
-                        }
-                        Err(()) => {
-                            label_clone.set_label_escaped(&input_str);
-                            label_clone.set_visible(true);
-                        }
-                    },
-                );
+                create_icon(input, self.size, &self.provider, move |result| {
+                    if let Ok(widget) = result {
+                        container_clone.prepend(&widget);
+                        *current_icon_clone.borrow_mut() = Some(widget);
+                    } else {
+                        label_clone.set_label_escaped(&input_str);
+                        label_clone.set_visible(true);
+                    }
+                });
             }
             Some(input) => {
                 self.label.set_label_escaped(input);

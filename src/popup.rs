@@ -44,6 +44,7 @@ impl Debug for Popup {
             .field("button_cache", &self.button_cache)
             .field("pos", &self.pos)
             .field("current_widget", &self.current_widget)
+            .field("autohide", &self.autohide)
             .finish()
     }
 }

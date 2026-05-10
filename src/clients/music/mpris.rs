@@ -203,7 +203,7 @@ impl Client {
             // MRPIS doesn't seem to provide playlist info reliably,
             // so we can just assume next/prev will work by bodging the numbers
             playlist_position: 1,
-            playlist_length: track_list.map(|list| list.len() as u32).unwrap_or(u32::MAX),
+            playlist_length: track_list.map_or(u32::MAX, |list| list.len() as u32),
             state: PlayerState::from(playback_status),
             volume_percent,
         };

@@ -44,7 +44,7 @@ impl crate::ironvar::Namespace for KbdBacklight {
     fn list(&self) -> Vec<String> {
         [KDB_KEY_MAX_BRIGHTNESS, KDB_KEY_BRIGHTNESS]
             .into_iter()
-            .map(|s| s.to_string())
+            .map(ToString::to_string)
             .collect()
     }
 

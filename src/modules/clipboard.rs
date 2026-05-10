@@ -156,7 +156,11 @@ impl Module<Button> for ClipboardModule {
         context: WidgetContext<Self::SendMessage, Self::ReceiveMessage>,
         info: &ModuleInfo,
     ) -> color_eyre::Result<ModuleParts<Button>> {
-        let button = IconButton::new(&self.icon, self.icon_size, context.ironbar.image_provider());
+        let button = IconButton::new(
+            &self.icon,
+            self.icon_size,
+            &context.ironbar.image_provider(),
+        );
 
         button.label().set_justify(self.layout.justify.into());
         button.add_css_class("btn");

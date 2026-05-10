@@ -30,11 +30,9 @@ impl Pagination {
     ) -> Self {
         let scroll_box = gtk::Box::new(orientation, 0);
 
-        let scroll_back =
-            IconButton::new(icon_context.back, icon_context.size, image_provider.clone());
+        let scroll_back = IconButton::new(icon_context.back, icon_context.size, image_provider);
 
-        let scroll_fwd =
-            IconButton::new(icon_context.fwd, icon_context.size, image_provider.clone());
+        let scroll_fwd = IconButton::new(icon_context.fwd, icon_context.size, image_provider);
 
         scroll_back.set_sensitive(false);
         scroll_fwd.set_sensitive(false);
