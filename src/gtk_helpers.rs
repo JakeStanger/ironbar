@@ -231,7 +231,7 @@ impl IronbarLabelExt for Label {
 }
 
 pub trait IronbarPaintableExt {
-    /// Scales a `Paintable`. to the requested size,
+    /// Scales a `Paintable` to the requested size,
     /// returning a new `Paintable`.
     ///
     /// Aspect ratio is preserved.
