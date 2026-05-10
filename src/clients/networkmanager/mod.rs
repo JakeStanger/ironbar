@@ -7,8 +7,8 @@ use color_eyre::Result;
 use zbus::Connection;
 use zbus::zvariant::ObjectPath;
 
-use crate::clients::networkmanager::dbus::{AccessPointDbusProxy, DbusProxy, DeviceDbusProxy};
 use crate::{register_fallible_client, spawn};
+use dbus::{AccessPointDbusProxy, DbusProxy, DeviceDbusProxy};
 use futures_lite::StreamExt;
 
 pub use self::dbus::{DeviceState, DeviceType, DeviceWirelessDbusProxy, Ip4ConfigDbusProxy};

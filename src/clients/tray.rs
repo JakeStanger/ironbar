@@ -1,5 +1,5 @@
+use super::ClientResult;
 use crate::channels::SyncSenderExt;
-use crate::clients::ClientResult;
 use crate::{arc_mut, lock, register_fallible_client, spawn};
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};

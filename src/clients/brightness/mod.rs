@@ -4,10 +4,10 @@ mod fs_reader;
 #[cfg(feature = "ipc")]
 mod ironvar;
 
-use crate::clients::ClientResult;
-use crate::clients::brightness::dbus_login1::Login1SessionProxy;
+use super::ClientResult;
 use crate::register_fallible_client;
 use dbus_keyboard::KbdBacklightProxy;
+use dbus_login1::Login1SessionProxy;
 use std::sync::Arc;
 
 pub use fs_reader::{brightness, default_resource_name, max_brightness};

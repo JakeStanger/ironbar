@@ -33,7 +33,6 @@ impl From<&SinkInfo<'_>> for Sink {
                 .unwrap_or_default(),
             muted: value.mute,
             volume: value.volume.into(),
-            // active: value.state == SinkState::Running,
         }
     }
 }

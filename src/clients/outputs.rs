@@ -2,8 +2,8 @@ use std::collections::HashMap;
 use std::rc::Rc;
 use std::sync::{Arc, Mutex};
 
+use super::wayland;
 use crate::channels::SyncSenderExt;
-use crate::clients::wayland;
 use crate::{Ironbar, arc_mut, debug, get_display, info, lock, register_client};
 use gtk::gdk::Monitor;
 use gtk::gdk::prelude::*;
