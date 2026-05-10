@@ -16,14 +16,14 @@ pub struct NetworkManagerModule {
     pub(super) profiles: Profiles<ProfileState, NetworkManagerProfile>,
 
     /// Any device with a type in this list will not be shown. The type is a string matching
-    /// [`DeviceType`] variants (e.g. `"Wifi"`, `"Ethernet", etc.).
+    /// [`DeviceType`] variants (e.g. `"Wifi"`, `"Ethernet"`, etc.).
     ///
     /// You can find the type of the devices on your system by running `nmcli device status`.
     #[serde(default)]
     pub(super) types_blacklist: Vec<DeviceType>,
 
     /// If not empty, only devices with a type in this list will be shown. The type is a string
-    /// matching [`DeviceType`] variants (e.g. `"Wifi"`, `"Ethernet", etc.).
+    /// matching [`DeviceType`] variants (e.g. `"Wifi"`, `"Ethernet"`, etc.).
     ///
     /// You can find the type of the devices on your system by running `nmcli device status`.
     #[serde(default)]

@@ -145,7 +145,7 @@ impl Bar {
         let margin = config.margin;
 
         let instance = Rc::new(self.clone());
-        let load_result = self.load_modules(instance, config, monitor);
+        let load_result = self.load_modules(&instance, config, monitor);
 
         let autohide_state = if let Some(autohide) = autohide {
             let hotspot_window = Window::new();
@@ -360,7 +360,7 @@ impl Bar {
     /// Loads the configured modules onto a bar.
     fn load_modules(
         &self,
-        instance: Rc<Bar>,
+        instance: &Rc<Bar>,
         config: BarConfig,
         monitor: &Monitor,
     ) -> BarLoadResult {
@@ -397,7 +397,7 @@ impl Bar {
                 modules,
                 &info,
                 &self.ironbar,
-                &instance,
+                instance,
                 &popup,
             ));
         }
@@ -411,7 +411,7 @@ impl Bar {
                 modules,
                 &info,
                 &self.ironbar,
-                &instance,
+                instance,
                 &popup,
             ));
         }
@@ -425,7 +425,7 @@ impl Bar {
                 modules,
                 &info,
                 &self.ironbar,
-                &instance,
+                instance,
                 &popup,
             ));
         }

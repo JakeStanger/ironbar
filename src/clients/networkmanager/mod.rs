@@ -7,8 +7,8 @@ use color_eyre::Result;
 use zbus::Connection;
 use zbus::zvariant::ObjectPath;
 
-use crate::clients::networkmanager::dbus::{AccessPointDbusProxy, DbusProxy, DeviceDbusProxy};
 use crate::{register_fallible_client, spawn};
+use dbus::{AccessPointDbusProxy, DbusProxy, DeviceDbusProxy};
 use futures_lite::StreamExt;
 
 pub use self::dbus::{DeviceState, DeviceType, DeviceWirelessDbusProxy, Ip4ConfigDbusProxy};
@@ -102,12 +102,11 @@ impl Client {
         let interface = device_object.interface().await?;
         let ip4_config = if state == DeviceState::Activated {
             let ip4_config_path = device_object.ip4_config().await;
-            match ip4_config_path {
-                Ok(ip4_config_path) => Some(self.fetch_ip4_config(&ip4_config_path).await?),
-                Err(_) => {
-                    tracing::error!("Device is activated but has no IP4 config");
-                    None
-                }
+            if let Ok(ip4_config_path) = ip4_config_path {
+                Some(self.fetch_ip4_config(&ip4_config_path).await?)
+            } else {
+                tracing::error!("Device is activated but has no IP4 config");
+                None
             }
         } else {
             None
@@ -210,31 +209,28 @@ impl Client {
 
                 for (index, device) in devices.iter().enumerate() {
                     let path = &device.path;
-                    match device_map.remove(path) {
-                        Some(client_device) => {
-                            let path = path.to_owned();
-                            new_device_map.insert(
-                                path,
-                                ClientDevice {
-                                    state: device.clone(),
-                                    index,
-                                    state_handle: client_device.state_handle,
-                                },
-                            );
-                        }
-                        None => {
-                            let this = self.clone();
-                            let path2 = path.to_owned();
-                            let v = ClientDevice {
+                    if let Some(client_device) = device_map.remove(path) {
+                        let path = path.to_owned();
+                        new_device_map.insert(
+                            path,
+                            ClientDevice {
                                 state: device.clone(),
                                 index,
-                                state_handle: spawn(async move {
-                                    this.watch_device_change(path2).await
-                                }),
-                            };
-                            let path = path.to_owned();
-                            new_device_map.insert(path, v);
-                        }
+                                state_handle: client_device.state_handle,
+                            },
+                        );
+                    } else {
+                        let this = self.clone();
+                        let path2 = path.to_owned();
+                        let v = ClientDevice {
+                            state: device.clone(),
+                            index,
+                            state_handle: spawn(async move {
+                                this.watch_device_change(path2).await;
+                            }),
+                        };
+                        let path = path.to_owned();
+                        new_device_map.insert(path, v);
                     }
 
                     match device
@@ -255,7 +251,7 @@ impl Client {
                                 let path2 = ip4config.path.to_owned();
                                 let v = ClientIp4Config {
                                     state_handle: spawn(async move {
-                                        this.watch_ip4config_change(device_path, path2).await
+                                        this.watch_ip4config_change(device_path, path2).await;
                                     }),
                                 };
                                 new_ip4config_map.insert(ip4config.path.to_owned(), v);
@@ -299,7 +295,7 @@ impl Client {
                                                 device_path,
                                                 access_point_object,
                                             )
-                                            .await
+                                            .await;
                                         }),
                                     };
                                     new_access_point_map.insert(ap.path.to_owned(), v);
@@ -377,7 +373,7 @@ impl Client {
 
             let path = device.inner().path();
             match self.update_device(path).await {
-                Ok(_) => (),
+                Ok(()) => (),
                 Err(e) => {
                     tracing::error!("Failed to update device: {e}");
                     break;
@@ -398,7 +394,7 @@ impl Client {
         loop {
             address_data.next().await;
             match self.update_device(&device).await {
-                Ok(_) => (),
+                Ok(()) => (),
                 Err(e) => {
                     tracing::error!("Failed to update ip4config: {e}");
                     break;
@@ -422,7 +418,7 @@ impl Client {
             };
             tracing::debug!("Access point changed for device {device}");
             match self.update_device(&device).await {
-                Ok(_) => (),
+                Ok(()) => (),
                 Err(e) => {
                     tracing::error!("Failed to update access point: {e}");
                     break;
@@ -431,13 +427,12 @@ impl Client {
         }
     }
 
-    async fn run(&self) -> Result<()> {
+    fn run(&self) {
         let this = self.clone();
         spawn(async move { this.watch_devices_changed().await });
-        Ok(())
     }
 
-    pub async fn subscribe(self: &Arc<Self>) -> broadcast::Receiver<NetworkManagerUpdate> {
+    pub fn subscribe(self: &Arc<Self>) -> broadcast::Receiver<NetworkManagerUpdate> {
         let rx = self.tx.subscribe();
         let this = Arc::clone(self);
         spawn(async move {
@@ -449,10 +444,8 @@ impl Client {
 
 pub async fn create_client() -> Result<Arc<Client>> {
     let client = Arc::new(Client::new().await?);
-    {
-        let client = client.clone();
-        spawn(async move { client.run().await });
-    }
+    client.run();
+
     Ok(client)
 }
 

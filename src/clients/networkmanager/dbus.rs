@@ -1,6 +1,6 @@
 //! NetworkManager D-Bus interface bindings.
 //!
-//! Upstream documentation: https://networkmanager.dev/docs/api/latest/
+//! Upstream documentation: <https://networkmanager.dev/docs/api/latest/>
 
 use std::collections::HashMap;
 
@@ -125,7 +125,7 @@ pub trait Ip4ConfigDbus {
 
 /// Indicate the type of hardware represented by a device object.
 ///
-/// See: https://networkmanager.dev/docs/api/latest/nm-dbus-types.html#NMDeviceType
+/// See: <https://networkmanager.dev/docs/api/latest/nm-dbus-types.html#NMDeviceType>
 #[derive(Clone, Copy, Debug, OwnedValue, PartialEq, Deserialize)]
 #[repr(u32)]
 #[serde(rename_all = "snake_case")]
@@ -203,7 +203,7 @@ pub enum DeviceType {
     Ipvlan = 34,
 }
 
-/// See: https://people.freedesktop.org/~lkundrak/nm-docs/nm-dbus-types.html#NMDeviceState
+/// See: <https://people.freedesktop.org/~lkundrak/nm-docs/nm-dbus-types.html#NMDeviceState>
 #[derive(Clone, Copy, Debug, OwnedValue, PartialEq, Eq)]
 #[repr(u32)]
 pub enum DeviceState {

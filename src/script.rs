@@ -196,7 +196,7 @@ impl Script {
     {
         let (send, recv) = channel::<()>();
         std::mem::forget(send);
-        self.run_with_recv(args, recv, callback).await
+        self.run_with_recv(args, recv, callback).await;
     }
 
     /// Runs the script, passing `args` if provided.
@@ -317,8 +317,8 @@ impl Script {
                     _ = handle.wait() => break,
                     _ = &mut rx_terminate => {
                         if let Err(err) = handle.kill().await {
-                            error!("failed to terminate child process: {err:?}")
-                        };
+                            error!("failed to terminate child process: {err:?}");
+                        }
 
                         break;
                     },

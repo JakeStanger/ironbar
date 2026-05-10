@@ -34,7 +34,7 @@ pub fn load_css(source: &CssSource) {
         CssSource::File(style_path) => {
             // file watcher requires absolute path
             let style_path = if style_path.is_absolute() {
-                style_path.to_path_buf()
+                style_path.clone()
             } else {
                 env::current_dir().expect("to exist").join(style_path)
             };

@@ -222,7 +222,7 @@ impl BrightnessModule {
                     .set_brightness(subsystem, name, brightness as u32)
                     .await?;
             }
-        };
+        }
         Ok(())
     }
 }
@@ -271,7 +271,7 @@ impl Module<Button> for BrightnessModule {
             loop {
                 let event = tokio::select! {
                     v = rx.recv() => v,
-                    _ = sleep(POLL_INTERVAL) => None,
+                    () = sleep(POLL_INTERVAL) => None,
                 };
 
                 let BrightnessData {
@@ -322,7 +322,7 @@ impl Module<Button> for BrightnessModule {
                         .await
                         {
                             tracing::error!(?err, "Could not change brightness");
-                        };
+                        }
                     }
                 }
 

@@ -100,7 +100,7 @@ impl ObjectSubclass for DropdownItemData {
 
 impl VolumeModule {
     fn overflow_label(&self, name: &str, css_class: &str) -> OverflowLabel {
-        let label = OverflowLabel::new(Label::new(None), self.truncate_popup, self.marquee.clone());
+        let label = OverflowLabel::new(Label::new(None), self.truncate_popup, &self.marquee);
         label.label().add_css_class(css_class);
         label.set_label_escaped(name);
         label
@@ -122,7 +122,7 @@ impl VolumeModule {
         slider
     }
 
-    fn select_notify<F>(&self, selector: &DropDown, tx: Sender<Update>, func: F)
+    fn select_notify<F>(selector: &DropDown, tx: Sender<Update>, func: F)
     where
         F: Fn(String) -> Update + 'static,
     {
@@ -133,7 +133,7 @@ impl VolumeModule {
         });
     }
 
-    fn slider_notify<F>(&self, scale: Scale, selector: DropDown, tx: Sender<Update>, func: F)
+    fn slider_notify<F>(&self, scale: &Scale, selector: DropDown, tx: Sender<Update>, func: F)
     where
         F: Fn(String, f64) -> Update + 'static,
     {
@@ -149,7 +149,7 @@ impl VolumeModule {
         });
     }
 
-    fn button_notify<F>(&self, btn: &ToggleButton, selector: DropDown, tx: Sender<Update>, func: F)
+    fn button_notify<F>(btn: &ToggleButton, selector: DropDown, tx: Sender<Update>, func: F)
     where
         F: Fn(String, bool) -> Update + 'static,
     {
@@ -175,7 +175,7 @@ impl VolumeModule {
         });
     }
 
-    fn simple_button_notify<F>(&self, btn: &ToggleButton, tx: Sender<Update>, i: u32, func: F)
+    fn simple_button_notify<F>(btn: &ToggleButton, tx: Sender<Update>, i: u32, func: F)
     where
         F: Fn(u32, bool) -> Update + 'static,
     {
@@ -508,7 +508,7 @@ impl Module<Button> for VolumeModule {
                 .and_downcast::<Label>()
                 .expect("should be a `Label`.");
 
-            label.set_label(&dropdown_item.value().to_string());
+            label.set_label(&dropdown_item.value().clone());
             if let Some(truncate) = self.truncate_popup {
                 label.truncate(truncate);
             }
@@ -520,7 +520,7 @@ impl Module<Button> for VolumeModule {
         sink_selector.add_css_class("sink-selector");
         {
             let tx = context.controller_tx.clone();
-            self.select_notify(&sink_selector, tx, Update::SinkChange);
+            Self::select_notify(&sink_selector, tx, Update::SinkChange);
         }
         sink_container.append(&sink_selector);
 
@@ -530,7 +530,7 @@ impl Module<Button> for VolumeModule {
         source_selector.add_css_class("source-selector");
         {
             let tx = context.controller_tx.clone();
-            self.select_notify(&source_selector, tx, Update::SourceChange);
+            Self::select_notify(&source_selector, tx, Update::SourceChange);
         }
         source_container.append(&source_selector);
 
@@ -542,7 +542,7 @@ impl Module<Button> for VolumeModule {
             let tx = context.controller_tx.clone();
             let select = sink_selector.clone();
             let scale = sink_slider.clone();
-            self.slider_notify(scale, select, tx, Update::SinkVolume);
+            self.slider_notify(&scale, select, tx, Update::SinkVolume);
         }
 
         let source_slider = self.new_slider();
@@ -553,7 +553,7 @@ impl Module<Button> for VolumeModule {
             let tx = context.controller_tx.clone();
             let select = source_selector.clone();
             let scale = source_slider.clone();
-            self.slider_notify(scale, select, tx, Update::SourceVolume);
+            self.slider_notify(&scale, select, tx, Update::SourceVolume);
         }
 
         let sink_mute = ToggleButton::new();
@@ -563,7 +563,7 @@ impl Module<Button> for VolumeModule {
         {
             let tx = context.controller_tx.clone();
             let select = sink_selector.clone();
-            self.button_notify(&sink_mute, select, tx, Update::SinkMute);
+            Self::button_notify(&sink_mute, select, tx, Update::SinkMute);
         }
 
         let source_mute = ToggleButton::new();
@@ -573,7 +573,7 @@ impl Module<Button> for VolumeModule {
         {
             let tx = context.controller_tx.clone();
             let selector = source_selector.clone();
-            self.button_notify(&source_mute, selector, tx, Update::SourceMute);
+            Self::button_notify(&source_mute, selector, tx, Update::SourceMute);
         }
 
         let mut sink_manager = self.profiles.attach(
@@ -748,7 +748,7 @@ impl Module<Button> for VolumeModule {
                         let btn_mute = ToggleButton::new();
                         btn_mute.add_css_class("btn-mute");
                         btn_mute.add_css_class("sink-mute");
-                        self.simple_button_notify(&btn_mute, tx, index, Update::InputMute);
+                        Self::simple_button_notify(&btn_mute, tx, index, Update::InputMute);
 
                         item_container.append(&slider);
                         item_container.append(&btn_mute);
@@ -791,7 +791,7 @@ impl Module<Button> for VolumeModule {
                         let btn_mute = ToggleButton::new();
                         btn_mute.add_css_class("btn-mute");
                         btn_mute.add_css_class("source-mute");
-                        self.simple_button_notify(&btn_mute, tx, index, Update::OutputMute);
+                        Self::simple_button_notify(&btn_mute, tx, index, Update::OutputMute);
 
                         item_container.append(&slider);
                         item_container.append(&btn_mute);
@@ -817,7 +817,7 @@ impl Module<Button> for VolumeModule {
                         if let Some(ui) = inputs.get_mut(&info.index) {
                             if ui.label_raw != info.name {
                                 ui.title_label.set_label_escaped(&info.name);
-                                ui.label_raw = info.name.clone();
+                                ui.label_raw.clone_from(&info.name);
                             }
 
                             if !ui.slider.has_css_class("dragging") {
@@ -835,7 +835,7 @@ impl Module<Button> for VolumeModule {
                         if let Some(ui) = outputs.get_mut(&info.index) {
                             if ui.label_raw != info.name {
                                 ui.title_label.set_label_escaped(&info.name);
-                                ui.label_raw = info.name.clone();
+                                ui.label_raw.clone_from(&info.name);
                             }
 
                             if !ui.slider.has_css_class("dragging") {

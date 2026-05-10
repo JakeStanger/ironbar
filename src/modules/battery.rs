@@ -176,24 +176,23 @@ impl Module<Button> for BatteryModule {
         context: WidgetContext<Self::SendMessage, Self::ReceiveMessage>,
         info: &ModuleInfo,
     ) -> Result<ModuleParts<Button>> {
-        let icon = match self.show_icon {
-            true => {
-                let icon = IconLabel::new("", self.icon_size, &context.ironbar.image_provider());
-                icon.add_css_class("icon");
-                Some(icon)
-            }
-            false => None,
+        let icon = if self.show_icon {
+            let icon = IconLabel::new("", self.icon_size, &context.ironbar.image_provider());
+            icon.add_css_class("icon");
+            Some(icon)
+        } else {
+            None
         };
-        let label = match self.show_label {
-            true => {
-                let label = Label::builder()
-                    .use_markup(true)
-                    .justify(self.layout.justify.into())
-                    .build();
-                label.add_css_class("label");
-                Some(label)
-            }
-            false => None,
+
+        let label = if self.show_label {
+            let label = Label::builder()
+                .use_markup(true)
+                .justify(self.layout.justify.into())
+                .build();
+            label.add_css_class("label");
+            Some(label)
+        } else {
+            None
         };
 
         let container = gtk::Box::new(self.layout.orientation(info), 5);

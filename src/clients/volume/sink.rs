@@ -33,12 +33,11 @@ impl From<&SinkInfo<'_>> for Sink {
                 .unwrap_or_default(),
             muted: value.mute,
             volume: value.volume.into(),
-            // active: value.state == SinkState::Running,
         }
     }
 }
 
-impl<'a> HasIndex for SinkInfo<'a> {
+impl HasIndex for SinkInfo<'_> {
     fn index(&self) -> u32 {
         self.index
     }

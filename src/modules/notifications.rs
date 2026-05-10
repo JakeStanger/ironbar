@@ -171,7 +171,7 @@ impl Module<Overlay> for NotificationsModule {
         let button = IconButton::new(
             &self.icons.closed_none,
             16,
-            context.ironbar.image_provider(),
+            &context.ironbar.image_provider(),
         );
         button.add_css_class("button");
         overlay.set_child(Some(&*button));

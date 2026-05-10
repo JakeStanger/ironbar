@@ -1,6 +1,7 @@
-use super::{MusicClient, PlayerState, PlayerUpdate, Result, Status, TICK_INTERVAL_MS, Track};
+use super::{
+    MusicClient, PlayerState, PlayerUpdate, ProgressTick, Result, Status, TICK_INTERVAL_MS, Track,
+};
 use crate::channels::SyncSenderExt;
-use crate::clients::music::ProgressTick;
 use crate::{arc_mut, lock, spawn_blocking};
 use mpris::{DBusError, Event, Metadata, PlaybackStatus, Player, PlayerFinder};
 use std::cmp;
@@ -202,7 +203,7 @@ impl Client {
             // MRPIS doesn't seem to provide playlist info reliably,
             // so we can just assume next/prev will work by bodging the numbers
             playlist_position: 1,
-            playlist_length: track_list.map(|list| list.len() as u32).unwrap_or(u32::MAX),
+            playlist_length: track_list.map_or(u32::MAX, |list| list.len() as u32),
             state: PlayerState::from(playback_status),
             volume_percent,
         };

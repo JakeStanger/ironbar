@@ -145,7 +145,7 @@ impl Ipc {
                 ironbar.reload_config();
 
                 match crate::load_output_bars(ironbar, application) {
-                    Ok(_) => {}
+                    Ok(()) => {}
                     Err(err) => error!("{err:?}"),
                 }
                 Response::Ok

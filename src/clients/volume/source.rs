@@ -40,7 +40,7 @@ impl From<&SourceInfo<'_>> for Source {
     }
 }
 
-impl<'a> HasIndex for SourceInfo<'a> {
+impl HasIndex for SourceInfo<'_> {
     fn index(&self) -> u32 {
         self.index
     }

@@ -71,7 +71,7 @@ impl Module<Button> for InhibitModule {
                         trace!("Inhibit state update: active={}, duration={}", state.active, format_duration(state.duration));
                         tx.send_update(state).await;
                     }
-                    _ = tokio::time::sleep(Duration::from_secs(1)), if state.active && state.duration != Duration::MAX => {
+                    () = tokio::time::sleep(Duration::from_secs(1)), if state.active && state.duration != Duration::MAX => {
                         state.duration = state.duration.saturating_sub(Duration::from_secs(1));
                         if state.duration == Duration::ZERO {
                             state.active = false;
@@ -123,12 +123,11 @@ impl Module<Button> for InhibitModule {
         ctx.subscribe().recv_glib(&label, move |label, state| {
             if state.active != was_active.replace(state.active) {
                 if state.active {
-                    match client.acquire() {
-                        Some(cookie) => *inhibit_handle.borrow_mut() = Some(cookie),
-                        None => {
-                            controller_tx.send_spawn(InhibitCommand::Toggle);
-                            return;
-                        }
+                    if let Some(cookie) = client.acquire() {
+                        *inhibit_handle.borrow_mut() = Some(cookie)
+                    } else {
+                        controller_tx.send_spawn(InhibitCommand::Toggle);
+                        return;
                     }
                 } else {
                     *inhibit_handle.borrow_mut() = None;

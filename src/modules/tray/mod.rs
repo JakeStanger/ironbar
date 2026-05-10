@@ -351,7 +351,7 @@ fn load_icon_async(
     let picture = picture.clone();
 
     glib::spawn_future_local(async move {
-        match icon::get_image(
+        if let Ok(result) = icon::get_image(
             icon_name.as_deref(),
             icon_theme_path.as_deref(),
             icon_pixmap.as_deref(),
@@ -361,22 +361,19 @@ fn load_icon_async(
         )
         .await
         {
-            Ok(result) => {
-                // Swap the paintable onto the pre-registered picture widget
-                // rather than replacing the widget itself, since we can no
-                // longer access &mut TrayMenu here.
-                if let Some(paintable) = result.paintable() {
-                    picture.set_paintable(Some(&paintable));
-                }
+            // Swap the paintable onto the pre-registered picture widget
+            // rather than replacing the widget itself, since we can no
+            // longer access &mut TrayMenu here.
+            if let Some(paintable) = result.paintable() {
+                picture.set_paintable(Some(&paintable));
             }
-            Err(_) => {
-                warn!(
-                    "failed to load icon '{:?}': no icon name or pixmap available",
-                    icon_name
-                );
-                picture.set_visible(false);
-                fallback_label.set_visible(true);
-            }
+        } else {
+            warn!(
+                "failed to load icon '{:?}': no icon name or pixmap available",
+                icon_name
+            );
+            picture.set_visible(false);
+            fallback_label.set_visible(true);
         }
     });
 }
@@ -406,10 +403,7 @@ fn on_update(
             // asynchronously (required for SVG support). If loading fails, the
             // picture is hidden and the label is shown instead.
             // Both must be created before menu_item is moved into `menus`.
-            let fallback_text = menu_item
-                .title
-                .clone()
-                .unwrap_or_else(|| address.to_string());
+            let fallback_text = menu_item.title.clone().unwrap_or_else(|| address.clone());
 
             // Register the label first (no image to hide yet), then the image.
             // set_image will hide the label and append the picture exactly once.
@@ -457,7 +451,7 @@ fn on_update(
                     let pixmap_changed = icon_pixmap != menu_item.icon_pixmap;
 
                     if name_changed || pixmap_changed {
-                        menu_item.icon_pixmap = icon_pixmap.clone();
+                        menu_item.icon_pixmap.clone_from(&icon_pixmap);
                         menu_item.set_icon_name(icon_name.clone());
 
                         // Reuse the existing picture widget rather than creating a new one,

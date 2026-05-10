@@ -16,7 +16,6 @@ use gtk::prelude::*;
 use serde::Deserialize;
 use std::cmp::Ordering;
 use std::collections::HashMap;
-use std::ops::Deref;
 use std::rc::Rc;
 use tokio::sync::mpsc;
 use tracing::{debug, trace, warn};
@@ -246,9 +245,7 @@ fn reorder_workspaces(container: &gtk::Box, sort_order: SortOrder) {
                 SortOrder::Index => {
                     let index = child.get_tag::<i64>("workspace_index").copied();
 
-                    index
-                        .map(|v| v.to_string())
-                        .unwrap_or_else(|| i64::MAX.to_string())
+                    index.map_or_else(|| i64::MAX.to_string(), |v| v.to_string())
                 }
                 _ => child.widget_name().to_string(),
             };
@@ -348,7 +345,7 @@ impl Module<gtk::Box> for WorkspacesModule {
         .unwrap_or_default();
         let favorites = Rc::new(favorites);
 
-        for favorite in favorites.deref() {
+        for favorite in &*favorites {
             // Ensure numbered favorites actually refer to their respective numbered workspaces
             let (id, index) = match favorite.parse::<i64>() {
                 Ok(num) => (num, num),
@@ -543,7 +540,7 @@ impl Module<gtk::Box> for WorkspacesModule {
                         }
                     }
                     WorkspaceUpdate::Unknown if has_initialized => {
-                        warn!("received unknown type workspace event")
+                        warn!("received unknown type workspace event");
                     }
                     // Avoids race conditions where e.g. we process workspace moves fired _before_
                     // we could send the WorkspaceUpdate::Init() event, resulting in duplicate

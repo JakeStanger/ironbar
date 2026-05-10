@@ -253,7 +253,7 @@ impl Module<gtk::Box> for KeyboardModule {
         num.label().set_justify(self.layout.justify.into());
         scroll.label().set_justify(self.layout.justify.into());
 
-        let layout_button = IconButton::new("", self.icon_size, image_provider);
+        let layout_button = IconButton::new("", self.icon_size, &image_provider);
 
         if self.show_caps {
             caps.add_css_class("key");

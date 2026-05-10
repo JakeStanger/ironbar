@@ -2,8 +2,8 @@ use std::collections::HashMap;
 use std::rc::Rc;
 use std::sync::{Arc, Mutex};
 
+use super::wayland;
 use crate::channels::SyncSenderExt;
-use crate::clients::wayland;
 use crate::{Ironbar, arc_mut, debug, get_display, info, lock, register_client};
 use gtk::gdk::Monitor;
 use gtk::gdk::prelude::*;
@@ -75,14 +75,14 @@ impl MonitorProxy {
                 tx.send_expect(MonitorEvent {
                     connector: self.connector.clone(),
                     state: MonitorState::Disconnected,
-                })
+                });
             }
             InternalMonitorState::BothConnected(wl_output, gdk_output) => {
                 info!("Monitor {} connected", self.connector);
                 tx.send_expect(MonitorEvent {
                     connector: self.connector.clone(),
                     state: MonitorState::Connected(wl_output.clone(), gdk_output.clone()),
-                })
+                });
             }
             _ => {}
         }
@@ -133,13 +133,13 @@ impl Client {
                         });
                         match event.event_type {
                             wayland::OutputEventType::New => {
-                                entry.connect_wayland(&event.output).maybe_send(&output_tx)
+                                entry.connect_wayland(&event.output).maybe_send(&output_tx);
                             }
                             wayland::OutputEventType::Destroyed => {
-                                entry.disconnect().maybe_send(&output_tx)
+                                entry.disconnect().maybe_send(&output_tx);
                             }
                             wayland::OutputEventType::Update => {}
-                        };
+                        }
                     }
                 }
             });

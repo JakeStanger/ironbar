@@ -1,6 +1,6 @@
+use super::Visibility;
 use super::{Workspace as IronWorkspace, WorkspaceClient, WorkspaceUpdate};
 use crate::channels::SyncSenderExt;
-use crate::clients::compositor::Visibility;
 use crate::{arc_rw, read_lock, spawn, write_lock};
 use connection::{Action, Connection, Event, Request, WorkspaceReferenceArg};
 use std::sync::{Arc, RwLock};

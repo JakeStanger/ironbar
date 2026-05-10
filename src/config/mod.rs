@@ -88,9 +88,9 @@ pub fn get_double_click_time_ms() -> u64 {
             DoubleClickTime::Ms(ms) => *ms,
             DoubleClickTime::Gtk => {
                 // Read from GTK settings
-                gtk::Settings::default()
-                    .map(|settings| settings.property::<i32>("gtk-double-click-time") as u64)
-                    .unwrap_or(400) // GTK default fallback
+                gtk::Settings::default().map_or(400, |settings| {
+                    settings.property::<i32>("gtk-double-click-time") as u64
+                }) // GTK default fallback
             }
         })
         .expect("double_click_time should be initialized during config load")
@@ -562,7 +562,7 @@ impl ConfigLocation {
     pub fn default_path() -> PathBuf {
         dirs::config_dir()
             .unwrap_or_default()
-            .to_path_buf()
+            .clone()
             .join("ironbar/config")
     }
 
@@ -595,8 +595,6 @@ impl Config {
         config_location: ConfigLocation,
         css_location: Option<ConfigLocation>,
     ) -> (Config, CssSource, ErrorLevel) {
-        let mut error_level = ErrorLevel::None;
-
         cfg_if! {
             if #[cfg(feature = "config+corn")] {
                 const CONFIG_MINIMAL: (&str, FileFormat) = (include_str!("../../examples/minimal/config.corn"), FileFormat::Corn);
@@ -619,6 +617,8 @@ impl Config {
         const CSS_DESKTOP: CssSource =
             CssSource::String(include_str!("../../examples/desktop/style.css"));
 
+        let mut error_level = ErrorLevel::None;
+
         let config_builder = config::Config::builder();
 
         let css_source = match css_location.unwrap_or_else(|| config_location.clone()) {
@@ -626,10 +626,10 @@ impl Config {
             ConfigLocation::Desktop => CSS_DESKTOP,
             ConfigLocation::Custom(mut path) => {
                 if path.is_dir() {
-                    path = path.join("style.css")
+                    path = path.join("style.css");
                 } else if path.extension().is_none_or(|ext| ext != "css") {
                     path = path.parent().unwrap_or(&path).join("style.css");
-                };
+                }
 
                 if path.exists() {
                     CssSource::File(path)
@@ -655,7 +655,7 @@ impl Config {
         let mut config: Config = config_builder
             .add_source(config::Environment::with_prefix("IRONBAR_"))
             .build()
-            .and_then(|conf| conf.try_deserialize())
+            .and_then(config::Config::try_deserialize)
             .unwrap_or_else(|err| {
                 error_level = error_level.error();
                 error!("Error loading config: {err:?}");

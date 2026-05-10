@@ -34,7 +34,7 @@ impl From<&SourceOutputInfo<'_>> for SourceOutput {
     }
 }
 
-impl<'a> HasIndex for SourceOutputInfo<'a> {
+impl HasIndex for SourceOutputInfo<'_> {
     fn index(&self) -> u32 {
         self.index
     }

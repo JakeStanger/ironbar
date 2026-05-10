@@ -259,12 +259,12 @@ impl Ironbar {
 
                 // Load initial bars
                 match load_output_bars(&instance.clone(), &app) {
-                    Ok(_) => {}
+                    Ok(()) => {}
                     Err(report) => {
                         error!("{:?}", report);
                         exit(ExitCode::CreateBars as i32);
                     }
-                };
+                }
 
                 let outputs = instance.clients.borrow_mut().outputs();
                 let mut rx_outputs = outputs.subscribe();
@@ -365,7 +365,7 @@ impl Ironbar {
         if let Some(removed) = set.remove(cmd)
             && removed.send(()).is_err()
         {
-            error!("failed to send signal to script child process")
+            error!("failed to send signal to script child process");
         }
 
         set.insert(cmd.to_owned(), tx_terminate);
@@ -431,7 +431,7 @@ fn load_output_bars_for(
             vec![create_bar(
                 app,
                 monitor,
-                monitor_name.to_string(),
+                monitor_name.clone(),
                 config.clone(),
                 ironbar.clone(),
             )]
@@ -442,7 +442,7 @@ fn load_output_bars_for(
                 create_bar(
                     app,
                     monitor,
-                    monitor_name.to_string(),
+                    monitor_name.clone(),
                     config.clone(),
                     ironbar.clone(),
                 )
@@ -451,7 +451,7 @@ fn load_output_bars_for(
         None if show_default_bar => vec![create_bar(
             app,
             monitor,
-            monitor_name.to_string(),
+            monitor_name.clone(),
             config.bar.clone(),
             ironbar.clone(),
         )],
@@ -461,6 +461,11 @@ fn load_output_bars_for(
     Ok(bars)
 }
 
+/// Loads all the bars associated with an output.
+///
+/// # Errors
+///
+/// Will error if any output doies not have a name.
 pub fn load_output_bars(ironbar: &Rc<Ironbar>, app: &Application) -> Result<()> {
     let wl = ironbar.clients.borrow_mut().wayland();
     let outputs = wl.output_info_all();
@@ -472,6 +477,7 @@ pub fn load_output_bars(ironbar: &Rc<Ironbar>, app: &Application) -> Result<()> 
         let Some(monitor_name) = &output.name else {
             return Err(Report::msg("Output missing monitor name"));
         };
+
         let monitor_desc = &output.description.clone().unwrap_or_default();
         let find_monitor = || {
             for i in 0..monitors.n_items() {
@@ -494,7 +500,7 @@ pub fn load_output_bars(ironbar: &Rc<Ironbar>, app: &Application) -> Result<()> 
             continue;
         };
 
-        match crate::load_output_bars_for(ironbar, app, &output, &monitor) {
+        match load_output_bars_for(ironbar, app, &output, &monitor) {
             Ok(mut bars) => ironbar.bars.borrow_mut().append(&mut bars),
             Err(err) => error!("{err:?}"),
         }

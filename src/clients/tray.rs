@@ -1,5 +1,5 @@
+use super::ClientResult;
 use crate::channels::SyncSenderExt;
-use crate::clients::ClientResult;
 use crate::{arc_mut, lock, register_fallible_client, spawn};
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
@@ -49,7 +49,7 @@ impl Client {
                             lock!(menus).insert(
                                 address.clone().into_boxed_str(),
                                 MenuCache {
-                                    path: path.to_string(),
+                                    path: path.clone(),
                                     menu: None,
                                 },
                             );
@@ -86,7 +86,7 @@ impl Client {
         for (address, menu) in lock!(self.menus).iter() {
             self.tx.send_expect(Event::Update(
                 address.to_string(),
-                UpdateEvent::MenuConnect(menu.path.to_string()),
+                UpdateEvent::MenuConnect(menu.path.clone()),
             ));
 
             if let Some(menu) = &menu.menu {
