@@ -67,8 +67,6 @@ fn main() {
             let (config_source, css_source) = resolve_sources(
                 None,
                 None,
-                std::env::var("IRONBAR_CONFIG").ok(),
-                std::env::var("IRONBAR_CSS").ok(),
             );
             start_ironbar(false, config_source, css_source);
         }
@@ -132,12 +130,7 @@ fn run_with_args() {
         None if args.validate_config > 0 => {
             let _guard = logging::install_logging(args.debug);
 
-            let (config_source, _) = resolve_sources(
-                args.config,
-                args.theme,
-                std::env::var("IRONBAR_CONFIG").ok(),
-                std::env::var("IRONBAR_CSS").ok(),
-            );
+            let (config_source, _) = resolve_sources(args.config, args.theme);
             let (_, error_level) = Config::load(&config_source);
 
             let err = match args.validate_config {
@@ -152,12 +145,7 @@ fn run_with_args() {
             exit(err as i32);
         }
         None => {
-            let (config_source, css_source) = resolve_sources(
-                args.config,
-                args.theme,
-                std::env::var("IRONBAR_CONFIG").ok(),
-                std::env::var("IRONBAR_CSS").ok(),
-            );
+            let (config_source, css_source) = resolve_sources(args.config, args.theme);
             start_ironbar(args.debug, config_source, css_source);
         }
     }

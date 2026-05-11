@@ -12,16 +12,7 @@ pub enum Builtin {
 }
 
 impl Builtin {
-    pub fn css(&self) -> &'static str {
-        match self {
-            Self::Minimal => include_str!("../../examples/minimal/style.css"),
-            Self::Desktop => include_str!("../../examples/desktop/style.css"),
-        }
-    }
-}
-
-#[cfg(feature = "config")]
-impl Builtin {
+    #[cfg(feature = "config")]
     pub fn config(&self) -> (&'static str, config::FileFormat) {
         cfg_if! {
             if #[cfg(feature = "config+corn")] {
@@ -45,6 +36,13 @@ impl Builtin {
                     Self::Desktop => (include_str!("../../examples/desktop/config.toml"), FileFormat::Toml)
                 }
             }
+        }
+    }
+
+    pub fn css(&self) -> &'static str {
+        match self {
+            Self::Minimal => include_str!("../../examples/minimal/style.css"),
+            Self::Desktop => include_str!("../../examples/desktop/style.css"),
         }
     }
 }
@@ -74,11 +72,9 @@ pub enum CssSource {
 pub fn resolve_sources(
     cli_config: Option<ConfigLocation>,
     cli_css: Option<ConfigLocation>,
-    env_config: Option<String>,
-    env_css: Option<String>,
 ) -> (ConfigSource, CssSource) {
-    let config = resolve_config(cli_config, env_config);
-    let css = resolve_css(cli_css, env_css, &config);
+    let config = resolve_config(cli_config);
+    let css = resolve_css(cli_css, &config);
     (config, css)
 }
 
@@ -86,21 +82,13 @@ pub fn resolve_sources(
 pub fn resolve_sources(
     cli_config: Option<ConfigLocation>,
     cli_css: Option<ConfigLocation>,
-    env_config: Option<String>,
-    env_css: Option<String>,
 ) -> (ConfigSource, CssSource) {
     panic!(
         "Ironbar has been configured without config support. This won't work. Please reconfigure with at least one `config` feature flag enabled."
     )
 }
 
-fn resolve_config(cli: Option<ConfigLocation>, env: Option<String>) -> ConfigSource {
-    // IRONBAR_CONFIG env var
-    if let Some(path) = env {
-        return ConfigSource::File(PathBuf::from(path));
-    }
-
-    // --config CLI arg
+fn resolve_config(cli: Option<ConfigLocation>) -> ConfigSource {
     if let Some(loc) = cli {
         return match loc {
             ConfigLocation::Minimal => ConfigSource::Builtin(Builtin::Minimal),
@@ -109,7 +97,6 @@ fn resolve_config(cli: Option<ConfigLocation>, env: Option<String>) -> ConfigSou
         };
     }
 
-    // XDG_CONFIG_DIR user config
     let xdg = dirs::config_dir()
         .unwrap_or_default()
         .join("ironbar/config");
@@ -117,27 +104,15 @@ fn resolve_config(cli: Option<ConfigLocation>, env: Option<String>) -> ConfigSou
         return ConfigSource::File(xdg);
     }
 
-    // /etc/ system config
     let etc = Path::new("/etc/ironbar/config");
     if config_source_exists(etc) {
         return ConfigSource::File(etc.to_path_buf());
     }
 
-    // Fallback: minimal config
     ConfigSource::Builtin(Builtin::Minimal)
 }
 
-fn resolve_css(
-    cli: Option<ConfigLocation>,
-    env: Option<String>,
-    config: &ConfigSource,
-) -> CssSource {
-    // IRONBAR_CSS env var
-    if let Some(path) = env {
-        return CssSource::File(css_path(PathBuf::from(path)));
-    }
-
-    // --theme CLI arg
+fn resolve_css(cli: Option<ConfigLocation>, config: &ConfigSource) -> CssSource {
     if let Some(loc) = cli {
         return match loc {
             ConfigLocation::Minimal => CssSource::Builtin(Builtin::Minimal),
@@ -157,7 +132,6 @@ fn resolve_css(
         };
     }
 
-    // CSS from Config dir
     match config {
         ConfigSource::Builtin(b) => CssSource::Builtin(b.clone()),
         ConfigSource::File(path) => {
@@ -176,10 +150,31 @@ fn resolve_css(
 }
 
 fn config_source_exists(base: &Path) -> bool {
-    config::Config::builder()
-        .add_source(config::File::from(base))
-        .build()
-        .is_ok()
+    if base.exists() {
+        return true;
+    }
+
+    #[cfg(feature = "config+corn")]
+    if base.with_extension("corn").exists() {
+        return true;
+    }
+
+    #[cfg(feature = "config+json")]
+    if base.with_extension("json").exists() {
+        return true;
+    }
+
+    #[cfg(feature = "config+yaml")]
+    if base.with_extension("yaml").exists() {
+        return true;
+    }
+
+    #[cfg(feature = "config+toml")]
+    if base.with_extension("toml").exists() {
+        return true;
+    }
+
+    false
 }
 
 fn css_path(path: PathBuf) -> PathBuf {
