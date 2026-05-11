@@ -15,6 +15,8 @@ The examples make use of [Nerd Fonts](https://www.nerdfonts.com/#home) for displ
 
 The config file lives inside the `ironbar` directory in your XDG_CONFIG_DIR, which is usually `~/.config/ironbar`.
 
+Alternatively, you can use a system-level config in `/etc/ironbar/` to set a default config for all users on the machine.
+
 Ironbar supports a range of configuration formats, so you can pick your favourite:
 
 - `config.json`
@@ -23,7 +25,7 @@ Ironbar supports a range of configuration formats, so you can pick your favourit
 - `config.corn` (Includes variable support for re-using blocks.
   See [here](https://github.com/jakestanger/corn) for info)
 
-You can also override the default config path using the `IRONBAR_CONFIG` environment variable.
+You can also override the default config path using the `IRONBAR_CONFIG` environment variable, or the `--config` CLI argument.
 
 A hosted schema is available for the latest Git version ~~and each versioned release~~.
 JSON and YAML both support schema checking by adding the `$schema` key 
