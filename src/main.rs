@@ -5,6 +5,8 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 use std::env;
 use std::future::Future;
+#[cfg(not(feature = "cli"))]
+use std::path::PathBuf;
 use std::process::exit;
 use std::rc::Rc;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
@@ -27,6 +29,8 @@ use crate::bar::{Bar, create_bar};
 use crate::channels::SyncSenderExt;
 use crate::clients::Clients;
 use crate::clients::outputs::MonitorState;
+#[cfg(not(feature = "cli"))]
+use crate::config::ConfigLocation;
 use crate::config::{Config, ConfigSource, CssSource, MonitorConfig, resolve_sources};
 use crate::desktop_file::DesktopFiles;
 use crate::error::ExitCode;
@@ -65,8 +69,8 @@ fn main() {
             run_with_args();
         } else {
             let (config_source, css_source) = resolve_sources(
-                None,
-                None,
+                env::var("IRONBAR_CONFIG").map(PathBuf::from).ok().map(ConfigLocation::Custom),
+                env::var("IRONBAR_CSS").map(PathBuf::from).ok().map(ConfigLocation::Custom),
             );
             start_ironbar(false, config_source, css_source);
         }

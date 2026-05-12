@@ -70,26 +70,26 @@ pub enum CssSource {
 
 #[cfg(feature = "config")]
 pub fn resolve_sources(
-    cli_config: Option<ConfigLocation>,
-    cli_css: Option<ConfigLocation>,
+    config: Option<ConfigLocation>,
+    css: Option<ConfigLocation>,
 ) -> (ConfigSource, CssSource) {
-    let config = resolve_config(cli_config);
-    let css = resolve_css(cli_css, &config);
-    (config, css)
+    let resolved_config = resolve_config(config);
+    let resolved_css = resolve_css(css, &resolved_config);
+    (resolved_config, resolved_css)
 }
 
 #[cfg(not(feature = "config"))]
 pub fn resolve_sources(
-    cli_config: Option<ConfigLocation>,
-    cli_css: Option<ConfigLocation>,
+    config: Option<ConfigLocation>,
+    css: Option<ConfigLocation>,
 ) -> (ConfigSource, CssSource) {
     panic!(
         "Ironbar has been configured without config support. This won't work. Please reconfigure with at least one `config` feature flag enabled."
     )
 }
 
-fn resolve_config(cli: Option<ConfigLocation>) -> ConfigSource {
-    if let Some(loc) = cli {
+fn resolve_config(path_override: Option<ConfigLocation>) -> ConfigSource {
+    if let Some(loc) = path_override {
         return match loc {
             ConfigLocation::Minimal => ConfigSource::Builtin(Builtin::Minimal),
             ConfigLocation::Desktop => ConfigSource::Builtin(Builtin::Desktop),
@@ -112,8 +112,8 @@ fn resolve_config(cli: Option<ConfigLocation>) -> ConfigSource {
     ConfigSource::Builtin(Builtin::Minimal)
 }
 
-fn resolve_css(cli: Option<ConfigLocation>, config: &ConfigSource) -> CssSource {
-    if let Some(loc) = cli {
+fn resolve_css(path_override: Option<ConfigLocation>, config: &ConfigSource) -> CssSource {
+    if let Some(loc) = path_override {
         return match loc {
             ConfigLocation::Minimal => CssSource::Builtin(Builtin::Minimal),
             ConfigLocation::Desktop => CssSource::Builtin(Builtin::Desktop),
@@ -165,7 +165,7 @@ fn config_source_exists(base: &Path) -> bool {
     }
 
     #[cfg(feature = "config+yaml")]
-    if base.with_extension("yaml").exists() {
+    if base.with_extension("yaml").exists() || base.with_extension("yml").exists() {
         return true;
     }
 
