@@ -1,11 +1,18 @@
 use crate::gtk_helpers::IronbarPaintableExt;
 use crate::image;
-use color_eyre::{Report, Result};
+use color_eyre::eyre::eyre;
+use color_eyre::{Report, Result, Section};
 use gtk::gdk::Texture;
 use gtk::gdk_pixbuf::{Colorspace, Pixbuf};
 use gtk::{ContentFit, Picture};
 use std::path::Path;
 use system_tray::item::IconPixmap;
+
+#[derive(Debug, Eq, PartialEq)]
+enum IconLoader<'a> {
+    Name(&'a str),
+    Pixmap(&'a [IconPixmap]),
+}
 
 /// Attempts to get a GTK `Picture` for the tray item's icon.
 ///
@@ -22,20 +29,68 @@ pub async fn get_image(
     prefer_icons: bool,
     image_provider: &image::Provider,
 ) -> Result<Picture> {
-    if !prefer_icons && icon_pixmap.is_some() {
-        get_image_from_pixmap(icon_pixmap, size)
-    } else {
-        get_image_from_icon_name(icon_name, icon_theme_path, size, image_provider)
-            .await
-            .or_else(|_| get_image_from_pixmap(icon_pixmap, size))
+    let loaders = get_loaders(icon_name, icon_pixmap, prefer_icons);
+
+    let mut errors = Vec::with_capacity(loaders.len());
+    for loader in loaders {
+        let res = match loader {
+            IconLoader::Name(icon_name) => {
+                get_image_from_icon_name(icon_name, icon_theme_path, size, image_provider).await
+            }
+            IconLoader::Pixmap(icon_pixmap) => get_image_from_pixmap(icon_pixmap, size),
+        };
+
+        match res {
+            Ok(icon) => return Ok(icon),
+            Err(err) => errors.push(err),
+        }
     }
+
+    if !errors.is_empty() {
+        let mut report = eyre!("All icon loaders failed:");
+
+        for err in errors.into_iter() {
+            report = report.section(format!("Error: {err}"));
+        }
+
+        Err(report)
+    } else {
+        Err(Report::msg("no icon found"))
+    }
+}
+
+/// Gets the potential loaders for the icon,
+/// in the order they should be tried.
+fn get_loaders<'a>(
+    icon_name: Option<&'a str>,
+    icon_pixmap: Option<&'a [IconPixmap]>,
+    prefer_icons: bool,
+) -> Vec<IconLoader<'a>> {
+    let mut loaders = Vec::with_capacity(2);
+
+    let icon_name = icon_name.filter(|i| !i.is_empty());
+    let icon_pixmap = icon_pixmap.filter(|i| !i.is_empty());
+
+    if let Some(pixmap) = icon_pixmap {
+        loaders.push(IconLoader::Pixmap(pixmap));
+    }
+
+    if let Some(icon_name) = icon_name {
+        loaders.push(IconLoader::Name(icon_name));
+    }
+
+    if prefer_icons {
+        loaders.reverse();
+    }
+
+    loaders
 }
 
 /// Attempts to get a GTK `Picture` for the status notifier item's icon
 /// using the image provider, which correctly handles SVGs, theme icons,
 /// and local files.
 async fn get_image_from_icon_name(
-    icon_name: Option<&str>,
+    icon_name: &str,
     icon_theme_path: Option<&Path>,
     size: u32,
     image_provider: &image::Provider,
@@ -51,10 +106,6 @@ async fn get_image_from_icon_name(
             icon_theme.add_search_path(path);
         }
     }
-
-    let icon_name = icon_name
-        .filter(|i| !i.is_empty())
-        .ok_or_else(|| Report::msg("no icon name"))?;
 
     let picture = Picture::builder()
         .content_fit(ContentFit::ScaleDown)
@@ -78,11 +129,10 @@ async fn get_image_from_icon_name(
 /// The pixmap is supplied in ARGB32 format,
 /// which has 8 bits per sample and a bit stride of `4*width`.
 /// The Pixbuf expects RGBA32 format, so some channel shuffling is required.
-pub(super) fn get_image_from_pixmap(item: Option<&[IconPixmap]>, size: u32) -> Result<Picture> {
+pub(super) fn get_image_from_pixmap(item: &[IconPixmap], size: u32) -> Result<Picture> {
     const BITS_PER_SAMPLE: i32 = 8;
 
-    let pixmap = item
-        .and_then(|pixmap| find_approx_size(pixmap, size))
+    let pixmap = find_approx_size(item, size)
         .ok_or_else(|| Report::msg("Failed to get pixmap from tray icon"))?;
 
     if pixmap.width == 0 || pixmap.height == 0 {
@@ -149,10 +199,59 @@ fn find_approx_size(v: &[IconPixmap], size: u32) -> Option<&IconPixmap> {
 
 #[cfg(test)]
 mod tests {
+    use super::*;
+
+    #[test]
+    fn test_icon_only() {
+        let loaders = get_loaders(Some("icon"), None, false);
+
+        assert_eq!(loaders.len(), 1);
+        assert_eq!(loaders[0], IconLoader::Name("icon"));
+    }
+
+    #[test]
+    fn test_pixmap_only() {
+        let pixmap = [IconPixmap {
+            width: 10,
+            height: 20,
+            pixels: vec![0; 200],
+        }];
+        let loaders = get_loaders(None, Some(&pixmap), false);
+
+        assert_eq!(loaders.len(), 1);
+        assert_eq!(loaders[0], IconLoader::Pixmap(&pixmap));
+    }
+
+    #[test]
+    fn test_icon_and_pixmap() {
+        let pixmap = [IconPixmap {
+            width: 10,
+            height: 20,
+            pixels: vec![0; 200],
+        }];
+        let loaders = get_loaders(Some("icon"), Some(&pixmap), false);
+
+        assert_eq!(loaders.len(), 2);
+        assert_eq!(loaders[0], IconLoader::Pixmap(&pixmap));
+        assert_eq!(loaders[1], IconLoader::Name("icon"));
+    }
+
+    #[test]
+    fn test_icon_and_pixmap_prefer_icons() {
+        let pixmap = [IconPixmap {
+            width: 10,
+            height: 20,
+            pixels: vec![0; 200],
+        }];
+        let loaders = get_loaders(Some("icon"), Some(&pixmap), true);
+
+        assert_eq!(loaders.len(), 2);
+        assert_eq!(loaders[0], IconLoader::Name("icon"));
+        assert_eq!(loaders[1], IconLoader::Pixmap(&pixmap));
+    }
+
     #[test]
     fn test_find_approx_height() {
-        use super::{IconPixmap, find_approx_size};
-
         macro_rules! make_list {
             ($heights:expr) => {
                 $heights
