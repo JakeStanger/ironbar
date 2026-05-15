@@ -1,7 +1,10 @@
-use crate::{lock, register_client};
+use crate::channels::SyncSenderExt;
+use crate::register_client;
 use gtk::ApplicationInhibitFlags;
+use gtk::glib;
 use gtk::prelude::*;
-use std::sync::{Arc, Mutex, Weak};
+use std::time::Duration;
+use tokio::sync::{mpsc, watch};
 use tracing::{error, trace};
 
 fn get_app() -> gtk::Application {
@@ -10,58 +13,119 @@ fn get_app() -> gtk::Application {
         .expect("GTK application not initialized")
 }
 
-/// Cookie holder that uninhibits on drop
-pub struct InhibitCookie(pub u32);
+/// Uninhibits on drop.
+struct InhibitCookie(u32);
 
 impl Drop for InhibitCookie {
     fn drop(&mut self) {
+        trace!("dropped inhibit cookie: {}", self.0);
         get_app().uninhibit(self.0);
     }
 }
 
-/// Client for managing GTK application inhibit state.
-///
-/// Uses Weak reference to delegate ownership to modules - when all modules
-/// drop their `InhibitCookie`, the system uninhibit is called automatically.
-#[derive(Debug)]
-pub struct Client {
-    cookie: Mutex<Option<Weak<InhibitCookie>>>,
+fn gtk_inhibit() -> Option<InhibitCookie> {
+    let id = get_app().inhibit(
+        None::<&gtk::Window>,
+        ApplicationInhibitFlags::IDLE,
+        Some("Ironbar inhibit"),
+    );
+    if id == 0 {
+        error!("GTK inhibit failed - platform may not support it");
+        None
+    } else {
+        trace!("created inhibit cookie: {id}");
+        Some(InhibitCookie(id))
+    }
 }
 
-impl Client {
-    pub(crate) fn new() -> Self {
-        trace!("Initializing inhibit client");
-        Self {
-            cookie: Mutex::new(None),
+/// The held GTK cookie and its remaining duration: both exist, or neither.
+#[derive(Default)]
+struct Inhibitor {
+    current: Option<(InhibitCookie, Duration)>,
+}
+
+impl Inhibitor {
+    fn remaining(&self) -> Option<Duration> {
+        self.current.as_ref().map(|(_, duration)| *duration)
+    }
+
+    fn is_counting_down(&self) -> bool {
+        self.remaining()
+            .is_some_and(|duration| duration != Duration::MAX)
+    }
+
+    /// `Some` starts the inhibit or updates its duration; `None` stops it.
+    fn set_remaining(&mut self, target: Option<Duration>) {
+        match target {
+            None => self.current = None,
+            Some(duration) => {
+                if let Some((_, existing)) = &mut self.current {
+                    *existing = duration;
+                } else {
+                    self.current = gtk_inhibit().map(|cookie| (cookie, duration));
+                }
+            }
         }
     }
 
-    /// Acquires an inhibit cookie.
-    ///
-    /// Uses global inhibition (no window-specific behavior).
-    /// Reuses existing cookie when multiple modules request inhibit.
-    /// Returns None if platform doesn't support inhibit.
-    pub fn acquire(&self) -> Option<Arc<InhibitCookie>> {
-        let mut cookie_opt = lock!(self.cookie);
+    /// Decrements the countdown, dropping the cookie at zero.
+    fn tick(&mut self) {
+        if let Some((_, duration)) = &mut self.current {
+            *duration = duration.saturating_sub(Duration::from_secs(1));
+        }
+        if self.remaining() == Some(Duration::ZERO) {
+            self.current = None;
+        }
+    }
+}
 
-        // Upgrade weak cookie ref if it exists else create a new one
-        cookie_opt.as_ref().and_then(Weak::upgrade).or_else(|| {
-            let cookie = get_app().inhibit(
-                None::<&gtk::Window>,
-                ApplicationInhibitFlags::IDLE,
-                Some("Ironbar inhibit"),
-            );
+/// Process-global inhibit: owns the GTK cookie and the live countdown in a single
+/// `glib` task. Each widget updates its label to the same remaining duration.
+/// When the timer stops, each widget reverts to its currently-selected preset (`durations[idx]`).
+#[derive(Debug)]
+pub struct Client {
+    req_tx: mpsc::UnboundedSender<Option<Duration>>,
+    remaining_tx: watch::Sender<Option<Duration>>,
+}
 
-            if cookie == 0 {
-                error!("GTK inhibit failed - platform may not support it");
-                return None;
+impl Client {
+    /// Must be called on the GTK main thread - spawns the cookie/countdown task.
+    pub(crate) fn new() -> Self {
+        let (req_tx, mut rx) = mpsc::unbounded_channel::<Option<Duration>>();
+        let (remaining_tx, _) = watch::channel(None::<Duration>);
+
+        glib::spawn_future_local({
+            let remaining_tx = remaining_tx.clone();
+            async move {
+                let mut inhibitor = Inhibitor::default();
+
+                loop {
+                    tokio::select! {
+                        Some(request) = rx.recv() => inhibitor.set_remaining(request),
+                        // Timer armed only while a finite countdown runs.
+                        () = glib::timeout_future_seconds(1),
+                            if inhibitor.is_counting_down() => inhibitor.tick(),
+                    }
+
+                    remaining_tx.send_replace(inhibitor.remaining());
+                }
             }
+        });
 
-            trace!("Created inhibit cookie: {}", cookie);
-            let rc = Arc::new(InhibitCookie(cookie));
-            *cookie_opt = Some(Arc::downgrade(&rc));
-            Some(rc)
-        })
+        Self {
+            req_tx,
+            remaining_tx,
+        }
+    }
+
+    pub fn subscribe(&self) -> watch::Receiver<Option<Duration>> {
+        self.remaining_tx.subscribe()
+    }
+
+    /// Set the inhibit duration: `Some` starts it (or updates the duration if
+    /// already inhibiting), `None` stops it. `Duration::MAX` = infinite.
+    pub fn set_duration(&self, duration: Option<Duration>) {
+        self.req_tx.send_expect(duration);
     }
 }
 
