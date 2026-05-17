@@ -58,6 +58,8 @@ mod style;
 
 pub const APP_ID: &str = "dev.jstanger.ironbar";
 const VERSION: &str = env!("CARGO_PKG_VERSION");
+const SHA: &str = env!("VERGEN_GIT_SHA");
+const DESCRIBE: &str = env!("VERGEN_GIT_DESCRIBE");
 
 fn main() {
     cfg_if! {
@@ -187,7 +189,12 @@ impl Ironbar {
     }
 
     fn start(self) {
-        info!("Ironbar version {}", VERSION);
+        if DESCRIBE.contains("-g") {
+            info!("Ironbar version {}-{}", VERSION, SHA);
+        } else {
+            info!("Ironbar version {}", VERSION);
+        }
+
         info!("Starting application");
 
         let app = Application::builder().application_id(APP_ID).build();
