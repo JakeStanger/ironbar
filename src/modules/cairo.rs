@@ -102,9 +102,9 @@ impl CairoModule {
         }
     }
 
-    fn path(&self) -> std::path::PathBuf {
+    fn path(&self) -> PathBuf {
         if let Ok(path) = self.path.strip_prefix("~")
-            && let Ok(home) = std::env::var("HOME").map(std::path::PathBuf::from)
+            && let Ok(home) = std::env::var("HOME").map(PathBuf::from)
         {
             home.join(path)
         } else {

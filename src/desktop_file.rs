@@ -16,7 +16,6 @@ enum DesktopFileRef {
     Unloaded(PathBuf),
     Loaded(DesktopFile),
 }
-
 impl DesktopFileRef {
     async fn get(&mut self) -> Result<DesktopFile> {
         match self {
