@@ -5,6 +5,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [v0.19.0] - 2026-05-17
+
+### :package: Note to packagers
+
+Ironbar no longer depends on `openssl` for the `http` feature since it uses native TLS. This dependency can be removed.
+
 ### :boom: BREAKING CHANGES
 - due to [`bb9b337`](https://github.com/JakeStanger/ironbar/commit/bb9b337c2ac705f13fc5a99c26cc85fd93ddae86) - introduce profiles support *(commit by [@JakeStanger](https://github.com/JakeStanger))*:
 
