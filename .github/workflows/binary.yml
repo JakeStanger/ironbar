@@ -39,14 +39,11 @@ jobs:
         with:
           ref: ${{ needs.get_last_release.outputs.latest_release_tag }}
 
-      - name: Add OpenSSL crate (vendored)
-        run: cargo add openssl --features vendored
-
       - name: Build Release
         run: cargo build --locked --profile tagged-release
 
       - name: Compress the built binary
-        run: tar -zcvf ironbar-${{needs.get_last_release.outputs.latest_release_tag}}-${{matrix.platform.name}}.tar.gz -C target/release ironbar
+        run: tar -zcvf ironbar-${{needs.get_last_release.outputs.latest_release_tag}}-${{matrix.platform.name}}.tar.gz -C target/tagged-release ironbar
 
       - name: Take ownership of repo
         run: git config --global --add safe.directory .
