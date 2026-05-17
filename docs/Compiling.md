@@ -34,8 +34,6 @@ Build:
 
 ```shell
 pacman -S gtk4 gtk4-layer-shell dbus pkg-config
-# for http support
-pacman -S openssl
 # for volume support
 pacman -S libpulse
 # for keyboard support
@@ -57,8 +55,6 @@ Build:
 
 ```shell
 apt install build-essential libgtk-4-dev libgtk4-layer-shell-dev libdbus-1-dev
-# for http support
-apt install libssl-dev
 # for volume support
 apt install libpulse-dev
 # for keyboard support
@@ -81,8 +77,6 @@ Build:
 
 ```shell
 dnf install gtk4-devel gtk4-layer-shell-devel dbus-devel pkgconf-pkg-config
-# for http support
-dnf install openssl-devel
 # for volume support
 dnf install pulseaudio-libs-devel
 # for keyboard support

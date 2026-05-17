@@ -3,7 +3,6 @@
 apt-get update && apt-get install --assume-yes \
   libdbus-1-dev \
   pkg-config \
-	libssl-dev \
 	libgraphene-1.0-dev \
 	libgtk-4-dev \
 	libinput-dev \

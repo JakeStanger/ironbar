@@ -15,7 +15,6 @@
   libpulseaudio,
   libinput,
   libevdev,
-  openssl,
   luajit,
   luajitPackages,
   pkg-config,
@@ -110,7 +109,6 @@ in
         libxkbcommon
         dbus
       ]
-      ++ lib.optionals (hasFeature "http") [openssl]
       ++ lib.optionals (hasFeature "volume") [libpulseaudio]
       ++ lib.optionals (hasFeature "cairo") [luajit]
       ++ lib.optionals (hasFeature "keyboard") [
