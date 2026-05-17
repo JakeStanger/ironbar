@@ -48,6 +48,27 @@ pub enum SortOrder {
     Index,
 }
 
+#[derive(Debug, Deserialize, Default, Clone, Copy, Eq, PartialEq)]
+#[serde(rename_all = "snake_case")]
+#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
+pub enum ClickBehavior {
+    /// Activates a workspace on click.
+    Activate,
+    /// Deactivates a workspace on click.
+    Deactivate,
+    /// Toggles workspace activation state on click.
+    Toggle,
+    /// Activates clicked workspace and deactivates others on the output.
+    #[default]
+    ActivateExclusive,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub enum WorkspaceClickEvent {
+    Left(i64),
+    Right(i64),
+}
+
 #[derive(Debug, Deserialize, Clone)]
 #[serde(untagged)]
 #[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
@@ -142,6 +163,22 @@ pub struct WorkspacesModule {
     /// **Default**: `false`
     all_monitors: bool,
 
+    /// Click behavior for left mouse button.
+    ///
+    /// Valid options: `activate`, `deactivate`, `toggle`, `activate_exclusive`.
+    ///
+    /// **Default**: `activate_exclusive`
+    #[serde(default)]
+    left_click_behavior: ClickBehavior,
+
+    /// Click behavior for right mouse button.
+    ///
+    /// Valid options: `activate`, `deactivate`, `toggle`, `activate_exclusive`.
+    ///
+    /// **Default**: `activate_exclusive`
+    #[serde(default)]
+    right_click_behavior: ClickBehavior,
+
     /// The method used for sorting workspaces.
     ///
     /// - `added` always appends to the end.
@@ -191,6 +228,8 @@ impl Default for WorkspacesModule {
             favorites: Favorites::default(),
             hidden: vec![],
             all_monitors: false,
+            left_click_behavior: ClickBehavior::default(),
+            right_click_behavior: ClickBehavior::default(),
             sort: SortOrder::default(),
             icon_size: default::IconSize::Normal as i32,
             format: Format::default(),
@@ -205,7 +244,7 @@ pub struct WorkspaceItemContext {
     name_map: HashMap<String, String>,
     icon_size: i32,
     image_provider: image::Provider,
-    tx: mpsc::Sender<i64>,
+    tx: mpsc::Sender<WorkspaceClickEvent>,
     format_named: String,
     format_unnamed: String,
 }
@@ -277,7 +316,7 @@ fn reorder_workspaces(container: &gtk::Box, sort_order: SortOrder) {
 
 impl Module<gtk::Box> for WorkspacesModule {
     type SendMessage = WorkspaceUpdate;
-    type ReceiveMessage = i64;
+    type ReceiveMessage = WorkspaceClickEvent;
 
     module_impl!("workspaces");
 
@@ -302,13 +341,25 @@ impl Module<gtk::Box> for WorkspacesModule {
         });
 
         let client = context.try_client::<dyn WorkspaceClient>()?;
+        let left_click_behavior = self.left_click_behavior;
+        let right_click_behavior = self.right_click_behavior;
 
         // Change workspace focus
         spawn(async move {
             trace!("Setting up UI event handler");
 
-            while let Some(id) = rx.recv().await {
-                client.focus(id);
+            while let Some(click) = rx.recv().await {
+                let (id, click_behavior) = match click {
+                    WorkspaceClickEvent::Left(id) => (id, left_click_behavior),
+                    WorkspaceClickEvent::Right(id) => (id, right_click_behavior),
+                };
+
+                match click_behavior {
+                    ClickBehavior::Activate => client.activate(id),
+                    ClickBehavior::Deactivate => client.deactivate(id),
+                    ClickBehavior::Toggle => client.toggle(id),
+                    ClickBehavior::ActivateExclusive => client.activate_exclusive(id),
+                }
             }
 
             Ok::<(), Report>(())
@@ -509,6 +560,16 @@ impl Module<gtk::Box> for WorkspacesModule {
 
                         if let Some(button) = button_map.find_button_mut(&new) {
                             button.set_open_state(OpenState::Focused);
+                        }
+                    }
+                    WorkspaceUpdate::Unfocus(workspace) if has_initialized => {
+                        if let Some(button) = button_map.find_button_mut(&workspace) {
+                            let open_state = if workspace.visibility.is_visible() {
+                                OpenState::Visible
+                            } else {
+                                OpenState::Hidden
+                            };
+                            button.set_open_state(open_state);
                         }
                     }
                     WorkspaceUpdate::Rename { id, name } if has_initialized => {
