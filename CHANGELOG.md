@@ -4,6 +4,118 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.19.0] - 2026-05-17
+### :boom: BREAKING CHANGES
+- due to [`bb9b337`](https://github.com/JakeStanger/ironbar/commit/bb9b337c2ac705f13fc5a99c26cc85fd93ddae86) - introduce profiles support *(commit by [@JakeStanger](https://github.com/JakeStanger))*:
+
+  the volume icons `volume_high`, `volume_medium` and `volume_low` options have been replaced with a single `volume` option. Use the new profiles options to configure.
+
+- due to [`1d0b966`](https://github.com/JakeStanger/ironbar/commit/1d0b9663175616b1f95c0ee201cdc7b91a106599) - introduce profiles support *(commit by [@JakeStanger](https://github.com/JakeStanger))*:
+
+  This removes the `thresholds` option in favour of the new standardised `profiles` system.
+
+- due to [`6ea5744`](https://github.com/JakeStanger/ironbar/commit/6ea574486b71b1a6a9dac1b28dacab63fa6d692a) - add truncate_formats option *(PR [#1471](https://github.com/JakeStanger/ironbar/pull/1471) by [@MrFantOlas](https://github.com/MrFantOlas))*:
+
+  The existing volume `truncate` option now affects the bar, and not the popup. To truncate popup content as before, use `truncate_popup`.
+
+
+### :sparkles: New Features
+- [`34a4273`](https://github.com/JakeStanger/ironbar/commit/34a42733efdbe2bc9d613631eadb2a888bbc5591) - **inhibit**: add inhibit module *(commit by [@slowsage](https://github.com/slowsage))*
+- [`d03aeab`](https://github.com/JakeStanger/ironbar/commit/d03aeabb01914f1c166a6796249f62c0a2ffd880) - **volume**: marquee effect for volume audio inputs *(commit by [@postsolar](https://github.com/postsolar))*
+- [`aece75d`](https://github.com/JakeStanger/ironbar/commit/aece75da2d2d03ec1fa65180d94ec7e2ce6721e8) - **music**: add marquee support *(PR [#1284](https://github.com/JakeStanger/ironbar/pull/1284) by [@postsolar](https://github.com/postsolar))*
+  - :arrow_lower_right: *addresses issue [#1011](https://github.com/JakeStanger/ironbar/issues/1011) opened by [@postsolar](https://github.com/postsolar)*
+- [`3d58c45`](https://github.com/JakeStanger/ironbar/commit/3d58c45280fcd972830c13288dee583bdb69aa16) - **battery**: allow config to show/hide icon or label *(commit by [@tobias47n9e](https://github.com/tobias47n9e))*
+- [`7177d52`](https://github.com/JakeStanger/ironbar/commit/7177d52b7d68b2e7416967f9d00f4bede083877c) - **workspaces**: add 'index' sort order for niri support *(commit by [@jbms](https://github.com/jbms))*
+- [`6cfa450`](https://github.com/JakeStanger/ironbar/commit/6cfa4509e44babc9e20819ba7ab4c18662e845d4) - **workspaces**: add format options for custom workspace labels *(commit by [@jbms](https://github.com/jbms))*
+- [`2c1b2a3`](https://github.com/JakeStanger/ironbar/commit/2c1b2a3ef687502c3c4869787c154708c909f008) - **cli**: ability to validate config and exit *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`2916a45`](https://github.com/JakeStanger/ironbar/commit/2916a45cacdccca8b50fcbdac75e7796a10901fd) - **image**: add debug data to paintables *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`0269fdb`](https://github.com/JakeStanger/ironbar/commit/0269fdbf868462ad77d3ffc18ed74298bad14462) - Access ironbar variables from cairo/lua *(PR [#1344](https://github.com/JakeStanger/ironbar/pull/1344) by [@untoldwind](https://github.com/untoldwind))*
+- [`fdc9a43`](https://github.com/JakeStanger/ironbar/commit/fdc9a43f02ff2516d66a7801a096db47e6f9f729) - **menu**: option to change app icon sizes *(PR [#1350](https://github.com/JakeStanger/ironbar/pull/1350) by [@benpz](https://github.com/benpz))*
+- [`fe69363`](https://github.com/JakeStanger/ironbar/commit/fe69363adb17dd41ab8ca6c2aa595f92d3a06230) - **volume**: horizontal sink volume slider option *(PR [#1353](https://github.com/JakeStanger/ironbar/pull/1353) by [@imgurbot12](https://github.com/imgurbot12))*
+- [`775b1b1`](https://github.com/JakeStanger/ironbar/commit/775b1b1bb7e710b42b4734ea5c358a9ee945bd73) - **config**: standardised profiles system *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`bb9b337`](https://github.com/JakeStanger/ironbar/commit/bb9b337c2ac705f13fc5a99c26cc85fd93ddae86) - **volume**: introduce profiles support *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`1d0b966`](https://github.com/JakeStanger/ironbar/commit/1d0b9663175616b1f95c0ee201cdc7b91a106599) - **battery**: introduce profiles support *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`a801b49`](https://github.com/JakeStanger/ironbar/commit/a801b4915e3cf2efa6084b9b2df188cd2b19c197) - new brightness module [#962](https://github.com/JakeStanger/ironbar/pull/962) *(PR [#1235](https://github.com/JakeStanger/ironbar/pull/1235) by [@xMAC94x](https://github.com/xMAC94x))*
+  - :arrow_lower_right: *addresses issue [#962](https://github.com/JakeStanger/ironbar/issues/962) opened by [@yazoink](https://github.com/yazoink)*
+- [`2114824`](https://github.com/JakeStanger/ironbar/commit/21148247bdda0ceebba3f3b6b531e19cf70de5e0) - **volume**: source/output support with additional config/css controls *(commit by [@imgurbot12](https://github.com/imgurbot12))*
+- [`16b2fb9`](https://github.com/JakeStanger/ironbar/commit/16b2fb9ef6fe6585677bdf6010817caafe4372e1) - **volume**: change default `sink_slider_orientation` *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`4bb7608`](https://github.com/JakeStanger/ironbar/commit/4bb7608e832271ff836500cc54150b432352db25) - **volume**: add `show_sinks` and `show_sources` options *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`032addf`](https://github.com/JakeStanger/ironbar/commit/032addf13040f5a28e627a7faffa6a5ee191a388) - **network manager**: rework module *(PR [#1233](https://github.com/JakeStanger/ironbar/pull/1233) by [@Rodrigodd](https://github.com/Rodrigodd))*
+- [`4f6f8db`](https://github.com/JakeStanger/ironbar/commit/4f6f8db3d001951b5cacd6718c4ab1c012707d73) - **battery**: add messages for all battery states *(commit by [@tobias47n9e](https://github.com/tobias47n9e))*
+- [`b4c8d73`](https://github.com/JakeStanger/ironbar/commit/b4c8d73d457def9603b40b8ff03138e4238b838b) - **cairo**: expand tilde `~` in script path *(commit by [@sanpii](https://github.com/sanpii))*
+- [`f7b79d3`](https://github.com/JakeStanger/ironbar/commit/f7b79d365c4cfea6bc27526459c328e7db0f055e) - **clock**: add parameter to set gtk_calendar_set_show_week_numbers *(commit by [@janquednau](https://github.com/janquednau))*
+- [`f22285c`](https://github.com/JakeStanger/ironbar/commit/f22285c881a6f6139cc86659ece7e2d8b2c1ecd7) - **config/profiles**: add `use_default_profiles` option *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`3e4d407`](https://github.com/JakeStanger/ironbar/commit/3e4d407c8951f3b84fe14c20590d69b17680b1dc) - **battery**: allow percent to be omitted from profile matcher *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`6ea5744`](https://github.com/JakeStanger/ironbar/commit/6ea574486b71b1a6a9dac1b28dacab63fa6d692a) - **volume**: add truncate_formats option *(PR [#1471](https://github.com/JakeStanger/ironbar/pull/1471) by [@MrFantOlas](https://github.com/MrFantOlas))*
+  - :arrow_lower_right: *addresses issue [#1422](https://github.com/JakeStanger/ironbar/issues/1422) opened by [@MrFantOlas](https://github.com/MrFantOlas)*
+- [`898b61a`](https://github.com/JakeStanger/ironbar/commit/898b61a5485908554fdfa089a6324bfaabe4fcb2) - **logging**: log commit for non-tagged versions *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+
+### :bug: Bug Fixes
+- [`99e3e40`](https://github.com/JakeStanger/ironbar/commit/99e3e40bd96bf8524bb13d00a914667b75d733fa) - **image**: symbolic icons not rendering in GTK 4.20+ *(commit by [@slowsage](https://github.com/slowsage))*
+- [`36fca2c`](https://github.com/JakeStanger/ironbar/commit/36fca2cb326806a00076fa48a9b23690274b18de) - **tray**: redraw icon when name or pixmap changes *(commit by [@Windblows2000](https://github.com/Windblows2000))*
+- [`239461b`](https://github.com/JakeStanger/ironbar/commit/239461b9ef9405fe533db1bb5b39df2d775ba121) - **tray**: improve pixmap selection algorithm *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`96e8538`](https://github.com/JakeStanger/ironbar/commit/96e853843dd5e6d617aeb392e3734a80f2f5193a) - **nix**: don't use hostPlatform.system alias *(commit by [@imnotpoz](https://github.com/imnotpoz))*
+- [`3cf04a0`](https://github.com/JakeStanger/ironbar/commit/3cf04a0f6d2191029a133c493d55b87df6b2f5c3) - **music**: fix seek bar interaction and freezing in popup *(commit by [@postsolar](https://github.com/postsolar))*
+- [`c3dfde5`](https://github.com/JakeStanger/ironbar/commit/c3dfde52f9695574695bfd2c35d7e13536e688f4) - **music**: seek only on release, not during drag *(commit by [@postsolar](https://github.com/postsolar))*
+- [`76cebb6`](https://github.com/JakeStanger/ironbar/commit/76cebb6245e4c20c1b11ce346ffda40ab28fea77) - **music**: update progress label immediately during drag *(commit by [@postsolar](https://github.com/postsolar))*
+- [`8ac2b8a`](https://github.com/JakeStanger/ironbar/commit/8ac2b8aadb318020612765d56d73f89111e3b0e3) - **launcher**: popup flicker when `popup_autohide` enabled *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`3a4b7b0`](https://github.com/JakeStanger/ironbar/commit/3a4b7b092724fe4dde38987978328c30efedb3ec) - **inhibit**: Replace infinity symbol with nerd font for readability *(commit by [@slowsage](https://github.com/slowsage))*
+- [`7ec3f7b`](https://github.com/JakeStanger/ironbar/commit/7ec3f7b45e90290a838927f12a96b962a08630ae) - **theme**: file names other than `style.css` causing error *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`39debc1`](https://github.com/JakeStanger/ironbar/commit/39debc1c267acfaf4b7baadc08ad0fee349c2228) - **image**: steam icons resolving at low res *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`f232bac`](https://github.com/JakeStanger/ironbar/commit/f232bac6b04e53985d31b3d6061360d35ee62b26) - **tray**: Handle tray race + Event::Remove *(PR [#1318](https://github.com/JakeStanger/ironbar/pull/1318) by [@slowsage](https://github.com/slowsage))*
+- [`738885b`](https://github.com/JakeStanger/ironbar/commit/738885b11bdbf728e58e534d1895d82099f4e5c5) - **examples**: wrong battery detection logic in some config files *(commit by [@purrion](https://github.com/purrion))*
+- [`39824cf`](https://github.com/JakeStanger/ironbar/commit/39824cf65f39351f814ce40fca230d08760127c0) - **cairo**: typo in `ModuleConfig::name()` *(PR [#1354](https://github.com/JakeStanger/ironbar/pull/1354) by [@teodord25](https://github.com/teodord25))*
+- [`4a4b7d5`](https://github.com/JakeStanger/ironbar/commit/4a4b7d5b454e551839f3dc4657e3ea6b19062975) - single-quotes escape-sequences for labels *(commit by [@imgurbot12](https://github.com/imgurbot12))*
+- [`5098755`](https://github.com/JakeStanger/ironbar/commit/5098755122b06309cae2da4fa9157554472ceb40) - **menu**: cannot open initially using ipc *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`83e8728`](https://github.com/JakeStanger/ironbar/commit/83e872885924f5c53d8c42791451c59632e9ec4a) - **minimal theme**: sliders not visible *(commit by [@ikoas](https://github.com/ikoas))*
+- [`e60eb4c`](https://github.com/JakeStanger/ironbar/commit/e60eb4c05019eb63c6b083e4a27ddf4c9e21c82e) - menu stealing first popup (regression from [#5098755](https://github.com/JakeStanger/ironbar/pull/5098755)) *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`b310ce3`](https://github.com/JakeStanger/ironbar/commit/b310ce3ac293b030f13935fa331a75c64cf2798f) - **tray**: preserve tooltip when icon widget changes *(commit by [@nazya](https://github.com/nazya))*
+- [`2cb9288`](https://github.com/JakeStanger/ironbar/commit/2cb92889808e9f4cb9f23ec87fa9aa3893ae7a7e) - **script**: scripts get terminated and launched again upon reload *(PR [#1407](https://github.com/JakeStanger/ironbar/pull/1407) by [@esther-ff](https://github.com/esther-ff))*
+  - :arrow_lower_right: *fixes issue [#1102](https://github.com/JakeStanger/ironbar/issues/1102) opened by [@postsolar](https://github.com/postsolar)*
+- [`641b1fe`](https://github.com/JakeStanger/ironbar/commit/641b1fe8116e5836bacae59d63eae7676b8f184b) - **workspaces**: favourite buttons not working for inactive/empty workspaces [#964](https://github.com/JakeStanger/ironbar/pull/964) *(commit by [@CameronBarnes](https://github.com/CameronBarnes))*
+- [`7210ad7`](https://github.com/JakeStanger/ironbar/commit/7210ad767ca12832eee03067fc4d6a1db048a4dd) - **script**: regression from [#1407](https://github.com/JakeStanger/ironbar/pull/1407) causing cpu spike *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`d9d4b49`](https://github.com/JakeStanger/ironbar/commit/d9d4b49248a14796dba2b44f31e7aa56394186f8) - **tray**: svg's did not load *(PR [#1397](https://github.com/JakeStanger/ironbar/pull/1397) by [@pancakedevourer](https://github.com/pancakedevourer))*
+  - :arrow_lower_right: *fixes issue [#1221](https://github.com/JakeStanger/ironbar/issues/1221) opened by [@MagneFire](https://github.com/MagneFire)*
+  - :arrow_lower_right: *fixes issue [#1442](https://github.com/JakeStanger/ironbar/issues/1442) opened by [@the-nummer-zone](https://github.com/the-nummer-zone)*
+- [`73c9e91`](https://github.com/JakeStanger/ironbar/commit/73c9e916d0ea7bf40939c4183907f8ef10ad3fe0) - **tray**: crash due to regression from [#1397](https://github.com/JakeStanger/ironbar/pull/1397) *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`66c431e`](https://github.com/JakeStanger/ironbar/commit/66c431e68789598e7bfd41c3d0ef7084f2934413) - **docs**: fixed incorrect / inconsistent IPC documentation *(commit by [@janquednau](https://github.com/janquednau))*
+- [`45896e8`](https://github.com/JakeStanger/ironbar/commit/45896e858ca32ae9471f5b4bac03bc2ec30deb57) - **network-manager**: not accepting char to display icons *(commit by [@MrFantOlas](https://github.com/MrFantOlas))*
+- [`4ced540`](https://github.com/JakeStanger/ironbar/commit/4ced540aace8d4d5d2bfe226518241e05574a909) - **volume**: some apps showing as "audio stream" *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`4331316`](https://github.com/JakeStanger/ironbar/commit/43313161c872a989735a5d88dcc219495ccfe4b2) - **volume**: volume respects default sink and source *(PR [#1475](https://github.com/JakeStanger/ironbar/pull/1475) by [@MrFantOlas](https://github.com/MrFantOlas))*
+- [`8f42c06`](https://github.com/JakeStanger/ironbar/commit/8f42c06a30de69b03cdb45bbda707f7a2c011729) - **volume**: crashing in some cases such as with easyeffects running *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`5157aa1`](https://github.com/JakeStanger/ironbar/commit/5157aa1466440823045f7b93b6c238e5f5efbdc0) - **tray**: icon updates sometimes breaking icon *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`ceda2e9`](https://github.com/JakeStanger/ironbar/commit/ceda2e9a1080243ef4da1e97768d879ce4302909) - **battery**: consider threshold in time calculation *(PR [#1481](https://github.com/JakeStanger/ironbar/pull/1481) by [@slowsage](https://github.com/slowsage))*
+- [`5ef0d39`](https://github.com/JakeStanger/ironbar/commit/5ef0d39dca9abaf63b7c4c28bc99377aa5643457) - **volume**: default sink/source incorrectly switching *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`dcff995`](https://github.com/JakeStanger/ironbar/commit/dcff99580bd05d62be2542986bd0fffb5ce21f69) - **tray**: empty icon names being incorrectly loaded *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+
+### :recycle: Refactors
+- [`bb83ca7`](https://github.com/JakeStanger/ironbar/commit/bb83ca7aa292c799ca6f47955b6ca6df7d0ffe65) - **tray**: remove unrequired ffi binding for icon search path *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`b769b81`](https://github.com/JakeStanger/ironbar/commit/b769b81893041e5e444b8270758f29653b7364d4) - **battery**: fully move client code to `clients/upower` *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`1c8fa83`](https://github.com/JakeStanger/ironbar/commit/1c8fa8382b970ca3d92b4bc15e1125dad31133ea) - **logging**: update tracing-subscriber, tidy *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`3ab18a7`](https://github.com/JakeStanger/ironbar/commit/3ab18a735fdf1a97dbdc0b88410cc5ee7474dd71) - **volume**: adjust low profile threshold to 33.33 *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`d9e2171`](https://github.com/JakeStanger/ironbar/commit/d9e2171770d76906b24a2d3290ab2ef25cb1532b) - **clock**: align tick to format precision *(PR [#1468](https://github.com/JakeStanger/ironbar/pull/1468) by [@orestisfl](https://github.com/orestisfl))*
+- [`e04c374`](https://github.com/JakeStanger/ironbar/commit/e04c3745cd11e84de31888e21b81b43f6ab8494e) - **clients**: tidy imports *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`dabe7fa`](https://github.com/JakeStanger/ironbar/commit/dabe7fadcbd401da997d7562d3750b6ab6da5d56) - resolve lots of strict clippy warnings *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`933b656`](https://github.com/JakeStanger/ironbar/commit/933b6562d4028c64903fb949fa21590fa5f77786) - minor tidying up *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+
+### :white_check_mark: Tests
+- [`d0ddd51`](https://github.com/JakeStanger/ironbar/commit/d0ddd51f0026632e7838628de34c66f5a31ea861) - **battery**: add mock client *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+
+### :memo: Documentation Changes
+- [`ed06996`](https://github.com/JakeStanger/ironbar/commit/ed069968993fbc95279779eade883db81085ae4b) - **configuration**: update schema link *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`52cb8fc`](https://github.com/JakeStanger/ironbar/commit/52cb8fc8e6181eedae7177a8f6a79e533d5dbe2c) - **readme**: add contributors and star history charts *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`740fa74`](https://github.com/JakeStanger/ironbar/commit/740fa74a96b17d4a5d17506e3821fb50c307416c) - add missing link to sidebar *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`742de6b`](https://github.com/JakeStanger/ironbar/commit/742de6b10296d276c73149b1f41a4a5c6f221d80) - add brightness module to sidebar *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`1794b4f`](https://github.com/JakeStanger/ironbar/commit/1794b4f40100351e40f6e36f041551f75dd34be5) - **volume**: add jargon section *(commit by [@imgurbot12](https://github.com/imgurbot12))*
+- [`75aadb3`](https://github.com/JakeStanger/ironbar/commit/75aadb36d106ae08716af58c4eaaa720a732d27a) - minor profile-related improvements and fixes *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`0b04577`](https://github.com/JakeStanger/ironbar/commit/0b04577a91f376f86a667ba94a12966d927fb359) - **contributing**: add ai policy details *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`6afe4a2`](https://github.com/JakeStanger/ironbar/commit/6afe4a2dd30c439762110881dd7f303352cf5c3b) - **network manager**: add rustdoc detail on listing device types *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`995a3c5`](https://github.com/JakeStanger/ironbar/commit/995a3c5dfdafb290fcbdc6bac497437557d3a7e1) - ensure default profiles documented *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`742fe7f`](https://github.com/JakeStanger/ironbar/commit/742fe7f4f196185016bb2363682ab7a60bc70e40) - **volume**: fix examples not using profiles syntax *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`ccf9e8e`](https://github.com/JakeStanger/ironbar/commit/ccf9e8e4cdd0e5dfa337fa9fea81e515625e3f84) - **brightness**: fix property descs not fully rendering *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`e769f95`](https://github.com/JakeStanger/ironbar/commit/e769f954f02de2f96cd51f5e4743697ebaf99017) - **volume**: add missing config options *(commit by [@janquednau](https://github.com/janquednau))*
+
+
 ## [v0.18.0] - 2025-12-17
 ### :boom: BREAKING CHANGES
 - due to [`aa130d1`](https://github.com/JakeStanger/ironbar/commit/aa130d1b9f1ec8b2c5df7822081966a61071369d) - port to gtk4 *(commit by [@JakeStanger](https://github.com/JakeStanger))*:
@@ -949,3 +1061,4 @@ It also requires `lua-lgi` as a runtime dependency.
 [v0.17.0]: https://github.com/JakeStanger/ironbar/compare/v0.16.1...v0.17.0
 [v0.17.1]: https://github.com/JakeStanger/ironbar/compare/v0.17.0...v0.17.1
 [v0.18.0]: https://github.com/JakeStanger/ironbar/compare/v0.17.1...v0.18.0
+[v0.19.0]: https://github.com/JakeStanger/ironbar/compare/v0.18.0...v0.19.0
