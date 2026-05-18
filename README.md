@@ -101,12 +101,12 @@ cargo install ironbar --locked
 
 ### Arch Linux
 
-[aur bin package](https://aur.archlinux.org/packages/ironbar-bin) | [aur git package](https://aur.archlinux.org/packages/ironbar-git)
+[official package](https://archlinux.org/packages/extra/x86_64/ironbar) | [aur git package](https://aur.archlinux.org/packages/ironbar-git)
 
 ```sh
+pacman -S ironbar
+# or
 yay -S ironbar-git
-# or 
-yay -S ironbar-bin
 ```
 
 ### Nix
