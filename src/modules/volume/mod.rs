@@ -44,8 +44,16 @@ pub enum Update {
 }
 
 enum BarUiUpdate {
-    Sink { muted: bool, description: String },
-    Source { muted: bool, description: String },
+    Sink {
+        muted: bool,
+        description: String,
+        show: bool,
+    },
+    Source {
+        muted: bool,
+        description: String,
+        show: bool,
+    },
 }
 
 struct BtnMuteUiUpdate {
@@ -328,13 +336,6 @@ impl Module<Button> for VolumeModule {
             .build();
 
         let container = gtk::Box::new(Orientation::Horizontal, 5);
-        if self.show_sinks {
-            container.append(&sink_label);
-        }
-
-        if self.show_sources {
-            container.append(&source_label);
-        }
 
         let button = Button::new();
         button.set_child(Some(&container));
@@ -356,8 +357,12 @@ impl Module<Button> for VolumeModule {
                 &button,
                 move |_, event: ProfileUpdateEvent<f64, VolumeProfile, BarUiUpdate>| {
                     let icons = &event.profile.icons;
-                    let (button_label, fmt, icon, desc) = match event.data {
-                        BarUiUpdate::Sink { muted, description } => {
+                    let (button_label, fmt, icon, desc, show) = match event.data {
+                        BarUiUpdate::Sink {
+                            muted,
+                            description,
+                            show,
+                        } => {
                             let (fmt, icon) = if muted {
                                 sink_label.add_css_class("muted");
                                 (&mute_format, &icons.muted)
@@ -365,9 +370,13 @@ impl Module<Button> for VolumeModule {
                                 sink_label.remove_css_class("muted");
                                 (&format, &icons.volume)
                             };
-                            (&sink_label, fmt, icon, description)
+                            (&sink_label, fmt, icon, description, show)
                         }
-                        BarUiUpdate::Source { muted, description } => {
+                        BarUiUpdate::Source {
+                            muted,
+                            description,
+                            show,
+                        } => {
                             let (fmt, icon) = if muted {
                                 source_label.add_css_class("muted");
                                 (&mute_format, &icons.mic_muted)
@@ -375,7 +384,7 @@ impl Module<Button> for VolumeModule {
                                 source_label.remove_css_class("muted");
                                 (&format, &icons.mic_volume)
                             };
-                            (&source_label, fmt, icon, description)
+                            (&source_label, fmt, icon, description, show)
                         }
                     };
 
@@ -387,6 +396,16 @@ impl Module<Button> for VolumeModule {
 
                     if let Some(truncate) = self.truncate {
                         button_label.truncate(truncate);
+                    }
+
+                    if show {
+                        if button_label.parent().is_none() {
+                            container.append(button_label);
+                        }
+                    } else {
+                        if button_label.parent().is_some() {
+                            container.remove(button_label);
+                        }
                     }
                 },
             )
@@ -410,18 +429,21 @@ impl Module<Button> for VolumeModule {
                     BarUiUpdate::Sink {
                         muted: sink.muted,
                         description: sink.description,
+                        show: self.show_sinks,
                     },
                 );
             }
             Event::AddSource(source) | Event::UpdateSource(source)
-                if Some(source.name.as_str()) == default_source.as_deref()
-                    && (!source.monitor || show_monitors) =>
+                if default_source
+                    .as_deref()
+                    .is_some_and(|name| name == source.name) =>
             {
                 manager.update(
                     source.volume.percent(),
                     BarUiUpdate::Source {
                         muted: source.muted,
                         description: source.description,
+                        show: self.show_sources && (!source.monitor || show_monitors),
                     },
                 );
             }
