@@ -20,9 +20,9 @@ in {
     enable = mkEnableOption "ironbar status bar";
 
     package = mkOption {
-      type = types.package;
+      type = types.nullOr types.package;
       default = defaultIronbarPackage;
-      apply = pkg: pkg.override {features = cfg.features;};
+      apply = pkg: if pkg == null then null else pkg.override {features = cfg.features;};
       description = "The package for ironbar to use.";
     };
 
@@ -48,13 +48,18 @@ in {
   };
 
   config = mkIf cfg.enable {
-    home.packages = [
-      cfg.package
+    assertions = [
+      {
+        assertion = cfg.systemd -> cfg.package != null;
+        message = "`programs.ironbar.systemd` cannot be true when `programs.ironbar.package` is null";
+      }
     ];
+
+    home.packages = lib.optionals (cfg.package != null) [cfg.package];
 
     xdg.configFile = {
       "ironbar/config.json" = mkIf (cfg.config != null) {
-        onChange = "${getExe cfg.package} reload";
+        onChange = lib.mkIf (cfg.package != null) "${getExe cfg.package} reload";
         source = jsonFormat.generate "ironbar-config" cfg.config;
       };
 
