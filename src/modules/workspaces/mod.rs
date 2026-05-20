@@ -354,7 +354,14 @@ impl Module<gtk::Box> for WorkspacesModule {
                     (-1, 0)
                 }
             };
-            let btn = Button::new(id, index, favorite, OpenState::Closed, &item_context);
+            let btn = Button::new(
+                id,
+                index,
+                favorite,
+                info.output_name,
+                OpenState::Closed,
+                &item_context,
+            );
 
             btn.button().set_tag("workspace_index", index);
             container.append(btn.button());
@@ -381,6 +388,7 @@ impl Module<gtk::Box> for WorkspacesModule {
 
                         // set an ID to track the open workspace for the favourite
                         btn.set_workspace_id(workspace.id);
+                        btn.set_monitor(&workspace.monitor);
                         btn.set_open_state(workspace.visibility.into());
                         let label = item_context.format_label(&workspace.name, workspace.index);
                         btn.set_label(&label);
@@ -389,12 +397,14 @@ impl Module<gtk::Box> for WorkspacesModule {
                     } else if let Some(btn) = button_map.find_button_mut(&workspace) {
                         let label = item_context.format_label(&workspace.name, workspace.index);
                         btn.set_label(&label);
+                        btn.set_monitor(&workspace.monitor);
                         btn.button().set_tag("workspace_index", workspace.index);
                     } else {
                         let btn = Button::new(
                             workspace.id,
                             workspace.index,
                             &workspace.name,
+                            &workspace.monitor,
                             workspace.visibility.into(),
                             &item_context,
                         );
@@ -507,8 +517,19 @@ impl Module<gtk::Box> for WorkspacesModule {
                             button.set_open_state(open_state);
                         }
 
-                        if let Some(button) = button_map.find_button_mut(&new) {
-                            button.set_open_state(OpenState::Focused);
+                        // Exactly one monitor should be focused. Update old buttons in the same monitor.
+                        for button in button_map.values_mut() {
+                            if button.open_state() == OpenState::Closed {
+                                continue;
+                            }
+                            if button.monitor() == new.monitor {
+                                let open_state = if button.workspace_id() == new.id {
+                                    OpenState::Focused
+                                } else {
+                                    OpenState::Hidden
+                                };
+                                button.set_open_state(open_state);
+                            }
                         }
                     }
                     WorkspaceUpdate::Rename { id, name } if has_initialized => {

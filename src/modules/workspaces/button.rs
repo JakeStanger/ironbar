@@ -11,6 +11,8 @@ use tokio::sync::mpsc;
 pub struct Button {
     button: IconButton,
     workspace_id: i64,
+    monitor: String,
+    open_state: OpenState,
     conn_id: Option<SignalHandlerId>,
     tx: mpsc::Sender<i64>,
 }
@@ -20,6 +22,7 @@ impl Button {
         id: i64,
         index: i64,
         name: &str,
+        monitor: &str,
         open_state: OpenState,
         context: &WorkspaceItemContext,
     ) -> Self {
@@ -35,9 +38,11 @@ impl Button {
             tx.send_spawn(id);
         });
 
-        let btn = Self {
+        let mut btn = Self {
             button,
             workspace_id: id,
+            monitor: monitor.to_string(),
+            open_state,
             conn_id: Some(conn_id),
             tx: context.tx.clone(),
         };
@@ -54,7 +59,13 @@ impl Button {
         self.button.set_label(label);
     }
 
-    pub fn set_open_state(&self, open_state: OpenState) {
+    pub fn open_state(&self) -> OpenState {
+        self.open_state
+    }
+
+    pub fn set_open_state(&mut self, open_state: OpenState) {
+        self.open_state = open_state;
+
         if open_state.is_visible() {
             self.button.add_css_class("visible");
         } else {
@@ -96,5 +107,13 @@ impl Button {
             tx.send_spawn(id);
         });
         self.conn_id = Some(conn_id);
+    }
+
+    pub fn monitor(&self) -> &str {
+        &self.monitor
+    }
+
+    pub fn set_monitor(&mut self, monitor: &str) {
+        self.monitor = monitor.to_string();
     }
 }
