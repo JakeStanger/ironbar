@@ -505,29 +505,11 @@ impl Module<gtk::Box> for WorkspacesModule {
                         // as that seems to come back wrong, at least on Hyprland.
                         // Likely a deeper issue that needs exploring.
 
-                        if let Some(old) = old
-                            && let Some(button) = button_map.find_button_mut(&old)
-                        {
-                            let open_state = if new.monitor == old.monitor {
-                                OpenState::Hidden
-                            } else {
-                                OpenState::Visible
-                            };
-
-                            button.set_open_state(open_state);
-                        }
-
                         // Exactly one monitor should be focused. Update old buttons in the same monitor.
                         for button in button_map.values_mut() {
-                            if button.open_state() == OpenState::Closed {
-                                continue;
-                            }
-                            if button.monitor() == new.monitor {
-                                let open_state = if button.workspace_id() == new.id {
-                                    OpenState::Focused
-                                } else {
-                                    OpenState::Hidden
-                                };
+                            if let Some(open_state) =
+                                new_state_for_button(button, &new, old.as_ref())
+                            {
                                 button.set_open_state(open_state);
                             }
                         }
@@ -575,6 +557,32 @@ impl Module<gtk::Box> for WorkspacesModule {
             widget: container,
             popup: None,
         })
+    }
+}
+
+fn new_state_for_button(
+    button: &Button,
+    new: &Workspace,
+    old: Option<&Workspace>,
+) -> Option<OpenState> {
+    if button.open_state() == OpenState::Closed {
+        None
+    } else if button.monitor() == new.monitor {
+        if button.workspace_id() == new.id {
+            Some(OpenState::Focused)
+        } else {
+            Some(OpenState::Hidden)
+        }
+    } else if let Some(old) = old
+        && old.id == button.workspace_id()
+    {
+        if new.monitor == old.monitor {
+            Some(OpenState::Hidden)
+        } else {
+            Some(OpenState::Visible)
+        }
+    } else {
+        None
     }
 }
 

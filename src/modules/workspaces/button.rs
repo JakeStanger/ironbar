@@ -64,6 +64,9 @@ impl Button {
     }
 
     pub fn set_open_state(&mut self, open_state: OpenState) {
+        if self.open_state == open_state {
+            return;
+        }
         self.open_state = open_state;
 
         if open_state.is_visible() {
