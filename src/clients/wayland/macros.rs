@@ -99,3 +99,52 @@ macro_rules! delegate_foreign_toplevel_handle {
         );
     };
 }
+
+// --- Workspace --- \\
+
+#[macro_export]
+macro_rules! delegate_workspace_manager {
+    ($(@<$( $lt:tt $( : $clt:tt $(+ $dlt:tt )* )? ),+>)? $ty: ty) => {
+        wayland_client::delegate_dispatch!($(@< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)? $ty:
+            [
+                wayland_protocols::ext::workspace::v1::client::ext_workspace_manager_v1::ExtWorkspaceManagerV1: smithay_client_toolkit::globals::GlobalData
+            ] => $crate::clients::wayland::ext_workspace::manager::WorkspaceManagerState
+        );
+    };
+}
+
+#[macro_export]
+macro_rules! delegate_workspace_group_handle {
+    ($(@<$( $lt:tt $( : $clt:tt $(+ $dlt:tt )* )? ),+>)? $ty: ty, udata: [$($udata: ty),*$(,)?]) => {
+        wayland_client::delegate_dispatch!($(@< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)? $ty:
+            [
+                wayland_protocols::ext::workspace::v1::client::ext_workspace_group_handle_v1::ExtWorkspaceGroupHandleV1: $udata,
+            ] => $crate::clients::wayland::ext_workspace::manager::WorkspaceManagerState
+        );
+    };
+    ($(@<$( $lt:tt $( : $clt:tt $(+ $dlt:tt )* )? ),+>)? $ty: ty) => {
+        wayland_client::delegate_dispatch!($(@< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)? $ty:
+            [
+                wayland_protocols::ext::workspace::v1::client::ext_workspace_group_handle_v1::ExtWorkspaceGroupHandleV1: $crate::clients::wayland::ext_workspace::group_handle::WorkspaceGroupHandleData
+            ] => $crate::clients::wayland::ext_workspace::manager::WorkspaceManagerState
+        );
+    };
+}
+
+#[macro_export]
+macro_rules! delegate_workspace_handle {
+    ($(@<$( $lt:tt $( : $clt:tt $(+ $dlt:tt )* )? ),+>)? $ty: ty, udata: [$($udata: ty),*$(,)?]) => {
+        wayland_client::delegate_dispatch!($(@< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)? $ty:
+            [
+                wayland_protocols::ext::workspace::v1::client::ext_workspace_handle_v1::ExtWorkspaceHandleV1: $udata,
+            ] => $crate::clients::wayland::ext_workspace::manager::WorkspaceManagerState
+        );
+    };
+    ($(@<$( $lt:tt $( : $clt:tt $(+ $dlt:tt )* )? ),+>)? $ty: ty) => {
+        wayland_client::delegate_dispatch!($(@< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)? $ty:
+            [
+                wayland_protocols::ext::workspace::v1::client::ext_workspace_handle_v1::ExtWorkspaceHandleV1: $crate::clients::wayland::ext_workspace::handle::WorkspaceHandleData
+            ] => $crate::clients::wayland::ext_workspace::manager::WorkspaceManagerState
+        );
+    };
+}
