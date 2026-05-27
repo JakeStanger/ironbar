@@ -20,16 +20,16 @@ let {
     icons.volume = "󰕾"
     
     profiles = {
-        // medium profile activates when volume <= 67%
-        medium.when = 67
-        medium.icons.volume = "󰖀"
+      // medium profile activates when volume <= 67%
+      medium.when = 67
+      medium.icons.volume = "󰖀"
 
-        // low profile activates when volume <= 33%
-        low.when = 33
-        low.icons.volume = "󰕿"
+      // low profile activates when volume <= 33%
+      low.when = 33
+      low.icons.volume = "󰕿"
 
-        // other properties supported by the profile can also be updated
-        low.icons.muted = "icons:volume-low-muted" 
+      // other properties supported by the profile can also be updated
+      low.icons.muted = "icons:volume-low-muted" 
     }
   }
 } in {
@@ -46,36 +46,37 @@ More specific values for state matchers with the same value will take precedent.
 
 ```corn
 let {
-  $battery = {
-    type = "battery"
-  
-    format = "HIGH {percentage}%"
-  
-    profiles = {
-        low.when = { percent = 20 }
-        low.format = "LOW {percentage}%"
-  
-        // applies over `low` when charging.
-        low-charging.when = { percent = 20 charging = true }
-        low-charging.format = "LOW (CHARGING) {percentage}%"
-
-        // applies over `medium-charging` when NOT charging.
-        medium.when = { percent = 50 charging = false }
-        medium.format = "MEDIUM {percentage}%"
-  
-        medium-charging.when = { percent = 50 }
-        medium-charging.format = "MEDIUM (CHARGING) {percentage}%"
-  
-        good.when = { percent = 75 charging = false }
-        good.format = "GOOD {percentage}%"
-  
-        good-charging.when = { percent = 75 charging = true }
-        good-charging.format = "GOOD (CHARGING) {percentage}%"
-  
-        empty.when = { percent = 1 charging = true }
-    } 
+    $battery = {
+      type = "battery"
+    
+      format = "HIGH {percentage}%"
+    
+      profiles = {
+      low.when = { percent = 20 }
+      low.format = "LOW {percentage}%"
+    
+      // applies over `low` when charging.
+      low-charging.when = { percent = 20 charging = true }
+      low-charging.format = "LOW (CHARGING) {percentage}%"
+    
+      // applies over `medium-charging` when NOT charging.
+      medium.when = { percent = 50 charging = false }
+      medium.format = "MEDIUM {percentage}%"
+    
+      medium-charging.when = { percent = 50 }
+      medium-charging.format = "MEDIUM (CHARGING) {percentage}%"
+    
+      good.when = { percent = 75 charging = false }
+      good.format = "GOOD {percentage}%"
+    
+      good-charging.when = { percent = 75 charging = true }
+      good-charging.format = "GOOD (CHARGING) {percentage}%"
+    
+      empty.when = { percent = 1 charging = true }
+    }
+  }
 } in {
-  end [ $battery ]
+  end = [ $battery ]
 }
 ```
 
