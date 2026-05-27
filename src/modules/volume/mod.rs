@@ -1,7 +1,8 @@
 mod config;
 
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
 use std::collections::HashMap;
+use std::rc::Rc;
 
 use glib::subclass::prelude::*;
 use glib::{Object, Properties};
@@ -43,8 +44,16 @@ pub enum Update {
 }
 
 enum BarUiUpdate {
-    Sink { muted: bool, description: String },
-    Source { muted: bool, description: String },
+    Sink {
+        muted: bool,
+        description: String,
+        show: bool,
+    },
+    Source {
+        muted: bool,
+        description: String,
+        show: bool,
+    },
 }
 
 struct BtnMuteUiUpdate {
@@ -122,12 +131,15 @@ impl VolumeModule {
         slider
     }
 
-    fn select_notify<F>(selector: &DropDown, tx: Sender<Update>, func: F)
+    fn select_notify<F>(selector: &DropDown, tx: Sender<Update>, ignore: &Rc<Cell<bool>>, func: F)
     where
         F: Fn(String) -> Update + 'static,
     {
+        let ignore = ignore.clone();
         selector.connect_selected_item_notify(move |selector| {
-            if let Some(item) = selector.selected_item().and_downcast_ref::<DropdownItem>() {
+            if !ignore.get()
+                && let Some(item) = selector.selected_item().and_downcast_ref::<DropdownItem>()
+            {
                 tx.send_spawn(func(item.key()));
             }
         });
@@ -324,13 +336,6 @@ impl Module<Button> for VolumeModule {
             .build();
 
         let container = gtk::Box::new(Orientation::Horizontal, 5);
-        if self.show_sinks {
-            container.append(&sink_label);
-        }
-
-        if self.show_sources {
-            container.append(&source_label);
-        }
 
         let button = Button::new();
         button.set_child(Some(&container));
@@ -352,8 +357,12 @@ impl Module<Button> for VolumeModule {
                 &button,
                 move |_, event: ProfileUpdateEvent<f64, VolumeProfile, BarUiUpdate>| {
                     let icons = &event.profile.icons;
-                    let (button_label, fmt, icon, desc) = match event.data {
-                        BarUiUpdate::Sink { muted, description } => {
+                    let (button_label, fmt, icon, desc, show) = match event.data {
+                        BarUiUpdate::Sink {
+                            muted,
+                            description,
+                            show,
+                        } => {
                             let (fmt, icon) = if muted {
                                 sink_label.add_css_class("muted");
                                 (&mute_format, &icons.muted)
@@ -361,9 +370,13 @@ impl Module<Button> for VolumeModule {
                                 sink_label.remove_css_class("muted");
                                 (&format, &icons.volume)
                             };
-                            (&sink_label, fmt, icon, description)
+                            (&sink_label, fmt, icon, description, show)
                         }
-                        BarUiUpdate::Source { muted, description } => {
+                        BarUiUpdate::Source {
+                            muted,
+                            description,
+                            show,
+                        } => {
                             let (fmt, icon) = if muted {
                                 source_label.add_css_class("muted");
                                 (&mute_format, &icons.mic_muted)
@@ -371,7 +384,7 @@ impl Module<Button> for VolumeModule {
                                 source_label.remove_css_class("muted");
                                 (&format, &icons.mic_volume)
                             };
-                            (&source_label, fmt, icon, description)
+                            (&source_label, fmt, icon, description, show)
                         }
                     };
 
@@ -383,6 +396,16 @@ impl Module<Button> for VolumeModule {
 
                     if let Some(truncate) = self.truncate {
                         button_label.truncate(truncate);
+                    }
+
+                    if show {
+                        if button_label.parent().is_none() {
+                            container.append(button_label);
+                        }
+                    } else {
+                        if button_label.parent().is_some() {
+                            container.remove(button_label);
+                        }
                     }
                 },
             )
@@ -406,18 +429,21 @@ impl Module<Button> for VolumeModule {
                     BarUiUpdate::Sink {
                         muted: sink.muted,
                         description: sink.description,
+                        show: self.show_sinks,
                     },
                 );
             }
             Event::AddSource(source) | Event::UpdateSource(source)
-                if Some(source.name.as_str()) == default_source.as_deref()
-                    && (!source.monitor || show_monitors) =>
+                if default_source
+                    .as_deref()
+                    .is_some_and(|name| name == source.name) =>
             {
                 manager.update(
                     source.volume.percent(),
                     BarUiUpdate::Source {
                         muted: source.muted,
                         description: source.description,
+                        show: self.show_sources && (!source.monitor || show_monitors),
                     },
                 );
             }
@@ -514,13 +540,15 @@ impl Module<Button> for VolumeModule {
             }
         });
 
+        let ignore_selected = Rc::new(Cell::new(false));
+
         let sink_selector = DropDown::new(Some(sink_options.clone()), None::<Expression>);
         sink_selector.set_factory(Some(&factory));
         sink_selector.add_css_class("device-selector");
         sink_selector.add_css_class("sink-selector");
         {
             let tx = context.controller_tx.clone();
-            Self::select_notify(&sink_selector, tx, Update::SinkChange);
+            Self::select_notify(&sink_selector, tx, &ignore_selected, Update::SinkChange);
         }
         sink_container.append(&sink_selector);
 
@@ -530,7 +558,7 @@ impl Module<Button> for VolumeModule {
         source_selector.add_css_class("source-selector");
         {
             let tx = context.controller_tx.clone();
-            Self::select_notify(&source_selector, tx, Update::SourceChange);
+            Self::select_notify(&source_selector, tx, &ignore_selected, Update::SourceChange);
         }
         source_container.append(&source_selector);
 
@@ -617,9 +645,10 @@ impl Module<Button> for VolumeModule {
 
         context
             .subscribe()
-            .recv_glib(
-                &sink_input_container,
-                move |input_container, event| match event {
+            .recv_glib(&sink_input_container, move |input_container, event| {
+                // Ignore selected sink and source notifications caused by programmatic changes
+                let _ignore_guard = IgnoreGuard::new(&ignore_selected);
+                match event {
                     Event::SetDefaultSink(name) => default_sink = Some(name),
                     Event::SetDefaultSource(name) => default_source = Some(name),
                     Event::AddSink(info) => {
@@ -859,8 +888,8 @@ impl Module<Button> for VolumeModule {
                             source_output_container.remove(&ui.container);
                         }
                     }
-                },
-            );
+                };
+            });
 
         Some(container)
     }
@@ -873,4 +902,21 @@ struct VolumeUi {
     button: ToggleButton,
     // Store original (unformatted) title to detect change when marquee is enabled
     label_raw: String,
+}
+
+struct IgnoreGuard<'a> {
+    ignore: &'a Cell<bool>,
+}
+
+impl<'a> IgnoreGuard<'a> {
+    fn new(ignore: &'a Cell<bool>) -> Self {
+        ignore.set(true);
+        Self { ignore }
+    }
+}
+
+impl<'a> Drop for IgnoreGuard<'a> {
+    fn drop(&mut self) {
+        self.ignore.set(false);
+    }
 }
