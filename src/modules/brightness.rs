@@ -13,6 +13,7 @@ use gtk::{EventControllerScroll, EventControllerScrollFlags, prelude::*};
 use serde::Deserialize;
 use tokio::sync::mpsc;
 use tokio::time::sleep;
+use tracing::{debug, trace};
 
 #[derive(Debug, Clone, Deserialize)]
 #[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
@@ -274,6 +275,8 @@ impl Module<Button> for BrightnessModule {
                     () = sleep(POLL_INTERVAL) => None,
                 };
 
+                trace!("got event: {event:?}");
+
                 let BrightnessData {
                     mut percent,
                     current,
@@ -302,6 +305,8 @@ impl Module<Button> for BrightnessModule {
                 };
 
                 if let Some(UiEvent::AdjustBrightnessScroll(dy)) = event {
+                    debug!("processing scroll event (dy={dy})");
+
                     partial_scroll += dy * scroll_speed;
 
                     if partial_scroll.abs() >= 1.0 {
@@ -313,16 +318,28 @@ impl Module<Button> for BrightnessModule {
                         let new_brightness = (current - num_steps * step_len).max(0).min(max); // not using .clamp to avoid panic in case max is ever < 0
                         percent = new_brightness as f64 / (max as f64) * 100.0;
 
-                        if let Err(err) = Self::set_brightness(
-                            &client,
-                            &datasource,
-                            default_resource_name.as_deref(),
-                            new_brightness,
-                        )
-                        .await
-                        {
-                            tracing::error!(?err, "Could not change brightness");
-                        }
+                        // set brightness on separate task
+                        // to avoid causing backlog
+                        spawn({
+                            let client = client.clone();
+                            let datasource = datasource.clone();
+                            let default_resource_name = default_resource_name.clone();
+
+                            async move {
+                                debug!("setting brightness to {new_brightness} ({percent}%)");
+
+                                if let Err(err) = Self::set_brightness(
+                                    &client,
+                                    &datasource,
+                                    default_resource_name.as_deref(),
+                                    new_brightness,
+                                )
+                                    .await
+                                {
+                                    tracing::error!(?err, "Could not change brightness");
+                                }
+                            }
+                        });
                     }
                 }
 
@@ -369,6 +386,8 @@ impl Module<Button> for BrightnessModule {
 
         let scroll_controller = EventControllerScroll::new(EventControllerScrollFlags::VERTICAL);
         scroll_controller.connect_scroll(move |_, _, dy| {
+            debug!("scrolling by {dy}");
+
             let ctx = controller_tx.clone();
             ctx.send_spawn(UiEvent::AdjustBrightnessScroll(dy));
 
