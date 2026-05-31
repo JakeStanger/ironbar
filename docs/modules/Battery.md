@@ -37,7 +37,7 @@ Information on the profiles system can be found [here](profiles).
       "type": "battery",
       "format": "{percentage}%",
       "profiles": {
-        "warning": 20,
+        "warning":  { "percent":  20 },
         "critical": {
           "when": { "percent":  5, "charging": false },
           "format": "[LOW] {percentage}%"
@@ -59,8 +59,8 @@ Information on the profiles system can be found [here](profiles).
 type = "battery"
 format = "{percentage}%"
 
-[end.profiles]
-warning = 20
+[end.profiles.warning]
+percent = 20
 
 [end.profiles.critical]
 when = { percent = 5, charging = false }
@@ -77,7 +77,8 @@ end:
   - type: "battery"
     format: "{percentage}%"
     profiles:
-      warning: 20
+      warning:
+        percent: 20
       critical:
         when:
           percent: 5
@@ -96,7 +97,7 @@ end:
     {
       type = "battery"
       format = "{percentage}%"
-      profiles.warning = 20
+      profiles.warning.percent = 20
       
       profiles.critical.when = { percent = 5 charging = false }
       profiles.critical.format = "[LOW] {percentage}%"
