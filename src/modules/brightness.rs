@@ -334,7 +334,7 @@ impl Module<Button> for BrightnessModule {
                                     default_resource_name.as_deref(),
                                     new_brightness,
                                 )
-                                    .await
+                                .await
                                 {
                                     tracing::error!(?err, "Could not change brightness");
                                 }

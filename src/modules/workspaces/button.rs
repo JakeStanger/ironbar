@@ -38,7 +38,7 @@ impl Button {
             tx.send_spawn(id);
         });
 
-        let mut btn = Self {
+        let btn = Self {
             button,
             workspace_id: id,
             monitor: monitor.to_string(),
@@ -47,7 +47,7 @@ impl Button {
             tx: context.tx.clone(),
         };
 
-        btn.set_open_state(open_state);
+        btn.apply_open_state();
         btn
     }
 
@@ -68,6 +68,11 @@ impl Button {
             return;
         }
         self.open_state = open_state;
+        self.apply_open_state();
+    }
+
+    fn apply_open_state(&self) {
+        let open_state = self.open_state;
 
         if open_state.is_visible() {
             self.button.add_css_class("visible");
