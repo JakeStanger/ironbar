@@ -64,6 +64,9 @@ in
 
     pname = "ironbar";
 
+    # CI already handles checks
+    doCheck = false;
+
     src = let
       fs = lib.fileset;
       root = ../.;
