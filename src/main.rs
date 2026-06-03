@@ -230,12 +230,12 @@ impl Ironbar {
 
             load_css(&css_source);
 
-            let (tx, rx) = mpsc::channel();
-
             #[cfg(feature = "ipc")]
             let ipc_path = ipc.path().to_path_buf();
-            spawn_blocking(move || {
-                rx.recv().expect("to receive from channel");
+            spawn(async move {
+                tokio::signal::ctrl_c()
+                    .await
+                    .expect("should handle SIGTERM");
 
                 info!("Shutting down");
 
@@ -244,9 +244,6 @@ impl Ironbar {
 
                 exit(0);
             });
-
-            ctrlc::set_handler(move || tx.send(()).expect("Could not send signal on channel."))
-                .expect("Error setting Ctrl-C handler");
 
             let hold = app.hold();
             activate_tx.send_expect(hold);
