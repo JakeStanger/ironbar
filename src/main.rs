@@ -1,8 +1,6 @@
 #![doc = include_str!("../README.md")]
 #![deny(clippy::unwrap_used)]
 
-// test
-
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::env;

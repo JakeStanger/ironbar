@@ -4,10 +4,7 @@
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
     flake-compat.url = "github:edolstra/flake-compat";
-    naersk = {
-      url = "github:nix-community/naersk";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
+    crane.url = "github:ipetkov/crane";
     nix-systems.url = "github:nix-systems/default-linux";
   };
 
@@ -15,7 +12,7 @@
     {
       self,
       nixpkgs,
-      naersk,
+      crane,
       nix-systems,
       ...
     }:
@@ -23,13 +20,6 @@
       forAllSystems =
         function:
         nixpkgs.lib.genAttrs (import nix-systems) (system: function nixpkgs.legacyPackages.${system});
-      mkDate =
-        longDate:
-        (nixpkgs.lib.concatStringsSep "-" [
-          (builtins.substring 0 4 longDate)
-          (builtins.substring 4 2 longDate)
-          (builtins.substring 6 2 longDate)
-        ]);
     in
     {
       # Devshell
@@ -54,17 +44,11 @@
         ironbar =
           let
             props = builtins.fromTOML (builtins.readFile ./Cargo.toml);
-            version =
-              props.package.version
-              + "+date="
-              + (mkDate (self.lastModifiedDate or "19700101"))
-              + "_"
-              + (self.shortRev or "dirty");
-            naersk' = pkgs.callPackage naersk { };
+            version = props.package.version;
+            craneLib = crane.mkLib pkgs;
           in
           pkgs.callPackage ./nix/package.nix {
-            inherit version;
-            naersk = naersk';
+            inherit version craneLib;
           };
 
         default = self.packages.${pkgs.stdenv.hostPlatform.system}.ironbar;
@@ -89,7 +73,7 @@
     };
 
   nixConfig = {
-    extra-substituters = [ "https://cache.garnix.io" ];
-    extra-trusted-public-keys = [ "cache.garnix.io:CTFPyKSLcx5RMJKfLo5EEPUObbA78b0YQ2DTCJXqr9g=" ];
+    extra-substituters = [ "https://jakestanger.cachix.org" ];
+    extra-trusted-public-keys = [ "jakestanger.cachix.org-1:VWJE7AWNe5/KOEvCQRxoE8UsI2Xs2nHULJ7TEjYm7mM=" ];
   };
 }

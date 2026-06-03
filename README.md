@@ -188,8 +188,10 @@ A flake is included with the repo which can be used with Home Manager.
 
 </details>
 
-CI builds are automatically cached by Garnix.
-You can use their binary cache by following the steps [here](https://garnix.io/docs/caching).
+CI builds are automatically cached to Cachix.
+
+- Subsituter: `jakestanger.cachix.org`
+- Public key: `jakestanger.cachix.org-1:VWJE7AWNe5/KOEvCQRxoE8UsI2Xs2nHULJ7TEjYm7mM=`
 
 ### Void Linux
 

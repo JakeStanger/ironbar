@@ -24,7 +24,7 @@
   lib,
   version ? "git",
   features ? [],
-  naersk,
+  craneLib,
   dbus,
 }: let
   hasFeature = f: features == [] || builtins.elem f features;
@@ -59,10 +59,13 @@
       --prefix LUA_CPATH : "./?.so;${lgi}/lib/lua/5.1/?.so;${luajit}/lib/lua/5.1/?.so;${luajit}/lib/lua/5.1/loadall.so"
     '';
 in
-  naersk.buildPackage {
+  craneLib.buildPackage {
     inherit version;
 
     pname = "ironbar";
+
+    # CI already handles checks
+    doCheck = false;
 
     src = let
       fs = lib.fileset;
@@ -118,7 +121,7 @@ in
 
     propagatedBuildInputs = [gtk4];
 
-    cargoBuildOptions = old: old ++ flags;
+    cargoExtraArgs = builtins.concatStringsSep " " (builtins.filter (s: s != "") flags);
 
     preFixup = ''
       gappsWrapperArgs+=(

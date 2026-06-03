@@ -141,3 +141,23 @@ jobs:
         env:
           # Allow some warnings through as we'll never get it perfect
           RUSTFLAGS: '-Dwarnings -A unused-imports -A unused-variables -A unused-mut -A unused-macros -A dead-code'
+
+  build-nix:
+    runs-on: ubuntu-latest
+    name: Build (Nix)
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: cachix/install-nix-action@v31
+        with:
+          github_access_token: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: cachix/cachix-action@v17
+        with:
+          name: jakestanger
+          authToken: ${{ secrets.CACHIX_AUTH_TOKEN }}
+          signingKey: ${{ secrets.CACHIX_SIGNING_KEY }}
+
+      - name: Build
+        run: nix build
