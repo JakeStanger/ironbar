@@ -142,7 +142,8 @@ tokio = { version = "1.50.0", features = [
     "sync",
     "io-util",
     "net",
-    "fs"
+    "fs",
+    "signal"
 ] }
 tracing = "0.1.44"
 tracing-subscriber = { version = "0.3.23", features = ["env-filter"] }
@@ -162,7 +163,6 @@ smithay-client-toolkit = { version = "0.20.0", default-features = false, feature
     "calloop",
 ] }
 config = { version = "0.15.23", default-features = false }
-ctrlc = "3.5.2"
 cfg-if = "1.0.4"
 
 # bluetooth
@@ -183,7 +183,7 @@ colpetto = { version = "0.7.0", features = ["tokio", "tracing"], optional = true
 evdev-rs = { version = "0.6.3", optional = true }
 
 # music
-mpd-utils = { version = "0.2.1", optional = true }
+mpd-utils = { version = "0.2.2", optional = true }
 mpris = { version = "2.1.0", optional = true }
 
 # sys_info
