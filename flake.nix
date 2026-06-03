@@ -4,10 +4,7 @@
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
     flake-compat.url = "github:edolstra/flake-compat";
-    naersk = {
-      url = "github:nix-community/naersk";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
+    crane.url = "github:ipetkov/crane";
     nix-systems.url = "github:nix-systems/default-linux";
   };
 
@@ -15,7 +12,7 @@
     {
       self,
       nixpkgs,
-      naersk,
+      crane,
       nix-systems,
       ...
     }:
@@ -48,11 +45,10 @@
           let
             props = builtins.fromTOML (builtins.readFile ./Cargo.toml);
             version = props.package.version;
-            naersk' = pkgs.callPackage naersk { };
+            craneLib = crane.mkLib pkgs;
           in
           pkgs.callPackage ./nix/package.nix {
-            inherit version;
-            naersk = naersk';
+            inherit version craneLib;
           };
 
         default = self.packages.${pkgs.stdenv.hostPlatform.system}.ironbar;
