@@ -23,13 +23,6 @@
       forAllSystems =
         function:
         nixpkgs.lib.genAttrs (import nix-systems) (system: function nixpkgs.legacyPackages.${system});
-      mkDate =
-        longDate:
-        (nixpkgs.lib.concatStringsSep "-" [
-          (builtins.substring 0 4 longDate)
-          (builtins.substring 4 2 longDate)
-          (builtins.substring 6 2 longDate)
-        ]);
     in
     {
       # Devshell
@@ -54,12 +47,7 @@
         ironbar =
           let
             props = builtins.fromTOML (builtins.readFile ./Cargo.toml);
-            version =
-              props.package.version
-              + "+date="
-              + (mkDate (self.lastModifiedDate or "19700101"))
-              + "_"
-              + (self.shortRev or "dirty");
+            version = props.package.version;
             naersk' = pkgs.callPackage naersk { };
           in
           pkgs.callPackage ./nix/package.nix {
