@@ -13,9 +13,11 @@ keywords.workspace = true
 default = []
 clap = ["dep:clap"] # for cli arg parsing
 tracing = ["dep:tracing"] # log via `tracing` instead of stderr
+schema = ["dep:schemars"]
 
 [dependencies]
 ironbar-macros.workspace = true
-clap = { workspace = true, optional = true }
 serde.workspace = true
+clap = { workspace = true, optional = true }
+schemars = { workspace = true, optional = true }
 tracing = { workspace = true, optional = true }
