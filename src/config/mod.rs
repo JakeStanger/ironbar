@@ -537,6 +537,7 @@ impl Default for DoubleClickTime {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
+#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
 #[serde(untagged)]
 pub enum ConfigLocation {
     Minimal,
