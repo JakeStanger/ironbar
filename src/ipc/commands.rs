@@ -5,6 +5,7 @@ use clap::{Args, Subcommand};
 use serde::{Deserialize, Serialize};
 
 #[derive(Subcommand, Debug, Serialize, Deserialize)]
+#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
 #[serde(tag = "command", rename_all = "snake_case")]
 pub enum Command {
     /// Sends a ping request to the IPC.
@@ -59,6 +60,7 @@ pub enum Command {
 }
 
 #[derive(Subcommand, Debug, Serialize, Deserialize)]
+#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
 #[serde(tag = "subcommand", rename_all = "snake_case")]
 pub enum IronvarCommand {
     /// Sets an [ironvar](ironvars) value.
@@ -119,6 +121,7 @@ pub enum IronvarCommand {
 }
 
 #[derive(Args, Debug, Serialize, Deserialize)]
+#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
 pub struct BarCommand {
     /// The name of the bar.
     pub name: String,
@@ -129,6 +132,7 @@ pub struct BarCommand {
 }
 
 #[derive(Subcommand, Debug, Serialize, Deserialize)]
+#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
 #[serde(tag = "subcommand", rename_all = "snake_case")]
 pub enum BarCommandType {
     // == Visibility == \\
@@ -313,6 +317,7 @@ pub enum BarCommandType {
 }
 
 #[derive(Subcommand, Debug, Serialize, Deserialize)]
+#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
 #[serde(tag = "subcommand", rename_all = "snake_case")]
 pub enum StyleCommand {
     /// Loads an additional CSS stylesheet.
