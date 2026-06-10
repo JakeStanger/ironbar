@@ -154,6 +154,7 @@ impl Module<GtkBox> for NetworkManagerModule {
             }
 
             icon.set_label(Some(&icon_name));
+            icon.set_visible(true);
         });
 
         let container_clone = container.clone();
