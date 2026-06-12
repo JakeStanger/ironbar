@@ -14,8 +14,6 @@ use tokio::sync::mpsc;
 pub struct LabelModule {
     /// The text to show on the label.
     /// This is a [Dynamic String](dynamic-values#dynamic-string).
-    ///
-    /// **Required**
     label: String,
 
     // -- Common --

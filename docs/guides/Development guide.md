@@ -642,3 +642,30 @@ pub fn handle_command(command: IronvarCommand) -> Response {
     }
 }
 ```
+
+## Documentation
+
+The documentation for Ironbar is stored in the `docs` folder of the main repo.
+When changes to this repo are pushed, this automatically triggers a CI job on the documentation site repo, 
+rebuilding and redeploying the site.
+
+Each file acts as a template containing the vital information. 
+For module documentation this is structured as follows:
+
+- A note alert regarding compatibility or external dependencies where relevant.
+- A summary of the module.
+- One or more screenshots demonstrating the module.
+- An `## Example` header, containing an example in the [corn](https://cornlang.dev) format. 
+  Other formats are generated from this.
+- A `## Configuration` header, which contains:
+  - A `> Type: [ModuleType]` with the value used for the module's `type` property.
+  - A `%{properties}%` template block. This is replaced with documentation generated from the module configuration code.
+- A `## Styling` section containing a table of CSS selectors and their descriptions.
+
+The `%{properties}%` template block will attempt to infer the type name from the documentation file name. 
+It can also optionally include a type name after a `:`, eg `%{properties:BarConfig}%`.
+
+Type information is generated from the JSON schema, which resides in a public S3 bucket.
+
+The repository for the project can be found here:
+https://github.com/JakeStanger/ironbar-docs/

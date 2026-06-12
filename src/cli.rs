@@ -17,6 +17,12 @@ pub struct Args {
     #[arg(long("print-schema"))]
     pub print_schema: bool,
 
+    /// Print the IPC JSON schema to `stdout`
+    /// and exit.
+    #[cfg(feature = "extras")]
+    #[arg(long("print-ipc-schema"))]
+    pub print_ipc_schema: bool,
+
     /// Print shell completions to `stdout`
     /// and exit.
     #[cfg(feature = "extras")]
@@ -53,6 +59,7 @@ pub struct Args {
 }
 
 #[derive(Debug, Serialize, Deserialize, Default, ValueEnum, Clone, Copy, Eq, PartialEq)]
+#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
 pub enum Format {
     #[default]
     Plain,
@@ -61,6 +68,7 @@ pub enum Format {
 
 #[cfg(feature = "extras")]
 #[derive(Debug, Serialize, Deserialize, ValueEnum, Clone, Copy, Eq, PartialEq)]
+#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
 pub enum Shell {
     Bash,
     Elvish,

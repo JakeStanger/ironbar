@@ -11,9 +11,9 @@ use std::time::Duration;
 #[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
 #[serde(rename_all = "lowercase")]
 pub enum InhibitCommand {
-    /// Toggle inhibit on/off
+    /// Toggle inhibit on/off.
     Toggle,
-    /// Cycle to next duration
+    /// Cycle to next duration.
     Cycle,
 }
 
@@ -21,13 +21,11 @@ pub enum InhibitCommand {
 #[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
 #[serde(default)]
 pub struct InhibitModule {
-    /// Duration configuration: list of durations to cycle through and default.
-    /// Use `0` for infinite inhibit. Format: `HH:MM:SS` (e.g., `01:30:00`)
-    ///
-    /// If `default_duration` is not specified, the first item in `durations` is used.
-    ///
-    /// **Default**: `durations = ["00:30:00", "01:00:00", "01:30:00", "02:00:00", "0"]`
-    /// **Default**: `default_duration = "00:30:00"`
+    /// See [common options](module-level-options#common-options).
+    #[serde(flatten)]
+    pub common: Option<CommonConfig>,
+
+    /// See [DurationSpec]
     #[serde(flatten)]
     pub(super) duration_spec: DurationSpec,
 
@@ -36,6 +34,7 @@ pub struct InhibitModule {
     /// **Valid options**: `toggle`, `cycle`
     /// <br>
     /// **Default**: `toggle`
+    #[cfg_attr(feature = "extras", schemars(extend("default" = "'toggle'")))]
     pub(super) on_click_left: Option<InhibitCommand>,
 
     /// Command to execute on right click.
@@ -43,6 +42,7 @@ pub struct InhibitModule {
     /// **Valid options**: `toggle`, `cycle`
     /// <br>
     /// **Default**: `cycle`
+    #[cfg_attr(feature = "extras", schemars(extend("default" = "'cycle'")))]
     pub(super) on_click_right: Option<InhibitCommand>,
 
     /// Command to execute on middle click.
@@ -55,11 +55,19 @@ pub struct InhibitModule {
     /// Format string when inhibit is active.
     /// `{duration}` token shows remaining/selected time.
     ///
+    /// Available tokens:
+    ///
+    /// | Token        | Description       |
+    /// |--------------|-------------------|
+    /// | `{duration}` | Current duration. |
+    ///
     /// **Default**: `"☕ {duration}"`
     pub(super) format_on: String,
 
     /// Format string when inhibit is inactive.
     /// `{duration}` token shows selected duration.
+    ///
+    /// See [format_on](#format_on) for available tokens.
     ///
     /// **Default**: `"💤 {duration}"`
     pub(super) format_off: String,
@@ -67,10 +75,6 @@ pub struct InhibitModule {
     /// See [layout options](module-level-options#layout).
     #[serde(flatten)]
     pub(super) layout: LayoutConfig,
-
-    /// See [common options](module-level-options#common-options).
-    #[serde(flatten)]
-    pub common: Option<CommonConfig>,
 }
 
 impl Default for InhibitModule {
@@ -100,9 +104,17 @@ fn parse_duration(s: &str) -> Result<Duration, String> {
 #[derive(Debug, Clone)]
 #[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
 pub(super) struct DurationSpec {
+    /// List of durations to cycle through.
+    /// Use `0` for infinite inhibit. Format: `HH:MM:SS` (e.g., `01:30:00`).
+    ///
+    /// If `default_duration` is not specified, the first item in `durations` is used.
     #[cfg_attr(feature = "extras", schemars(with = "Vec<String>"))]
+    #[cfg_attr(feature = "extras", schemars(extend("default" = ["00:30:00", "01:00:00", "01:30:00", "02:00:00", "inf"])))]
     pub(super) durations: Vec<Duration>,
+
+    /// Starting duration. See [durations](#durations) above for information.
     #[cfg_attr(feature = "extras", schemars(with = "String"))]
+    #[cfg_attr(feature = "extras", schemars(extend("default" = "00:30:00")))]
     pub(super) default_duration: Duration,
 }
 

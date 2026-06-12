@@ -12,6 +12,7 @@ use tokio::sync::mpsc;
 #[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
 pub enum DynamicBool {
     /// Either a script or variable, to be determined.
+    #[cfg_attr(feature = "extras", schemars(skip))]
     Unknown(String),
     Script(Script),
     #[cfg(feature = "ipc")]

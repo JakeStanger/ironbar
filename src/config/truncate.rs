@@ -43,7 +43,7 @@ pub enum TruncateMode {
     /// # Example
     ///
     /// ```corn
-    /// { truncate = "off" }
+    /// { truncate = null }
     Off,
 
     /// Auto mode lets GTK decide when to ellipsize.
