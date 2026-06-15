@@ -32,7 +32,7 @@ Clicking the widget opens the SwayNC panel.
 > Type: `notifications`
 
 > [!NOTE]
-> This module does not support module-level [layout options](module-level-options#layout).
+> This module does not support module-level [layout options](/guides/configuration-guide/#32-module-level-options).
 
 %properties%
 
@@ -44,4 +44,4 @@ Clicking the widget opens the SwayNC panel.
 | `.notifications .button` | Notifications widget button           |
 | `.notifications .count`  | Notifications count indicator overlay |
 
-For more information on styling, please see the [styling guide](styling-guide).
+For more information on styling, please see the [styling guide](/guides/styling-guide).

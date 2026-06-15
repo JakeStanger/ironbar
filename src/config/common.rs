@@ -18,7 +18,7 @@ use tracing::trace;
 ///
 /// For information on the Script type, and embedding scripts in strings,
 /// see [here](script).
-/// For information on styling, please see the [styling guide](styling-guide).
+/// For information on styling, please see the [styling guide](/guides/styling-guide).
 #[derive(Debug, Default, Deserialize, Clone)]
 #[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
 pub struct CommonConfig {
@@ -63,6 +63,7 @@ pub struct CommonConfig {
     /// **Valid options**: `slide_start`, `slide_end`, `crossfade`, `none`
     /// <br>
     /// **Default**: `slide_start`
+    #[cfg_attr(feature = "extras", schemars(extend("default" = "slide_start")))]
     pub transition_type: Option<TransitionType>,
 
     /// The length in milliseconds
@@ -71,6 +72,7 @@ pub struct CommonConfig {
     /// Note this has no effect if `show_if` is not configured.
     ///
     /// **Default**: `250`
+    #[cfg_attr(feature = "extras", schemars(extend("default" = 250)))]
     pub transition_duration: Option<u32>,
 
     /// A [script](scripts) to run when the module is left-clicked.

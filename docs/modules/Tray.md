@@ -64,4 +64,4 @@ To run custom commands based on which tray item was clicked:
 | `.tray .item`        | Tray icon button                   |
 | `.tray .item.urgent` | Tray icon button (needs attention) |
 
-For more information on styling, please see the [styling guide](styling-guide).
+For more information on styling, please see the [styling guide](/guides/styling-guide).

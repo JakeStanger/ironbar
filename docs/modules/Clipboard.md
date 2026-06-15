@@ -43,4 +43,4 @@ Supports plain text and images.
 | `.popup-clipboard .item .btn.image`  | Clipboard row item radio button (image values only). |
 | `.popup-clipboard .item .btn-remove` | Clipboard row item remove button.                    |
 
-For more information on styling, please see the [styling guide](styling-guide).
+For more information on styling, please see the [styling guide](/guides/styling-guide).

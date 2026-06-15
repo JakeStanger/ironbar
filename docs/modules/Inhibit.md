@@ -36,4 +36,4 @@ Prevents the compositor from auto-suspending the system or auto-locking the scre
 |------------|-----------------------|
 | `.inhibit` | Inhibit widget button |
 
-For more information on styling, please see the [styling guide](styling-guide).
+For more information on styling, please see the [styling guide](/guides/styling-guide).

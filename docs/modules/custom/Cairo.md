@@ -203,4 +203,4 @@ this provides a mechanism for sharing code between multiple modules.
 |----------|-------------------------|
 | `.cairo` | Cairo widget container. |
 
-For more information on styling, please see the [styling guide](styling-guide).
+For more information on styling, please see the [styling guide](/guides/styling-guide).

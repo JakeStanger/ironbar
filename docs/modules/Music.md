@@ -74,4 +74,4 @@ Use `truncate` or `marquee` options to control how long titles are shown on the 
 | `.popup-music .progress .slider`            | Slider inside progress container                      |
 | `.popup-music .progress .label`             | Duration label inside progress container              |
 
-For more information on styling, please see the [styling guide](styling-guide).
+For more information on styling, please see the [styling guide](/guides/styling-guide).

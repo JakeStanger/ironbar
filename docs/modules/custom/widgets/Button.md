@@ -2,7 +2,7 @@
 > This page refers to a widget that can be used by the [custom module](/modules/custom/custom).
 
 A clickable button, which can run a command when clicked.
-Widgets can be placed inside the button, as with the [Box](box) widget.
+Widgets can be placed inside the button, as with the [Box](/modules/custom/widgets/box) widget.
 
 ## Example
 

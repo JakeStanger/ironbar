@@ -29,4 +29,4 @@ in a label. Nothing is displayed if no binding mode is active.
 |-------------|------------------------|
 | `.bindmode` | Bind mode label widget |
 
-For more information on styling, please see the [styling guide](styling-guide).
+For more information on styling, please see the [styling guide](/guides/styling-guide).

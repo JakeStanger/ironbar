@@ -1,8 +1,8 @@
 Executes a script and shows the result of `stdout` on a label.
 Pango markup is supported.
 
-If you want to be able to embed multiple scripts and/or variables, prefer the [label](label) module.
-For more advanced use-cases, use [custom](custom).
+If you want to be able to embed multiple scripts and/or variables, prefer the [label](/modules/custom/label) module.
+For more advanced use-cases, use [custom](/modules/custom/custom).
 
 ## Example
 
@@ -32,4 +32,4 @@ For more advanced use-cases, use [custom](custom).
 |-----------|---------------------|
 | `.script` | Script widget label |
 
-For more information on styling, please see the [styling guide](styling-guide).
+For more information on styling, please see the [styling guide](/guides/styling-guide).

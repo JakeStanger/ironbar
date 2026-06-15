@@ -35,4 +35,4 @@ Displays the title and/or icon of the currently focused window.
 | `.focused .icon`  | App icon           |
 | `.focused .label` | App name           |
 
-For more information on styling, please see the [styling guide](styling-guide).
+For more information on styling, please see the [styling guide](/guides/styling-guide).

@@ -49,4 +49,4 @@ Optionally displays a launchable set of favourites.
 | `.popup-launcher`                    | Popup container           |
 | `.popup-launcher .popup-item`        | Window button in popup    |
 
-For more information on styling, please see the [styling guide](styling-guide).
+For more information on styling, please see the [styling guide](/guides/styling-guide).

@@ -115,7 +115,7 @@ Output names can be supplied in two formats:
 
 Once you have the basic config structure set up, it's time to actually configure your bar(s).
 
-Check [here](config) for an example config file for a fully configured bar in each format.
+Check [here](https://github.com/JakeStanger/ironbar/tree/master/examples) for example config files in each format.
 
 ### 3.1 Top-level options
 
@@ -140,6 +140,6 @@ Each module must include a `type` key.
 The following table lists each of the module-level options that are present on **all** modules.
 For details on available modules and each of their config options, check the sidebar.
 
-For information on the `Script` type, and embedding scripts in strings, see [here](script).
+For information on the `Script` type, and embedding scripts in strings, see [here](/dynamic-content/scripts).
 
 %properties:CommonConfig%

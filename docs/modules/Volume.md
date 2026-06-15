@@ -94,4 +94,4 @@ pulseaudio uses to describe sources of audio:
 | `.popup-volume .apps-box .app-box .slider`    | Application volume slider.                                              |
 | `.popup-volume .apps-box .app-box .btn-mute`  | Application volume mute toggle button.                                  |
 
-For more information on styling, please see the [styling guide](styling-guide).
+For more information on styling, please see the [styling guide](/guides/styling-guide).

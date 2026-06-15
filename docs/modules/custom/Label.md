@@ -1,7 +1,7 @@
 Displays custom text, with markup support.
 
-If you only intend to run a single script, prefer the [script](script) module.
-For more advanced use-cases, use [custom](custom).
+If you only intend to run a single script, prefer the [script](/modules/custom/script) module.
+For more advanced use-cases, use [custom](/modules/custom/custom).
 
 ## Example
 
@@ -28,4 +28,4 @@ For more advanced use-cases, use [custom](custom).
 |----------|------------------------------------------------------------------------------------|
 | `.label` | Label widget                                                                       |
 
-For more information on styling, please see the [styling guide](styling-guide).
+For more information on styling, please see the [styling guide](/guides/styling-guide).
