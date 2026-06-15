@@ -1,7 +1,7 @@
 In some configuration locations, Ironbar supports dynamic values, 
 meaning you can inject content into the bar from an external source.
 
-Currently two dynamic content sources are supported - [scripts](scripts) (via shorthand syntax) and [ironvars](ironvars).
+Currently two dynamic content sources are supported - [scripts](/dynamic-content/scripts) (via shorthand syntax) and [ironvars](/dynamic-content/ironvars).
 
 ## Dynamic String
 
@@ -27,7 +27,7 @@ label = "Uptime: {{uptime -p | cut -d ' ' -f2-}}"
 ```
 
 Variables tend to come in more for externally controlled data.
-You might for example have a [script and module](weather) that fetches the weather,
+You might for example have a [script and module](/examples/custom/weather) that fetches the weather,
 and wish to display the data:
 
 ```

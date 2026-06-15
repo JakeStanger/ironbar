@@ -80,4 +80,4 @@ Allows to change the respective value via scrolling.
 | `.brightness .label`  | text, which is controlled via `format`     |
 | `.brightness .icon`   | icon, which is controlled via `icon_label` |
 
-For more information on styling, please see the [styling guide](styling-guide).
+For more information on styling, please see the [styling guide](/guides/styling-guide).

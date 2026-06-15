@@ -38,4 +38,4 @@ Prevents the compositor from auto-suspending the system or auto-locking the scre
 | `.inhibit.off` | Inhibit widget button when inhibition is off |
 | `.inhibit.on`  | Inhibit widget button when inhibition is on  |
 
-For more information on styling, please see the [styling guide](styling-guide).
+For more information on styling, please see the [styling guide](/guides/styling-guide).

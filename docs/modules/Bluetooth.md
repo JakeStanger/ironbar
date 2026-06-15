@@ -75,4 +75,4 @@ Clicking on the widget opens a popout displaying list of available devices and c
 | `.popup-bluetooth .devices .box .device .switch`               | Device connect/disconnect switch                                                     |
 | `.popup-bluetooth .devices .box .device .spinner`              | Spinner that is only shown in "connecting" and "disconnecing" states                 |
 
-For more information on styling, please see the [styling guide](styling-guide).
+For more information on styling, please see the [styling guide](/guides/styling-guide).

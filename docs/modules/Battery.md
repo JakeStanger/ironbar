@@ -42,4 +42,4 @@ This module does not include any default profiles.
 | `.popup-battery`          | Battery popup box.                              |
 | `.popup-battery .details` | Label inside the popup.                         |
 
-For more information on styling, please see the [styling guide](styling-guide).
+For more information on styling, please see the [styling guide](/guides/styling-guide).

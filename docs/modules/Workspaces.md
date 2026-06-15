@@ -44,4 +44,4 @@ Shows all current workspaces. Clicking a workspace changes focus to it.
 | `.workspaces .item .text-icon` | Workspace button icon (textual only)                    |
 | `.workspaces .item .image`     | Workspace button icon (image only)                      |
 
-For more information on styling, please see the [styling guide](styling-guide).
+For more information on styling, please see the [styling guide](/guides/styling-guide).

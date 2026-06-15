@@ -1,4 +1,4 @@
-Ironbar includes a simple [IPC](ipc) server which can be used to control it programmatically at runtime.
+Ironbar includes a simple [IPC](/dynamic-content/ipc) server which can be used to control it programmatically at runtime.
 
 It also includes a Command Line Interface, which can be used for interacting with the IPC server.
 The CLI is auto-generated from the IPC definition, so always includes all commands.

@@ -50,4 +50,4 @@ It is also possible to add custom categories and actions into the menu.
 | `.popup-menu .sub-menu`              | All sub-menus                     |
 | `.popup-menu .sub-menu .application` | Application button within submenu |
 
-For more information on styling, please see the [styling guide](styling-guide).
+For more information on styling, please see the [styling guide](/guides/styling-guide).

@@ -4,7 +4,7 @@
 - [Configuration guide](configuration-guide)
   - [Images](images)
   - [Profiles](profiles)
-- [Styling guide](styling-guide)
+- [styling guide](/guides/styling-guide)
 - [Migrating to GTK4](gtk4)
 - [Development guide](development-guide)
 

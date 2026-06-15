@@ -33,4 +33,4 @@ Clicking on the widget opens a popup with the time and a calendar.
 
 Information on styling the calendar can be found [here](https://docs.gtk.org/gtk4/class.Calendar.html#css-nodes).
 
-For more information on styling, please see the [styling guide](styling-guide).
+For more information on styling, please see the [styling guide](/guides/styling-guide).
