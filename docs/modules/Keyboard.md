@@ -42,4 +42,4 @@ end = [
 | `.keyboard .key.text-icon` | Key indicator textual icon.                |
 | `.keyboard .layout`        | Keyboard layout indicator.                 |
 
-For more information on styling, please see the [styling guide](styling-guide).
+For more information on styling, please see the [styling guide](/guides/styling-guide).

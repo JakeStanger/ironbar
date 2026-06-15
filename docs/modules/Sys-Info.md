@@ -247,7 +247,7 @@ left-padded with spaces to a min width of 5, and shown to 2dp as follows:
 | `.sysinfo`       | Sysinfo widget box           |
 | `.sysinfo .item` | Individual information label |
 
-For more information on styling, please see the [styling guide](styling-guide).
+For more information on styling, please see the [styling guide](/guides/styling-guide).
 
 ## Lua API
 

@@ -6,8 +6,8 @@ In addition to these, you can also add any native module.
 Paired with the other custom modules such as Cairo, 
 this provides a powerful declarative interface for constructing your own interfaces.
 
-If you only intend to run a single script, prefer the [script](script) module, 
-or [label](label) if you only need a single text label.
+If you only intend to run a single script, prefer the [script](/modules/custom/script) module, 
+or [label](/modules/custom/label) if you only need a single text label.
 
 ![Custom module with a button on the bar, and the popup open. The popup contains a header, shutdown button and restart button.](https://f.jstanger.dev/github/ironbar/modules/custom/power-menu.png)
 
@@ -120,7 +120,7 @@ For example, the following label would output your system uptime, updated every 
 Uptime: {{30000:uptime -p | cut -d ' ' -f2-}}
 ```
 
-Both polling and watching mode are supported. For more information on script syntax, see [here](scripts).
+Both polling and watching mode are supported. For more information on script syntax, see [here](/dynamic-content/scripts).
 
 ### Commands
 
@@ -152,4 +152,4 @@ The following top-level selectors are always available:
 | `.custom`       | Custom widget container.       |
 | `.popup-custom` | Custom widget popup container. |
 
-For more information on styling, please see the [styling guide](styling-guide).
+For more information on styling, please see the [styling guide](/guides/styling-guide).
