@@ -44,7 +44,7 @@ switch:not(:checked) {
   background-color: var(--color-dark-secondary);
 }
 
-#bar, popover, popover contents, calendar {
+#bar, popover, popover contents, calendar, popover .view {
     background-color: var(--color-dark-primary);
 }
 
@@ -58,7 +58,7 @@ button {
     padding-right: var(--margin-sm);
 }
 
-button:hover, button:active {
+button:hover, button:active, *:selected {
     background-color: var(--color-dark-secondary);
 }
 
