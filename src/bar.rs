@@ -141,6 +141,7 @@ impl Bar {
         );
 
         let autohide = config.autohide;
+        let autohide_hotspot_height = config.autohide_hotspot_height;
         let anchor_to_edges = config.anchor_to_edges;
         let margin = config.margin;
 
@@ -149,7 +150,12 @@ impl Bar {
 
         let autohide_state = if let Some(autohide) = autohide {
             let hotspot_window = Window::new();
-            self.setup_autohide(&hotspot_window, load_result.popup.clone(), autohide);
+            self.setup_autohide(
+                &hotspot_window,
+                load_result.popup.clone(),
+                autohide,
+                autohide_hotspot_height,
+            );
             self.setup_layer_shell(
                 &hotspot_window,
                 false,
@@ -240,15 +246,21 @@ impl Bar {
         );
     }
 
-    fn setup_autohide(&self, hotspot_window: &Window, popup: Rc<Popup>, timeout: u64) {
+    fn setup_autohide(
+        &self,
+        hotspot_window: &Window,
+        popup: Rc<Popup>,
+        timeout: u64,
+        hotspot_height: i32,
+    ) {
         hotspot_window.set_visible(false);
 
         hotspot_window.set_opacity(0.01);
         hotspot_window.set_decorated(false);
 
         let (w, h) = match self.position {
-            BarPosition::Top | BarPosition::Bottom => (0, 5),
-            BarPosition::Left | BarPosition::Right => (5, 0),
+            BarPosition::Top | BarPosition::Bottom => (0, hotspot_height),
+            BarPosition::Left | BarPosition::Right => (hotspot_height, 0),
         };
         hotspot_window.set_default_size(w, h);
 
@@ -349,6 +361,14 @@ impl Bar {
 
             let hotspot_win = hotspot_window.clone();
             event_controller.connect_enter(move |_, _, _| {
+                hotspot_win.set_visible(false);
+                win.set_visible(true);
+            });
+
+            let hotspot_win = hotspot_window.clone();
+            let win = self.window.clone();
+
+            event_controller.connect_motion(move |_, _, _| {
                 hotspot_win.set_visible(false);
                 win.set_visible(true);
             });
