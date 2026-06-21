@@ -343,12 +343,11 @@ impl Bar {
         }
 
         {
+            let event_controller = EventControllerMotion::new();
+            let hotspot_win = hotspot_window.clone();
             let win = self.window.clone();
 
-            let event_controller = EventControllerMotion::new();
-
-            let hotspot_win = hotspot_window.clone();
-            event_controller.connect_enter(move |_, _, _| {
+            event_controller.connect_motion(move |_, _, _| {
                 hotspot_win.set_visible(false);
                 win.set_visible(true);
             });
