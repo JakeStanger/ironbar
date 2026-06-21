@@ -34,6 +34,13 @@ impl<T: Debug> SyncSenderExt<T> for broadcast::Sender<T> {
     }
 }
 
+impl<T: Debug> SyncSenderExt<T> for mpsc::UnboundedSender<T> {
+    #[inline]
+    fn send_expect(&self, message: T) {
+        self.send(message).expect(crate::error::ERR_CHANNEL_SEND);
+    }
+}
+
 pub trait AsyncSenderExt<T>: Sync + Send + Sized + Clone {
     /// Asynchronously sends a message on the channel,
     /// panicking if it cannot be sent.

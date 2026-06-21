@@ -1,10 +1,8 @@
 use color_eyre::Result;
 use gtk::prelude::*;
 use gtk::{Button, Label};
-use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::mpsc::Receiver;
-use tracing::{debug, trace};
 
 use crate::channels::{AsyncSenderExt, BroadcastReceiverExt};
 use crate::clients::inhibit;
@@ -17,15 +15,11 @@ mod config;
 use config::InhibitCommand;
 pub use config::InhibitModule;
 
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub struct State {
-    active: bool,
-    duration: Duration,
-}
+const INFINITE_DURATION_LABEL: &str = "";
 
 fn format_duration(d: Duration) -> String {
     if d == Duration::MAX {
-        return "".to_string();
+        return INFINITE_DURATION_LABEL.to_string();
     }
     let s = d.as_secs();
     let (h, m, s) = (s / 3600, s % 3600 / 60, s % 60);
@@ -33,6 +27,13 @@ fn format_duration(d: Duration) -> String {
         (h, m) if h > 0 => format!("{h:02}:{m:02}:{s:02}"),
         (_, m) => format!("{m:02}:{s:02}"),
     }
+}
+
+/// What a bar renders: the shared countdown when active, else this bar's preset.
+#[derive(Debug, Clone, Copy)]
+pub struct State {
+    active: bool,
+    duration: Duration,
 }
 
 impl Module<Button> for InhibitModule {
@@ -47,41 +48,42 @@ impl Module<Button> for InhibitModule {
         ctx: &WidgetContext<Self::SendMessage, Self::ReceiveMessage>,
         mut rx: Receiver<Self::ReceiveMessage>,
     ) -> Result<()> {
+        let client = ctx.client::<inhibit::Client>();
+        let mut remaining_rx = client.subscribe();
         let tx = ctx.tx.clone();
         let durations = self.duration_spec.durations.clone();
         let default = self.duration_spec.default_duration;
 
         spawn(async move {
-            debug!("Inhibit controller started");
             let mut idx = durations.iter().position(|d| *d == default).unwrap_or(0);
-            let mut state = State {
-                active: false,
-                duration: durations[idx],
-            };
-            tx.send_update(state).await;
 
             loop {
+                let remaining = *remaining_rx.borrow();
+                let state = State {
+                    active: remaining.is_some(),
+                    duration: remaining.unwrap_or(durations[idx]),
+                };
+                tx.send_update(state).await;
+
                 tokio::select! {
-                    Some(cmd) = rx.recv() => {
+                    changed = remaining_rx.changed() => if changed.is_err() { break },
+                    cmd = rx.recv() => {
+                        let Some(cmd) = cmd else { break }; // widget gone
                         match cmd {
-                            InhibitCommand::Cycle => idx = (idx + 1) % durations.len(),
-                            InhibitCommand::Toggle => state.active = !state.active,
+                            InhibitCommand::Toggle if remaining.is_some() => client.set_duration(None),
+                            InhibitCommand::Toggle => client.set_duration(Some(durations[idx])),
+                            InhibitCommand::Cycle => {
+                                idx = (idx + 1) % durations.len();
+                                if remaining.is_some() {
+                                    client.set_duration(Some(durations[idx]));
+                                }
+                            }
                         }
-                        state.duration = durations[idx];
-                        trace!("Inhibit state update: active={}, duration={}", state.active, format_duration(state.duration));
-                        tx.send_update(state).await;
-                    }
-                    () = tokio::time::sleep(Duration::from_secs(1)), if state.active && state.duration != Duration::MAX => {
-                        state.duration = state.duration.saturating_sub(Duration::from_secs(1));
-                        if state.duration == Duration::ZERO {
-                            state.active = false;
-                            state.duration = durations[idx];
-                        }
-                        tx.send_update(state).await;
                     }
                 }
             }
         });
+
         Ok(())
     }
 
@@ -97,8 +99,8 @@ impl Module<Button> for InhibitModule {
             .justify(self.layout.justify.into())
             .build();
         button.set_child(Some(&label));
-        let tx = ctx.controller_tx.clone();
 
+        let tx = ctx.controller_tx.clone();
         [
             (MouseButton::Primary, self.on_click_left),
             (MouseButton::Secondary, self.on_click_right),
@@ -106,37 +108,17 @@ impl Module<Button> for InhibitModule {
         ]
         .into_iter()
         .filter_map(|(btn, cmd)| cmd.map(|c| (btn, c)))
-        .for_each(|(btn, action)| {
+        .for_each(|(btn, cmd)| {
             let tx = tx.clone();
-            button.connect_pressed(btn, move || {
-                tx.send_spawn(action);
-            });
+            button.connect_pressed(btn, move || tx.send_spawn(cmd));
         });
 
-        let client = ctx.client::<inhibit::Client>();
-        let inhibit_handle = std::cell::RefCell::new(None::<Arc<inhibit::InhibitCookie>>);
-        let was_active = std::cell::Cell::new(false);
         let (fmt_on, fmt_off) = (self.format_on, self.format_off);
-        let controller_tx = ctx.controller_tx.clone();
-
-        // gtk based inhibit() requires glib context / main thread
         ctx.subscribe().recv_glib(&label, move |label, state| {
-            if state.active != was_active.replace(state.active) {
-                if state.active {
-                    if let Some(cookie) = client.acquire() {
-                        *inhibit_handle.borrow_mut() = Some(cookie)
-                    } else {
-                        controller_tx.send_spawn(InhibitCommand::Toggle);
-                        return;
-                    }
-                } else {
-                    *inhibit_handle.borrow_mut() = None;
-                }
-            }
-
             let fmt = if state.active { &fmt_on } else { &fmt_off };
             label.set_label_escaped(&fmt.replace("{duration}", &format_duration(state.duration)));
         });
+
         Ok(ModuleParts::new(button, None))
     }
 }
