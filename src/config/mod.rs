@@ -418,7 +418,12 @@ pub struct BarConfig {
     /// **Default**: `null`
     pub autohide: Option<u64>,
 
-    /// Lister used for revealing the bar
+    /// The height in pixels of the hotspot that reveals the bar
+    ///
+    /// **Default**: `5`
+    pub autohide_hotspot_height: i32,
+
+    /// Listener used for revealing the bar
     /// Options: Hover, Scroll, Click
     ///
     /// **Default**: `motion`
@@ -453,6 +458,7 @@ impl Default for BarConfig {
             height: 42,
             start_hidden: None,
             autohide: None,
+            autohide_hotspot_height: 5,
             autohide_listener: AutohideListener::Hover,
             start: None,
             center: None,
