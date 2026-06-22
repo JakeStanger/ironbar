@@ -22,10 +22,11 @@ enum Inner {
     },
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 struct AutohideState {
     hotspot_window: Window,
     lock_state: LockState,
+    timeout_id: Option<glib::SourceId>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -151,6 +152,7 @@ impl Bar {
         let autohide_state = if let Some(autohide) = autohide {
             let hotspot_window = Window::new();
             self.setup_autohide(
+                &instance,
                 &hotspot_window,
                 load_result.popup.clone(),
                 autohide,
@@ -172,6 +174,7 @@ impl Bar {
             Some(AutohideState {
                 lock_state: LockState::Unlocked,
                 hotspot_window,
+                timeout_id: None,
             })
         } else {
             None
@@ -248,6 +251,7 @@ impl Bar {
 
     fn setup_autohide(
         &self,
+        bar: &Rc<Bar>,
         hotspot_window: &Window,
         popup: Rc<Popup>,
         timeout: u64,
@@ -264,91 +268,28 @@ impl Bar {
         };
         hotspot_window.set_default_size(w, h);
 
-        let timeout_id = rc_mut!(None);
-
         {
-            let hotspot_window = hotspot_window.clone();
-            let timeout_id = timeout_id.clone();
-
             let event_controller = EventControllerMotion::new();
 
-            // TODO: Lots of repeated code and reference cloning going on -
-            //  can we try and tidy this up?
-
             {
-                let win = self.window.clone();
-                let hotspot_window = hotspot_window.clone();
-                let timeout_id = timeout_id.clone();
-                let autohide_state = self.autohide_state.clone();
-
-                popup.popover.connect_hide(move |popover| {
-                    let win = win.clone();
-                    let hotspot_window = hotspot_window.clone();
-                    let tid = timeout_id.clone();
-                    let popover = popover.clone();
-                    let autohide_state = autohide_state.clone();
-
-                    *timeout_id.borrow_mut() = Some(glib::timeout_add_local_once(
-                        Duration::from_millis(timeout),
-                        move || {
-                            if !popover.is_visible() {
-                                let mut autohide_state = autohide_state.borrow_mut();
-                                if autohide_state.as_ref().map(|state| state.lock_state)
-                                    == Some(LockState::Locked)
-                                {
-                                    autohide_state.as_mut().expect("to have value").lock_state =
-                                        LockState::LockedPendingClose;
-                                } else {
-                                    win.set_visible(false);
-                                    hotspot_window.set_visible(true);
-                                }
-                            }
-
-                            *tid.borrow_mut() = None;
-                        },
-                    ));
+                let popup = popup.clone();
+                let bar = bar.clone();
+                popup.popover.clone().connect_hide(move |_| {
+                    bar.schedule_autohide(timeout, Some(popup.clone()));
                 });
             }
 
             {
-                let win = self.window.clone();
-                let hotspot_window = hotspot_window.clone();
-                let timeout_id = timeout_id.clone();
-                let autohide_state = self.autohide_state.clone();
-
+                let popup = popup.clone();
+                let bar = bar.clone();
                 event_controller.connect_leave(move |_| {
-                    let win = win.clone();
-                    let hotspot_window = hotspot_window.clone();
-                    let tid = timeout_id.clone();
-                    let popup = popup.clone();
-                    let autohide_state = autohide_state.clone();
-
-                    *timeout_id.borrow_mut() = Some(glib::timeout_add_local_once(
-                        Duration::from_millis(timeout),
-                        move || {
-                            if !popup.visible() {
-                                let mut autohide_state = autohide_state.borrow_mut();
-                                if autohide_state.as_ref().map(|state| state.lock_state)
-                                    == Some(LockState::Locked)
-                                {
-                                    autohide_state.as_mut().expect("to have value").lock_state =
-                                        LockState::LockedPendingClose;
-                                } else {
-                                    win.set_visible(false);
-                                    hotspot_window.set_visible(true);
-                                }
-                            }
-
-                            *tid.borrow_mut() = None;
-                        },
-                    ));
+                    bar.schedule_autohide(timeout, Some(popup.clone()));
                 });
             }
 
+            let bar = bar.clone();
             event_controller.connect_enter(move |_, _, _| {
-                if let Some(id) = timeout_id.borrow_mut().take() {
-                    id.remove();
-                }
+                bar.cancel_autohide();
             });
 
             self.window.add_controller(event_controller);
@@ -365,6 +306,56 @@ impl Bar {
             });
 
             hotspot_window.add_controller(event_controller);
+        }
+    }
+
+    fn autohide_show(&self) {
+        self.window.set_visible(true);
+        if let Some(state) = self.autohide_state.borrow().as_ref() {
+            state.hotspot_window.set_visible(false);
+        }
+    }
+
+    fn cancel_autohide(&self) {
+        let timeout_id = self
+            .autohide_state
+            .borrow_mut()
+            .as_mut()
+            .and_then(|state| state.timeout_id.take());
+        if let Some(timeout_id) = timeout_id {
+            timeout_id.remove();
+        }
+    }
+
+    fn schedule_autohide(&self, timeout_ms: u64, popup: Option<Rc<Popup>>) {
+        self.cancel_autohide();
+
+        let win = self.window.clone();
+        let autohide_state = self.autohide_state.clone();
+
+        let timeout_id =
+            glib::timeout_add_local_once(Duration::from_millis(timeout_ms), move || {
+                let mut state = autohide_state.borrow_mut();
+                let Some(state) = state.as_mut() else {
+                    return;
+                };
+
+                state.timeout_id = None;
+
+                if popup.as_ref().is_some_and(|popup| popup.visible()) {
+                    return;
+                }
+
+                if state.lock_state == LockState::Locked {
+                    state.lock_state = LockState::LockedPendingClose;
+                } else {
+                    win.set_visible(false);
+                    state.hotspot_window.set_visible(true);
+                }
+            });
+
+        if let Some(state) = self.autohide_state.borrow_mut().as_mut() {
+            state.timeout_id = Some(timeout_id);
         }
     }
 
