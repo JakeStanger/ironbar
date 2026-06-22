@@ -1,3 +1,7 @@
+#[cfg(feature = "workspaces")]
+use crate::channels::BroadcastReceiverExt;
+#[cfg(feature = "workspaces")]
+use crate::clients::compositor::WorkspaceUpdate;
 use crate::config::{BarConfig, BarPosition, MarginConfig, ModuleConfig};
 use crate::modules::{BarModuleFactory, ModuleInfo, ModuleLocation, ModuleRef};
 use crate::popup::Popup;
@@ -142,6 +146,7 @@ impl Bar {
         );
 
         let autohide = config.autohide;
+        let autohide_show_on_workspace_change = config.autohide_show_on_workspace_change;
         let anchor_to_edges = config.anchor_to_edges;
         let margin = config.margin;
 
@@ -164,6 +169,11 @@ impl Bar {
                 gtk_layer_shell::Layer::Top,
                 monitor,
             );
+
+            #[cfg(feature = "workspaces")]
+            if let Some(autohide_show_on_workspace_change) = autohide_show_on_workspace_change {
+                self.setup_workspace_reveal(&instance, autohide_show_on_workspace_change);
+            }
 
             if start_hidden {
                 hotspot_window.set_visible(true);
@@ -302,6 +312,26 @@ impl Bar {
 
             hotspot_window.add_controller(event_controller);
         }
+    }
+
+    #[cfg(feature = "workspaces")]
+    fn setup_workspace_reveal(&self, bar: &Rc<Bar>, timeout: u64) {
+        let client = match self.ironbar.clients.borrow_mut().workspaces() {
+            Ok(client) => client,
+            Err(err) => {
+                tracing::warn!("Failed to subscribe to workspace events: {err:?}");
+                return;
+            }
+        };
+
+        client.subscribe().recv_glib(bar, move |bar, event| {
+            if let WorkspaceUpdate::Focus { new, .. } = event
+                && new.monitor == bar.monitor_name()
+            {
+                bar.autohide_show();
+                bar.schedule_autohide(timeout, None);
+            }
+        });
     }
 
     fn autohide_show(&self) {

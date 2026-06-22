@@ -409,6 +409,11 @@ pub struct BarConfig {
     /// **Default**: `null`
     pub autohide: Option<u64>,
 
+    /// The duration in milliseconds for which the bar is shown after a workspace switch
+    ///
+    /// **Default**: `null`
+    pub autohide_show_on_workspace_change: Option<u64>,
+
     /// An array of modules to append to the start of the bar.
     /// Depending on the orientation, this is either the top of the left edge.
     ///
@@ -438,6 +443,7 @@ impl Default for BarConfig {
             height: 42,
             start_hidden: None,
             autohide: None,
+            autohide_show_on_workspace_change: None,
             start: None,
             center: None,
             end: None,
