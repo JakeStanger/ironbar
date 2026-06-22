@@ -297,12 +297,10 @@ impl Bar {
 
         {
             let event_controller = EventControllerMotion::new();
-            let hotspot_win = hotspot_window.clone();
-            let win = self.window.clone();
 
+            let bar = bar.clone();
             event_controller.connect_motion(move |_, _, _| {
-                hotspot_win.set_visible(false);
-                win.set_visible(true);
+                bar.autohide_show();
             });
 
             hotspot_window.add_controller(event_controller);
