@@ -294,10 +294,11 @@ pub enum BarPosition {
 #[derive(Debug, Default, Deserialize, Copy, Clone, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 #[cfg_attr(feature = "extras", derive(JsonSchema))]
-pub enum AutohideListner {
+pub enum AutohideListener {
     #[default]
-    Motion,
+    Hover,
     Scroll,
+    Click,
 }
 
 #[derive(Debug, Default, Deserialize, Copy, Clone, PartialEq, Eq)]
@@ -418,10 +419,11 @@ pub struct BarConfig {
     /// **Default**: `null`
     pub autohide: Option<u64>,
 
-    /// Type of listener for revealing the hidden bar
+    /// Lister used for revealing the bar
+    /// Options: Hover, Scroll, Click
     ///
     /// **Default**: `motion`
-    pub autohide_listener: AutohideListner,
+    pub autohide_listener: AutohideListener,
 
     /// An array of modules to append to the start of the bar.
     /// Depending on the orientation, this is either the top of the left edge.
@@ -452,7 +454,7 @@ impl Default for BarConfig {
             height: 42,
             start_hidden: None,
             autohide: None,
-            autohide_listener: AutohideListner::Motion,
+            autohide_listener: AutohideListener::Hover,
             start: None,
             center: None,
             end: None,
