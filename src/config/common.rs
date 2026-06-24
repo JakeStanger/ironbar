@@ -18,7 +18,7 @@ use tracing::trace;
 ///
 /// For information on the Script type, and embedding scripts in strings,
 /// see [here](script).
-/// For information on styling, please see the [styling guide](styling-guide).
+/// For information on styling, please see the [styling guide](/guides/styling-guide).
 #[derive(Debug, Default, Deserialize, Clone)]
 #[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
 pub struct CommonConfig {
@@ -63,6 +63,7 @@ pub struct CommonConfig {
     /// **Valid options**: `slide_start`, `slide_end`, `crossfade`, `none`
     /// <br>
     /// **Default**: `slide_start`
+    #[cfg_attr(feature = "extras", schemars(extend("default" = "slide_start")))]
     pub transition_type: Option<TransitionType>,
 
     /// The length in milliseconds
@@ -71,6 +72,7 @@ pub struct CommonConfig {
     /// Note this has no effect if `show_if` is not configured.
     ///
     /// **Default**: `250`
+    #[cfg_attr(feature = "extras", schemars(extend("default" = 250)))]
     pub transition_duration: Option<u32>,
 
     /// A [script](scripts) to run when the module is left-clicked.
@@ -177,7 +179,8 @@ pub struct CommonConfig {
     /// of smooth scrolling on trackpad.
     ///
     /// **Default**: `1.0`
-    pub smooth_scroll_speed: Option<f64>,
+    #[serde(default = "default_smooth_scroll_speed")]
+    pub smooth_scroll_speed: f64,
 
     /// A [script](scripts) to run when the cursor begins hovering over the module.
     ///
@@ -206,6 +209,10 @@ pub struct CommonConfig {
     /// Prevents the popup from opening on-click for this widget.
     #[serde(default)]
     pub disable_popup: bool,
+}
+
+fn default_smooth_scroll_speed() -> f64 {
+    1.0
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -347,7 +354,7 @@ impl CommonConfig {
         let scroll_up_script = self.on_scroll_up.map(Script::new_polling);
         let scroll_down_script = self.on_scroll_down.map(Script::new_polling);
 
-        let scroll_speed = self.smooth_scroll_speed.unwrap_or(1.0);
+        let scroll_speed = self.smooth_scroll_speed;
         let curr_scroll = Cell::new(0.0);
 
         event_controller.connect_scroll(move |_, _dx, dy| {
