@@ -87,6 +87,16 @@ fn run_with_args() {
     }
 
     #[cfg(feature = "extras")]
+    if args.print_ipc_schema {
+        let schema = schemars::schema_for!(ipc::Command);
+        println!(
+            "{}",
+            serde_json::to_string_pretty(&schema).expect("to be serializable")
+        );
+        return;
+    }
+
+    #[cfg(feature = "extras")]
     if let Some(shell) = args.print_completions {
         use clap::CommandFactory;
 

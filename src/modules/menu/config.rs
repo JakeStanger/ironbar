@@ -89,7 +89,7 @@ pub struct MenuModule {
     /// Can be used with `truncate` options
     /// to customise how item labels are truncated.
     ///
-    /// **Default**: `null`
+    /// Setting `height` will cause this to default to `400`.
     pub(super) width: Option<i32>,
 
     /// Label to show on the menu button on the bar.
@@ -108,6 +108,11 @@ pub struct MenuModule {
     /// Size of the icon to display in menu entries.
     pub(super) app_icon_size: i32,
 
+    /// Command used to launch applications.
+    ///
+    /// **Default**: `gtk-launch`
+    pub launch_command: String,
+
     // -- common --
     /// Truncate options to apply to (sub)menu item labels.
     ///
@@ -119,11 +124,6 @@ pub struct MenuModule {
     /// See [common options](module-level-options#common-options).
     #[serde(flatten)]
     pub common: Option<CommonConfig>,
-
-    /// Command used to launch applications.
-    ///
-    /// **Default**: `gtk-launch`
-    pub launch_command: String,
 }
 
 impl Default for MenuModule {

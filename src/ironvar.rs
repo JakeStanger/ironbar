@@ -1,4 +1,4 @@
-#![doc = include_str!("../docs/Ironvars.md")]
+#![doc = include_str!("../docs/dynamic content/Ironvars.md")]
 
 use crate::channels::SyncSenderExt;
 use crate::{arc_rw, read_lock, write_lock};

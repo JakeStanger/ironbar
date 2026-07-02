@@ -40,7 +40,12 @@ pub enum BrightnessDataSource {
 #[serde(default)]
 pub struct BrightnessProfile {
     /// The format string to use for the widget button label.
-    /// For available tokens, see [below](#formatting-tokens).
+    ///
+    /// The following tokens can be used:
+    ///
+    /// | Token          | Description                            |
+    /// |----------------|----------------------------------------|
+    /// | `{percentage}` | The active brightness percentage.      |
     ///
     /// **Default**: `{percentage}%`
     format: String,
