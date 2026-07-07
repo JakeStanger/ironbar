@@ -35,6 +35,9 @@ pub struct Client {
     #[cfg(feature = "workspaces+hyprland")]
     workspace: TxRx<WorkspaceUpdate>,
 
+    #[cfg(feature = "workspaces+hyprland")]
+    use_lua_dispatch: bool,
+
     #[cfg(feature = "keyboard+hyprland")]
     keyboard_layout: TxRx<KeyboardLayoutUpdate>,
 
@@ -47,6 +50,8 @@ impl Client {
         let instance = Self {
             #[cfg(feature = "workspaces+hyprland")]
             workspace: TxRx::new(),
+            #[cfg(feature = "workspaces+hyprland")]
+            use_lua_dispatch: detect_lua_config(),
             #[cfg(feature = "keyboard+hyprland")]
             keyboard_layout: TxRx::new(),
             #[cfg(feature = "bindmode+hyprland")]
@@ -406,9 +411,15 @@ impl Client {
 #[cfg(feature = "workspaces+hyprland")]
 impl super::WorkspaceClient for Client {
     fn focus(&self, id: i64) {
-        let identifier = WorkspaceIdentifierWithSpecial::Id(id as i32);
+        let res = if self.use_lua_dispatch {
+            let arg = format!("{{workspace=\"{id}\"}}");
+            Dispatch::call(DispatchType::Custom("hl.dsp.focus", &arg))
+        } else {
+            let identifier = WorkspaceIdentifierWithSpecial::Id(id as i32);
+            Dispatch::call(DispatchType::Workspace(identifier))
+        };
 
-        if let Err(e) = Dispatch::call(DispatchType::Workspace(identifier)) {
+        if let Err(e) = res {
             error!("Couldn't focus workspace '{id}': {e:#}");
         }
     }
@@ -494,6 +505,23 @@ impl KeyboardLayoutClient for Client {
 impl BindModeClient for Client {
     fn subscribe(&self) -> super::Result<Receiver<BindModeUpdate>> {
         Ok(self.bindmode.tx.subscribe())
+    }
+}
+
+#[cfg(feature = "workspaces+hyprland")]
+fn detect_lua_config() -> bool {
+    match std::process::Command::new("hyprctl")
+        .arg("systeminfo")
+        .output()
+    {
+        Ok(output) => String::from_utf8_lossy(&output.stdout).lines().any(|line| {
+            let line = line.trim();
+            line.starts_with("configProvider:") && line.contains("lua")
+        }),
+        Err(err) => {
+            warn!("Failed to detect Hyprland config provider, assuming legacy: {err}");
+            false
+        }
     }
 }
 
