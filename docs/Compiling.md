@@ -37,7 +37,7 @@ pacman -S gtk4 gtk4-layer-shell dbus pkg-config
 # for volume support
 pacman -S libpulse
 # for keyboard support
-pacman -S libinput
+pacman -S libinput libevdev
 # for lua/cairo support
 pacman -S luajit lua51-lgi
 ```
@@ -58,7 +58,7 @@ apt install build-essential libgtk-4-dev libgtk4-layer-shell-dev libdbus-1-dev
 # for volume support
 apt install libpulse-dev
 # for keyboard support
-apt install libinput-dev
+apt install libinput-dev libevdev-dev
 # for lua/cairo support
 apt install libluajit-5.1-dev
 ```
@@ -80,7 +80,7 @@ dnf install gtk4-devel gtk4-layer-shell-devel dbus-devel pkgconf-pkg-config
 # for volume support
 dnf install pulseaudio-libs-devel
 # for keyboard support
-dnf install libinput-devel
+dnf install libinput-devel libevdev-devel
 # for lua/cairo support
 dnf install luajit-devel
 ```
