@@ -24,8 +24,10 @@ impl Drop for InhibitCookie {
 }
 
 fn gtk_inhibit() -> Option<InhibitCookie> {
-    let id = get_app().inhibit(
-        None::<&gtk::Window>,
+    let app = get_app();
+    let window = app.windows().into_iter().next();
+    let id = app.inhibit(
+        window.as_ref(),
         ApplicationInhibitFlags::IDLE,
         Some("Ironbar inhibit"),
     );
