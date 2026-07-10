@@ -279,7 +279,7 @@ impl BluetoothModule {
             String::new()
         };
 
-        str.replace("{device_address}", &format!("{}", &device.address))
+        str.replace("{device_address}", &format!("{}", device.address))
             .replace("{device_status}", status)
             .replace("{device_alias}", &device.alias)
             .replace("{device_battery_percent}", &battery_percent)

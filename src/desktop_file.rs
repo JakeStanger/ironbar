@@ -241,7 +241,7 @@ impl DesktopFiles {
         let app_id_lower = app_id.to_lowercase();
 
         // first pass - check name for exact match
-        for (_, file_ref) in files.iter_mut() {
+        for file_ref in files.values_mut() {
             let file = file_ref.get().await?;
             if let Some(name) = &file.name
                 && name.eq_ignore_ascii_case(app_id)
@@ -251,7 +251,7 @@ impl DesktopFiles {
         }
 
         // second pass - check name for partial match
-        for (_, file_ref) in files.iter_mut() {
+        for file_ref in files.values_mut() {
             let file = file_ref.get().await?;
             if let Some(name) = &file.name
                 && name.to_lowercase().contains(&app_id_lower)
@@ -261,7 +261,7 @@ impl DesktopFiles {
         }
 
         // third pass - check remaining fields for partial match
-        for (_, file_ref) in files.iter_mut() {
+        for file_ref in files.values_mut() {
             let file = file_ref.get().await?;
 
             if let Some(name) = &file.exec

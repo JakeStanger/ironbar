@@ -430,11 +430,11 @@ impl MarqueeInner {
 
         if needs_scroll {
             if !self.is_scrolling.get() {
-                let duplicated_text = format!("{}{}{}", &*text, &self.mode.separator, &*text);
+                let duplicated_text = format!("{}{}{}", *text, self.mode.separator, *text);
                 self.label.set_label(&duplicated_text);
 
                 let reset_at =
-                    pixel_width(&self.label, &format!("{}{}", &*text, &self.mode.separator)) as f64;
+                    pixel_width(&self.label, &format!("{}{}", *text, self.mode.separator)) as f64;
                 self.reset_at_cached.set(Some(reset_at));
 
                 self.pause_started_at.set(Some(Instant::now()));
