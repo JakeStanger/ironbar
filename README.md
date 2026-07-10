@@ -250,11 +250,12 @@ All are welcome, but I ask a few basic things to help make things easier. Please
 
 ## Acknowledgements
 
-- [Waybar](https://github.com/Alexays/Waybar) - A lot of the initial inspiration, and a pretty great bar.
+- [Waybar](https://github.com/Alexays/Waybar) - A lot of the initial inspiration, and a pretty great bar
 - [Rustbar](https://github.com/zeroeightysix/rustbar) - Served as a good demo for writing a basic GTK bar in Rust
 - [Smithay Client Toolkit](https://github.com/Smithay/client-toolkit) - Essential in being able to communicate to Wayland
 - [gtk-layer-shell](https://github.com/wmww/gtk-layer-shell) - Ironbar and many other projects would be impossible without this
-- [Mixxc](https://github.com/Elvyria/Mixxc) - Basis for Ironbar's PulseAudio client code and a cool standalone volume widget.
+- [Mixxc](https://github.com/Elvyria/Mixxc) - Basis for Ironbar's PulseAudio client code and a cool standalone volume widget
+- [JetBrains](https://www.jetbrains.com/community/opensource/#support) - Supply a free all products pack licence
 
 ---
 <div align="center">
@@ -266,3 +267,5 @@ All are welcome, but I ask a few basic things to help make things easier. Please
     <img src="https://api.star-history.com/svg?repos=jakestanger/ironbar&type=date&legend=top-left)](https://www.star-history.com/#jakestanger/ironbar&type=date&legend=top-left"> </img>
 </div>
 <br>
+
+---
