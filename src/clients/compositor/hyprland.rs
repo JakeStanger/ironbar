@@ -12,6 +12,12 @@ use hyprland::dispatch::{Dispatch, DispatchType, WorkspaceIdentifierWithSpecial}
 use hyprland::event_listener::EventListener;
 use hyprland::prelude::*;
 use hyprland::shared::{HyprDataVec, WorkspaceType};
+#[cfg(feature = "workspaces+hyprland")]
+use serde::Deserialize;
+#[cfg(feature = "workspaces+hyprland")]
+use std::io::{Read, Write};
+#[cfg(feature = "workspaces+hyprland")]
+use std::os::unix::net::UnixStream;
 use tokio::sync::broadcast::{Receiver, Sender, channel};
 use tracing::{debug, error, info, warn};
 
@@ -510,19 +516,36 @@ impl BindModeClient for Client {
 
 #[cfg(feature = "workspaces+hyprland")]
 fn detect_lua_config() -> bool {
-    match std::process::Command::new("hyprctl")
-        .arg("systeminfo")
-        .output()
-    {
-        Ok(output) => String::from_utf8_lossy(&output.stdout).lines().any(|line| {
-            let line = line.trim();
-            line.starts_with("configProvider:") && line.contains("lua")
-        }),
+    match get_hyprland_config_provider() {
+        Ok(provider) => provider == "lua",
         Err(err) => {
             warn!("Failed to detect Hyprland config provider, assuming legacy: {err}");
             false
         }
     }
+}
+
+#[cfg(feature = "workspaces+hyprland")]
+#[derive(Deserialize)]
+struct HyprlandStatus {
+    #[serde(rename = "configProvider")]
+    config_provider: String,
+}
+
+#[cfg(feature = "workspaces+hyprland")]
+fn get_hyprland_config_provider() -> std::result::Result<String, Box<dyn std::error::Error>> {
+    let runtime_dir = std::env::var("XDG_RUNTIME_DIR")
+        .or_else(|_| std::env::var("UID").map(|uid| format!("/run/user/{uid}")))?;
+    let instance = std::env::var("HYPRLAND_INSTANCE_SIGNATURE")?;
+    let socket_path = format!("{runtime_dir}/hypr/{instance}/.socket.sock");
+
+    let mut stream = UnixStream::connect(socket_path)?;
+    stream.write_all(b"j/status")?;
+
+    let mut response = String::new();
+    stream.read_to_string(&mut response)?;
+
+    Ok(serde_json::from_str::<HyprlandStatus>(&response)?.config_provider)
 }
 
 fn get_workspace_name(name: WorkspaceType) -> String {
