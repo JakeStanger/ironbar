@@ -11,6 +11,16 @@ keywords = ["gtk", "bar", "wayland", "wlroots", "gtk-layer-shell"]
 [package.metadata.binstall]
 pkg-url = "{ repo }/releases/download/v{ version }/{ name }-v{ version }-{ target-arch }{ archive-suffix }"
 
+[package.metadata.deb]
+maintainer = "Jake Stanger"
+copyright = "© copyright 2022 Jake Stanger"
+extended-description = "A customisable Wayland GTK4 bar."
+depends = "$auto"
+assets = [
+    ["target/release/ironbar", "usr/bin/", "755"],
+    ["ironbar.service", "usr/lib/systemd/user/ironbar.service", "644"],
+]
+
 [features]
 default = [
     "battery",
@@ -210,13 +220,3 @@ clap_complete = {  version = "4.6.5", optional = true }
 
 [build-dependencies]
 vergen-git2 = "9.1.0"
-
-[package.metadata.deb]
-maintainer = "Jake Stanger"
-copyright = "© copyright 2022 Jake Stanger"
-extended-description = "A customisable Wayland GTK4 bar."
-depends = "$auto"
-assets = [
-    ["target/release/ironbar", "usr/bin/", "755"],
-    ["ironbar.service", "usr/lib/systemd/user/ironbar.service", "644"],
-]
