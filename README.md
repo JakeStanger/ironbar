@@ -264,7 +264,13 @@ All are welcome, but I ask a few basic things to help make things easier. Please
       <img src = "https://contrib.rocks/image?repo=jakestanger/ironbar"/>
     </a>
     <p> </p>
-    <img src="https://api.star-history.com/svg?repos=jakestanger/ironbar&type=date&legend=top-left)](https://www.star-history.com/#jakestanger/ironbar&type=date&legend=top-left"> </img>
+    <a href="https://www.star-history.com/?repos=jakestanger%2Fironbar&type=date&legend=top-left">
+     <picture>
+       <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=jakestanger/ironbar&type=date&theme=dark&legend=top-left&sealed_token=s0-4JcHmtl5XFZubXLTaEyLNJtTrNyHORiQG9d2-s1pb0wEpok9t67tt22A0M69dRqy6WOxt0zK3L8g4ZTLU2H1nMx26O2y7oUFe3_PyldKinmMqqzPuFf4fy8VTTZzD-9wnHCho_n1A1lEycuMo4ZcqqInqtEO2FQ8z1q6LQVjGgHNpvFfC6955nw89" />
+       <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=jakestanger/ironbar&type=date&legend=top-left&sealed_token=s0-4JcHmtl5XFZubXLTaEyLNJtTrNyHORiQG9d2-s1pb0wEpok9t67tt22A0M69dRqy6WOxt0zK3L8g4ZTLU2H1nMx26O2y7oUFe3_PyldKinmMqqzPuFf4fy8VTTZzD-9wnHCho_n1A1lEycuMo4ZcqqInqtEO2FQ8z1q6LQVjGgHNpvFfC6955nw89" />
+       <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=jakestanger/ironbar&type=date&legend=top-left&sealed_token=s0-4JcHmtl5XFZubXLTaEyLNJtTrNyHORiQG9d2-s1pb0wEpok9t67tt22A0M69dRqy6WOxt0zK3L8g4ZTLU2H1nMx26O2y7oUFe3_PyldKinmMqqzPuFf4fy8VTTZzD-9wnHCho_n1A1lEycuMo4ZcqqInqtEO2FQ8z1q6LQVjGgHNpvFfC6955nw89" />
+     </picture>
+    </a>
 </div>
 <br>
 
