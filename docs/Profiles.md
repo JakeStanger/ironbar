@@ -46,12 +46,12 @@ More specific values for state matchers with the same value will take precedent.
 
 ```corn
 let {
-    $battery = {
-      type = "battery"
-    
-      format = "HIGH {percentage}%"
-    
-      profiles = {
+  $battery = {
+    type = "battery"
+  
+    format = "HIGH {percentage}%"
+  
+    profiles = {
       low.when = { percent = 20 }
       low.format = "LOW {percentage}%"
     
