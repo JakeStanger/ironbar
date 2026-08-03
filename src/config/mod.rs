@@ -4,6 +4,7 @@ mod r#impl;
 mod layout;
 mod marquee;
 mod profiles;
+mod sources;
 mod truncate;
 
 #[cfg(feature = "battery")]
@@ -55,6 +56,7 @@ pub use self::common::{CommonConfig, ModuleJustification, ModuleOrientation, Tra
 pub use self::layout::LayoutConfig;
 pub use self::marquee::{MarqueeMode, MarqueeOnHover};
 pub use self::profiles::{Profile, ProfileUpdateEvent, Profiles, State};
+pub use self::sources::{Builtin, ConfigSource, CssSource, resolve_sources};
 pub use self::truncate::{EllipsizeMode, TruncateMode};
 
 use gtk::prelude::ObjectExt;
@@ -97,10 +99,7 @@ pub fn get_double_click_time_ms() -> u64 {
 }
 use crate::Ironbar;
 use crate::modules::{AnyModuleFactory, ModuleFactory, ModuleInfo, ModuleRef};
-use crate::style::CssSource;
-use cfg_if::cfg_if;
 use color_eyre::Result;
-use config::FileFormat;
 #[cfg(feature = "extras")]
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -552,26 +551,6 @@ impl FromStr for ConfigLocation {
     }
 }
 
-impl Default for ConfigLocation {
-    fn default() -> Self {
-        Self::Custom(Self::default_path())
-    }
-}
-
-impl ConfigLocation {
-    pub fn default_path() -> PathBuf {
-        dirs::config_dir()
-            .unwrap_or_default()
-            .clone()
-            .join("ironbar/config")
-    }
-
-    #[cfg(not(feature = "cli"))]
-    pub fn from_env(key: &str) -> Option<Self> {
-        std::env::var(key).map(PathBuf::from).ok().map(Self::Custom)
-    }
-}
-
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub enum ErrorLevel {
     None,
@@ -591,65 +570,17 @@ impl ErrorLevel {
 
 impl Config {
     #[cfg(feature = "config")]
-    pub fn load(
-        config_location: ConfigLocation,
-        css_location: Option<ConfigLocation>,
-    ) -> (Config, CssSource, ErrorLevel) {
-        cfg_if! {
-            if #[cfg(feature = "config+corn")] {
-                const CONFIG_MINIMAL: (&str, FileFormat) = (include_str!("../../examples/minimal/config.corn"), FileFormat::Corn);
-                const CONFIG_DESKTOP: (&str, FileFormat) = (include_str!("../../examples/desktop/config.corn"), FileFormat::Corn);
-            } else if #[cfg(feature = "config+json")] {
-                const CONFIG_MINIMAL: (&str, FileFormat) = (include_str!("../../examples/minimal/config.json"), FileFormat::Json);
-                const CONFIG_DESKTOP: (&str, FileFormat) = (include_str!("../../examples/desktop/config.json"), FileFormat::Json);
-            } else if #[cfg(feature = "config+yaml")] {
-                const CONFIG_MINIMAL: (&str, FileFormat) = (include_str!("../../examples/minimal/config.yaml"), FileFormat::Yaml);
-                const CONFIG_DESKTOP: (&str, FileFormat) = (include_str!("../../examples/desktop/config.yaml"), FileFormat::Yaml);
-            } else if #[cfg(feature = "config+toml")] {
-                const CONFIG_MINIMAL: (&str, FileFormat) = (include_str!("../../examples/minimal/config.toml"), FileFormat::Toml);
-                const CONFIG_DESKTOP: (&str, FileFormat) = (include_str!("../../examples/desktop/config.toml"), FileFormat::Toml);
-            }
-        }
-
-        const CSS_MINIMAL: CssSource =
-            CssSource::String(include_str!("../../examples/minimal/style.css"));
-
-        const CSS_DESKTOP: CssSource =
-            CssSource::String(include_str!("../../examples/desktop/style.css"));
-
+    pub fn load(source: &ConfigSource) -> (Config, ErrorLevel) {
         let mut error_level = ErrorLevel::None;
 
-        let config_builder = config::Config::builder();
-
-        let css_source = match css_location.unwrap_or_else(|| config_location.clone()) {
-            ConfigLocation::Minimal => CSS_MINIMAL,
-            ConfigLocation::Desktop => CSS_DESKTOP,
-            ConfigLocation::Custom(mut path) => {
-                if path.is_dir() {
-                    path = path.join("style.css");
-                } else if path.extension().is_none_or(|ext| ext != "css") {
-                    path = path.parent().unwrap_or(&path).join("style.css");
-                }
-
-                if path.exists() {
-                    CssSource::File(path)
-                } else {
-                    error_level = error_level.error();
-                    error!(
-                        "styles at '{}' not found, falling back to minimal theme",
-                        path.display()
-                    );
-                    CSS_MINIMAL
-                }
+        let config_builder = match source {
+            ConfigSource::Builtin(b) => {
+                let (content, format) = b.config();
+                config::Config::builder().add_source(config::File::from_str(content, format))
             }
-        };
-
-        let config_builder = match config_location {
-            ConfigLocation::Minimal => config_builder
-                .add_source(config::File::from_str(CONFIG_MINIMAL.0, CONFIG_MINIMAL.1)),
-            ConfigLocation::Desktop => config_builder
-                .add_source(config::File::from_str(CONFIG_DESKTOP.0, CONFIG_DESKTOP.1)),
-            ConfigLocation::Custom(path) => config_builder.add_source(config::File::from(path)),
+            ConfigSource::File(path) => {
+                config::Config::builder().add_source(config::File::from(path.as_path()))
+            }
         };
 
         let mut config: Config = config_builder
@@ -659,8 +590,9 @@ impl Config {
             .unwrap_or_else(|err| {
                 error_level = error_level.error();
                 error!("Error loading config: {err:?}");
+                let (content, format) = Builtin::Minimal.config();
                 config::Config::builder()
-                    .add_source(config::File::from_str(CONFIG_MINIMAL.0, CONFIG_MINIMAL.1))
+                    .add_source(config::File::from_str(content, format))
                     .build()
                     .expect("should be a valid config")
                     .try_deserialize()
@@ -684,14 +616,11 @@ impl Config {
         // GTK's setting will be set lazily on first use (after GTK is initialized)
         set_double_click_time(config.double_click_time.clone());
 
-        (config, css_source, error_level)
+        (config, error_level)
     }
 
     #[cfg(not(feature = "config"))]
-    pub fn load(
-        config_location: ConfigLocation,
-        css_location: Option<ConfigLocation>,
-    ) -> (Config, CssSource) {
+    pub fn load(config_source: &ConfigSource) -> (Config, ErrorLevel) {
         panic!(
             "Ironbar has been configured without config support. This won't work. Please reconfigure with at least one `config` feature flag enabled."
         )
