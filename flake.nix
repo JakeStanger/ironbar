@@ -5,7 +5,6 @@
     nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
     flake-compat.url = "github:edolstra/flake-compat";
     crane.url = "github:ipetkov/crane";
-    nix-systems.url = "github:nix-systems/default-linux";
   };
 
   outputs =
@@ -13,13 +12,14 @@
       self,
       nixpkgs,
       crane,
-      nix-systems,
       ...
     }:
     let
       forAllSystems =
         function:
-        nixpkgs.lib.genAttrs (import nix-systems) (system: function nixpkgs.legacyPackages.${system});
+        nixpkgs.lib.genAttrs nixpkgs.lib.systems.flakeExposed (
+          system: function nixpkgs.legacyPackages.${system}
+        );
     in
     {
       # Devshell
