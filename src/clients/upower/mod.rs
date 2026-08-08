@@ -29,6 +29,10 @@ pub struct State {
     pub time_to_full: i64,
     /// Number of seconds until empty, if discharging.
     pub time_to_empty: i64,
+    /// Energy drained from the battery in watts.
+    /// If positive, it's being discharged,
+    /// if negative it's being charged.
+    pub energy_rate: f64,
 }
 
 impl TryFrom<HashMap<String, OwnedValue>> for State {
@@ -41,6 +45,7 @@ impl TryFrom<HashMap<String, OwnedValue>> for State {
             state: properties["State"].downcast_ref::<BatteryState>()?,
             time_to_full: properties["TimeToFull"].downcast_ref::<i64>()?,
             time_to_empty: properties["TimeToEmpty"].downcast_ref::<i64>()?,
+            energy_rate: properties["EnergyRate"].downcast_ref::<f64>()?,
         })
     }
 }
