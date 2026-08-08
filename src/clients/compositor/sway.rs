@@ -76,6 +76,7 @@ impl From<Node> for Workspace {
             name: node.name.unwrap_or_default(),
             monitor: node.output.unwrap_or_default(),
             visibility,
+            windows: 0,
         }
     }
 }
@@ -90,6 +91,7 @@ impl From<swayipc_async::Workspace> for Workspace {
             name: workspace.name,
             monitor: workspace.output,
             visibility,
+            windows: 0,
         }
     }
 }
