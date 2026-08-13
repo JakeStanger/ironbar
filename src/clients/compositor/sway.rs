@@ -16,18 +16,31 @@ impl super::WorkspaceClient for Client {
         spawn(async move {
             let mut client = client.lock().await;
 
-            let name = client
+            let workspace = client
                 .get_workspaces()
                 .await?
                 .into_iter()
-                .find(|w| w.id == id)
-                .map(|w| w.name);
+                .find(|w| w.id == id);
 
-            let Some(name) = name else {
+            let Some(workspace) = workspace else {
                 return Err(Report::msg(format!("couldn't find workspace with id {id}")));
             };
 
-            if let Err(e) = client.run_command(format!("workspace {name}")).await {
+            // Numbered workspaces are focused by number rather than name.
+            // The name can be changed by another process (e.g. a
+            // workspace renamer reacting to the focus-change this same
+            // command causes) in the gap between the query above and the
+            // command below, which previously made sway create a new,
+            // empty workspace instead of focusing the existing one. The
+            // number is stable across such renames, so prefer it when
+            // available; sway reports -1 for workspaces with no number.
+            let command = if workspace.num >= 0 {
+                format!("workspace number {}", workspace.num)
+            } else {
+                format!("workspace {}", workspace.name)
+            };
+
+            if let Err(e) = client.run_command(command).await {
                 return Err(Report::msg(format!(
                     "Couldn't focus workspace '{id}': {e:#}"
                 )));
