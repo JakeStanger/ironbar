@@ -59,9 +59,6 @@ fn install_tracing(debug: bool) -> Result<WorkerGuard> {
     let filter_layer =
         EnvFilter::try_from_env("IRONBAR_LOG").or_else(|_| EnvFilter::try_new(default_log))?;
 
-    let file_filter_layer = EnvFilter::try_from_env("IRONBAR_FILE_LOG")
-        .or_else(|_| EnvFilter::try_new(DEFAULT_FILE_LOG))?;
-
     let log_path = data_dir().unwrap_or(env::current_dir()?).join("ironbar");
 
     let appender = tracing_appender::rolling::Builder::new()
@@ -84,16 +81,23 @@ fn install_tracing(debug: bool) -> Result<WorkerGuard> {
 
     let console_layer = base_layer!().with_ansi(true);
 
-    let file_layer = base_layer!()
-        .with_writer(MakeFileWriter::new(file_writer))
-        .with_filter(file_filter_layer);
-
-    tracing_subscriber::registry()
+    let builder = tracing_subscriber::registry()
         .with(filter_layer)
         .with(ErrorLayer::default())
-        .with(file_layer)
-        .with(console_layer)
-        .init();
+        .with(console_layer);
+
+    if env::var("IRONBAR_FILE_LOG").unwrap_or_default() != "off" {
+        let file_filter_layer = EnvFilter::try_from_env("IRONBAR_FILE_LOG")
+            .or_else(|_| EnvFilter::try_new(DEFAULT_FILE_LOG))?;
+
+        let file_layer = base_layer!()
+            .with_writer(MakeFileWriter::new(file_writer))
+            .with_filter(file_filter_layer);
+
+        builder.with(file_layer).init();
+    } else {
+        builder.init();
+    }
 
     glib::log_set_writer_func(|level, fields| {
         const KEY_DOMAIN: &str = "GLIB_DOMAIN";
