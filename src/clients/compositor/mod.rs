@@ -45,7 +45,7 @@ impl Display for Compositor {
                 Self::Sway => "Sway",
                 #[cfg(any(feature = "hyprland"))]
                 Self::Hyprland => "Hyprland",
-                #[cfg(feature = "workspaces+niri")]
+                #[cfg(feature = "niri")]
                 Self::Niri => "Niri",
                 Self::Unsupported => "Unsupported",
             }
