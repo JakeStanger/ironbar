@@ -28,7 +28,37 @@ pub enum Response {
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub enum Action {
-    FocusWorkspace { reference: WorkspaceReferenceArg },
+    FocusWorkspace {
+        reference: WorkspaceReferenceArg,
+    },
+    #[cfg(feature = "keyboard+niri")]
+    SwitchLayout {
+        layout: LayoutSwitchTarget,
+    },
+}
+
+#[cfg(feature = "keyboard+niri")]
+#[derive(Serialize, Deserialize, Debug, Clone, Copy)]
+pub enum LayoutSwitchTarget {
+    Next,
+    Prev,
+    Index(u8),
+}
+
+#[cfg(feature = "keyboard+niri")]
+#[derive(Serialize, Deserialize, Debug, Clone, Default)]
+pub struct KeyboardLayouts {
+    pub names: Vec<String>,
+    pub current_idx: u8,
+}
+
+#[cfg(feature = "keyboard+niri")]
+impl KeyboardLayouts {
+    pub fn current(&self) -> Option<&str> {
+        self.names
+            .get(self.current_idx as usize)
+            .map(|x| x.as_str())
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
@@ -70,9 +100,25 @@ impl From<&Workspace> for IronWorkspace {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum Event {
-    WorkspacesChanged { workspaces: Vec<Workspace> },
-    WorkspaceActivated { id: u64, focused: bool },
-    WorkspaceUrgencyChanged { id: u64, urgent: bool },
+    WorkspacesChanged {
+        workspaces: Vec<Workspace>,
+    },
+    WorkspaceActivated {
+        id: u64,
+        focused: bool,
+    },
+    WorkspaceUrgencyChanged {
+        id: u64,
+        urgent: bool,
+    },
+    #[cfg(feature = "keyboard+niri")]
+    KeyboardLayoutsChanged {
+        keyboard_layouts: KeyboardLayouts,
+    },
+    #[cfg(feature = "keyboard+niri")]
+    KeyboardLayoutSwitched {
+        idx: u8,
+    },
     Other,
 }
 
