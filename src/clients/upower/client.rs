@@ -105,6 +105,9 @@ impl Client {
                             "TimeToEmpty" => {
                                 state.time_to_empty = value.downcast::<i64>().unwrap_or_default();
                             }
+                            "EnergyRate" => {
+                                state.energy_rate = value.downcast::<f64>().unwrap_or_default();
+                            }
                             _ => {}
                         }
                     }

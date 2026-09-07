@@ -15,6 +15,7 @@ fn base_state() -> State {
         state: BatteryState::Discharging,
         time_to_full: 0,
         time_to_empty: 20 * 60,
+        energy_rate: 10.0,
     }
 }
 
