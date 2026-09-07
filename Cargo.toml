@@ -1,6 +1,6 @@
 [package]
 name = "ironbar"
-version = "0.19.0"
+version = "0.20.0"
 edition = "2024"
 license = "MIT"
 description = "Customisable GTK Layer Shell wlroots/sway bar"
@@ -125,14 +125,17 @@ tray = ["system-tray"]
 volume = ["libpulse-binding"]
 
 workspaces = ["futures-lite"]
-"workspaces+all" = ["workspaces", "workspaces+sway", "workspaces+hyprland", "workspaces+niri"]
+"workspaces+all" = ["workspaces", "workspaces+sway", "workspaces+hyprland", "workspaces+niri", "workspaces+mangowm"]
 "workspaces+sway" = ["workspaces", "sway"]
 "workspaces+hyprland" = ["workspaces", "hyprland", "dep:serde_json"]
 "workspaces+niri" = ["workspaces", "niri"]
+"workspaces+mangowm" = ["workspaces", "mangowm"]
 
 sway = ["swayipc-async", "futures-lite"]
 
 niri = ["dep:serde_json"]
+
+mangowm = []
 
 extras = ["dep:schemars", "dep:clap_complete"]
 
