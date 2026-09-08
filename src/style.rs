@@ -1,21 +1,15 @@
 use crate::channels::{AsyncSenderExt, MpscReceiverExt};
+use crate::config::CssSource;
 use crate::spawn;
 use gtk::ffi::GTK_STYLE_PROVIDER_PRIORITY_USER;
 use gtk::{CssProvider, gio};
 use notify::event::ModifyKind;
 use notify::{Event, EventKind, RecursiveMode, Result, Watcher, recommended_watcher};
 use std::env;
-use std::path::PathBuf;
 use std::time::Duration;
 use tokio::sync::mpsc;
 use tokio::time::sleep;
 use tracing::{debug, error, info};
-
-#[derive(Debug)]
-pub enum CssSource {
-    String(&'static str),
-    File(PathBuf),
-}
 
 /// Attempts to load CSS file at the given path
 /// and attach if to the current GTK application.
@@ -26,8 +20,8 @@ pub fn load_css(source: &CssSource) {
     let provider = CssProvider::new();
 
     let path = match source {
-        CssSource::String(str) => {
-            provider.load_from_string(str);
+        CssSource::Builtin(b) => {
+            provider.load_from_string(b.css());
             debug!("loaded built-in css");
             None
         }
