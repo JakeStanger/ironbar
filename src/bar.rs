@@ -1,10 +1,13 @@
-use crate::config::{BarConfig, BarPosition, MarginConfig, ModuleConfig};
+use crate::config::{AutohideListener, BarConfig, BarPosition, MarginConfig, ModuleConfig};
 use crate::modules::{BarModuleFactory, ModuleInfo, ModuleLocation, ModuleRef};
 use crate::popup::Popup;
 use crate::{Ironbar, rc_mut};
 use gtk::gdk::Monitor;
-use gtk::prelude::*;
-use gtk::{Application, ApplicationWindow, CenterBox, EventControllerMotion, Orientation, Window};
+use gtk::{
+    Application, ApplicationWindow, CenterBox, EventControllerMotion, EventControllerScroll,
+    EventControllerScrollFlags, Orientation, Window,
+};
+use gtk::{GestureClick, prelude::*};
 use gtk_layer_shell::LayerShell;
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -142,6 +145,7 @@ impl Bar {
         );
 
         let autohide = config.autohide;
+        let autohide_listener = config.autohide_listener;
         let anchor_to_edges = config.anchor_to_edges;
         let margin = config.margin;
 
@@ -155,6 +159,7 @@ impl Bar {
                 &hotspot_window,
                 load_result.popup.clone(),
                 autohide,
+                autohide_listener,
             );
             self.setup_layer_shell(
                 &hotspot_window,
@@ -253,6 +258,7 @@ impl Bar {
         hotspot_window: &Window,
         popup: Rc<Popup>,
         timeout: u64,
+        listener: AutohideListener,
     ) {
         hotspot_window.set_visible(false);
 
@@ -293,14 +299,33 @@ impl Bar {
         }
 
         {
-            let event_controller = EventControllerMotion::new();
             let bar = bar.clone();
 
-            event_controller.connect_motion(move |_, _, _| {
-                bar.autohide_show();
-            });
-
-            hotspot_window.add_controller(event_controller);
+            match listener {
+                AutohideListener::Hover => {
+                    let event_controller = EventControllerMotion::new();
+                    event_controller.connect_motion(move |_, _, _| {
+                        bar.autohide_show();
+                    });
+                    hotspot_window.add_controller(event_controller);
+                }
+                AutohideListener::Scroll => {
+                    let event_controller =
+                        EventControllerScroll::new(EventControllerScrollFlags::BOTH_AXES);
+                    event_controller.connect_scroll(move |_, _, _| {
+                        bar.autohide_show();
+                        glib::Propagation::Stop
+                    });
+                    hotspot_window.add_controller(event_controller);
+                }
+                AutohideListener::Click => {
+                    let event_controller = GestureClick::new();
+                    event_controller.connect_released(move |_, _, _, _| {
+                        bar.autohide_show();
+                    });
+                    hotspot_window.add_controller(event_controller);
+                }
+            }
         }
     }
 
