@@ -16,7 +16,7 @@ pub struct LuaEngine {
 
 impl LuaEngine {
     pub fn new(config_dir: &Path) -> Self {
-        let lua = Lua::new();
+        let lua = unsafe { Lua::unsafe_new() };
 
         if let Err(err) = lua
             .globals()
