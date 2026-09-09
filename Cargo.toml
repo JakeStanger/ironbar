@@ -84,7 +84,7 @@ bluetooth = ["dep:bluer"]
 
 brightness = ["zbus"]
 
-cairo = ["lua-src", "mlua"]
+cairo = ["mlua"]
 
 clipboard = ["dep:rustix"]
 
@@ -185,8 +185,7 @@ clap = { version = "4.6.1", optional = true, features = ["derive", "env"] }
 reqwest = { version = "0.13.4", default-features = false, features = ["default-tls", "http2"], optional = true }
 
 # cairo
-lua-src = { version = "551.0.0", optional = true }
-mlua = { version = "0.12.0", optional = true, features = ["luajit", "send"] }
+mlua = { version = "0.12.0", optional = true, features = ["lua55", "send"] }
 
 # keyboard
 colpetto = { version = "0.7.0", features = ["tokio", "tracing"], optional = true }
