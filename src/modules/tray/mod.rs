@@ -1,3 +1,4 @@
+mod diff;
 mod icon;
 mod interface;
 
@@ -498,6 +499,7 @@ fn on_update(
                 }
                 UpdateEvent::MenuDiff(diff) => {
                     trace!("received menu diff {diff:?}");
+                    menu_item.apply_menu_diff(&diff);
                 }
             }
         }
