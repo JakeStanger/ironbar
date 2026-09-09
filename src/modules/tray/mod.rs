@@ -186,6 +186,7 @@ impl Default for TrayModule {
 
 pub enum UiEvent {
     Menu(bool),
+    AboutToShow { address: String, path: String },
     Activate(ActivateRequest),
 }
 
@@ -250,6 +251,14 @@ impl Module<gtk::Box> for TrayModule {
                 match cmd {
                     UiEvent::Menu(open) => {
                         tx.send_expect(ModuleUpdateEvent::LockVisible(open)).await;
+                    }
+                    UiEvent::AboutToShow { address, path } => {
+                        debug!("requesting menu refresh for '{address}'");
+                        if let Err(err) =
+                            client.about_to_show_menuitem(address.clone(), path.clone(), 0).await
+                        {
+                            error!("{err:?}");
+                        }
                     }
                     UiEvent::Activate(action) => {
                         debug!("activating: {action:?}");
