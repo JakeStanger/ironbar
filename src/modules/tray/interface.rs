@@ -14,7 +14,7 @@ use gtk::{Button, Label, PopoverMenu};
 use std::path::PathBuf;
 use system_tray::client::ActivateRequest;
 use system_tray::item::{IconPixmap, Status, StatusNotifierItem, Tooltip};
-use system_tray::menu::ToggleState;
+use system_tray::menu::{MenuDiff, ToggleState};
 use tokio::sync::mpsc;
 use tracing::{debug, error, trace};
 
@@ -29,6 +29,15 @@ pub(crate) struct TrayMenu {
     tx: mpsc::Sender<UiEvent>,
     path: Option<String>,
     address: String,
+
+    /// The last full menu model received, retained so incremental
+    /// [`MenuDiff`]s (post-click property changes) have something to patch.
+    menu: Option<system_tray::menu::TrayMenu>,
+
+    /// The shortcut controller currently attached to the widget, retained so
+    /// the next rebuild can detach it — `add_controller` appends, and nothing
+    /// else ever removes.
+    shortcut_controller: Option<ShortcutController>,
 
     pub title: Option<String>,
     pub icon_name: Option<String>,
@@ -217,6 +226,8 @@ impl TrayMenu {
             icon_pixmap: item.icon_pixmap,
             path: None,
             address: address.to_owned(),
+            menu: None,
+            shortcut_controller: None,
         }
     }
 
@@ -298,7 +309,35 @@ impl TrayMenu {
         self.path = Some(menu.to_owned());
     }
 
-    pub fn set_menu_widget(&self, tray_menu: &system_tray::menu::TrayMenu) {
+    /// Replaces the menu with a freshly received full model and repaints.
+    pub fn set_menu_widget(&mut self, tray_menu: &system_tray::menu::TrayMenu) {
+        self.menu = Some(tray_menu.clone());
+        self.build_menu_widget();
+    }
+
+    /// Applies incremental dbusmenu property updates to the retained model and
+    /// repaints, so post-click changes (a moved radio selection, a new label)
+    /// become visible without the caller re-sending the whole menu.
+    pub fn apply_menu_diff(&mut self, diffs: &[MenuDiff]) {
+        match self.menu.as_mut() {
+            Some(menu) => super::diff::apply_menu_diffs(&mut menu.submenus, diffs),
+            None => {
+                // A diff arrived before any full menu — nothing to patch.
+                trace!("received menu diff with no menu to apply it to");
+                return;
+            }
+        }
+
+        self.build_menu_widget();
+    }
+
+    /// Rebuilds the popover's menu model, action group, and shortcuts from the
+    /// retained menu model.
+    fn build_menu_widget(&mut self) {
+        let Some(tray_menu) = self.menu.as_ref() else {
+            return;
+        };
+
         debug!("set menu");
 
         let action_group = SimpleActionGroup::new();
@@ -310,6 +349,16 @@ impl TrayMenu {
 
         self.popover.set_menu_model(Some(&model));
         self.widget.insert_action_group("menu", Some(&action_group));
+
+        // `insert_action_group` replaces the previous group by name, but
+        // `add_controller` only appends — detach the previous controller or
+        // they accumulate on the widget for the lifetime of the tray item.
+        if let Some(old) = self
+            .shortcut_controller
+            .replace(shortcut_controller.clone())
+        {
+            self.widget.remove_controller(&old);
+        }
         self.widget.add_controller(shortcut_controller);
     }
 
@@ -365,33 +414,48 @@ impl TrayMenu {
         format!("menu.{action_name}")
     }
 
-    pub fn connect_radio_item(
+    /// Registers the single stateful action shared by every item of one radio
+    /// group, returning it alongside its `menu.`-qualified name.
+    ///
+    /// The caller points each item at `"{name}::{item target}"` and parks the
+    /// state on the selected item; the action itself cannot tell the options
+    /// apart, so the target is the only thing identifying which one was
+    /// clicked.
+    fn connect_radio_group(
         &self,
-        sub: &system_tray::menu::MenuItem,
         action_group: &SimpleActionGroup,
-        radio_group: &str,
-        value: &str,
-        selected: bool,
-    ) -> String {
-        let action_name = format!("action_radio_{radio_group}");
+        group_id: i32,
+        initial_target: &str,
+    ) -> (SimpleAction, String) {
+        let action_name = radio_action_name(group_id);
         let tx = self.tx.clone();
-        let id = sub.id;
-
-        let action =
-            SimpleAction::new_stateful(&action_name, Some(VariantTy::STRING), &value.to_variant());
-
-        if selected {
-            action.set_state(&value.to_variant());
-        }
-
         let address = self.address.clone();
 
+        let action = SimpleAction::new_stateful(
+            &action_name,
+            Some(VariantTy::STRING),
+            &initial_target.to_variant(),
+        );
+
         if let Some(path) = self.path.clone() {
-            action.connect_change_state(move |_, _| activate(&tx, &address, &path, id));
+            action.connect_change_state(move |action, state| {
+                let Some(state) = state else { return };
+
+                let Some(id) = radio_target_id(state) else {
+                    error!("radio action state is not a menu item id: {state:?}");
+                    return;
+                };
+
+                // GTK does not advance a stateful action's state for us on
+                // change-state, so without this the mark never moves.
+                action.set_state(state);
+
+                activate(&tx, &address, &path, id);
+            });
         }
 
         action_group.add_action(&action);
-        format!("menu.{action_name}")
+        (action, format!("menu.{action_name}"))
     }
 
     pub fn connect_shortcut(
@@ -426,12 +490,11 @@ impl TrayMenu {
         use system_tray::menu::{MenuType, ToggleType};
         let mut section_container: Option<Menu> = None;
 
-        // As current implementation it identifies radio groups based on the
-        // item of type radio coming one after the other,
-        // if there is a gap than a new radio group is started,
-        // for handling multiple radio groups it use a sequential one of each group used as key for the action
-        let mut radio_group_sequential = 0;
-        let mut radio_group = None;
+        // dbusmenu has no explicit radio grouping, so a group is a run of
+        // consecutive radio items; anything else — another toggle type, or a
+        // submenu — ends the run. The run's shared action is created on its
+        // first item and reused by the rest.
+        let mut radio_group: Option<(SimpleAction, String)> = None;
         let mut model = Menu::new();
 
         for sub in items {
@@ -457,32 +520,24 @@ impl TrayMenu {
                         let action = if sub.enabled {
                             match sub.toggle_type {
                                 ToggleType::Radio => {
-                                    let value = match sub.toggle_state {
-                                        ToggleState::On => true,
-                                        ToggleState::Off | ToggleState::Indeterminate => false,
-                                    };
-
                                     let target = format!("{}", sub.id);
 
-                                    let rg = if let Some(rg) = radio_group {
-                                        rg
-                                    } else {
-                                        radio_group_sequential += 1;
+                                    let (group_action, action_name) = radio_group
+                                        .get_or_insert_with(|| {
+                                            self.connect_radio_group(action_group, sub.id, &target)
+                                        });
 
-                                        let id = radio_group_sequential.to_string();
+                                    // Park the group's state on the item the
+                                    // application reports as selected, so the
+                                    // mark lands there rather than on whichever
+                                    // item happened to create the action.
+                                    if matches!(sub.toggle_state, ToggleState::On) {
+                                        group_action.set_state(&target.to_variant());
+                                    }
 
-                                        self.connect_radio_item(
-                                            sub,
-                                            action_group,
-                                            &id,
-                                            &target,
-                                            value,
-                                        )
-                                    };
                                     debug!("radio item {label:?}");
 
-                                    radio_group = Some(rg.clone());
-                                    format!("{rg}::{target}")
+                                    format!("{action_name}::{target}")
                                 }
                                 ToggleType::Checkmark => {
                                     radio_group = None;
@@ -563,6 +618,26 @@ impl TrayMenu {
     }
 }
 
+/// Names the GTK action shared by one radio group.
+///
+/// Every radio group in a tray menu — including groups nested in different
+/// submenus — is registered into the *same* `SimpleActionGroup`, and
+/// `add_action` silently replaces an existing action of the same name. Deriving
+/// the name from the group's first dbusmenu id, which is unique across the whole
+/// menu, makes that collision impossible by construction.
+fn radio_action_name(group_id: i32) -> String {
+    format!("action_radio_{group_id}")
+}
+
+/// Reads the clicked item's dbusmenu id out of a radio action's new state.
+///
+/// One action backs a whole radio group, so this target is the only thing
+/// distinguishing the options; dropping it would send every click to whichever
+/// item created the action.
+fn radio_target_id(state: &glib::Variant) -> Option<i32> {
+    state.str()?.parse().ok()
+}
+
 fn activate(tx: &mpsc::Sender<UiEvent>, address: &str, path: &str, id: i32) {
     trace!("activated {},{}, {}", address, path, id);
     let tx = tx.clone();
@@ -574,4 +649,36 @@ fn activate(tx: &mpsc::Sender<UiEvent>, address: &str, path: &str, id: i32) {
         menu_path: path,
         submenu_id: id,
     }));
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Radio groups from different submenus all land in one
+    /// `SimpleActionGroup`, where `add_action` replaces on a duplicate name —
+    /// so two groups sharing a name means only one survives and every radio
+    /// item in the menu drives it. Distinct first-item ids are what prevent
+    /// that.
+    #[test]
+    fn groups_with_different_first_items_get_different_action_names() {
+        assert_ne!(radio_action_name(5), radio_action_name(19));
+    }
+
+    /// `as_menu` targets each radio item with `format!("{}", sub.id)`; this is
+    /// the other half of that contract. If the two formats ever drift apart,
+    /// clicks stop resolving and the menu silently does nothing.
+    #[test]
+    fn target_round_trips_the_menu_item_id() {
+        for id in [0, 1, 19, i32::MAX] {
+            let target = format!("{id}");
+            assert_eq!(radio_target_id(&target.to_variant()), Some(id));
+        }
+    }
+
+    #[test]
+    fn returns_none_when_state_is_not_a_menu_item_id() {
+        assert_eq!(radio_target_id(&"not-an-id".to_variant()), None);
+        assert_eq!(radio_target_id(&true.to_variant()), None);
+    }
 }
