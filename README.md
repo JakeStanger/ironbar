@@ -228,6 +228,7 @@ Ironbar can be launched using the `ironbar` binary.
 The `IRONBAR_LOG` and `IRONBAR_FILE_LOG` environment variables can be set
 to change console and file log verbosity respectively.
 You can use any of `error`, `warn`, `info`, `debug` or `trace`.
+`IRONBAR_FILE_LOG` also supports `off` to disable file logging.
 
 These default to `IRONBAR_LOG=info` and `IRONBAR_FILE_LOG=warn`.
 Note that you cannot increase the file log verbosity above console verbosity.
