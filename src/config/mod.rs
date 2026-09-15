@@ -409,6 +409,11 @@ pub struct BarConfig {
     /// **Default**: `null`
     pub autohide: Option<u64>,
 
+    /// The height in pixels of the hotspot that reveals the bar
+    ///
+    /// **Default**: `5`
+    pub autohide_hotspot_height: i32,
+
     /// An array of modules to append to the start of the bar.
     /// Depending on the orientation, this is either the top of the left edge.
     ///
@@ -438,6 +443,7 @@ impl Default for BarConfig {
             height: 42,
             start_hidden: None,
             autohide: None,
+            autohide_hotspot_height: 5,
             start: None,
             center: None,
             end: None,

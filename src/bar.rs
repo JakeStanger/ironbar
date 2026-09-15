@@ -142,6 +142,7 @@ impl Bar {
         );
 
         let autohide = config.autohide;
+        let autohide_hotspot_height = config.autohide_hotspot_height;
         let anchor_to_edges = config.anchor_to_edges;
         let margin = config.margin;
 
@@ -155,6 +156,7 @@ impl Bar {
                 &hotspot_window,
                 load_result.popup.clone(),
                 autohide,
+                autohide_hotspot_height,
             );
             self.setup_layer_shell(
                 &hotspot_window,
@@ -253,6 +255,7 @@ impl Bar {
         hotspot_window: &Window,
         popup: Rc<Popup>,
         timeout: u64,
+        hotspot_height: i32,
     ) {
         hotspot_window.set_visible(false);
 
@@ -260,8 +263,8 @@ impl Bar {
         hotspot_window.set_decorated(false);
 
         let (w, h) = match self.position {
-            BarPosition::Top | BarPosition::Bottom => (0, 5),
-            BarPosition::Left | BarPosition::Right => (5, 0),
+            BarPosition::Top | BarPosition::Bottom => (0, hotspot_height),
+            BarPosition::Left | BarPosition::Right => (hotspot_height, 0),
         };
         hotspot_window.set_default_size(w, h);
 
@@ -294,8 +297,8 @@ impl Bar {
 
         {
             let event_controller = EventControllerMotion::new();
-            let bar = bar.clone();
 
+            let bar = bar.clone();
             event_controller.connect_motion(move |_, _, _| {
                 bar.autohide_show();
             });
