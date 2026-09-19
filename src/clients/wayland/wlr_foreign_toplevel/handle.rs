@@ -155,8 +155,44 @@ where
             }
             Event::Done if !lock!(data.inner).closed => {
                 {
-                    let pending_info = lock!(data.inner).pending_info.clone();
+                    let inner = lock!(data.inner);
+                    let pending_info = inner.pending_info.clone();
+
+                    // some apps (LibreOffice) will change the toplevel app_id on startup
+                    // since ironbar expects a handle's app_id to be stable,
+                    // we need to remove and re-add it.
+                    let app_id_change = pending_info.app_id
+                        != inner
+                            .current_info
+                            .as_ref()
+                            .map(|info| info.app_id.clone())
+                            .unwrap_or_default();
+
+                    drop(inner); // avoid deadlock
+
+                    if app_id_change {
+                        state.remove_handle(
+                            conn,
+                            qh,
+                            ToplevelHandle {
+                                handle: handle.clone(),
+                            },
+                        );
+                    }
+
                     lock!(data.inner).current_info = Some(pending_info);
+
+                    if app_id_change {
+                        state.new_handle(
+                            conn,
+                            qh,
+                            ToplevelHandle {
+                                handle: handle.clone(),
+                            },
+                        );
+
+                        return;
+                    }
                 }
 
                 if lock!(data.inner).initial_done {
