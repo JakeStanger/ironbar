@@ -74,6 +74,8 @@ The project strives to stay true to these key philosophies:
 ## Installation
 
 [![Packaging status](https://repology.org/badge/vertical-allrepos/ironbar.svg)](https://repology.org/project/ironbar/versions)
+[![Packaging status](https://repology.amdmi3.ru/badge/vertical-allrepos/ironbar.svg)](https://repology.amdmi3.ru/project/ironbar/versions)
+
 
 Ironbar can be installed from source or using your preferred package manager.
 
