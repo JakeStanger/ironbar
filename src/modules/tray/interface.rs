@@ -11,7 +11,9 @@ use gtk::{
     ShortcutTrigger, prelude::*,
 };
 use gtk::{Button, Label, PopoverMenu};
+use std::cell::RefCell;
 use std::path::PathBuf;
+use std::rc::Rc;
 use system_tray::client::ActivateRequest;
 use system_tray::item::{IconPixmap, Status, StatusNotifierItem, Tooltip};
 use system_tray::menu::ToggleState;
@@ -27,7 +29,7 @@ pub(crate) struct TrayMenu {
     image_widget: Option<Picture>,
     label_widget: Option<Label>,
     tx: mpsc::Sender<UiEvent>,
-    path: Option<String>,
+    path: Rc<RefCell<Option<String>>>,
     address: String,
 
     pub title: Option<String>,
@@ -49,6 +51,10 @@ impl TrayMenu {
 
         let has_menu = item.menu.is_some();
 
+        // Shared with the click handlers so they can request a menu refresh
+        // (AboutToShow) using the D-Bus object path once it is known.
+        let path = Rc::new(RefCell::new(None));
+
         // Capture metadata for placeholder substitution in custom commands
         let item_name = if !item.id.is_empty() {
             item.id.clone()
@@ -64,6 +70,7 @@ impl TrayMenu {
                               tx: &mpsc::Sender<UiEvent>,
                               address: &str,
                               has_menu: bool,
+                              path: &Option<String>,
                               name: &str,
                               title: &Option<String>,
                               icon_name: &Option<String>| {
@@ -72,6 +79,12 @@ impl TrayMenu {
                     trace!("TrayClickAction::Reserved(Menu)");
 
                     if has_menu {
+                        if let Some(path) = path {
+                            tx.send_spawn(UiEvent::AboutToShow {
+                                address: address.to_owned(),
+                                path: path.clone(),
+                            });
+                        }
                         popover.popup();
                         tx.send_spawn(UiEvent::Menu(true));
                     } else {
@@ -131,14 +144,17 @@ impl TrayMenu {
             let name = item_name.clone();
             let title = item_title.clone();
             let icon = item_icon_name.clone();
+            let path = path.clone();
 
             move || {
+                let path = path.borrow();
                 execute_action(
                     action.clone(),
                     &pe,
                     &tx,
                     &address_owned,
                     has_menu,
+                    &path,
                     &name,
                     &title,
                     &icon,
@@ -215,7 +231,7 @@ impl TrayMenu {
             icon_name: item.icon_name,
             icon_theme_path: item.icon_theme_path.map(PathBuf::from),
             icon_pixmap: item.icon_pixmap,
-            path: None,
+            path: path,
             address: address.to_owned(),
         }
     }
@@ -295,7 +311,7 @@ impl TrayMenu {
 
     pub fn set_menu(&mut self, menu: &str) {
         trace!("set menu {}", menu);
-        self.path = Some(menu.to_owned());
+        *self.path.borrow_mut() = Some(menu.to_owned());
     }
 
     pub fn set_menu_widget(&self, tray_menu: &system_tray::menu::TrayMenu) {
@@ -324,7 +340,7 @@ impl TrayMenu {
         let action = SimpleAction::new(&action_name, None);
         let address = self.address.clone();
 
-        if let Some(path) = self.path.clone() {
+        if let Some(path) = self.path.borrow().clone() {
             action.connect_activate(move |_, _| activate(&tx, &address, &path, id));
         }
 
@@ -347,7 +363,7 @@ impl TrayMenu {
 
         let address = self.address.clone();
 
-        if let Some(path) = self.path.clone() {
+        if let Some(path) = self.path.borrow().clone() {
             action.connect_change_state(move |_, _| activate(&tx, &address, &path, id));
 
             action.connect_change_state(move |ac, _| {
@@ -386,7 +402,7 @@ impl TrayMenu {
 
         let address = self.address.clone();
 
-        if let Some(path) = self.path.clone() {
+        if let Some(path) = self.path.borrow().clone() {
             action.connect_change_state(move |_, _| activate(&tx, &address, &path, id));
         }
 
