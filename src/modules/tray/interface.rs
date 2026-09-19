@@ -16,9 +16,9 @@ use std::path::PathBuf;
 use std::rc::Rc;
 use system_tray::client::ActivateRequest;
 use system_tray::item::{IconPixmap, Status, StatusNotifierItem, Tooltip};
-use system_tray::menu::ToggleState;
+use system_tray::menu::{MenuDiff, ToggleState};
 use tokio::sync::mpsc;
-use tracing::{debug, error, trace};
+use tracing::{debug, error, trace, warn};
 
 /// Main tray icon to show on the bar
 #[derive(Debug)]
@@ -31,6 +31,15 @@ pub(crate) struct TrayMenu {
     tx: mpsc::Sender<UiEvent>,
     path: Rc<RefCell<Option<String>>>,
     address: String,
+
+    /// The last full menu model received, retained so incremental
+    /// [`MenuDiff`]s (post-click property changes) have something to patch.
+    menu: Option<system_tray::menu::TrayMenu>,
+
+    /// The shortcut controller currently attached to the widget, retained so
+    /// the next rebuild can detach it — `add_controller` appends, and nothing
+    /// else ever removes.
+    shortcut_controller: Option<ShortcutController>,
 
     pub title: Option<String>,
     pub icon_name: Option<String>,
@@ -233,6 +242,8 @@ impl TrayMenu {
             icon_pixmap: item.icon_pixmap,
             path,
             address: address.to_owned(),
+            menu: None,
+            shortcut_controller: None,
         }
     }
 
@@ -314,8 +325,36 @@ impl TrayMenu {
         *self.path.borrow_mut() = Some(menu.to_owned());
     }
 
-    pub fn set_menu_widget(&self, tray_menu: &system_tray::menu::TrayMenu) {
-        debug!("set menu");
+    /// Replaces the menu with a freshly received full model and repaints.
+    pub fn set_menu_widget(&mut self, tray_menu: &system_tray::menu::TrayMenu) {
+        self.menu = Some(tray_menu.clone());
+        self.build_menu_widget();
+    }
+
+    /// Applies incremental `dbusmenu` property updates to the retained model
+    /// and repaints.
+    ///
+    /// Note that most applications do not pass diffs and instead recreate the whole menu -
+    /// this is only used in some rare cases.
+    pub fn apply_menu_diff(&mut self, diffs: &[MenuDiff]) {
+        match self.menu.as_mut() {
+            Some(menu) => super::diff::apply_menu_diffs(&mut menu.submenus, diffs),
+            None => {
+                // A diff arrived before any full menu — nothing to patch.
+                warn!("received menu diff with no menu to apply it to");
+                return;
+            }
+        }
+
+        self.build_menu_widget();
+    }
+
+    /// Rebuilds the popover's menu model, action group, and shortcuts from the
+    /// retained menu model.
+    fn build_menu_widget(&mut self) {
+        let Some(tray_menu) = self.menu.as_ref() else {
+            return;
+        };
 
         let action_group = SimpleActionGroup::new();
         let shortcut_controller = ShortcutController::new();
@@ -326,6 +365,13 @@ impl TrayMenu {
 
         self.popover.set_menu_model(Some(&model));
         self.widget.insert_action_group("menu", Some(&action_group));
+
+        if let Some(old) = self
+            .shortcut_controller
+            .replace(shortcut_controller.clone())
+        {
+            self.widget.remove_controller(&old);
+        }
         self.widget.add_controller(shortcut_controller);
     }
 
@@ -381,33 +427,38 @@ impl TrayMenu {
         format!("menu.{action_name}")
     }
 
-    pub fn connect_radio_item(
+    fn connect_radio_group(
         &self,
-        sub: &system_tray::menu::MenuItem,
         action_group: &SimpleActionGroup,
-        radio_group: &str,
-        value: &str,
-        selected: bool,
-    ) -> String {
-        let action_name = format!("action_radio_{radio_group}");
+        group_id: i32,
+        initial_target: &str,
+    ) -> (SimpleAction, String) {
+        let action_name = format!("action_radio_{group_id}");
         let tx = self.tx.clone();
-        let id = sub.id;
-
-        let action =
-            SimpleAction::new_stateful(&action_name, Some(VariantTy::STRING), &value.to_variant());
-
-        if selected {
-            action.set_state(&value.to_variant());
-        }
-
         let address = self.address.clone();
 
+        let action = SimpleAction::new_stateful(
+            &action_name,
+            Some(VariantTy::STRING),
+            &initial_target.to_variant(),
+        );
+
         if let Some(path) = self.path.borrow().clone() {
-            action.connect_change_state(move |_, _| activate(&tx, &address, &path, id));
+            action.connect_change_state(move |action, state| {
+                let Some(state) = state else { return };
+
+                let Some(id) = state.str().and_then(|s| s.parse().ok()) else {
+                    error!("radio action state is not a menu item id: {state:?}");
+                    return;
+                };
+
+                action.set_state(state);
+                activate(&tx, &address, &path, id);
+            });
         }
 
         action_group.add_action(&action);
-        format!("menu.{action_name}")
+        (action, format!("menu.{action_name}"))
     }
 
     pub fn connect_shortcut(
@@ -442,12 +493,9 @@ impl TrayMenu {
         use system_tray::menu::{MenuType, ToggleType};
         let mut section_container: Option<Menu> = None;
 
-        // As current implementation it identifies radio groups based on the
-        // item of type radio coming one after the other,
-        // if there is a gap than a new radio group is started,
-        // for handling multiple radio groups it use a sequential one of each group used as key for the action
-        let mut radio_group_sequential = 0;
-        let mut radio_group = None;
+        // dbusmenu has no explicit radio grouping, so a group is a run of
+        // consecutive radio items; anything else ends the run.
+        let mut radio_group: Option<(SimpleAction, String)> = None;
         let mut model = Menu::new();
 
         for sub in items {
@@ -473,32 +521,20 @@ impl TrayMenu {
                         let action = if sub.enabled {
                             match sub.toggle_type {
                                 ToggleType::Radio => {
-                                    let value = match sub.toggle_state {
-                                        ToggleState::On => true,
-                                        ToggleState::Off | ToggleState::Indeterminate => false,
-                                    };
-
                                     let target = format!("{}", sub.id);
 
-                                    let rg = if let Some(rg) = radio_group {
-                                        rg
-                                    } else {
-                                        radio_group_sequential += 1;
+                                    let (group_action, action_name) = radio_group
+                                        .get_or_insert_with(|| {
+                                            self.connect_radio_group(action_group, sub.id, &target)
+                                        });
 
-                                        let id = radio_group_sequential.to_string();
+                                    if matches!(sub.toggle_state, ToggleState::On) {
+                                        group_action.set_state(&target.to_variant());
+                                    }
 
-                                        self.connect_radio_item(
-                                            sub,
-                                            action_group,
-                                            &id,
-                                            &target,
-                                            value,
-                                        )
-                                    };
                                     debug!("radio item {label:?}");
 
-                                    radio_group = Some(rg.clone());
-                                    format!("{rg}::{target}")
+                                    format!("{action_name}::{target}")
                                 }
                                 ToggleType::Checkmark => {
                                     radio_group = None;
