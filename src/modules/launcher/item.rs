@@ -167,6 +167,8 @@ impl ItemButton {
             button.label.set_label(&item.name);
             button.label.truncate(appearance.truncate);
             button.label.set_justify(appearance.justify);
+        } else {
+            button.label.set_visible(false);
         }
 
         if appearance.show_icons {
