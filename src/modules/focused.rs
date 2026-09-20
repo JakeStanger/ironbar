@@ -9,7 +9,7 @@ use gtk::prelude::*;
 use gtk::{ContentFit, Label};
 use serde::Deserialize;
 use tokio::sync::mpsc;
-use tracing::debug;
+use tracing::{debug, trace};
 
 #[derive(Debug, Deserialize, Clone)]
 #[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
@@ -88,10 +88,11 @@ impl Module<gtk::Box> for FocusedModule {
             }
 
             while let Ok(event) = wlrx.recv().await {
+                trace!("Received toplevel event: {event:?}");
                 match event {
                     ToplevelEvent::Update(info) => {
                         if info.focused {
-                            debug!("Changing focus");
+                            debug!("Changing focus to {}", info.title);
 
                             current = Some(info.id);
 
@@ -109,6 +110,14 @@ impl Module<gtk::Box> for FocusedModule {
                             current = None;
                             tx.send_update(None).await;
                         }
+                    }
+                    ToplevelEvent::New(info) if info.focused => {
+                        debug!("Changing focus to {}", info.title);
+
+                        current = Some(info.id);
+
+                        tx.send_update(Some((info.title.clone(), info.app_id)))
+                            .await;
                     }
                     ToplevelEvent::New(_) => {}
                 }
