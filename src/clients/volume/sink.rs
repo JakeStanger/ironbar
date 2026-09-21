@@ -1,9 +1,9 @@
 use super::{ArcMutVec, Client, Event, HasIndex, PulseObject, Request, VolumeLevels};
 use crate::channels::SyncSenderExt;
 use crate::lock;
-use libpulse_binding::context::Context;
 use libpulse_binding::context::introspect::SinkInfo;
 use libpulse_binding::context::subscribe::Operation;
+use libpulse_binding::{context::Context, def::SinkState};
 use std::sync::{Arc, Mutex};
 use tokio::sync::broadcast;
 use tracing::{debug, instrument};
@@ -15,6 +15,7 @@ pub struct Sink {
     pub description: String,
     pub volume: VolumeLevels,
     pub muted: bool,
+    pub running: bool,
 }
 
 impl From<&SinkInfo<'_>> for Sink {
@@ -33,6 +34,7 @@ impl From<&SinkInfo<'_>> for Sink {
                 .unwrap_or_default(),
             muted: value.mute,
             volume: value.volume.into(),
+            running: value.state == SinkState::Running,
         }
     }
 }

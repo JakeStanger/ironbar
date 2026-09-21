@@ -662,34 +662,34 @@ impl Module<Button> for VolumeModule {
                 trace!("default source: {default_source:?}");
 
                 // init
-                let sinks = {
+                let sinks: Vec<_> = {
                     let sinks = client.sinks();
                     let sinks = lock!(sinks);
-                    sinks.iter().cloned().collect::<Vec<_>>()
+                    sinks.iter().filter(|s| s.running).cloned().collect()
                 };
 
                 trace!("initial sinks: {sinks:?}");
 
-                let sources = {
+                let sources: Vec<_> = {
                     let sources = client.sources();
                     let sources = lock!(sources);
-                    sources.iter().cloned().collect::<Vec<_>>()
+                    sources.iter().filter(|s| s.running).cloned().collect()
                 };
 
                 trace!("initial sources: {sources:?}");
 
-                let inputs = {
+                let inputs: Vec<_> = {
                     let inputs = client.sink_inputs();
                     let inputs = lock!(inputs);
-                    inputs.iter().cloned().collect::<Vec<_>>()
+                    inputs.iter().cloned().collect()
                 };
 
                 trace!("initial inputs: {inputs:?}");
 
-                let outputs = {
+                let outputs: Vec<_> = {
                     let outputs = client.source_outputs();
                     let outputs = lock!(outputs);
-                    outputs.iter().cloned().collect::<Vec<_>>()
+                    outputs.iter().cloned().collect()
                 };
 
                 trace!("initial outputs: {outputs:?}");
@@ -943,10 +943,14 @@ impl Module<Button> for VolumeModule {
                 match event {
                     Event::SetDefaultSink(name) => sink_ui.inner.set_default_device_name(name),
                     Event::SetDefaultSource(name) => source_ui.inner.set_default_device_name(name),
-                    Event::AddSink(info) => sink_ui.add_sink(info),
-                    Event::AddSource(info) => source_ui.add_source(info),
-                    Event::UpdateSink(info) => sink_ui.update_sink(info),
-                    Event::UpdateSource(info) => source_ui.update_source(info),
+                    Event::AddSink(info) if info.running => sink_ui.add_sink(info),
+                    Event::AddSink(_) => (),
+                    Event::AddSource(info) if info.running => source_ui.add_source(info),
+                    Event::AddSource(_) => (),
+                    Event::UpdateSink(info) if info.running => sink_ui.update_sink(info),
+                    Event::UpdateSink(info) => sink_ui.inner.remove_device(&info.name),
+                    Event::UpdateSource(info) if info.running => source_ui.update_source(info),
+                    Event::UpdateSource(info) => sink_ui.inner.remove_device(&info.name),
                     Event::RemoveSink(name) => sink_ui.inner.remove_device(&name),
                     Event::RemoveSource(name) => source_ui.inner.remove_device(&name),
                     Event::AddInput(info) => {

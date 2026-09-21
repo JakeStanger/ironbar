@@ -3,9 +3,9 @@ use std::sync::{Arc, Mutex};
 use super::{ArcMutVec, Client, Event, HasIndex, PulseObject, Request, VolumeLevels};
 use crate::channels::SyncSenderExt;
 use crate::lock;
-use libpulse_binding::context::Context;
 use libpulse_binding::context::introspect::SourceInfo;
 use libpulse_binding::context::subscribe::Operation;
+use libpulse_binding::{context::Context, def::SourceState};
 use tokio::sync::broadcast;
 use tracing::{debug, instrument};
 
@@ -17,6 +17,7 @@ pub struct Source {
     pub volume: VolumeLevels,
     pub muted: bool,
     pub monitor: bool,
+    pub running: bool,
 }
 
 impl From<&SourceInfo<'_>> for Source {
@@ -36,6 +37,7 @@ impl From<&SourceInfo<'_>> for Source {
             muted: value.mute,
             volume: value.volume.into(),
             monitor: value.monitor_of_sink.is_some(),
+            running: value.state == SourceState::Running,
         }
     }
 }
