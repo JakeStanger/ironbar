@@ -413,23 +413,23 @@ impl Module<gtk::Box> for LauncherModule {
                             lock!(items).get_mut(&app_id).and_then(|item| {
                                 debug!("Item windows list {:?}", item.windows);
                                 item.set_focused_window_index(FocusingMode::Cyclic);
-                                if let Some((_, win)) = item.get_next_focused_window(){
+                                if let Some((_, win)) = item.get_next_focused_window() {
                                     Some(win.id)
-                                }else {
+                                } else {
                                     item.windows.first().map(|(_, win)| win.id)
                                 }
                             })
-                        },
+                        }
                         ItemEvent::MinimizeItem(app_id) => {
                             lock!(items).get(&app_id).and_then(|item| {
-                                if let Some((_, win)) = item.get_current_focused_window(){
+                                if let Some((_, win)) = item.get_current_focused_window() {
                                     Some(win.id)
-                                }else {
+                                } else {
                                     item.windows.first().map(|(_, win)| win.id)
                                 }
                             })
-                        },
-                        ItemEvent::FocusWindow(id) => { Some(id) },
+                        }
+                        ItemEvent::FocusWindow(id) => Some(id),
                         ItemEvent::OpenItem(_) => unreachable!(),
                     };
 

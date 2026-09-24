@@ -76,7 +76,9 @@ impl Item {
     }
 
     pub fn set_window_focused(&mut self, window_id: usize, focused: bool) {
-        if focused {self.set_focused_window_index(FocusingMode::Manual(window_id));}
+        if focused {
+            self.set_focused_window_index(FocusingMode::Manual(window_id));
+        }
         if let Some(window) = self.windows.get_mut(&window_id) {
             window.open_state =
                 OpenState::merge_states(&[&window.open_state, &OpenState::focused(focused)]);
@@ -91,9 +93,9 @@ impl Item {
 
     pub fn set_focused_window_index(&mut self, focusing_mode: FocusingMode) {
         match focusing_mode {
-            FocusingMode::Cyclic =>{
+            FocusingMode::Cyclic => {
                 self.focused_window_index = (self.focused_window_index + 1) % self.windows.len();
-            },
+            }
             FocusingMode::Manual(window_id) => {
                 if let Some(index) = self.windows.get_index_of(&window_id) {
                     self.focused_window_index = index;
@@ -102,8 +104,8 @@ impl Item {
         }
     }
 
-    pub fn get_next_focused_window(&mut self, ) -> Option<(&usize, &Window)> {
-        if self.windows.is_empty(){
+    pub fn get_next_focused_window(&mut self) -> Option<(&usize, &Window)> {
+        if self.windows.is_empty() {
             return None;
         }
         self.get_current_focused_window()
