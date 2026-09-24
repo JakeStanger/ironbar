@@ -13,7 +13,7 @@ use crate::clients::wayland::{self, ToplevelEvent};
 use crate::config::{CommonConfig, EllipsizeMode, LayoutConfig, TruncateMode, default};
 use crate::desktop_file::open_program;
 use crate::gtk_helpers::{IronbarGtkExt, IronbarLabelExt};
-use crate::modules::launcher::item::ImageTextButton;
+use crate::modules::launcher::item::{FocusingMode, ImageTextButton};
 use crate::modules::launcher::pagination::{IconContext, Pagination};
 use crate::{arc_mut, lock, module_impl, rc_mut, spawn, write_lock};
 use color_eyre::Report;
@@ -409,16 +409,27 @@ impl Module<gtk::Box> for LauncherModule {
                     let minimize_window = matches!(event, ItemEvent::MinimizeItem(_));
 
                     let id = match event {
-                        ItemEvent::FocusItem(app_id) | ItemEvent::MinimizeItem(app_id) => {
-                            lock!(items).get(&app_id).and_then(|item| {
-                                item.windows
-                                    .iter()
-                                    .find(|(_, win)| !win.open_state.is_focused())
-                                    .or_else(|| item.windows.first())
-                                    .map(|(_, win)| win.id)
+                        ItemEvent::FocusItem(app_id) => {
+                            lock!(items).get_mut(&app_id).and_then(|item| {
+                                debug!("Item windows list {:?}", item.windows);
+                                item.set_focused_window_index(FocusingMode::Cyclic);
+                                if let Some((_, win)) = item.get_next_focused_window(){
+                                    Some(win.id)
+                                }else {
+                                    item.windows.first().map(|(_, win)| win.id)
+                                }
                             })
-                        }
-                        ItemEvent::FocusWindow(id) => Some(id),
+                        },
+                        ItemEvent::MinimizeItem(app_id) => {
+                            lock!(items).get(&app_id).and_then(|item| {
+                                if let Some((_, win)) = item.get_current_focused_window(){
+                                    Some(win.id)
+                                }else {
+                                    item.windows.first().map(|(_, win)| win.id)
+                                }
+                            })
+                        },
+                        ItemEvent::FocusWindow(id) => { Some(id) },
                         ItemEvent::OpenItem(_) => unreachable!(),
                     };
 
