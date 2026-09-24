@@ -173,7 +173,6 @@ smithay-client-toolkit = { version = "0.20.0", default-features = false, feature
     "calloop",
 ] }
 config = { version = "0.15.23", default-features = false }
-cfg-if = "1.0.4"
 
 # bluetooth
 bluer = { version = "0.17.4", optional = true, features = ["bluetoothd"] }

@@ -12,7 +12,6 @@ use std::rc::Rc;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::{Arc, OnceLock, mpsc};
 
-use cfg_if::cfg_if;
 #[cfg(feature = "cli")]
 use clap::Parser;
 use color_eyre::{Report, Result};
@@ -66,10 +65,9 @@ const SHA: &str = env!("VERGEN_GIT_SHA");
 const DESCRIBE: &str = env!("VERGEN_GIT_DESCRIBE");
 
 fn main() {
-    cfg_if! {
-        if #[cfg(feature = "cli")] {
-            run_with_args();
-        } else {
+    cfg_select! {
+        feature = "cli" => {run_with_args();}
+        _ => {
             let (config_source, css_source) = resolve_sources(
                 env::var("IRONBAR_CONFIG").map(PathBuf::from).ok().map(ConfigLocation::Custom),
                 env::var("IRONBAR_CSS").map(PathBuf::from).ok().map(ConfigLocation::Custom),
@@ -222,12 +220,12 @@ impl Ironbar {
 
             running.store(true, Ordering::Relaxed);
 
-            cfg_if! {
-                if #[cfg(feature = "ipc")] {
-                    let ipc = ipc::Ipc::new();
-                    ipc.start(app, instance.clone());
-                }
-            }
+            #[cfg(feature = "ipc")]
+            let ipc = {
+                let ipc = ipc::Ipc::new();
+                ipc.start(app, instance.clone());
+                ipc
+            };
 
             load_css(&css_source);
 

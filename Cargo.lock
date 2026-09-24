@@ -1942,7 +1942,6 @@ name = "ironbar"
 version = "0.20.0-pre"
 dependencies = [
  "bluer",
- "cfg-if",
  "chrono",
  "clap",
  "clap_complete",

@@ -1,4 +1,3 @@
-use cfg_if::cfg_if;
 use config::FileFormat;
 use std::path::{Path, PathBuf};
 use tracing::error;
@@ -14,28 +13,23 @@ pub enum Builtin {
 impl Builtin {
     #[cfg(feature = "config")]
     pub fn config(&self) -> (&'static str, config::FileFormat) {
-        cfg_if! {
-            if #[cfg(feature = "config+corn")] {
-                match self {
+        cfg_select! {
+            feature = "config+corn" => match self {
                     Self::Minimal => (include_str!("../../examples/minimal/config.corn"), FileFormat::Corn),
                     Self::Desktop => (include_str!("../../examples/desktop/config.corn"), FileFormat::Corn)
-                }
-            } else if #[cfg(feature = "config+json")] {
-                match self {
+                },
+            feature = "config+json" => match self {
                     Self::Minimal => (include_str!("../../examples/minimal/config.json"), FileFormat::Json),
                     Self::Desktop => (include_str!("../../examples/desktop/config.json"), FileFormat::Json)
                 }
-            } else if #[cfg(feature = "config+yaml")] {
-                match self {
+            feature = "config+yaml" => match self {
                     Self::Minimal => (include_str!("../../examples/minimal/config.yaml"), FileFormat::Yaml),
                     Self::Desktop => (include_str!("../../examples/desktop/config.yaml"), FileFormat::Yaml)
                 }
-            } else if #[cfg(feature = "config+toml")] {
-                match self {
+            feature = "config+toml" => match self {
                     Self::Minimal => (include_str!("../../examples/minimal/config.toml"), FileFormat::Toml),
                     Self::Desktop => (include_str!("../../examples/desktop/config.toml"), FileFormat::Toml)
                 }
-            }
         }
     }
 

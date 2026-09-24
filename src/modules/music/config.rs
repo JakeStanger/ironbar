@@ -16,12 +16,14 @@ pub enum PlayerType {
 #[allow(clippy::derivable_impls)]
 impl Default for PlayerType {
     fn default() -> Self {
-        cfg_if::cfg_if! {
-            if #[cfg(feature = "music+mpris")] {
+        cfg_select! {
+            feature = "music+mpris" => {
                 Self::Mpris
-            } else if #[cfg(feature = "music+mpd")] {
+            }
+            feature = "music+mpd" => {
                 Self::Mpd
-            } else {
+            }
+            _ => {
                 compile_error!("No player type feature enabled")
             }
         }
