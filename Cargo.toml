@@ -97,9 +97,10 @@ focused = []
 inhibit = ["chrono"]
 
 keyboard = ["dep:colpetto", "dep:evdev-rs", "dep:rustix", "futures-lite"]
-"keyboard+all" = ["keyboard", "keyboard+sway", "keyboard+hyprland"]
+"keyboard+all" = ["keyboard", "keyboard+sway", "keyboard+hyprland", "keyboard+niri"]
 "keyboard+sway" = ["keyboard", "sway"]
 "keyboard+hyprland" = ["keyboard", "hyprland"]
+"keyboard+niri" = ["keyboard", "niri"]
 
 label = []
 
