@@ -1,5 +1,4 @@
 use crate::register_fallible_client;
-use cfg_if::cfg_if;
 use std::fmt::{Debug, Display, Formatter};
 use std::sync::Arc;
 use thiserror::Error;
@@ -58,19 +57,19 @@ impl Compositor {
     /// This is done by checking system env vars.
     fn get_current() -> Self {
         if std::env::var("SWAYSOCK").is_ok() {
-            cfg_if! {
-                if #[cfg(feature = "sway")] { Self::Sway }
-                else { tracing::error!("Not compiled with Sway support"); Self::Unsupported }
+            cfg_select! {
+                feature = "sway" => Self::Sway,
+                _ => {tracing::error!("Not compiled with Sway support"); Self::Unsupported}
             }
         } else if std::env::var("HYPRLAND_INSTANCE_SIGNATURE").is_ok() {
-            cfg_if! {
-                if #[cfg(feature = "hyprland")] { Self::Hyprland }
-                else { tracing::error!("Not compiled with Hyprland support"); Self::Unsupported }
+            cfg_select! {
+                feature = "hyprland" => Self::Hyprland,
+                _ => {tracing::error!("Not compiled with Hyprland support"); Self::Unsupported}
             }
         } else if std::env::var("NIRI_SOCKET").is_ok() {
-            cfg_if! {
-                if #[cfg(feature = "niri")] { Self::Niri }
-                else {tracing::error!("Not compiled with Niri support"); Self::Unsupported }
+            cfg_select! {
+                feature = "niri" => Self::Niri,
+                _ => {tracing::error!("Not compiled with Niri support"); Self::Unsupported }
             }
         } else {
             Self::Unsupported

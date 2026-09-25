@@ -9,7 +9,6 @@ use std::sync::{Arc, Mutex};
 
 use crate::channels::SyncSenderExt;
 use calloop_channel::Event::Msg;
-use cfg_if::cfg_if;
 use smithay_client_toolkit::output::OutputState;
 use smithay_client_toolkit::reexports::calloop;
 use smithay_client_toolkit::reexports::calloop::EventLoop;
@@ -27,18 +26,19 @@ use wayland_client::globals::{BindError, registry_queue_init};
 use wayland_client::{Connection, QueueHandle};
 pub use wl_output::{OutputEvent, OutputEventType};
 
-cfg_if! {
-    if #[cfg(any(feature = "focused", feature = "launcher"))] {
+cfg_select! {
+    any(feature = "focused", feature = "launcher") => {
         mod wlr_foreign_toplevel;
         use crate::{delegate_foreign_toplevel_handle, delegate_foreign_toplevel_manager};
         use wlr_foreign_toplevel::manager::ToplevelManagerState;
         pub use wlr_foreign_toplevel::{ToplevelEvent, ToplevelHandle, ToplevelInfo};
 
     }
+    _ => {}
 }
 
-cfg_if! {
-    if #[cfg(feature = "clipboard")] {
+cfg_select! {
+    feature = "clipboard" => {
         mod wlr_data_control;
 
         use crate::{delegate_data_control_device, delegate_data_control_device_manager, delegate_data_control_offer, delegate_data_control_source};
@@ -55,6 +55,7 @@ cfg_if! {
             device: DataControlDevice,
         }
     }
+    _ => {}
 }
 
 #[derive(Debug)]
@@ -235,20 +236,22 @@ delegate_registry!(Environment);
 delegate_output!(Environment);
 delegate_seat!(Environment);
 
-cfg_if! {
-    if #[cfg(any(feature = "focused", feature = "launcher"))] {
+cfg_select! {
+    any(feature = "focused", feature = "launcher") => {
         delegate_foreign_toplevel_manager!(Environment);
         delegate_foreign_toplevel_handle!(Environment);
     }
+    _ => {}
 }
 
-cfg_if! {
-    if #[cfg(feature = "clipboard")] {
+cfg_select! {
+    feature = "clipboard" => {
         delegate_data_control_device_manager!(Environment);
         delegate_data_control_device!(Environment);
         delegate_data_control_offer!(Environment);
         delegate_data_control_source!(Environment);
     }
+    _ => {}
 }
 
 impl Environment {
