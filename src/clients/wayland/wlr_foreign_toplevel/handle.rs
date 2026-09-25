@@ -161,12 +161,13 @@ where
                     // some apps (LibreOffice) will change the toplevel app_id on startup
                     // since ironbar expects a handle's app_id to be stable,
                     // we need to remove and re-add it.
-                    let app_id_change = pending_info.app_id
-                        != inner
-                            .current_info
-                            .as_ref()
-                            .map(|info| info.app_id.clone())
-                            .unwrap_or_default();
+                    let app_id_change = inner.current_info.is_some()
+                        && pending_info.app_id
+                            != inner
+                                .current_info
+                                .as_ref()
+                                .map(|info| info.app_id.clone())
+                                .unwrap_or_default();
 
                     drop(inner); // avoid deadlock
 
