@@ -26,6 +26,7 @@ struct IconConfig {
     provider: image::Provider,
     size: u32,
     prefer_theme: bool,
+    order: Vec<String>,
 }
 
 /// Reserved tray click actions
@@ -164,6 +165,12 @@ pub struct TrayModule {
     /// **Default**: `horizontal` for horizontal bars, `vertical` for vertical bars
     direction: Option<ModuleOrientation>,
 
+    /// Order in which icons are displayed from left to right or top to bottom.
+    /// The names are case insensitive and must be included in the id of tray entry.
+    ///
+    /// **Default**: icons are pre append when received by the bar.
+    icon_order: Vec<String>,
+
     /// Click action handlers for tray icons
     #[serde(flatten)]
     click_handlers: TrayClickHandlers,
@@ -179,6 +186,7 @@ impl Default for TrayModule {
             prefer_theme_icons: true,
             icon_size: default::IconSize::Tiny as u32,
             direction: None,
+            icon_order: Vec::new(),
             click_handlers: TrayClickHandlers::default(),
             common: Some(CommonConfig::default()),
         }
@@ -301,6 +309,7 @@ impl Module<gtk::Box> for TrayModule {
                 provider,
                 size: self.icon_size,
                 prefer_theme: self.prefer_theme_icons,
+                order: self.icon_order,
             };
 
             // listen for UI updates
@@ -385,6 +394,57 @@ fn load_icon(
     }
 }
 
+/// Tries to find the closet neighbor to `id`.
+///
+/// If no match was found then returns [None].
+/// If a match is found then the `key` to that neighbor is returned along positional information.
+/// Set to true for before and false for after.
+fn find_closest_neighbor<'a>(
+    id: &str,
+    menus: &'a HashMap<Box<str>, TrayMenu>,
+    ordering: &[String],
+) -> Option<(&'a str, bool)> {
+    fn match_name(a: &str, b: &str) -> bool {
+        a.to_lowercase().contains(&b.to_lowercase())
+    }
+
+    fn update<'a>(key: &mut Option<&'a str>, addr: &'a str, best: &mut Option<usize>, idx: usize) {
+        *best = Some(idx);
+        *key = Some(addr);
+    }
+
+    let id_idx = ordering.iter().position(|s| match_name(id, s))?;
+
+    let mut best = None;
+    let mut key = None;
+
+    for (addr, menu) in menus {
+        let Some(idx) = ordering.iter().position(|s| match_name(&menu.id, s)) else {
+            continue;
+        };
+
+        if (id_idx as i32 - idx as i32).abs() == 1 {
+            update(&mut key, addr, &mut best, idx);
+            break;
+        }
+
+        let Some(best) = &mut best else {
+            update(&mut key, addr, &mut best, idx);
+            continue;
+        };
+
+        if (id_idx as i32 - idx as i32).abs() < (id_idx as i32 - *best as i32).abs() {
+            *best = idx;
+            key = Some(addr);
+        }
+    }
+
+    let key = key?;
+    let idx = best?;
+
+    Some((key, id_idx < idx))
+}
+
 /// Handles UI updates as callback,
 /// getting the diff since the previous update and applying it to the menu.
 fn on_update(
@@ -402,8 +462,20 @@ fn on_update(
             let mut menu_item =
                 TrayMenu::new(&address, *item, activated_channel.clone(), click_handlers);
 
-            let x: Option<&gtk::Widget> = None;
-            container.insert_child_after(&menu_item.widget, x);
+            let key_order = find_closest_neighbor(&menu_item.id, menus, &icon_config.order);
+            let widget = if let Some((key, _)) = key_order {
+                menus.get(key).map(|menu| &menu.widget)
+            } else {
+                None
+            };
+
+            container.insert_child_after(&menu_item.widget, widget);
+            if let Some((_, order)) = key_order
+                && let Some(widget) = widget
+                && order
+            {
+                container.reorder_child_after(widget, Some(&menu_item.widget));
+            }
 
             // Register both a fallback label and a picture synchronously so
             // the widget tree is always consistent. The picture is populated
@@ -516,7 +588,10 @@ fn on_update(
         Event::Remove(address) => {
             debug!("Removing tray item at '{address}'");
 
-            if let Some(menu) = menus.get(address.as_str()) {
+            if let Some(menu) = menus.remove(address.as_str()) {
+                if let Some(child) = menu.widget.last_child() {
+                    child.unparent(); // removing popover
+                }
                 container.remove(&menu.widget);
             }
         }
