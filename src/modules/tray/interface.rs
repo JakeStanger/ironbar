@@ -42,6 +42,7 @@ pub(crate) struct TrayMenu {
     shortcut_controller: Option<ShortcutController>,
 
     pub title: Option<String>,
+    pub id: String,
     pub icon_name: Option<String>,
     pub icon_theme_path: Option<PathBuf>,
     pub icon_pixmap: Option<Vec<IconPixmap>>,
@@ -237,6 +238,7 @@ impl TrayMenu {
             label_widget: None,
             tx,
             title: item.title,
+            id: item.id,
             icon_name: item.icon_name,
             icon_theme_path: item.icon_theme_path.map(PathBuf::from),
             icon_pixmap: item.icon_pixmap,
