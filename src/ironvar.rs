@@ -64,6 +64,10 @@ impl VariableManager {
                 .all(|char| char.is_alphanumeric() || char == '_' || char == '-')
     }
 
+    pub fn has_key(&self, key: &str) -> bool {
+        read_lock!(self.variables).contains_key(key)
+    }
+
     pub fn register_namespace<N>(&self, name: &str, namespace: Arc<N>)
     where
         N: Namespace + Sync + Send + 'static,

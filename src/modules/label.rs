@@ -9,7 +9,7 @@ use gtk::Label;
 use serde::Deserialize;
 use tokio::sync::mpsc;
 
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Deserialize, Clone, PartialEq)]
 #[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
 pub struct LabelModule {
     /// The text to show on the label.

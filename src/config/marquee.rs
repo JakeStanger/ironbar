@@ -18,7 +18,7 @@ pub enum MarqueeOnHover {
 /// This is controlled using a common `MarqueeMode` type,
 /// which is defined below.
 ///
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Deserialize, Clone, PartialEq)]
 #[serde(default)]
 #[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
 pub struct MarqueeMode {
