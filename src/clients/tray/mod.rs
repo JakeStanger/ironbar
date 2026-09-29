@@ -1,3 +1,6 @@
+#[cfg(feature = "ipc")]
+mod ironvar;
+
 use super::ClientResult;
 use crate::channels::SyncSenderExt;
 use crate::{arc_mut, lock, register_fallible_client, spawn};

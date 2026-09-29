@@ -115,6 +115,20 @@ end:
 }
 ```
 
+**Icon Names**
+
+List of known `icons names`:
+  - Element: `Element_status_icon_1`
+  - OBS: `obs`
+  - Proton Mail: `Proton Mail Bridge`
+  - Proton VPN: `proton.vpn.app.gtk`
+  - Discord: `discord_status_icon_1`
+  - Vesktop: `vesktop_status_icon_1`
+  - Nextcloud: `Nextcloud`
+  - KeePassXC: `KeePassXC`
+  - Steam: `steam`
+  - Tidal: `tidal-hifi_status_icon_1`
+
 </details>
 
 ## Styling
