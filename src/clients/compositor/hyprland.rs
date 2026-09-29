@@ -210,6 +210,7 @@ impl Client {
         {
             let tx = tx.clone();
             let lock = lock.clone();
+            let active = active.clone();
 
             event_listener.add_workspace_moved_handler(move |event_data| {
                 let _lock = lock!(lock);
@@ -268,6 +269,7 @@ impl Client {
         {
             let tx = tx.clone();
             let lock = lock.clone();
+            let active = active.clone();
 
             event_listener.add_urgent_state_changed_handler(move |address| {
                 let _lock = lock!(lock);
@@ -285,6 +287,20 @@ impl Client {
                         error!("Unable to locate client");
                     },
                     |c| {
+                        // Hyprland has no event for urgency clearing, and `send_focus_change`
+                        // only clears it when a workspace gains focus. A window asking for
+                        // attention on the focused workspace (e.g. a browser activating its
+                        // new window) would otherwise stay urgent until the workspace is
+                        // left and re-entered.
+                        let is_focused = lock!(active)
+                            .as_ref()
+                            .is_some_and(|w| w.id == c.workspace.id as i64);
+
+                        if is_focused {
+                            debug!("Ignoring urgent state on focused workspace");
+                            return;
+                        }
+
                         tx.send_expect(WorkspaceUpdate::Urgent {
                             id: c.workspace.id as i64,
                             urgent: true,
