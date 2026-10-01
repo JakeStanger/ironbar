@@ -23,7 +23,9 @@ Supports plain text and images.
 | `truncate.mode`       | `'start'` or `'middle'` or `'end'` or `off`          | `off`   | The location of the ellipses and where to truncate text from. Leave null to avoid truncating.                                                         |
 | `truncate.length`     | `integer`                                            | `null`  | The fixed width (in chars) of the widget. Leave blank to let GTK automatically handle.                                                                |
 | `truncate.max_length` | `integer`                                            | `null`  | The maximum number of characters before truncating. Leave blank to let GTK automatically handle.                                                      |
-| `clear_button` | `bool`                                            | `true`  |   Enable "Clear All" button within the clipboard popup.                                                                                                       |
+| `show_clear_button` | `bool`                                            | `true`  |   Enable "Clear All" button within the clipboard popup.                                                                                                       |
+| `clear_button_icon` | `string` or [image](images)                          | `🗑`  | Icon to show on the clear button.                                                                                                                    |
+| `clear_button_icon_size` | `integer`                                            | `32`  | Size to render icon at (image icons only).                                                                                                            |
 
 <details>
 <summary>JSON</summary>
