@@ -16,7 +16,7 @@ use tracing::{debug, error, info};
 ///
 /// Installs a file watcher and reloads CSS when
 /// write changes are detected on the file.
-pub fn load_css(source: &CssSource) {
+pub fn load_css(source: &CssSource, hot_reload: bool) {
     let provider = CssProvider::new();
 
     let path = match source {
@@ -49,7 +49,7 @@ pub fn load_css(source: &CssSource) {
     );
 
     // install file watcher
-    if let Some(style_path) = path {
+    if hot_reload && let Some(style_path) = path {
         let (tx, rx) = mpsc::channel(8);
 
         spawn(async move {

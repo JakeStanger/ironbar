@@ -14,7 +14,7 @@ use tokio::sync::oneshot::{Receiver, channel};
 use tokio::time::sleep;
 use tracing::{debug, error, trace, warn};
 
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Deserialize, Clone, PartialEq)]
 #[serde(untagged)]
 #[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
 pub enum ScriptInput {
@@ -73,7 +73,7 @@ impl ScriptMode {
     }
 }
 
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Deserialize, Clone, PartialEq)]
 #[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
 #[serde(default)]
 pub struct Script {

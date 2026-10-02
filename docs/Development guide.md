@@ -235,7 +235,7 @@ When the `extras` feature is enabled, it must also derive `schemars::JsonSchema`
 An extract of the Clock module is shown below as an example:
 
 ```rust
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Deserialize, Clone, PartialEq)]
 #[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
 #[serde(default)]
 pub struct ClockModule {

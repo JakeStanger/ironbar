@@ -19,7 +19,7 @@ use tracing::trace;
 /// For information on the Script type, and embedding scripts in strings,
 /// see [here](script).
 /// For information on styling, please see the [styling guide](styling-guide).
-#[derive(Debug, Default, Deserialize, Clone)]
+#[derive(Debug, Default, Deserialize, Clone, PartialEq)]
 #[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
 pub struct CommonConfig {
     /// Sets the unique widget name,
@@ -208,7 +208,7 @@ pub struct CommonConfig {
     pub disable_popup: bool,
 }
 
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Deserialize, Clone, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 #[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
 pub enum TransitionType {
@@ -218,7 +218,7 @@ pub enum TransitionType {
     SlideEnd,
 }
 
-#[derive(Debug, Default, Deserialize, Clone, Copy)]
+#[derive(Debug, Default, Deserialize, Clone, Copy, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 #[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
 pub enum ModuleOrientation {
@@ -247,7 +247,7 @@ impl From<ModuleOrientation> for Orientation {
     }
 }
 
-#[derive(Debug, Default, Deserialize, Clone, Copy)]
+#[derive(Debug, Default, Deserialize, Clone, Copy, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 #[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
 pub enum ModuleJustification {

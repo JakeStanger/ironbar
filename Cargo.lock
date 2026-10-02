@@ -1956,6 +1956,7 @@ dependencies = [
  "gtk4-layer-shell",
  "hyprland",
  "indexmap",
+ "ironbar_macros",
  "libpulse-binding",
  "lua-src",
  "mlua",
@@ -1983,6 +1984,15 @@ dependencies = [
  "wayland-client",
  "wayland-protocols-wlr",
  "zbus",
+]
+
+[[package]]
+name = "ironbar_macros"
+version = "0.1.0"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 3.0.2",
 ]
 
 [[package]]

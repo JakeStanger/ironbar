@@ -10,7 +10,7 @@ use crate::dynamic_value::dynamic_string;
 use crate::gtk_helpers::IronbarLabelExt;
 use crate::modules::PopupButton;
 
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Deserialize, Clone, PartialEq)]
 #[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
 pub struct ButtonWidget {
     /// Widget name.
