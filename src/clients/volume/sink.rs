@@ -84,9 +84,9 @@ impl Client {
     }
 
     #[instrument(level = "trace")]
-    pub fn set_sink_volume(&self, name: &str, volume: f64) {
-        let Some(mut volume_levels) = ({
-            let sinks = self.sinks();
+    fn sink_volume_levels(&self, name: &str) -> Option<VolumeLevels> {
+        let sinks = self.sinks();
+        {
             lock!(sinks).iter().find_map(|s| {
                 if s.name == name {
                     Some(s.volume.clone())
@@ -94,7 +94,12 @@ impl Client {
                     None
                 }
             })
-        }) else {
+        }
+    }
+
+    #[instrument(level = "trace")]
+    pub fn set_sink_volume(&self, name: &str, volume: f64) {
+        let Some(mut volume_levels) = self.sink_volume_levels(name) else {
             return;
         };
 
@@ -102,6 +107,25 @@ impl Client {
 
         self.req_tx
             .send_expect(Request::SinkVolume(name.to_string(), volume_levels));
+    }
+
+    /// Adjust the volume up or down based on `delta` for the default Sink.
+    ///
+    /// If no default sink is configured the volume does not change.
+    #[instrument(level = "trace")]
+    pub fn adjust_default_sink_volume(&self, delta: f64, max: f64) {
+        let Some(default_sink) = self.default_sink() else {
+            return;
+        };
+
+        let Some(mut volume_levels) = self.sink_volume_levels(&default_sink) else {
+            return;
+        };
+
+        volume_levels.set_percent((volume_levels.percent() + delta).clamp(0.0, max));
+
+        self.req_tx
+            .send_expect(Request::SinkVolume(default_sink, volume_levels));
     }
 
     #[instrument(level = "trace")]
