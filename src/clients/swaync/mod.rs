@@ -6,7 +6,6 @@ use dbus::SwayNcProxy;
 use serde::Deserialize;
 use tokio::sync::broadcast;
 use tracing::{debug, error};
-use zbus::Result;
 use zbus::export::ordered_stream::OrderedStreamExt;
 use zbus::zvariant::Type;
 
@@ -35,25 +34,69 @@ impl From<GetSubscribeData> for Event {
 }
 
 #[derive(Debug)]
-pub struct Client {
-    proxy: SwayNcProxy<'static>,
-    tx: broadcast::Sender<Event>,
-    _rx: broadcast::Receiver<Event>,
+pub enum Client {
+    Stopped {
+        tx: broadcast::Sender<Event>,
+    },
+    Started {
+        tx: broadcast::Sender<Event>,
+        proxy: SwayNcProxy<'static>,
+    },
 }
 
 impl Client {
-    pub async fn new() -> Result<Self> {
+    pub(super) fn new() -> Self {
+        let (tx, rx) = broadcast::channel(8);
+        std::mem::forget(rx);
+
+        Self::Stopped { tx }
+    }
+
+    fn proxy(&self) -> &SwayNcProxy<'static> {
+        match self {
+            Client::Stopped { .. } => panic!("client stopped"),
+            Client::Started { proxy, .. } => proxy,
+        }
+    }
+
+    fn tx(&self) -> &broadcast::Sender<Event> {
+        match self {
+            Client::Stopped { .. } => panic!("client stopped"),
+            Client::Started { tx, .. } => tx,
+        }
+    }
+
+    pub async fn toggle_visibility(&self) {
+        debug!("Toggling visibility");
+        if let Err(err) = self.proxy().toggle_visibility().await {
+            error!("{err:?}");
+        }
+    }
+}
+
+impl super::Client for Client {
+    type State = zbus::Result<Self::Event>;
+    type Event = Event;
+    type Error = zbus::Error;
+
+    fn is_started(&self) -> bool {
+        matches!(self, Self::Started { .. })
+    }
+
+    async fn start(self) -> Result<Self, Self::Error> {
+        let Self::Stopped { tx } = self else {
+            return Ok(self);
+        };
+
         let dbus = Box::pin(zbus::Connection::session()).await?;
 
         let proxy = SwayNcProxy::new(&dbus).await?;
-        let (tx, rx) = broadcast::channel(8);
 
         let mut stream = proxy.receive_subscribe_v2().await?;
 
-        {
+        spawn({
             let tx = tx.clone();
-
-            spawn(async move {
+            async move {
                 while let Some(ev) = stream.next().await {
                     let ev = ev
                         .message()
@@ -63,29 +106,30 @@ impl Client {
                     debug!("Received event: {ev:?}");
                     tx.send_expect(ev);
                 }
-            });
-        }
+            }
+        });
 
-        Ok(Self { proxy, tx, _rx: rx })
+        Ok(Self::Started { tx, proxy })
     }
 
-    pub fn subscribe(&self) -> broadcast::Receiver<Event> {
-        self.tx.subscribe()
+    async fn stop(self) -> Result<Self, Self::Error> {
+        let Self::Started { tx, proxy: _ } = self else {
+            return Ok(self);
+        };
+
+        Ok(Self::Stopped { tx })
     }
 
-    pub async fn state(&self) -> Result<Event> {
+    async fn state(&self) -> Self::State {
         debug!("Getting subscribe data (current state)");
-        match self.proxy.get_subscribe_data().await {
+        match self.proxy().get_subscribe_data().await {
             Ok(data) => Ok(data.into()),
             Err(err) => Err(err),
         }
     }
 
-    pub async fn toggle_visibility(&self) {
-        debug!("Toggling visibility");
-        if let Err(err) = self.proxy.toggle_visibility().await {
-            error!("{err:?}");
-        }
+    fn subscribe(&self) -> broadcast::Receiver<Self::Event> {
+        self.tx().subscribe()
     }
 }
 
