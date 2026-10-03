@@ -210,6 +210,7 @@ impl Client {
         {
             let tx = tx.clone();
             let lock = lock.clone();
+            let active = active.clone();
 
             event_listener.add_workspace_moved_handler(move |event_data| {
                 let _lock = lock!(lock);
@@ -268,6 +269,7 @@ impl Client {
         {
             let tx = tx.clone();
             let lock = lock.clone();
+            let active = active.clone();
 
             event_listener.add_urgent_state_changed_handler(move |address| {
                 let _lock = lock!(lock);
@@ -285,6 +287,15 @@ impl Client {
                         error!("Unable to locate client");
                     },
                     |c| {
+                        let is_focused = lock!(active)
+                            .as_ref()
+                            .is_some_and(|w| w.id == c.workspace.id as i64);
+
+                        if is_focused {
+                            debug!("Ignoring urgent state on focused workspace");
+                            return;
+                        }
+
                         tx.send_expect(WorkspaceUpdate::Urgent {
                             id: c.workspace.id as i64,
                             urgent: true,
