@@ -27,44 +27,63 @@ const MINUTE: i64 = 60;
 #[serde(default)]
 struct ProfileState {
     /// Battery charged percentage.
-    percent: f64,
+    /// Omit to match regardless of battery percentage.
+    percent: Option<f64>,
     /// Whether the battery is currently charging.
     /// Omit to match regardless of charging state.
     charging: Option<bool>,
+    /// Battery power draw in watts.
+    /// Omit to match regardless of battery power draw.
+    power_draw: Option<f64>,
 }
 
 impl Default for ProfileState {
     fn default() -> Self {
         Self {
-            percent: 100.0,
+            percent: None,
             charging: None,
+            power_draw: None,
         }
     }
 }
 
 impl PartialOrd for ProfileState {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        if self.percent == other.percent {
-            match (self.charging, other.charging) {
-                (Some(_), Some(_)) | (None, None) => Some(Ordering::Equal),
+        if self.percent != other.percent {
+            return match (self.percent, other.percent) {
                 (None, Some(_)) => Some(Ordering::Greater),
                 (Some(_), None) => Some(Ordering::Less),
-            }
-        } else {
-            self.percent.partial_cmp(&other.percent)
+                (Some(_), Some(_)) | (None, None) => unreachable!("caught by the if above"),
+            };
+        }
+        if self.power_draw != other.power_draw {
+            return match (self.power_draw, other.power_draw) {
+                (None, Some(_)) => Some(Ordering::Greater),
+                (Some(_), None) => Some(Ordering::Less),
+                (Some(_), Some(_)) | (None, None) => unreachable!("caught by the if above"),
+            };
+        }
+
+        match (self.charging, other.charging) {
+            (Some(_), Some(_)) | (None, None) => Some(Ordering::Equal),
+            (None, Some(_)) => Some(Ordering::Greater),
+            (Some(_), None) => Some(Ordering::Less),
         }
     }
 }
 
 impl State for ProfileState {
     fn matches(&self, value: &Self) -> bool {
-        match self.charging {
-            Some(charging) => {
-                charging == value.charging.expect("value should exist")
-                    && value.percent <= self.percent
-            }
-            None => value.percent <= self.percent,
-        }
+        let matches_charging = self.charging
+            .map_or(true, |charging| charging == value.charging.expect("value should exist"));
+
+        let matches_percent = self.percent
+            .map_or(true, |percent| percent <= value.percent.expect("value should exist"));
+
+        let matches_power_draw = self.power_draw
+            .map_or(true, |power_draw| power_draw <= value.power_draw.expect("value should exist"));
+
+        matches_charging && matches_percent && matches_power_draw
     }
 }
 
@@ -229,6 +248,7 @@ impl Module<Button> for BatteryModule {
                     .profile
                     .format
                     .replace("{percentage}", &state.percent.round().to_string())
+                    .replace("{power_draw}", &state.power_draw.to_string())
                     .replace("{time_remaining}", &time_remaining)
                     .replace("{state}", &properties.state_name);
 
@@ -247,6 +267,8 @@ impl Module<Button> for BatteryModule {
             let state = properties.state;
             let charging = state == BatteryState::Charging || state == BatteryState::PendingCharge;
 
+            let power_draw = properties.energy_rate;
+
             let data = BatteryUiUpdate {
                 time_to_full: properties.time_to_full,
                 time_to_empty: properties.time_to_empty,
@@ -256,8 +278,9 @@ impl Module<Button> for BatteryModule {
 
             manager.update(
                 ProfileState {
-                    percent,
+                    percent: Some(percent),
                     charging: Some(charging),
+                    power_draw: Some(power_draw),
                 },
                 data,
             );
