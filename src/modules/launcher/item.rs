@@ -352,3 +352,48 @@ impl Deref for ImageTextButton {
         &self.button
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn item() -> Item {
+        Item::new(String::new(), OpenState::Closed, false)
+    }
+
+    fn window(focused: bool) -> Window {
+        Window {
+            id: 0,
+            name: String::new(),
+            open_state: OpenState::Open { focused },
+        }
+    }
+
+    #[test]
+    fn test_item_focus_window() {
+        let mut item = item();
+        let window = window(false);
+
+        item.windows.insert(0, window);
+
+        item.set_window_focused(0, true);
+        assert_eq!(
+            item.windows.get(&0).expect("should exist").open_state,
+            OpenState::Open { focused: true }
+        );
+    }
+
+    #[test]
+    fn test_item_unfocus_window() {
+        let mut item = Item::new(String::new(), OpenState::Closed, false);
+        let window = window(true);
+
+        item.windows.insert(0, window);
+
+        item.set_window_focused(0, false);
+        assert_eq!(
+            item.windows.get(&0).expect("should exist").open_state,
+            OpenState::Open { focused: false }
+        );
+    }
+}
