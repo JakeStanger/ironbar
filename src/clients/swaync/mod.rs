@@ -5,8 +5,8 @@ use crate::{register_fallible_client, spawn};
 use dbus::SwayNcProxy;
 use serde::Deserialize;
 use tokio::sync::broadcast;
+use tokio::task::JoinHandle;
 use tracing::{debug, error};
-use zbus::Result;
 use zbus::export::ordered_stream::OrderedStreamExt;
 use zbus::zvariant::Type;
 
@@ -35,57 +35,115 @@ impl From<GetSubscribeData> for Event {
 }
 
 #[derive(Debug)]
-pub struct Client {
-    proxy: SwayNcProxy<'static>,
-    tx: broadcast::Sender<Event>,
-    _rx: broadcast::Receiver<Event>,
+pub enum Client {
+    Stopped {
+        tx: broadcast::Sender<Event>,
+        _rx: broadcast::Receiver<Event>,
+    },
+    Started {
+        tx: broadcast::Sender<Event>,
+        _rx: broadcast::Receiver<Event>,
+        proxy: SwayNcProxy<'static>,
+        handle: JoinHandle<()>,
+    },
 }
 
 impl Client {
-    pub async fn new() -> Result<Self> {
+    pub(super) fn new() -> Self {
+        let (tx, rx) = broadcast::channel(8);
+        Self::Stopped { tx, _rx: rx }
+    }
+
+    fn proxy(&self) -> super::Result<&SwayNcProxy<'static>, zbus::Error> {
+        match self {
+            Client::Stopped { .. } => Err(super::Error::InvalidState),
+            Client::Started { proxy, .. } => Ok(proxy),
+        }
+    }
+
+    fn tx(&self) -> &broadcast::Sender<Event> {
+        match self {
+            Client::Stopped { tx, .. } => tx,
+            Client::Started { tx, .. } => tx,
+        }
+    }
+
+    pub async fn toggle_visibility(&self) -> super::Result<(), zbus::Error> {
+        debug!("Toggling visibility");
+        self.proxy()?.toggle_visibility().await?;
+        Ok(())
+    }
+}
+
+impl super::Client for Client {
+    type State = Self::Event;
+    type Event = Event;
+    type Error = zbus::Error;
+
+    fn is_started(&self) -> bool {
+        matches!(self, Self::Started { .. })
+    }
+
+    async fn start(self) -> Result<Self, Self::Error> {
+        let Self::Stopped { tx, _rx } = self else {
+            return Ok(self);
+        };
+
         let dbus = Box::pin(zbus::Connection::session()).await?;
 
         let proxy = SwayNcProxy::new(&dbus).await?;
-        let (tx, rx) = broadcast::channel(8);
 
         let mut stream = proxy.receive_subscribe_v2().await?;
 
-        {
+        let handle = spawn({
             let tx = tx.clone();
-
-            spawn(async move {
+            async move {
                 while let Some(ev) = stream.next().await {
-                    let ev = ev
-                        .message()
-                        .body()
-                        .deserialize::<Event>()
-                        .expect("to deserialize");
-                    debug!("Received event: {ev:?}");
-                    tx.send_expect(ev);
+                    let ev = ev.message().body().deserialize::<Event>();
+
+                    match ev {
+                        Ok(ev) => {
+                            debug!("Received event: {ev:?}");
+                            tx.send_expect(ev);
+                        }
+                        Err(err) => {
+                            error!("Failed to deserialize event: {err:?}");
+                            return;
+                        }
+                    }
                 }
-            });
-        }
+            }
+        });
 
-        Ok(Self { proxy, tx, _rx: rx })
+        Ok(Self::Started {
+            tx,
+            _rx,
+            proxy,
+            handle,
+        })
     }
 
-    pub fn subscribe(&self) -> broadcast::Receiver<Event> {
-        self.tx.subscribe()
+    async fn stop(self) -> Result<Self, Self::Error> {
+        let Self::Started {
+            tx, _rx, handle, ..
+        } = self
+        else {
+            return Ok(self);
+        };
+
+        handle.abort();
+
+        Ok(Self::Stopped { tx, _rx })
     }
 
-    pub async fn state(&self) -> Result<Event> {
+    async fn state(&self) -> super::Result<Self::State, Self::Error> {
         debug!("Getting subscribe data (current state)");
-        match self.proxy.get_subscribe_data().await {
-            Ok(data) => Ok(data.into()),
-            Err(err) => Err(err),
-        }
+        let data = self.proxy()?.get_subscribe_data().await?;
+        Ok(data.into())
     }
 
-    pub async fn toggle_visibility(&self) {
-        debug!("Toggling visibility");
-        if let Err(err) = self.proxy.toggle_visibility().await {
-            error!("{err:?}");
-        }
+    fn subscribe(&self) -> broadcast::Receiver<Self::Event> {
+        self.tx().subscribe()
     }
 }
 
