@@ -64,6 +64,9 @@ pub struct ClipboardModule {
     #[serde(flatten)]
     pub common: Option<CommonConfig>,
 
+    /// Text to show in the popup when there are no items in the history.
+    empty_label: String,
+
     /// Whether to show a clear button for the clipboard history.
     show_clear_button: bool,
 
@@ -91,6 +94,7 @@ impl Default for ClipboardModule {
             truncate: None,
             layout: LayoutConfig::default(),
             common: Some(CommonConfig::default()),
+            empty_label: "No items".to_string(),
             show_clear_button: true,
             clear_button_icon: "🗑".to_string(),
             clear_button_icon_size: 32,
@@ -215,6 +219,9 @@ impl Module<Button> for ClipboardModule {
         clear_button.set_tooltip_text(Some("Clear clipboard history."));
         clear_button.set_visible(self.show_clear_button);
 
+        let empty_label = Label::new(Some(&self.empty_label));
+        container.append(&empty_label);
+
         {
             let tx = context.tx.clone();
             clear_button.connect_clicked(move |_| {
@@ -334,6 +341,8 @@ impl Module<Button> for ClipboardModule {
 
                         items.insert(id, (row, button));
 
+                        empty_label.set_visible(false);
+
                         if self.show_clear_button {
                             clear_button_ui.set_visible(true);
                         }
@@ -348,6 +357,9 @@ impl Module<Button> for ClipboardModule {
 
                             entries.remove(&row);
                         }
+
+                        empty_label.set_visible(items.is_empty());
+
                         if self.show_clear_button {
                             clear_button_ui.set_visible(!items.is_empty());
                         }
@@ -372,6 +384,7 @@ impl Module<Button> for ClipboardModule {
                         }
 
                         hidden_option.set_active(true);
+                        empty_label.set_visible(true);
                         clear_button_ui.set_visible(false);
                     }
                 }
