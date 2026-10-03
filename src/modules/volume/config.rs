@@ -108,6 +108,18 @@ pub struct VolumeModule {
     /// See [common options](module-level-options#common-options).
     #[serde(flatten)]
     pub common: Option<CommonConfig>,
+
+    /// Control by amount in percent a scroll moves the volume levels.
+    /// Use Negative values to inverse scroll direction.
+    /// By default the direction uses natural scroll.
+    ///
+    /// **Default**: 1
+    pub(crate) scroll_step: i32,
+
+    /// Enable the ability to scroll on the sink or source to change its volume levels.
+    ///
+    /// **Default**: true
+    pub(crate) scroll_volume: bool,
 }
 
 impl Default for VolumeModule {
@@ -128,6 +140,8 @@ impl Default for VolumeModule {
             marquee: MarqueeMode::default(),
             layout: LayoutConfig::default(),
             common: Some(CommonConfig::default()),
+            scroll_step: 1,
+            scroll_volume: true,
         }
     }
 }
