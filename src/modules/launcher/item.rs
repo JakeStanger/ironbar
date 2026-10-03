@@ -22,7 +22,14 @@ pub struct Item {
     pub favorite: bool,
     pub open_state: OpenState,
     pub windows: IndexMap<usize, Window>,
+    pub focused_window_index: usize,
     pub name: String,
+}
+
+#[derive(Debug, Clone)]
+pub enum FocusingMode {
+    Cyclic,
+    Manual(usize),
 }
 
 impl Item {
@@ -32,6 +39,7 @@ impl Item {
             favorite,
             open_state,
             windows: IndexMap::new(),
+            focused_window_index: 0,
             name: String::new(),
         }
     }
@@ -68,12 +76,39 @@ impl Item {
     }
 
     pub fn set_window_focused(&mut self, window_id: usize, focused: bool) {
+        if focused {
+            self.set_focused_window_index(FocusingMode::Manual(window_id));
+        }
         if let Some(window) = self.windows.get_mut(&window_id) {
             window.open_state =
                 OpenState::merge_states(&[&window.open_state, &OpenState::focused(focused)]);
 
             self.recalculate_open_state();
         }
+    }
+
+    pub fn get_current_focused_window(&self) -> Option<(&usize, &Window)> {
+        self.windows.get_index(self.focused_window_index)
+    }
+
+    pub fn set_focused_window_index(&mut self, focusing_mode: FocusingMode) {
+        match focusing_mode {
+            FocusingMode::Cyclic => {
+                self.focused_window_index = (self.focused_window_index + 1) % self.windows.len();
+            }
+            FocusingMode::Manual(window_id) => {
+                if let Some(index) = self.windows.get_index_of(&window_id) {
+                    self.focused_window_index = index;
+                }
+            }
+        }
+    }
+
+    pub fn get_next_focused_window(&mut self) -> Option<(&usize, &Window)> {
+        if self.windows.is_empty() {
+            return None;
+        }
+        self.get_current_focused_window()
     }
 
     /// Sets this item's open state
@@ -106,6 +141,7 @@ impl From<ToplevelInfo> for Item {
             favorite: false,
             open_state,
             windows,
+            focused_window_index: 0,
             name,
         }
     }
