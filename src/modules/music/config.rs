@@ -30,6 +30,19 @@ impl Default for PlayerType {
     }
 }
 
+#[derive(Debug, Deserialize, Clone, Copy, PartialEq, Eq, Default)]
+#[serde(rename_all = "snake_case")]
+#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
+pub enum StatusIconSemantics {
+    /// Show the icon for the action that would resume playback:
+    /// a pause icon while playing, a play icon while paused.
+    #[default]
+    Action,
+    /// Show the icon for the current state:
+    /// a play icon while playing, a pause icon while paused.
+    State,
+}
+
 #[derive(Debug, Deserialize, Clone, PartialEq)]
 #[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
 #[serde(default)]
@@ -55,6 +68,11 @@ pub struct MusicModule {
     ///
     /// **Default**: `true`
     pub(crate) show_status_icon: bool,
+
+    /// Which icon the status icon shows for the current player state.
+    ///
+    /// **Default**: `action`
+    pub(crate) status_icon_semantics: StatusIconSemantics,
 
     /// Size to render the icons at, in pixels (image icons only).
     ///
@@ -134,6 +152,7 @@ impl Default for MusicModule {
             format: "{title} / {artist}".to_string(),
             icons: Icons::default(),
             show_status_icon: true,
+            status_icon_semantics: StatusIconSemantics::default(),
             icon_size: default::IconSize::Normal as i32,
             cover_image_size: 128,
             host: "localhost:6600".to_string(),

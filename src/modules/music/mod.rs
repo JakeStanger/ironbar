@@ -14,7 +14,7 @@ use tokio::sync::mpsc;
 use tracing::{error, warn};
 
 pub use self::config::MusicModule;
-use self::config::PlayerType;
+use self::config::{PlayerType, StatusIconSemantics};
 use crate::channels::{AsyncSenderExt, BroadcastReceiverExt};
 use crate::clients::Clients;
 use crate::clients::music::{
@@ -216,14 +216,19 @@ impl Module<Button> for MusicModule {
 
                     button.set_visible(true);
 
+                    let (icon_playing, icon_paused) = match self.status_icon_semantics {
+                        StatusIconSemantics::Action => (&icon_pause, &icon_play),
+                        StatusIconSemantics::State => (&icon_play, &icon_pause),
+                    };
+
                     match event.status.state {
                         PlayerState::Playing if self.show_status_icon => {
-                            icon_play.set_visible(true);
-                            icon_pause.set_visible(false);
+                            icon_playing.set_visible(true);
+                            icon_paused.set_visible(false);
                         }
                         PlayerState::Paused if self.show_status_icon => {
-                            icon_pause.set_visible(true);
-                            icon_play.set_visible(false);
+                            icon_paused.set_visible(true);
+                            icon_playing.set_visible(false);
                         }
                         PlayerState::Stopped => {
                             button.set_visible(false);
@@ -309,10 +314,18 @@ impl Module<Button> for MusicModule {
         let btn_prev = IconButton::new(&icons.prev, self.icon_size, &image_provider);
         btn_prev.add_css_class("btn-prev");
 
-        let btn_play = IconButton::new(&icons.play, self.icon_size, &image_provider);
+        // The visible button always toggles playback; its glyph follows
+        // `status_icon_semantics` so it matches the bar icon:
+        // action -> the next action, state -> the current state.
+        let (btn_play_icon, btn_pause_icon) = match self.status_icon_semantics {
+            StatusIconSemantics::Action => (&icons.play, &icons.pause),
+            StatusIconSemantics::State => (&icons.pause, &icons.play),
+        };
+
+        let btn_play = IconButton::new(btn_play_icon, self.icon_size, &image_provider);
         btn_play.add_css_class("btn-play");
 
-        let btn_pause = IconButton::new(&icons.pause, self.icon_size, &image_provider);
+        let btn_pause = IconButton::new(btn_pause_icon, self.icon_size, &image_provider);
         btn_pause.add_css_class("btn-pause");
 
         let btn_next = IconButton::new(&icons.next, self.icon_size, &image_provider);
