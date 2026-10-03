@@ -69,9 +69,7 @@ impl Item {
 
     pub fn set_window_focused(&mut self, window_id: usize, focused: bool) {
         if let Some(window) = self.windows.get_mut(&window_id) {
-            window.open_state =
-                OpenState::merge_states(&[&window.open_state, &OpenState::focused(focused)]);
-
+            window.open_state = OpenState::focused(focused);
             self.recalculate_open_state();
         }
     }
