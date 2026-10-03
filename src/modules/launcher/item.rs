@@ -69,9 +69,7 @@ impl Item {
 
     pub fn set_window_focused(&mut self, window_id: usize, focused: bool) {
         if let Some(window) = self.windows.get_mut(&window_id) {
-            window.open_state =
-                OpenState::merge_states(&[&window.open_state, &OpenState::focused(focused)]);
-
+            window.open_state = OpenState::focused(focused);
             self.recalculate_open_state();
         }
     }
@@ -352,5 +350,50 @@ impl Deref for ImageTextButton {
 
     fn deref(&self) -> &Self::Target {
         &self.button
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn item() -> Item {
+        Item::new(String::new(), OpenState::Closed, false)
+    }
+
+    fn window(focused: bool) -> Window {
+        Window {
+            id: 0,
+            name: String::new(),
+            open_state: OpenState::Open { focused },
+        }
+    }
+
+    #[test]
+    fn test_item_focus_window() {
+        let mut item = item();
+        let window = window(false);
+
+        item.windows.insert(0, window);
+
+        item.set_window_focused(0, true);
+        assert_eq!(
+            item.windows.get(&0).expect("should exist").open_state,
+            OpenState::Open { focused: true }
+        );
+    }
+
+    #[test]
+    fn test_item_unfocus_window() {
+        let mut item = Item::new(String::new(), OpenState::Closed, false);
+        let window = window(true);
+
+        item.windows.insert(0, window);
+
+        item.set_window_focused(0, false);
+        assert_eq!(
+            item.windows.get(&0).expect("should exist").open_state,
+            OpenState::Open { focused: false }
+        );
     }
 }

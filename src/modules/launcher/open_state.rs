@@ -47,3 +47,50 @@ impl OpenState {
         })
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_merge_states_empty() {
+        let states: Vec<&OpenState> = vec![];
+        assert_eq!(OpenState::merge_states(&states), OpenState::Closed);
+    }
+
+    #[test]
+    fn test_merge_states_single_closed() {
+        let states = vec![&OpenState::Closed];
+        assert_eq!(OpenState::merge_states(&states), OpenState::Closed);
+    }
+
+    #[test]
+    fn test_merge_states_single_open_unfocused() {
+        let states = vec![&OpenState::Open { focused: false }];
+        assert_eq!(
+            OpenState::merge_states(&states),
+            OpenState::Open { focused: false }
+        );
+    }
+
+    #[test]
+    fn test_merge_states_single_open_focused() {
+        let states = vec![&OpenState::Open { focused: true }];
+        assert_eq!(
+            OpenState::merge_states(&states),
+            OpenState::Open { focused: true }
+        );
+    }
+
+    #[test]
+    fn test_merge_states_unfocused_and_focused() {
+        let states = vec![
+            &OpenState::Open { focused: false },
+            &OpenState::Open { focused: true },
+        ];
+        assert_eq!(
+            OpenState::merge_states(&states),
+            OpenState::Open { focused: true }
+        );
+    }
+}
