@@ -23,6 +23,9 @@ Supports plain text and images.
 | `truncate.mode`       | `'start'` or `'middle'` or `'end'` or `off`          | `off`   | The location of the ellipses and where to truncate text from. Leave null to avoid truncating.                                                         |
 | `truncate.length`     | `integer`                                            | `null`  | The fixed width (in chars) of the widget. Leave blank to let GTK automatically handle.                                                                |
 | `truncate.max_length` | `integer`                                            | `null`  | The maximum number of characters before truncating. Leave blank to let GTK automatically handle.                                                      |
+| `show_clear_button` | `bool`                                            | `true`  |   Enable "Clear All" button within the clipboard popup.                                                                                                       |
+| `clear_button_icon` | `string` or [image](images)                          | `🗑`  | Icon to show on the clear button.                                                                                                                    |
+| `clear_button_icon_size` | `integer`                                            | `32`  | Size to render icon at (image icons only).                                                                                                            |
 
 <details>
 <summary>JSON</summary>
@@ -93,6 +96,7 @@ end:
 | `.clipboard .btn .text-icon`         | Clipboard widget button icon (textual only).         |
 | `.clipboard .btn .image`             | Clipboard widget button icon (image only).           |
 | `.popup-clipboard`                   | Clipboard popup box.                                 |
+| `.popup-clipboard .btn-clear`        | Clipboard "Clear All" button.                        |
 | `.popup-clipboard .item`             | Clipboard row item inside the popup.                 |
 | `.popup-clipboard .item .btn`        | Clipboard row item radio button.                     |
 | `.popup-clipboard .item .btn.text`   | Clipboard row item radio button (text values only).  |
