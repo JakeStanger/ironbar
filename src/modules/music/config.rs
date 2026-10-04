@@ -56,6 +56,13 @@ pub struct MusicModule {
     /// **Default**: `true`
     pub(crate) show_status_icon: bool,
 
+    /// Whether to reverse the play/pause status icon shown
+    /// on the bar: a pause icon while playing and a play
+    /// icon while paused, matching the popup's visible button.
+    ///
+    /// **Default**: `false`
+    pub(crate) reverse_status_icon: bool,
+
     /// Size to render the icons at, in pixels (image icons only).
     ///
     /// **Default** `32`
@@ -134,6 +141,7 @@ impl Default for MusicModule {
             format: "{title} / {artist}".to_string(),
             icons: Icons::default(),
             show_status_icon: true,
+            reverse_status_icon: false,
             icon_size: default::IconSize::Normal as i32,
             cover_image_size: 128,
             host: "localhost:6600".to_string(),
