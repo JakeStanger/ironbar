@@ -216,14 +216,20 @@ impl Module<Button> for MusicModule {
 
                     button.set_visible(true);
 
+                    let (icon_playing, icon_paused) = if self.reverse_status_icon {
+                        (&icon_pause, &icon_play)
+                    } else {
+                        (&icon_play, &icon_pause)
+                    };
+
                     match event.status.state {
                         PlayerState::Playing if self.show_status_icon => {
-                            icon_play.set_visible(true);
-                            icon_pause.set_visible(false);
+                            icon_playing.set_visible(true);
+                            icon_paused.set_visible(false);
                         }
                         PlayerState::Paused if self.show_status_icon => {
-                            icon_pause.set_visible(true);
-                            icon_play.set_visible(false);
+                            icon_paused.set_visible(true);
+                            icon_playing.set_visible(false);
                         }
                         PlayerState::Stopped => {
                             button.set_visible(false);
