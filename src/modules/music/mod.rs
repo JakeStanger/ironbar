@@ -1,8 +1,8 @@
 use std::borrow::Cow;
-use std::cell::{Cell, RefMut};
+use std::cell::Cell;
 use std::path::PathBuf;
 use std::rc::Rc;
-use std::sync::Arc;
+use std::sync::{Arc, MutexGuard};
 use std::time::Duration;
 
 use color_eyre::Result;
@@ -26,7 +26,7 @@ use crate::modules::PopupButton;
 use crate::modules::{
     Module, ModuleInfo, ModuleParts, ModulePopup, ModuleUpdateEvent, WidgetContext,
 };
-use crate::{module_impl, spawn};
+use crate::{lock, module_impl, spawn};
 
 mod config;
 
@@ -69,7 +69,7 @@ pub struct SongUpdate {
 }
 
 fn get_client(
-    mut clients: RefMut<'_, Clients>,
+    mut clients: MutexGuard<'_, Clients>,
     player_type: PlayerType,
     host: String,
     music_dir: PathBuf,
@@ -99,7 +99,7 @@ impl Module<Button> for MusicModule {
         let format = self.format.clone();
 
         let client = get_client(
-            context.ironbar.clients.borrow_mut(),
+            lock!(context.ironbar.clients),
             self.player_type,
             self.host.clone(),
             self.music_dir.clone(),

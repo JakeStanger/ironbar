@@ -1,6 +1,10 @@
+#[cfg(feature = "lua")]
+pub mod lua;
+
 use crate::channels::{BroadcastChannel, SyncSenderExt};
 use crate::{Ironbar, arc_mut, error, lock, register_fallible_client, spawn, stop_basic};
 use bluer::Result;
+use std::fmt::{Display, Formatter};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 use tokio::sync::broadcast;
@@ -25,6 +29,18 @@ pub enum BluetoothState {
     NotFound,
 }
 
+impl Display for BluetoothState {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        f.write_str(match self {
+            Self::Enabling => "enabling",
+            Self::Enabled { .. } => "enabled",
+            Self::Disabled => "disabled",
+            Self::Disabling => "disabling",
+            Self::NotFound => "not_found",
+        })
+    }
+}
+
 impl BluetoothState {
     pub fn is_enabled(&self) -> bool {
         matches!(self, BluetoothState::Enabled { .. })
@@ -40,11 +56,14 @@ pub enum BluetoothDeviceStatus {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[cfg_attr(feature = "lua", derive(mlua::UserData))]
 pub struct BluetoothDevice {
     /// Unique device identifier.
+    #[cfg_attr(feature = "lua", lua(skip))]
     pub address: bluer::Address,
 
     /// Remote device connection status
+    #[cfg_attr(feature = "lua", lua(get))]
     pub status: BluetoothDeviceStatus,
 
     /// Device alias (if set) or its name.
