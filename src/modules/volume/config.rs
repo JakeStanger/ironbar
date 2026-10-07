@@ -115,6 +115,14 @@ pub struct VolumeModule {
     /// See [common options](module-level-options#common-options).
     #[serde(flatten)]
     pub common: Option<CommonConfig>,
+
+    /// Control by amount in percent a scroll moves the volume levels.
+    /// Use Negative values to inverse scroll direction.
+    /// By default the direction uses natural scroll.
+    /// To disable scrolling use `null`, 0 or `nan`.
+    ///
+    /// **Default**: 1.0
+    pub(crate) scroll_step: Option<f64>,
 }
 
 impl Default for VolumeModule {
@@ -136,6 +144,7 @@ impl Default for VolumeModule {
             marquee: MarqueeMode::default(),
             layout: LayoutConfig::default(),
             common: Some(CommonConfig::default()),
+            scroll_step: Some(1.0),
         }
     }
 }

@@ -53,6 +53,7 @@ pulseaudio uses to describe sources of audio:
 | `marquee.separator`         | `string`                                             | `"    "`               | No       | String displayed between the end and beginning of text as it loops.                                                                                                                                           |
 | `marquee.on_hover`          | `'none'` or `'pause'` or `'play'`                    | `'none'`               | No       | Controls marquee behavior on hover: `'none'` (always scroll), `'pause'` (pause on hover), or `'play'` (only scroll on hover).                                                                                 |
 | `use_default_profiles`      | `boolean`                                            | `true`                 | No       | Whether default profiles should be used.                                                                                                                                                                      |
+| `scroll_step`             | `integer`                                            | `1.0`                    | No       | Control scroll direction. Use negative values to inverse the scroll direction. `null`, 0.0 or `nan` disable this behavior.|
 
 This module uses the volume percentage `0-100` for profile thresholds.
 

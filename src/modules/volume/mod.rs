@@ -41,6 +41,9 @@ pub enum Update {
 
     OutputVolume(u32, f64),
     OutputMute(u32, bool),
+
+    DefaultSinkVolumeDelta(f64),
+    DefaultSourceVolumeDelta(f64),
 }
 
 enum BarUiUpdate {
@@ -725,6 +728,7 @@ impl Module<Button> for VolumeModule {
         }
 
         // ui events
+        let max_volume = self.max_volume;
         spawn(async move {
             while let Some(update) = rx.recv().await {
                 match update {
@@ -738,6 +742,12 @@ impl Module<Button> for VolumeModule {
                     Update::InputMute(index, muted) => client.set_input_muted(index, muted),
                     Update::OutputVolume(index, volume) => client.set_output_volume(index, volume),
                     Update::OutputMute(index, muted) => client.set_output_muted(index, muted),
+                    Update::DefaultSinkVolumeDelta(delta) => {
+                        client.adjust_default_sink_volume(delta, max_volume)
+                    }
+                    Update::DefaultSourceVolumeDelta(delta) => {
+                        client.adjust_default_source_volume(delta, max_volume)
+                    }
                 }
             }
         });
@@ -765,6 +775,31 @@ impl Module<Button> for VolumeModule {
             .css_classes(["source"])
             .build();
 
+        if let Some(step) = self.scroll_step
+            && !step.is_nan()
+            && step != 0.0
+        {
+            {
+                let tx = context.controller_tx.clone();
+                let scroll_event =
+                    gtk::EventControllerScroll::new(gtk::EventControllerScrollFlags::VERTICAL);
+                scroll_event.connect_scroll(move |_event, _dx, dy| {
+                    tx.send_spawn(Update::DefaultSinkVolumeDelta(-dy * step));
+                    true.into()
+                });
+                sink_label.add_controller(scroll_event);
+            }
+            {
+                let tx = context.controller_tx.clone();
+                let scroll_event =
+                    gtk::EventControllerScroll::new(gtk::EventControllerScrollFlags::VERTICAL);
+                scroll_event.connect_scroll(move |_event, _dx, dy| {
+                    tx.send_spawn(Update::DefaultSourceVolumeDelta(-dy * step));
+                    true.into()
+                });
+                source_label.add_controller(scroll_event);
+            }
+        }
         let container = gtk::Box::new(Orientation::Horizontal, 5);
 
         let button = Button::new();
