@@ -15,6 +15,8 @@ The examples make use of [Nerd Fonts](https://www.nerdfonts.com/#home) for displ
 
 The config file lives inside the `ironbar` directory in your XDG_CONFIG_DIR, which is usually `~/.config/ironbar`.
 
+Alternatively, you can use a system-level config in `/etc/ironbar/` to set a default config for all users on the machine.
+
 Ironbar supports a range of configuration formats, so you can pick your favourite:
 
 - `config.json`
@@ -23,7 +25,7 @@ Ironbar supports a range of configuration formats, so you can pick your favourit
 - `config.corn` (Includes variable support for re-using blocks.
   See [here](https://github.com/jakestanger/corn) for info)
 
-You can also override the default config path using the `IRONBAR_CONFIG` environment variable.
+You can also override the default config path using the `IRONBAR_CONFIG` environment variable, or the `--config` CLI argument.
 
 A hosted schema is available for the latest Git version ~~and each versioned release~~.
 JSON and YAML both support schema checking by adding the `$schema` key 
@@ -300,6 +302,9 @@ The following table lists each of the top-level bar config options:
 | `icon_theme`        | `string`                                | `null`  | Name of the GTK icon theme to use. Leave blank to use default.                                                                 |
 | `icon_overrides`    | `Map<string, string>`                   | `{}`    | Map of image inputs to override names. Usually used for app IDs (or classes) to icon names, overriding the app's default icon. |
 | `double_click_time` | `integer` or `"gtk"`                    | `250`   | Time in milliseconds to wait for a double-click. Set to `"gtk"` to use GTK's setting.                                          |
+| `hot_reload`        | `boolean` or `HotReload`                | `true`  | Whether to hot-reload config and style changes. Can also take object format to toggle separately.                              |
+| `hot_reload.config` | `boolean`                               | `true`  | Whether to hot-reload config changes.                                                                                          |
+| `hot_reload.style`  | `boolean`                               | `true`  | Whether to hot-reload style changes.                                                                                           |
 
 > [!TIP]
 > `monitors` is only required if you are following **2b** or **2c** (ie not the same bar across all monitors).
@@ -327,6 +332,8 @@ The following table lists each of the bar-level bar config options:
 | `popup_autohide`  | `boolean`                                      | `false`                                  | Whether to close the popup on outside click. On some compositors, this can aggressively steal kb/m focus.                  |
 | `start_hidden`    | `boolean`                                      | `false`, or `true` if `autohide` set     | Whether the bar should be hidden when the application starts. Enabled by default when `autohide` is set.                   |
 | `autohide`        | `integer`                                      | `null`                                   | The duration in milliseconds before the bar is hidden after the cursor leaves. Leave unset to disable auto-hide behaviour. |
+| `autohide_hotspot_height` | `integer`                                      | `5`                                      | Height of the screen edge hotspot (in pixels) that reveals the bar                                                         |
+| `autohide_listener` | `hover` or `scroll` or `click`                 | `hover`                                  | Trigger for revealing the bar.                                                                                             |
 | `start`           | `Module[]`                                     | `[]`                                     | Array of left or top modules.                                                                                              |
 | `center`          | `Module[]`                                     | `[]`                                     | Array of center modules.                                                                                                   |
 | `end`             | `Module[]`                                     | `[]`                                     | Array of right or bottom modules.                                                                                          |

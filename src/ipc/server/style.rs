@@ -1,15 +1,17 @@
 use crate::Ironbar;
 use crate::bar::Bar;
+use crate::config::CssSource;
 use crate::ipc::{Response, StyleCommand};
 use crate::modules::ModuleRef;
-use crate::style::{CssSource, load_css};
+use crate::style::load_css;
 use gtk::prelude::*;
 
 pub fn handle_command(command: StyleCommand, ironbar: &Ironbar) -> Response {
     match command {
         StyleCommand::LoadCss { path } => {
             if path.exists() {
-                load_css(&CssSource::File(path));
+                let hot_reload = ironbar.config.borrow().hot_reload.is_styles_enabled();
+                load_css(&CssSource::File(path), hot_reload);
                 Response::Ok
             } else {
                 Response::error("File not found")

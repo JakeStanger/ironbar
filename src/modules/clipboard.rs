@@ -18,7 +18,7 @@ use std::ops::Deref;
 use tokio::sync::mpsc;
 use tracing::{debug, error};
 
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Deserialize, Clone, PartialEq)]
 #[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
 #[serde(default)]
 pub struct ClipboardModule {
@@ -63,6 +63,24 @@ pub struct ClipboardModule {
     /// See [common options](module-level-options#common-options).
     #[serde(flatten)]
     pub common: Option<CommonConfig>,
+
+    /// Text to show in the popup when there are no items in the history.
+    empty_label: String,
+
+    /// Whether to show a clear button for the clipboard history.
+    show_clear_button: bool,
+
+    /// The icon to show on the clipboard clear button.
+    /// Supports [image](images) icons.
+    ///
+    /// **Default**: `🗑`
+    clear_button_icon: String,
+
+    /// The size to render the icon at.
+    /// Note this only applies to image-type icons.
+    ///
+    /// **Default**: `32`
+    clear_button_icon_size: i32,
 }
 
 impl Default for ClipboardModule {
@@ -76,6 +94,10 @@ impl Default for ClipboardModule {
             truncate: None,
             layout: LayoutConfig::default(),
             common: Some(CommonConfig::default()),
+            empty_label: "No items".to_string(),
+            show_clear_button: true,
+            clear_button_icon: "🗑".to_string(),
+            clear_button_icon_size: 32,
         }
     }
 }
@@ -86,6 +108,7 @@ pub enum ControllerEvent {
     Remove(usize),
     Activate(usize),
     Deactivate,
+    Clear,
 }
 
 #[derive(Debug, Clone)]
@@ -186,6 +209,29 @@ impl Module<Button> for ClipboardModule {
         Self: Sized,
     {
         let container = gtk::Box::new(Orientation::Vertical, 10);
+
+        let clear_button = IconButton::new(
+            &self.clear_button_icon,
+            self.clear_button_icon_size,
+            &context.ironbar.image_provider(),
+        );
+        clear_button.add_css_class("btn-clear");
+        clear_button.set_tooltip_text(Some("Clear clipboard history."));
+        clear_button.set_visible(self.show_clear_button);
+
+        let empty_label = Label::new(Some(&self.empty_label));
+        container.append(&empty_label);
+
+        {
+            let tx = context.tx.clone();
+            clear_button.connect_clicked(move |_| {
+                debug!("Clearing clipboard history");
+                tx.send_update_spawn(ControllerEvent::Clear);
+            });
+        }
+
+        container.prepend(clear_button.deref());
+        let clear_button_ui = clear_button.clone();
 
         let entries = gtk::Box::new(Orientation::Vertical, 5);
         container.append(&entries);
@@ -294,6 +340,12 @@ impl Module<Button> for ClipboardModule {
                         entries.prepend(&row);
 
                         items.insert(id, (row, button));
+
+                        empty_label.set_visible(false);
+
+                        if self.show_clear_button {
+                            clear_button_ui.set_visible(true);
+                        }
                     }
                     ControllerEvent::Remove(id) => {
                         debug!("Removing option with ID {id}");
@@ -304,6 +356,12 @@ impl Module<Button> for ClipboardModule {
                             }
 
                             entries.remove(&row);
+                        }
+
+                        empty_label.set_visible(items.is_empty());
+
+                        if self.show_clear_button {
+                            clear_button_ui.set_visible(!items.is_empty());
                         }
                     }
                     ControllerEvent::Activate(id) => {
@@ -318,6 +376,16 @@ impl Module<Button> for ClipboardModule {
                     ControllerEvent::Deactivate => {
                         debug!("Deactivating current option");
                         hidden_option.set_active(true);
+                    }
+                    ControllerEvent::Clear => {
+                        for (id, (row, _button)) in items.drain() {
+                            context.controller_tx.send_spawn(UIEvent::Remove(id));
+                            entries.remove(&row);
+                        }
+
+                        hidden_option.set_active(true);
+                        empty_label.set_visible(true);
+                        clear_button_ui.set_visible(false);
                     }
                 }
             });

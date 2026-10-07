@@ -1,10 +1,12 @@
+use std::collections::HashMap;
+
 use crate::config::{
     CommonConfig, LayoutConfig, MarqueeMode, ModuleOrientation, Profiles, TruncateMode,
 };
 use crate::profiles;
 use serde::Deserialize;
 
-#[derive(Debug, Default, Clone, Deserialize)]
+#[derive(Debug, Default, Clone, Deserialize, PartialEq)]
 #[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
 #[serde(default)]
 pub struct VolumeProfile {
@@ -29,7 +31,7 @@ pub(super) fn default_profiles() -> Profiles<f64, VolumeProfile> {
     )
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, PartialEq)]
 #[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
 #[serde(default)]
 pub struct VolumeModule {
@@ -85,6 +87,11 @@ pub struct VolumeModule {
     #[serde(flatten)]
     pub(super) profiles: Profiles<f64, VolumeProfile>,
 
+    /// Allows to overwrite device description with a custom one.
+    /// Use `{name}` to reuse the device name in the new one.
+    /// Add `-muted` for when the sink or source is muted.
+    pub(super) name_map: HashMap<Box<str>, String>,
+
     // -- Common --
     /// See [truncate options](module-level-options#truncate-mode).
     ///
@@ -123,6 +130,7 @@ impl Default for VolumeModule {
             show_sources: true,
             show_monitors: false,
             profiles: Profiles::default(),
+            name_map: HashMap::new(),
             truncate: None,
             truncate_popup: None,
             marquee: MarqueeMode::default(),
@@ -132,7 +140,7 @@ impl Default for VolumeModule {
     }
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, PartialEq, Eq)]
 #[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
 #[serde(default)]
 pub struct Icons {

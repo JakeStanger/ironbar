@@ -777,6 +777,7 @@ impl Module<Button> for VolumeModule {
             });
         }
 
+        let name_map = self.name_map.clone();
         let rx = context.subscribe();
         let mut manager = {
             let format = self.format.clone();
@@ -817,6 +818,12 @@ impl Module<Button> for VolumeModule {
                             (&source_label, fmt, icon, description, show)
                         }
                     };
+                    let key = if button_label.has_css_class("muted") {
+                        &(desc.clone() + "-muted")
+                    } else {
+                        desc.as_str()
+                    };
+                    let desc = name_map.get(key).unwrap_or(&desc).replace("{name}", &desc);
 
                     let label = fmt
                         .replace("{icon}", icon)

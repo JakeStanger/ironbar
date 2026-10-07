@@ -125,8 +125,23 @@ impl Module<GtkBox> for NetworkManagerModule {
 
         spawn(async move {
             let mut client_signal = client.subscribe();
-            while let Ok(state) = client_signal.recv().await {
-                tx.send_update(state).await;
+            loop {
+                match client_signal.recv().await {
+                    Ok(state) => tx.send_update(state).await,
+                    Err(tokio::sync::broadcast::error::RecvError::Lagged(count)) => {
+                        tracing::warn!(
+                            "Network manager update channel lagged behind by {count}; requesting full state refresh"
+                        );
+                        // Skipped messages may have included a `Devices` update,
+                        // leaving the widget's icon list out of sync. Force a
+                        // full state resend to recover.
+                        client.refresh().await;
+                    }
+                    Err(err) => {
+                        tracing::error!("{err:?}");
+                        break;
+                    }
+                }
             }
         });
 

@@ -113,6 +113,7 @@ impl ToplevelHandleHandler for Environment {
 
         self.handles.retain(|h| h != &handle);
         if let Some(info) = handle.info() {
+            trace!("Removing handle: {info:?}");
             self.event_tx
                 .send_spawn(Event::Toplevel(ToplevelEvent::Remove(info)));
         }

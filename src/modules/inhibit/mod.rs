@@ -114,9 +114,20 @@ impl Module<Button> for InhibitModule {
         });
 
         let (fmt_on, fmt_off) = (self.format_on, self.format_off);
+        let btn = button.clone();
+
+        // gtk based inhibit() requires glib context / main thread
         ctx.subscribe().recv_glib(&label, move |label, state| {
             let fmt = if state.active { &fmt_on } else { &fmt_off };
             label.set_label_escaped(&fmt.replace("{duration}", &format_duration(state.duration)));
+
+            if state.active {
+                btn.add_css_class("on");
+                btn.remove_css_class("off");
+            } else {
+                btn.remove_css_class("on");
+                btn.add_css_class("off");
+            };
         });
 
         Ok(ModuleParts::new(button, None))

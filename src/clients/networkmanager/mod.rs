@@ -432,6 +432,12 @@ impl Client {
         spawn(async move { this.watch_devices_changed().await });
     }
 
+    /// Requests a full state refresh,
+    /// sending a complete `Devices` update to all subscribers.
+    pub async fn refresh(&self) {
+        self.send_device_update().await;
+    }
+
     pub fn subscribe(self: &Arc<Self>) -> broadcast::Receiver<NetworkManagerUpdate> {
         let rx = self.tx.subscribe();
         let this = Arc::clone(self);

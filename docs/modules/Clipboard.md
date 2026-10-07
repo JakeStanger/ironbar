@@ -12,17 +12,21 @@ Supports plain text and images.
 
 > Type: `clipboard`
 
-| Name                  | Type                                                 | Default | Description                                                                                                                                           |
-|-----------------------|------------------------------------------------------|---------|-------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `icon`                | `string` or [image](images)                          | `󰨸`    | Icon to show on the widget button.                                                                                                                    |
-| `icon_size`           | `integer`                                            | `32`    | Size to render icon at (image icons only).                                                                                                            |
-| `max_items`           | `integer`                                            | `10`    | Maximum number of items to show in the popup.                                                                                                         |
-| `image_max_width`     | `float`                                              | `256.0` | The maximum width to render copied images at.                                                                                                         |
-| `image_max_height`    | `float`                                              | `64.0`  | The maximum height to render copied images at.                                                                                                        |
-| `truncate`            | `'start'` or `'middle'` or `'end'` or `off` or `Map` | `off`   | The location of the ellipses and where to truncate text from. Leave null to avoid truncating. Use the long-hand `Map` version if specifying a length. |
-| `truncate.mode`       | `'start'` or `'middle'` or `'end'` or `off`          | `off`   | The location of the ellipses and where to truncate text from. Leave null to avoid truncating.                                                         |
-| `truncate.length`     | `integer`                                            | `null`  | The fixed width (in chars) of the widget. Leave blank to let GTK automatically handle.                                                                |
-| `truncate.max_length` | `integer`                                            | `null`  | The maximum number of characters before truncating. Leave blank to let GTK automatically handle.                                                      |
+| Name                     | Type                                                 | Default      | Description                                                                                                                                           |
+|--------------------------|------------------------------------------------------|--------------|-------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `icon`                   | `string` or [image](images)                          | `󰨸`          | Icon to show on the widget button.                                                                                                                    |
+| `icon_size`              | `integer`                                            | `32`         | Size to render icon at (image icons only).                                                                                                            |
+| `max_items`              | `integer`                                            | `10`         | Maximum number of items to show in the popup.                                                                                                         |
+| `image_max_width`        | `float`                                              | `256.0`      | The maximum width to render copied images at.                                                                                                         |
+| `image_max_height`       | `float`                                              | `64.0`       | The maximum height to render copied images at.                                                                                                        |
+| `truncate`               | `'start'` or `'middle'` or `'end'` or `off` or `Map` | `off`        | The location of the ellipses and where to truncate text from. Leave null to avoid truncating. Use the long-hand `Map` version if specifying a length. |
+| `truncate.mode`          | `'start'` or `'middle'` or `'end'` or `off`          | `off`        | The location of the ellipses and where to truncate text from. Leave null to avoid truncating.                                                         |
+| `truncate.length`        | `integer`                                            | `null`       | The fixed width (in chars) of the widget. Leave blank to let GTK automatically handle.                                                                |
+| `truncate.max_length`    | `integer`                                            | `null`       | The maximum number of characters before truncating. Leave blank to let GTK automatically handle.                                                      |
+| `empty_label`            | `string`                                             | `"No items"` | Label to show in the popup when clipboard history is empty.                                                                                           |
+| `show_clear_button`      | `bool`                                               | `true`       | Enable "Clear All" button within the clipboard popup.                                                                                                 |
+| `clear_button_icon`      | `string` or [image](images)                          | `🗑`         | Icon to show on the clear button.                                                                                                                     |
+| `clear_button_icon_size` | `integer`                                            | `32`         | Size to render icon at (image icons only).                                                                                                            |
 
 <details>
 <summary>JSON</summary>
@@ -93,6 +97,7 @@ end:
 | `.clipboard .btn .text-icon`         | Clipboard widget button icon (textual only).         |
 | `.clipboard .btn .image`             | Clipboard widget button icon (image only).           |
 | `.popup-clipboard`                   | Clipboard popup box.                                 |
+| `.popup-clipboard .btn-clear`        | Clipboard "Clear All" button.                        |
 | `.popup-clipboard .item`             | Clipboard row item inside the popup.                 |
 | `.popup-clipboard .item .btn`        | Clipboard row item radio button.                     |
 | `.popup-clipboard .item .btn.text`   | Clipboard row item radio button (text values only).  |

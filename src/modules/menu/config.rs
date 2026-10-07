@@ -5,7 +5,7 @@ use indexmap::IndexMap;
 use serde::Deserialize;
 
 /// An individual entry in the main menu section.
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Deserialize, Clone, PartialEq)]
 #[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum MenuConfig {
@@ -17,7 +17,7 @@ pub enum MenuConfig {
     Custom(CustomEntry),
 }
 
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Deserialize, Clone, PartialEq)]
 #[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
 pub struct XdgEntry {
     /// Text to display on the button.
@@ -34,7 +34,7 @@ pub struct XdgEntry {
 }
 
 /// Individual shell command entry.
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Deserialize, Clone, PartialEq)]
 #[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
 pub struct CustomEntry {
     /// Text to display on the button.
@@ -52,7 +52,7 @@ pub struct CustomEntry {
     pub on_click: String,
 }
 
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Deserialize, Clone, PartialEq)]
 #[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
 #[serde(default)]
 pub struct MenuModule {

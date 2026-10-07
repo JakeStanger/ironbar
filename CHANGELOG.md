@@ -4,6 +4,56 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.19.1] - 2026-09-20
+### :sparkles: New Features
+- [`ee89cec`](https://github.com/JakeStanger/ironbar/commit/ee89cecc88ac82c3c819429108db696a1ae53a37) - **nix**: allow null package in nix module *(commit by [@davidaf3](https://github.com/davidaf3))*
+
+### :bug: Bug Fixes
+- [`e0b2276`](https://github.com/JakeStanger/ironbar/commit/e0b227624807a4f90e6f5e368d61a7323ff90c60) - **volume**: only set defaults with user changes *(commit by [@davidaf3](https://github.com/davidaf3))*
+- [`1b0425e`](https://github.com/JakeStanger/ironbar/commit/1b0425e55f205956a4a799898d3231acd256b3de) - **volume**: hide the source label if none is selected *(commit by [@davidaf3](https://github.com/davidaf3))*
+- [`35d5c3b`](https://github.com/JakeStanger/ironbar/commit/35d5c3bf8be5d964c78c9ed7320842e001917337) - **workspaces**: clear stale `.visible` class on cross-monitor focus *(PR [#1496](https://github.com/JakeStanger/ironbar/pull/1496) by [@orestisfl](https://github.com/orestisfl))*
+- [`5454cc6`](https://github.com/JakeStanger/ironbar/commit/5454cc68c520274f6400b6ae7cd5644ff75d6daa) - **brightness**: scroll events sometimes lagging *(PR [#1504](https://github.com/JakeStanger/ironbar/pull/1504) by [@JakeStanger](https://github.com/JakeStanger))*
+  - :arrow_lower_right: *fixes issue [#1367](https://github.com/JakeStanger/ironbar/issues/1367) opened by [@imnotpoz](https://github.com/imnotpoz)*
+- [`399c797`](https://github.com/JakeStanger/ironbar/commit/399c797b8bbee6578c73459a4604d4e9cb70c06d) - **workspaces**: apply visibility hint classes on startup *(commit by [@orestisfl](https://github.com/orestisfl))*
+- [`8184b2e`](https://github.com/JakeStanger/ironbar/commit/8184b2e3709911daa111aa4ae61971d86e12aad9) - **tray**: Preserve dispatch order (async -> sync) *(commit by [@slowsage](https://github.com/slowsage))*
+- [`3524ce5`](https://github.com/JakeStanger/ironbar/commit/3524ce5d6955a15e79b315fa184cd644c0fbc7d4) - **networkmanager**: set icon visible after device update *(commit by [@davidaf3](https://github.com/davidaf3))*
+- [`3732237`](https://github.com/JakeStanger/ironbar/commit/3732237914d15a5c8dce7ded3e352f1b5cd645ce) - **style**: Use dark backgrounds for more UI *(PR [#1517](https://github.com/JakeStanger/ironbar/pull/1517) by [@tmccombs](https://github.com/tmccombs))*
+- [`1156463`](https://github.com/JakeStanger/ironbar/commit/11564638d9dcb2410be5e5523d223904714b6f6d) - **volume**: several small popup UI issues *(PR [#1513](https://github.com/JakeStanger/ironbar/pull/1513) by [@davidaf3](https://github.com/davidaf3))*
+- [`a0865e6`](https://github.com/JakeStanger/ironbar/commit/a0865e67eaa6bf1e021fd081c24427ccda43aaec) - **inhibit**: make state global across bar *(PR [#1520](https://github.com/JakeStanger/ironbar/pull/1520) by [@slowsage](https://github.com/slowsage))*
+  - :arrow_lower_right: *fixes issue [#1518](https://github.com/JakeStanger/ironbar/issues/1518) opened by [@ildar](https://github.com/ildar)*
+- [`f42b7e7`](https://github.com/JakeStanger/ironbar/commit/f42b7e7fbc2af3b40fdce11f4513a0260381c1a0) - **autohide**: autohide often not working on first attempt *(PR [#1529](https://github.com/JakeStanger/ironbar/pull/1529) by [@AlexNomadrg](https://github.com/AlexNomadrg))*
+  - :arrow_lower_right: *fixes issue [#1497](https://github.com/JakeStanger/ironbar/issues/1497) opened by [@ksharizard](https://github.com/ksharizard)*
+- [`ab2c7f1`](https://github.com/JakeStanger/ironbar/commit/ab2c7f1c2627daf561a6ace9b5506caf79754630) - **inhibit**: wayland `idle-inhibit` protocol not used *(PR [#1556](https://github.com/JakeStanger/ironbar/pull/1556) by [@g7r](https://github.com/g7r))*
+  - :arrow_lower_right: *fixes issue [#1551](https://github.com/JakeStanger/ironbar/issues/1551) opened by [@g7r](https://github.com/g7r)*
+- [`d0c2fed`](https://github.com/JakeStanger/ironbar/commit/d0c2fed8e08dab06abac05f96e95fb6c92302db5) - **hyprland**: switch workspaces on Lua config providers *(PR [#1554](https://github.com/JakeStanger/ironbar/pull/1554) by [@dcaixinha](https://github.com/dcaixinha))*
+  - :arrow_lower_right: *fixes issue [#1548](https://github.com/JakeStanger/ironbar/issues/1548) opened by [@dcaixinha](https://github.com/dcaixinha)*
+- [`5b96bcf`](https://github.com/JakeStanger/ironbar/commit/5b96bcffac54dd82347badcc07f79d58efa715c7) - **workspaces**: avoid focus race on rename on sway *(PR [#1591](https://github.com/JakeStanger/ironbar/pull/1591) by [@Rijul-A](https://github.com/Rijul-A))*
+- [`1a3c3ef`](https://github.com/JakeStanger/ironbar/commit/1a3c3efcfe2edda259d20d725bfdb2f846c1b573) - **network_manager**: recover module when update channel lags *(commit by [@kallegrens](https://github.com/kallegrens))*
+- [`0fddeff`](https://github.com/JakeStanger/ironbar/commit/0fddeff4ec3385819051e3d1ed74011b963d46b6) - **launcher**: buggy behaviour with libreoffice apps *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`39a6801`](https://github.com/JakeStanger/ironbar/commit/39a6801f96ad1b988b2470f09030ba3184c77db0) - **tray**: some menus not refreshing correctly *(commit by [@molnari811023](https://github.com/molnari811023))*
+- [`fddd193`](https://github.com/JakeStanger/ironbar/commit/fddd19319d223c905c851a3438dd6ef166563559) - **tray**: apply menu property updates and activate the correct radio item
+- [`162a5ba`](https://github.com/JakeStanger/ironbar/commit/162a5ba089fc9f0b7271432d0551285fe0819512) - **launcher**: label visible when `show_names` is false *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`4e9f693`](https://github.com/JakeStanger/ironbar/commit/4e9f693bf2af1b288f673932ad9c82006ad874ac) - **workspaces**: icon css classes missing *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`04b67cb`](https://github.com/JakeStanger/ironbar/commit/04b67cb1e5a027dddffa9f4b9fa7cbaf9bcbac48) - **focused**: update focus for new windows *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+
+### :recycle: Refactors
+- [`260dc95`](https://github.com/JakeStanger/ironbar/commit/260dc95677ad37d6ea7f66db7b18cd6ba4e52535) - **autohide**: cleanup setup_autohide *(PR [#1535](https://github.com/JakeStanger/ironbar/pull/1535) by [@AlexNomadrg](https://github.com/AlexNomadrg))*
+- [`e983b72`](https://github.com/JakeStanger/ironbar/commit/e983b722d79645d6c3b990d84f6fae173a4659ef) - drop unused macros *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+
+### :memo: Documentation Changes
+- [`2858a7a`](https://github.com/JakeStanger/ironbar/commit/2858a7ac7a0cbee79cf0435fb4b6e67368009ac9) - **changelog**: add 0.19.0 note to packagers *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`ffd2121`](https://github.com/JakeStanger/ironbar/commit/ffd21213ebc2396feb5c009d0682cf859c73f209) - **readme**: add cargo-binstall instructions *(PR [#1450](https://github.com/JakeStanger/ironbar/pull/1450) by [@meghprkh](https://github.com/meghprkh))*
+- [`86d3d87`](https://github.com/JakeStanger/ironbar/commit/86d3d87850eec52fd52cd93c0312f55076329ec6) - **readme**: replace arch `ironbar-bin` with official `extra` package *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`d77b08a`](https://github.com/JakeStanger/ironbar/commit/d77b08afb1db11d6db8f5e2d98678f6abfec0ead) - **profiles**: fix compound state example *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`92fc765`](https://github.com/JakeStanger/ironbar/commit/92fc76536c5592885ba0c08c6348988fef400586) - **battery**: fix example profile syntax *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`e0cd8d0`](https://github.com/JakeStanger/ironbar/commit/e0cd8d043d0929e0d845d844da942bb83e2ca125) - **compiling**: add `libevdev` as explicit dependency *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`ae6f106`](https://github.com/JakeStanger/ironbar/commit/ae6f1067f5974f8fc99c851710f1f8c7be46c844) - **readme**: add jetbrains acknowledgement *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`21eebc6`](https://github.com/JakeStanger/ironbar/commit/21eebc616aa2ade6da7e57c2a4f600c13f4b2360) - **readme**: update star history embed *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`4917a84`](https://github.com/JakeStanger/ironbar/commit/4917a8401cc9920b8925bf4892517ace894f814c) - **profiles**: repair indentation in compound state example *(PR [#1569](https://github.com/JakeStanger/ironbar/pull/1569) by [@imnotpoz](https://github.com/imnotpoz))*
+- [`fb9b63c`](https://github.com/JakeStanger/ironbar/commit/fb9b63c60bca973d754885bd4eef78d9c31788b1) - **readme**: update star history pat *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+- [`11b956e`](https://github.com/JakeStanger/ironbar/commit/11b956e577dfcb8bb6e41a5988e7dee938102246) - **readme**: add temporary repology location *(commit by [@JakeStanger](https://github.com/JakeStanger))*
+
+
 ## [v0.19.0] - 2026-05-17
 
 ### :package: Note to packagers
@@ -1067,3 +1117,4 @@ It also requires `lua-lgi` as a runtime dependency.
 [v0.17.1]: https://github.com/JakeStanger/ironbar/compare/v0.17.0...v0.17.1
 [v0.18.0]: https://github.com/JakeStanger/ironbar/compare/v0.17.1...v0.18.0
 [v0.19.0]: https://github.com/JakeStanger/ironbar/compare/v0.18.0...v0.19.0
+[v0.19.1]: https://github.com/JakeStanger/ironbar/compare/v0.19.0...v0.19.1

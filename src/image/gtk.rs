@@ -27,6 +27,7 @@ where
     } else {
         let picture = Picture::builder()
             .content_fit(ContentFit::ScaleDown)
+            .css_classes(["icon", "image"])
             .build();
         picture.set_css_classes(IMAGE_CLASSES);
 
@@ -75,7 +76,10 @@ pub struct IconButton {
 impl IconButton {
     pub fn new(input: &str, size: i32, image_provider: &image::Provider) -> Self {
         let button = Button::new();
-        let label = Label::builder().use_markup(true).build();
+        let label = Label::builder()
+            .use_markup(true)
+            .css_classes(["icon", "text-icon"])
+            .build();
         label.set_label_escaped(input);
 
         if image::Provider::is_explicit_input(input) {
@@ -152,9 +156,10 @@ impl IconLabel {
     pub fn new(input: &str, size: i32, image_provider: &image::Provider) -> Self {
         let container = gtk::Box::new(Orientation::Horizontal, 0);
 
-        let label = Label::builder().use_markup(true).build();
-        label.add_css_class("icon");
-        label.add_css_class("text-icon");
+        let label = Label::builder()
+            .use_markup(true)
+            .css_classes(["icon", "text-icon"])
+            .build();
 
         let current_icon = Rc::new(RefCell::new(None));
 

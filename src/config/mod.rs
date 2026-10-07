@@ -1,9 +1,12 @@
 mod common;
 pub mod default;
+pub mod diff;
+pub mod hot_reload;
 mod r#impl;
 mod layout;
 mod marquee;
 mod profiles;
+mod sources;
 mod truncate;
 
 #[cfg(feature = "battery")]
@@ -55,10 +58,24 @@ pub use self::common::{CommonConfig, ModuleJustification, ModuleOrientation, Tra
 pub use self::layout::LayoutConfig;
 pub use self::marquee::{MarqueeMode, MarqueeOnHover};
 pub use self::profiles::{Profile, ProfileUpdateEvent, Profiles, State};
+pub use self::sources::{Builtin, ConfigSource, CssSource, resolve_sources};
 pub use self::truncate::{EllipsizeMode, TruncateMode};
 
+use crate::Ironbar;
+use crate::modules::{AnyModuleFactory, ModuleFactory, ModuleInfo, ModuleRef};
+use color_eyre::Result;
+use gtk::PositionType;
 use gtk::prelude::ObjectExt;
+use ironbar_macros::HotReload;
+#[cfg(feature = "extras")]
+use schemars::JsonSchema;
+use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
+use std::convert::Infallible;
+use std::path::PathBuf;
+use std::str::FromStr;
 use std::sync::OnceLock;
+use tracing::{error, warn};
 
 /// Global double-click time setting
 static DOUBLE_CLICK_TIME: OnceLock<DoubleClickTime> = OnceLock::new();
@@ -95,22 +112,8 @@ pub fn get_double_click_time_ms() -> u64 {
         })
         .expect("double_click_time should be initialized during config load")
 }
-use crate::Ironbar;
-use crate::modules::{AnyModuleFactory, ModuleFactory, ModuleInfo, ModuleRef};
-use crate::style::CssSource;
-use cfg_if::cfg_if;
-use color_eyre::Result;
-use config::FileFormat;
-#[cfg(feature = "extras")]
-use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
-use std::convert::Infallible;
-use std::path::PathBuf;
-use std::str::FromStr;
-use tracing::{error, warn};
 
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Deserialize, Clone, PartialEq)]
 #[serde(tag = "type", rename_all = "snake_case")]
 #[cfg_attr(feature = "extras", derive(JsonSchema))]
 pub enum ModuleConfig {
@@ -273,7 +276,7 @@ impl ModuleConfig {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "extras", derive(JsonSchema))]
 pub enum MonitorConfig {
     Single(BarConfig),
@@ -289,6 +292,27 @@ pub enum BarPosition {
     Bottom,
     Left,
     Right,
+}
+
+impl From<BarPosition> for PositionType {
+    fn from(pos: BarPosition) -> Self {
+        match pos {
+            BarPosition::Top => PositionType::Bottom,
+            BarPosition::Bottom => PositionType::Top,
+            BarPosition::Left => PositionType::Right,
+            BarPosition::Right => PositionType::Left,
+        }
+    }
+}
+
+#[derive(Debug, Default, Deserialize, Copy, Clone, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+#[cfg_attr(feature = "extras", derive(JsonSchema))]
+pub enum AutohideListener {
+    #[default]
+    Hover,
+    Scroll,
+    Click,
 }
 
 #[derive(Debug, Default, Deserialize, Copy, Clone, PartialEq, Eq)]
@@ -307,7 +331,7 @@ pub struct MarginConfig {
 /// or within an object in the [monitors](#monitors) config,
 /// depending on your [use-case](#2-pick-your-use-case).
 ///
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Deserialize, Clone, PartialEq, HotReload)]
 #[cfg_attr(feature = "extras", derive(JsonSchema))]
 #[serde(default)]
 pub struct BarConfig {
@@ -315,6 +339,7 @@ pub struct BarConfig {
     /// If not set, uses a generated integer suffix.
     ///
     /// **Default**: `bar-n`
+    #[hot_reload(recreate)]
     pub name: Option<String>,
 
     /// The bar's position on screen.
@@ -322,12 +347,14 @@ pub struct BarConfig {
     /// **Valid options**: `top`, `bottom`, `left`, `right`
     /// <br>
     /// **Default**: `bottom`
+    #[hot_reload(normal)]
     pub position: BarPosition,
 
     /// Whether to anchor the bar to the edges of the screen.
     /// Setting to false centers the bar.
     ///
     /// **Default**: `true`
+    #[hot_reload(normal)]
     pub anchor_to_edges: bool,
 
     /// The bar's height in pixels.
@@ -337,6 +364,7 @@ pub struct BarConfig {
     /// it will automatically expand to fit.
     ///
     /// **Default**: `42`
+    #[hot_reload(normal)]
     pub height: i32,
 
     /// The margin to use on each side of the bar, in pixels.
@@ -356,6 +384,7 @@ pub struct BarConfig {
     ///     margin.right = 10
     /// }
     /// ```
+    #[hot_reload(normal)]
     pub margin: MarginConfig,
 
     /// The layer-shell layer to place the bar on.
@@ -374,6 +403,7 @@ pub struct BarConfig {
     /// **Default**: `top`
     #[serde(deserialize_with = "r#impl::deserialize_layer")]
     #[cfg_attr(feature = "extras", schemars(schema_with = "r#impl::schema_layer"))]
+    #[hot_reload(normal)]
     pub layer: gtk_layer_shell::Layer,
 
     /// Whether the bar should reserve an exclusive zone around it.
@@ -382,12 +412,14 @@ pub struct BarConfig {
     /// as the bar, causing them to shift.
     ///
     /// **Default**: `true` unless `start_hidden` is set.
+    #[hot_reload(recreate)]
     pub exclusive_zone: Option<bool>,
 
     /// The size of the gap in pixels
     /// between the bar and the popup window.
     ///
     /// **Default**: `5`
+    #[hot_reload(normal)]
     pub popup_gap: i32,
 
     /// Whether to enable autohide behaviour on the popup.
@@ -396,34 +428,53 @@ pub struct BarConfig {
     /// On some compositors, this may also aggressively steal mouse/keyboard focus.
     ///
     /// **Default**: `false`
+    #[hot_reload(recreate)]
     pub popup_autohide: bool,
 
     /// Whether the bar should be hidden when Ironbar starts.
     ///
     /// **Default**: `false`, unless `autohide` is set.
+    #[hot_reload(ignore)]
     pub start_hidden: Option<bool>,
 
     /// The duration in milliseconds before the bar is hidden after the cursor leaves.
     /// Leave unset to disable auto-hide behaviour.
     ///
     /// **Default**: `null`
+    #[hot_reload(recreate)]
     pub autohide: Option<u64>,
+
+    /// The height in pixels of the hotspot that reveals the bar
+    ///
+    /// **Default**: `5`
+    #[hot_reload(recreate)]
+    pub autohide_hotspot_height: i32,
+
+    /// Listener used for revealing the bar
+    /// Options: Hover, Scroll, Click
+    ///
+    /// **Default**: `motion`
+    #[hot_reload(recreate)]
+    pub autohide_listener: AutohideListener,
 
     /// An array of modules to append to the start of the bar.
     /// Depending on the orientation, this is either the top of the left edge.
     ///
     /// **Default**: `[]`
+    #[hot_reload(modules)]
     pub start: Option<Vec<ModuleConfig>>,
 
     /// An array of modules to append to the center of the bar.
     ///
     /// **Default**: `[]`
+    #[hot_reload(modules)]
     pub center: Option<Vec<ModuleConfig>>,
 
     /// An array of modules to append to the end of the bar.
     /// Depending on the orientation, this is either the bottom or right edge.
     ///
     /// **Default**: `[]`
+    #[hot_reload(modules)]
     pub end: Option<Vec<ModuleConfig>>,
 }
 
@@ -438,6 +489,8 @@ impl Default for BarConfig {
             height: 42,
             start_hidden: None,
             autohide: None,
+            autohide_hotspot_height: 5,
+            autohide_listener: AutohideListener::Hover,
             start: None,
             center: None,
             end: None,
@@ -512,6 +565,58 @@ pub struct Config {
     /// **Default**: `250`
     #[serde(default)]
     pub double_click_time: DoubleClickTime,
+
+    /// Whether hot-reload is enabled for configuration/styles.
+    ///
+    /// Requires restart.
+    pub hot_reload: HotReload,
+}
+
+#[derive(Debug, Clone, Copy, Deserialize)]
+#[cfg_attr(feature = "extras", derive(JsonSchema))]
+#[serde(untagged)]
+pub enum HotReload {
+    All(bool),
+    Systems(SystemsHotReload),
+}
+
+impl Default for HotReload {
+    fn default() -> Self {
+        Self::All(true)
+    }
+}
+
+impl HotReload {
+    pub fn is_config_enabled(self) -> bool {
+        match self {
+            HotReload::All(enabled) => enabled,
+            HotReload::Systems(systems) => systems.config,
+        }
+    }
+
+    pub fn is_styles_enabled(self) -> bool {
+        match self {
+            HotReload::All(enabled) => enabled,
+            HotReload::Systems(systems) => systems.style,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, Deserialize)]
+#[cfg_attr(feature = "extras", derive(JsonSchema))]
+#[serde(default)]
+pub struct SystemsHotReload {
+    config: bool,
+    style: bool,
+}
+
+impl Default for SystemsHotReload {
+    fn default() -> Self {
+        Self {
+            config: true,
+            style: true,
+        }
+    }
 }
 
 /// Double-click time configuration
@@ -552,26 +657,6 @@ impl FromStr for ConfigLocation {
     }
 }
 
-impl Default for ConfigLocation {
-    fn default() -> Self {
-        Self::Custom(Self::default_path())
-    }
-}
-
-impl ConfigLocation {
-    pub fn default_path() -> PathBuf {
-        dirs::config_dir()
-            .unwrap_or_default()
-            .clone()
-            .join("ironbar/config")
-    }
-
-    #[cfg(not(feature = "cli"))]
-    pub fn from_env(key: &str) -> Option<Self> {
-        std::env::var(key).map(PathBuf::from).ok().map(Self::Custom)
-    }
-}
-
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub enum ErrorLevel {
     None,
@@ -591,65 +676,17 @@ impl ErrorLevel {
 
 impl Config {
     #[cfg(feature = "config")]
-    pub fn load(
-        config_location: ConfigLocation,
-        css_location: Option<ConfigLocation>,
-    ) -> (Config, CssSource, ErrorLevel) {
-        cfg_if! {
-            if #[cfg(feature = "config+corn")] {
-                const CONFIG_MINIMAL: (&str, FileFormat) = (include_str!("../../examples/minimal/config.corn"), FileFormat::Corn);
-                const CONFIG_DESKTOP: (&str, FileFormat) = (include_str!("../../examples/desktop/config.corn"), FileFormat::Corn);
-            } else if #[cfg(feature = "config+json")] {
-                const CONFIG_MINIMAL: (&str, FileFormat) = (include_str!("../../examples/minimal/config.json"), FileFormat::Json);
-                const CONFIG_DESKTOP: (&str, FileFormat) = (include_str!("../../examples/desktop/config.json"), FileFormat::Json);
-            } else if #[cfg(feature = "config+yaml")] {
-                const CONFIG_MINIMAL: (&str, FileFormat) = (include_str!("../../examples/minimal/config.yaml"), FileFormat::Yaml);
-                const CONFIG_DESKTOP: (&str, FileFormat) = (include_str!("../../examples/desktop/config.yaml"), FileFormat::Yaml);
-            } else if #[cfg(feature = "config+toml")] {
-                const CONFIG_MINIMAL: (&str, FileFormat) = (include_str!("../../examples/minimal/config.toml"), FileFormat::Toml);
-                const CONFIG_DESKTOP: (&str, FileFormat) = (include_str!("../../examples/desktop/config.toml"), FileFormat::Toml);
-            }
-        }
-
-        const CSS_MINIMAL: CssSource =
-            CssSource::String(include_str!("../../examples/minimal/style.css"));
-
-        const CSS_DESKTOP: CssSource =
-            CssSource::String(include_str!("../../examples/desktop/style.css"));
-
+    pub fn load(source: &ConfigSource) -> (Config, ErrorLevel) {
         let mut error_level = ErrorLevel::None;
 
-        let config_builder = config::Config::builder();
-
-        let css_source = match css_location.unwrap_or_else(|| config_location.clone()) {
-            ConfigLocation::Minimal => CSS_MINIMAL,
-            ConfigLocation::Desktop => CSS_DESKTOP,
-            ConfigLocation::Custom(mut path) => {
-                if path.is_dir() {
-                    path = path.join("style.css");
-                } else if path.extension().is_none_or(|ext| ext != "css") {
-                    path = path.parent().unwrap_or(&path).join("style.css");
-                }
-
-                if path.exists() {
-                    CssSource::File(path)
-                } else {
-                    error_level = error_level.error();
-                    error!(
-                        "styles at '{}' not found, falling back to minimal theme",
-                        path.display()
-                    );
-                    CSS_MINIMAL
-                }
+        let config_builder = match source {
+            ConfigSource::Builtin(b) => {
+                let (content, format) = b.config();
+                config::Config::builder().add_source(config::File::from_str(content, format))
             }
-        };
-
-        let config_builder = match config_location {
-            ConfigLocation::Minimal => config_builder
-                .add_source(config::File::from_str(CONFIG_MINIMAL.0, CONFIG_MINIMAL.1)),
-            ConfigLocation::Desktop => config_builder
-                .add_source(config::File::from_str(CONFIG_DESKTOP.0, CONFIG_DESKTOP.1)),
-            ConfigLocation::Custom(path) => config_builder.add_source(config::File::from(path)),
+            ConfigSource::File(path) => {
+                config::Config::builder().add_source(config::File::from(path.as_path()))
+            }
         };
 
         let mut config: Config = config_builder
@@ -659,8 +696,9 @@ impl Config {
             .unwrap_or_else(|err| {
                 error_level = error_level.error();
                 error!("Error loading config: {err:?}");
+                let (content, format) = Builtin::Minimal.config();
                 config::Config::builder()
-                    .add_source(config::File::from_str(CONFIG_MINIMAL.0, CONFIG_MINIMAL.1))
+                    .add_source(config::File::from_str(content, format))
                     .build()
                     .expect("should be a valid config")
                     .try_deserialize()
@@ -672,7 +710,10 @@ impl Config {
             use crate::ironvar::WritableNamespace;
 
             let variable_manager = Ironbar::variable_manager();
-            for (k, v) in ironvars {
+            for (k, v) in ironvars
+                .into_iter()
+                .filter(|(key, _)| !variable_manager.has_key(key))
+            {
                 if variable_manager.set(&k, v).is_err() {
                     error_level = error_level.warn();
                     warn!("Ignoring invalid ironvar: '{k}'");
@@ -684,14 +725,11 @@ impl Config {
         // GTK's setting will be set lazily on first use (after GTK is initialized)
         set_double_click_time(config.double_click_time.clone());
 
-        (config, css_source, error_level)
+        (config, error_level)
     }
 
     #[cfg(not(feature = "config"))]
-    pub fn load(
-        config_location: ConfigLocation,
-        css_location: Option<ConfigLocation>,
-    ) -> (Config, CssSource) {
+    pub fn load(config_source: &ConfigSource) -> (Config, ErrorLevel) {
         panic!(
             "Ironbar has been configured without config support. This won't work. Please reconfigure with at least one `config` feature flag enabled."
         )

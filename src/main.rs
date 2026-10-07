@@ -5,12 +5,13 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 use std::env;
 use std::future::Future;
+#[cfg(not(feature = "cli"))]
+use std::path::PathBuf;
 use std::process::exit;
 use std::rc::Rc;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::{Arc, OnceLock, mpsc};
 
-use cfg_if::cfg_if;
 #[cfg(feature = "cli")]
 use clap::Parser;
 use color_eyre::{Report, Result};
@@ -27,12 +28,12 @@ use crate::bar::{Bar, create_bar};
 use crate::channels::SyncSenderExt;
 use crate::clients::Clients;
 use crate::clients::outputs::MonitorState;
-use crate::config::{Config, ConfigLocation, MonitorConfig};
+use crate::config::{Config, ConfigSource, CssSource, MonitorConfig, hot_reload, resolve_sources};
 use crate::desktop_file::DesktopFiles;
 use crate::error::ExitCode;
 #[cfg(any(feature = "ipc", feature = "cairo"))]
 use crate::ironvar::VariableManager;
-use crate::style::{CssSource, load_css};
+use crate::style::load_css;
 
 mod bar;
 mod channels;
@@ -62,12 +63,14 @@ const SHA: &str = env!("VERGEN_GIT_SHA");
 const DESCRIBE: &str = env!("VERGEN_GIT_DESCRIBE");
 
 fn main() {
-    cfg_if! {
-        if #[cfg(feature = "cli")] {
-            run_with_args();
-        } else {
-            let config_location = ConfigLocation::from_env("IRONBAR_CONFIG").unwrap_or_default();
-            start_ironbar(false, config_location, ConfigLocation::from_env("IRONBAR_CSS"));
+    cfg_select! {
+        feature = "cli" => {run_with_args();}
+        _ => {
+            let (config_source, css_source) = resolve_sources(
+                env::var("IRONBAR_CONFIG").map(PathBuf::from).ok().map(config::ConfigLocation::Custom),
+                env::var("IRONBAR_CSS").map(PathBuf::from).ok().map(config::ConfigLocation::Custom),
+            );
+            start_ironbar(false, config_source, css_source);
         }
     }
 }
@@ -129,7 +132,8 @@ fn run_with_args() {
         None if args.validate_config > 0 => {
             let _guard = logging::install_logging(args.debug);
 
-            let (_, _, error_level) = Config::load(args.config.unwrap_or_default(), args.theme);
+            let (config_source, _) = resolve_sources(args.config, args.theme);
+            let (_, error_level) = Config::load(&config_source);
 
             let err = match args.validate_config {
                 1 => error_level >= config::ErrorLevel::Error,
@@ -142,7 +146,10 @@ fn run_with_args() {
 
             exit(err as i32);
         }
-        None => start_ironbar(args.debug, args.config.unwrap_or_default(), args.theme),
+        None => {
+            let (config_source, css_source) = resolve_sources(args.config, args.theme);
+            start_ironbar(args.debug, config_source, css_source);
+        }
     }
 }
 
@@ -152,24 +159,15 @@ pub struct Ironbar {
     clients: Rc<RefCell<Clients>>,
     config: Rc<RefCell<Config>>,
     css_source: Rc<CssSource>,
-    config_location: ConfigLocation,
-    css_location: Option<ConfigLocation>,
+    config_source: ConfigSource,
     scripts: Rc<RefCell<HashMap<String, Sender<()>>>>,
     desktop_files: DesktopFiles,
     image_provider: image::Provider,
 }
 
 impl Ironbar {
-    fn new(config_location: ConfigLocation, css_location: Option<ConfigLocation>) -> Self {
-        cfg_if!(
-            if #[cfg(feature = "config")] {
-                let (mut config, css_source, _) =
-                    Config::load(config_location.clone(), css_location.clone());
-            } else {
-                let (mut config, css_source) =
-                    Config::load(config_location.clone(), css_location.clone());
-            }
-        );
+    fn new(config_source: ConfigSource, css_source: CssSource) -> Self {
+        let (mut config, _) = Config::load(&config_source);
 
         let desktop_files = DesktopFiles::new();
         let image_provider =
@@ -180,8 +178,7 @@ impl Ironbar {
             clients: rc_mut!(Clients::new()),
             config: rc_mut!(config),
             css_source: Rc::new(css_source),
-            config_location,
-            css_location,
+            config_source,
             scripts: rc_mut!(HashMap::new()),
             desktop_files,
             image_provider,
@@ -221,14 +218,24 @@ impl Ironbar {
 
             running.store(true, Ordering::Relaxed);
 
-            cfg_if! {
-                if #[cfg(feature = "ipc")] {
-                    let ipc = ipc::Ipc::new();
-                    ipc.start(app, instance.clone());
-                }
+            #[cfg(feature = "ipc")]
+            let ipc = {
+                let ipc = ipc::Ipc::new();
+                ipc.start(app, instance.clone());
+                ipc
+            };
+
+            let hot_reload = instance.config.borrow().hot_reload;
+            load_css(&css_source, hot_reload.is_styles_enabled());
+
+            #[cfg(feature = "config")]
+            if hot_reload.is_config_enabled()
+                && let ConfigSource::File(path) = &instance.config_source
+            {
+                hot_reload::install(path, app, &instance);
             }
 
-            load_css(&css_source);
+            // -- shutdown --
 
             #[cfg(feature = "ipc")]
             let ipc_path = ipc.path().to_path_buf();
@@ -262,7 +269,7 @@ impl Ironbar {
                     .set_icon_theme(instance.config.borrow().icon_theme.as_deref());
 
                 // Load initial bars
-                match load_output_bars(&instance.clone(), &app) {
+                match load_output_bars(&instance, &app) {
                     Ok(()) => {}
                     Err(report) => {
                         error!("{:?}", report);
@@ -273,7 +280,7 @@ impl Ironbar {
                 let outputs = instance.clients.borrow_mut().outputs();
                 let mut rx_outputs = outputs.subscribe();
 
-                outputs.start(&instance.clone());
+                outputs.start(instance.clone());
 
                 // Listen for monitor events
                 while let Ok(event) = rx_outputs.recv().await {
@@ -304,6 +311,30 @@ impl Ironbar {
         // Ignore CLI args
         // Some are provided by swaybar_config but not currently supported
         app.run_with_args(&Vec::<&str>::new());
+    }
+
+    /// Fully reloads Ironbar by closing all bars, reloading the config,
+    /// and recreating bars with the new config.
+    ///
+    /// Note the reload only handles bars.
+    /// Other settings updates are handled elsewhere,
+    /// normally by the caller.
+    ///
+    /// Additionally, client state is left untouched.
+    pub fn reload(instance: &Rc<Ironbar>, application: &Application) {
+        instance.bars.borrow_mut().clear();
+
+        let windows = application.windows();
+        for window in windows {
+            window.close();
+        }
+
+        instance.reload_config();
+
+        match load_output_bars(instance, application) {
+            Ok(()) => {}
+            Err(err) => error!("{err:?}"),
+        }
     }
 
     /// Gets the current Tokio runtime.
@@ -355,6 +386,16 @@ impl Ironbar {
             .collect()
     }
 
+    #[must_use]
+    pub fn bars_by_monitor_name(&self, monitor_name: &str) -> Vec<Bar> {
+        self.bars
+            .borrow()
+            .iter()
+            .filter(|&bar| bar.monitor_name() == monitor_name)
+            .cloned()
+            .collect()
+    }
+
     /// Associates the command (`cmd`) of a script with a sender meant to
     /// remotely kill the process.
     ///
@@ -377,21 +418,15 @@ impl Ironbar {
 
     /// Re-reads the config file from disk and replaces the active config.
     /// Note this does *not* reload bars, which must be performed separately.
-    #[cfg(feature = "ipc")]
     fn reload_config(&self) {
-        self.config
-            .replace(Config::load(self.config_location.clone(), self.css_location.clone()).0);
+        self.config.replace(Config::load(&self.config_source).0);
     }
 }
 
-fn start_ironbar(
-    debug: bool,
-    config_location: ConfigLocation,
-    css_location: Option<ConfigLocation>,
-) {
+fn start_ironbar(debug: bool, config_source: ConfigSource, css_source: CssSource) {
     let _guard = logging::install_logging(debug);
 
-    let ironbar = Ironbar::new(config_location, css_location);
+    let ironbar = Ironbar::new(config_source, css_source);
     ironbar.start();
 }
 
@@ -474,33 +509,8 @@ pub fn load_output_bars(ironbar: &Rc<Ironbar>, app: &Application) -> Result<()> 
     let wl = ironbar.clients.borrow_mut().wayland();
     let outputs = wl.output_info_all();
 
-    let display = get_display();
-    let monitors = display.monitors();
-
     for output in outputs {
-        let Some(monitor_name) = &output.name else {
-            return Err(Report::msg("Output missing monitor name"));
-        };
-
-        let monitor_desc = &output.description.clone().unwrap_or_default();
-        let find_monitor = || {
-            for i in 0..monitors.n_items() {
-                let Some(monitor) = monitors.item(i).and_downcast::<Monitor>() else {
-                    continue;
-                };
-
-                if monitor.description().unwrap_or_default().as_str() == monitor_desc
-                    || monitor.connector().unwrap_or_default().as_str() == monitor_name
-                {
-                    return Some(monitor);
-                }
-            }
-
-            None
-        };
-
-        let Some(monitor) = find_monitor() else {
-            error!("failed to find matching monitor for {}", monitor_name);
+        let Some(monitor) = find_monitor_for_output(&output) else {
             continue;
         };
 
@@ -511,6 +521,32 @@ pub fn load_output_bars(ironbar: &Rc<Ironbar>, app: &Application) -> Result<()> 
     }
 
     Ok(())
+}
+
+fn find_monitor_for_output(output: &OutputInfo) -> Option<Monitor> {
+    let Some(output_name) = &output.name else {
+        return None;
+    };
+
+    let display = get_display();
+    let monitors = display.monitors();
+
+    let monitor_desc = &output.description.clone().unwrap_or_default();
+
+    for i in 0..monitors.n_items() {
+        let Some(monitor) = monitors.item(i).and_downcast::<Monitor>() else {
+            continue;
+        };
+
+        if monitor.description().unwrap_or_default().as_str() == monitor_desc
+            || monitor.connector().unwrap_or_default().as_str() == output_name
+        {
+            return Some(monitor);
+        }
+    }
+
+    error!("failed to find matching monitor for {output_name}");
+    None
 }
 
 fn create_runtime() -> Runtime {

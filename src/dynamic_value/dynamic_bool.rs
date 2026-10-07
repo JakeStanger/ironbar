@@ -3,11 +3,10 @@ use crate::Ironbar;
 use crate::channels::{AsyncSenderExt, Dependency, MpscReceiverExt};
 use crate::script::Script;
 use crate::spawn;
-use cfg_if::cfg_if;
 use serde::Deserialize;
 use tokio::sync::mpsc;
 
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Deserialize, Clone, PartialEq)]
 #[serde(untagged)]
 #[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
 pub enum DynamicBool {
@@ -28,12 +27,9 @@ impl DynamicBool {
         let value = match self {
             Self::Unknown(input) => {
                 if input.starts_with('#') {
-                    cfg_if! {
-                        if #[cfg(feature = "ipc")] {
-                            Self::Variable(input.into())
-                        } else {
-                            Self::Unknown(input)
-                        }
+                    cfg_select! {
+                        feature = "ipc" => Self::Variable(input.into()),
+                        _ => Self::Unknown(input)
                     }
                 } else {
                     let script = Script::from(input.as_str());

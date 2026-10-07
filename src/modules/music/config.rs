@@ -3,7 +3,7 @@ use dirs::{audio_dir, home_dir};
 use serde::Deserialize;
 use std::path::PathBuf;
 
-#[derive(Debug, Deserialize, Clone, Copy)]
+#[derive(Debug, Deserialize, Clone, Copy, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 #[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
 pub enum PlayerType {
@@ -16,19 +16,21 @@ pub enum PlayerType {
 #[allow(clippy::derivable_impls)]
 impl Default for PlayerType {
     fn default() -> Self {
-        cfg_if::cfg_if! {
-            if #[cfg(feature = "music+mpris")] {
+        cfg_select! {
+            feature = "music+mpris" => {
                 Self::Mpris
-            } else if #[cfg(feature = "music+mpd")] {
+            }
+            feature = "music+mpd" => {
                 Self::Mpd
-            } else {
+            }
+            _ => {
                 compile_error!("No player type feature enabled")
             }
         }
     }
 }
 
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Deserialize, Clone, PartialEq)]
 #[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
 #[serde(default)]
 pub struct MusicModule {
@@ -53,6 +55,13 @@ pub struct MusicModule {
     ///
     /// **Default**: `true`
     pub(crate) show_status_icon: bool,
+
+    /// Whether to reverse the play/pause status icon shown
+    /// on the bar: a pause icon while playing and a play
+    /// icon while paused, matching the popup's visible button.
+    ///
+    /// **Default**: `false`
+    pub(crate) reverse_status_icon: bool,
 
     /// Size to render the icons at, in pixels (image icons only).
     ///
@@ -132,6 +141,7 @@ impl Default for MusicModule {
             format: "{title} / {artist}".to_string(),
             icons: Icons::default(),
             show_status_icon: true,
+            reverse_status_icon: false,
             icon_size: default::IconSize::Normal as i32,
             cover_image_size: 128,
             host: "localhost:6600".to_string(),
@@ -150,7 +160,7 @@ impl Default for MusicModule {
     }
 }
 
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Deserialize, Clone, PartialEq, Eq)]
 #[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
 #[serde(default)]
 pub struct Icons {

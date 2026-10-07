@@ -55,7 +55,7 @@ Ironbar is designed to support anything from a lightweight bar to a full desktop
 - A range of modules which integrate with native desktop libraries
 - Ability to create custom widgets, run scripts and embed dynamic content (including via Lua)
 - Easy to configure anything from a single bar across all monitors, to multiple different unique bars per monitor 
-- Support for multiple config languages
+- Support for multiple config languages, with config hot-reloading
 
 ---
 
@@ -74,6 +74,7 @@ The project strives to stay true to these key philosophies:
 ## Installation
 
 [![Packaging status](https://repology.org/badge/vertical-allrepos/ironbar.svg)](https://repology.org/project/ironbar/versions)
+
 
 Ironbar can be installed from source or using your preferred package manager.
 
@@ -228,6 +229,7 @@ Ironbar can be launched using the `ironbar` binary.
 The `IRONBAR_LOG` and `IRONBAR_FILE_LOG` environment variables can be set
 to change console and file log verbosity respectively.
 You can use any of `error`, `warn`, `info`, `debug` or `trace`.
+`IRONBAR_FILE_LOG` also supports `off` to disable file logging.
 
 These default to `IRONBAR_LOG=info` and `IRONBAR_FILE_LOG=warn`.
 Note that you cannot increase the file log verbosity above console verbosity.
@@ -266,9 +268,9 @@ All are welcome, but I ask a few basic things to help make things easier. Please
     <p> </p>
     <a href="https://www.star-history.com/?repos=jakestanger%2Fironbar&type=date&legend=top-left">
      <picture>
-       <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=jakestanger/ironbar&type=date&theme=dark&legend=top-left&sealed_token=s0-4JcHmtl5XFZubXLTaEyLNJtTrNyHORiQG9d2-s1pb0wEpok9t67tt22A0M69dRqy6WOxt0zK3L8g4ZTLU2H1nMx26O2y7oUFe3_PyldKinmMqqzPuFf4fy8VTTZzD-9wnHCho_n1A1lEycuMo4ZcqqInqtEO2FQ8z1q6LQVjGgHNpvFfC6955nw89" />
-       <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=jakestanger/ironbar&type=date&legend=top-left&sealed_token=s0-4JcHmtl5XFZubXLTaEyLNJtTrNyHORiQG9d2-s1pb0wEpok9t67tt22A0M69dRqy6WOxt0zK3L8g4ZTLU2H1nMx26O2y7oUFe3_PyldKinmMqqzPuFf4fy8VTTZzD-9wnHCho_n1A1lEycuMo4ZcqqInqtEO2FQ8z1q6LQVjGgHNpvFfC6955nw89" />
-       <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=jakestanger/ironbar&type=date&legend=top-left&sealed_token=s0-4JcHmtl5XFZubXLTaEyLNJtTrNyHORiQG9d2-s1pb0wEpok9t67tt22A0M69dRqy6WOxt0zK3L8g4ZTLU2H1nMx26O2y7oUFe3_PyldKinmMqqzPuFf4fy8VTTZzD-9wnHCho_n1A1lEycuMo4ZcqqInqtEO2FQ8z1q6LQVjGgHNpvFfC6955nw89" />
+       <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=jakestanger/ironbar&type=date&theme=dark&legend=top-left&sealed_token=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" />
+       <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=jakestanger/ironbar&type=date&legend=top-left&sealed_token=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" />
+       <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=jakestanger/ironbar&type=date&legend=top-left&sealed_token=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" />
      </picture>
     </a>
 </div>

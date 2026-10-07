@@ -143,6 +143,9 @@ extras = ["dep:schemars", "dep:clap_complete"]
 "battery.test" = ["battery"]
 
 [dependencies]
+# core internal
+ironbar_macros = { path = "./macros" }
+
 # core
 gtk = { package = "gtk4", version = "0.10.0", features = ["v4_12"] }
 gtk-layer-shell = { package = "gtk4-layer-shell", version = "0.6.3" }
@@ -167,7 +170,7 @@ thiserror = "2.0.18"
 color-eyre = "0.6.5"
 serde = { version = "1.0.228", features = ["derive"] }
 indexmap = { version = "2.14.0", features = ["serde"] }
-dirs = "6.0.0"
+dirs = "7.0.0"
 walkdir = "2.5.0"
 notify = { version = "8.2.0", default-features = false }
 wayland-client = "0.31.1"
@@ -176,7 +179,6 @@ smithay-client-toolkit = { version = "0.20.0", default-features = false, feature
     "calloop",
 ] }
 config = { version = "0.15.23", default-features = false }
-cfg-if = "1.0.4"
 
 # bluetooth
 bluer = { version = "0.17.4", optional = true, features = ["bluetoothd"] }

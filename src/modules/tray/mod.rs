@@ -1,3 +1,4 @@
+mod diff;
 mod icon;
 mod interface;
 
@@ -54,7 +55,7 @@ pub enum TrayClickAction {
 }
 
 /// Click action handlers for tray icons
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, PartialEq)]
 #[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
 #[serde(default)]
 pub struct TrayClickHandlers {
@@ -141,7 +142,7 @@ impl Default for TrayClickAction {
     }
 }
 
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Deserialize, Clone, PartialEq)]
 #[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
 #[serde(default)]
 pub struct TrayModule {
@@ -186,6 +187,7 @@ impl Default for TrayModule {
 
 pub enum UiEvent {
     Menu(bool),
+    AboutToShow { address: String, path: String },
     Activate(ActivateRequest),
 }
 
@@ -250,6 +252,15 @@ impl Module<gtk::Box> for TrayModule {
                 match cmd {
                     UiEvent::Menu(open) => {
                         tx.send_expect(ModuleUpdateEvent::LockVisible(open)).await;
+                    }
+                    UiEvent::AboutToShow { address, path } => {
+                        debug!("requesting menu refresh for '{address}'");
+                        if let Err(err) = client
+                            .about_to_show_menuitem(address.clone(), path.clone(), 0)
+                            .await
+                        {
+                            error!("{err:?}");
+                        }
                     }
                     UiEvent::Activate(action) => {
                         debug!("activating: {action:?}");
@@ -498,6 +509,7 @@ fn on_update(
                 }
                 UpdateEvent::MenuDiff(diff) => {
                     trace!("received menu diff {diff:?}");
+                    menu_item.apply_menu_diff(&diff);
                 }
             }
         }
