@@ -1982,6 +1982,7 @@ dependencies = [
  "vergen-git2",
  "walkdir",
  "wayland-client",
+ "wayland-protocols",
  "wayland-protocols-wlr",
  "zbus",
 ]
