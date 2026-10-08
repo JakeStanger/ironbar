@@ -20,10 +20,11 @@ Displays system power information such as the battery percentage, and estimated 
 | `show_label`           | `boolean` | `true`          | No       | Whether to show the label.                        |
 | `use_default_profiles` | `boolean` | `true`          | No       | Whether default profiles should be used.          |
 
-This module uses **a compound threshold** with 1-2 values for profiles:
+This module uses **a compound threshold** with 1-3 values for profiles:
 
-- `percent` - `0-100`
+- `percent` - `0-100` (optional)
 - `charging` - `true`/`false` (optional)
+- `power_draw` - `0-f64::MAX` (optional)
 
 Information on the profiles system can be found [here](profiles).
 
@@ -122,6 +123,7 @@ and will be replaced with values from the current battery state:
 | `{percentage}`      | The battery charge percentage.           |
 | `{state}`           | The current battery (dis)charging state. |
 | `{time_remaining}`  | The ETA to battery empty or full.        |
+| `{power_draw}`      | The battery power draw in watts.         |
 
 ## Styling
 
