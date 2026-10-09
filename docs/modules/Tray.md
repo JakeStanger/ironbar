@@ -115,6 +115,25 @@ end:
 }
 ```
 
+**Icon IDs**
+
+The `icon_order` option requires a list of icon IDs, which may not be immediately obvious.
+
+These can be queried using `ironbar var list tray`, assuming Ironbar is running with at least one tray module added.
+
+Some common application IDs:
+
+  - Element: `Element_status_icon_1`
+  - OBS: `obs`
+  - Proton Mail: `Proton Mail Bridge`
+  - Proton VPN: `proton.vpn.app.gtk`
+  - Discord: `discord_status_icon_1`
+  - Vesktop: `vesktop_status_icon_1`
+  - Nextcloud: `Nextcloud`
+  - KeePassXC: `KeePassXC`
+  - Steam: `steam`
+  - Tidal: `tidal-hifi_status_icon_1`
+
 </details>
 
 ## Styling

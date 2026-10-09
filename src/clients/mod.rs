@@ -261,6 +261,9 @@ impl Clients {
             client
         };
 
+        #[cfg(feature = "ipc")]
+        Ironbar::variable_manager().register_namespace("tray", client.clone());
+
         Ok(client)
     }
 
