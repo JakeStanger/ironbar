@@ -1,5 +1,5 @@
 use crate::channels::{AsyncSenderExt, BroadcastReceiverExt};
-use crate::clients::swaync;
+use crate::clients::{Client, swaync};
 use crate::config::CommonConfig;
 use crate::image::IconButton;
 use crate::modules::{Module, ModuleInfo, ModuleParts, ModuleUpdateEvent, WidgetContext};
