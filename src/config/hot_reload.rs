@@ -56,11 +56,11 @@ pub fn install(path: &Path, app: &Application, ironbar: &Rc<Ironbar>) {
     });
 
     let wl = ironbar.clients.borrow_mut().wayland();
-    let outputs = wl.output_info_all();
 
     let ironbar = ironbar.clone();
 
     rx.recv_glib(app, move |app, ()| {
+        let outputs = wl.output_info_all();
         let old_config = <RefCell<Config> as Clone>::clone(&ironbar.config).into_inner();
 
         ironbar.reload_config();
