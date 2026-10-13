@@ -19,7 +19,7 @@ Options can be provided in a token to specify operations, units and formatting.
 | `interval.cpu`     | `integer`                                                  | `5`            | Seconds between refreshing cpu data.                                                                                           |
 | `interval.temps`   | `integer`                                                  | `5`            | Seconds between refreshing temperature data.                                                                                   |
 | `interval.disks`   | `integer`                                                  | `5`            | Seconds between refreshing disk data.                                                                                          |
-| `interval.network` | `integer`                                                  | `5`            | Seconds between refreshing network data.                                                                                       |
+| `interval.networks` | `integer`                                                  | `5`            | Seconds between refreshing network data.                                                                                       |
 | `orientation`      | `'horizontal'` or `'vertical'` (shorthand: `'h'` or `'v'`) | `'horizontal'` | Orientation of the labels.                                                                                                     |
 | `direction`        | `'horizontal'` or `'vertical'` (shorthand: `'h'` or `'v'`) | `'horizontal'` | How the labels are laid out (not the rotation of an individual label).                                                         |
 
