@@ -148,14 +148,14 @@ impl Interval {
         }
     }
 
-    pub const fn disks(self) -> u64 {
+    const fn disks(self) -> u64 {
         match self {
             Self::All(n) => n,
             Self::Individual(intervals) => intervals.disks,
         }
     }
 
-    pub const fn networks(self) -> u64 {
+    const fn networks(self) -> u64 {
         match self {
             Self::All(n) => n,
             Self::Individual(intervals) => intervals.networks,
@@ -232,7 +232,7 @@ impl Module<gtk::Box> for SysInfoModule {
             .collect::<Result<Vec<_>>>()?;
 
         for (i, token_set) in format_tokens.iter().enumerate() {
-            let rendered = Part::render_all(token_set, &client, interval);
+            let rendered = Part::render_all(token_set, &client);
             context.tx.send_update_spawn((i, rendered));
         }
 
@@ -282,7 +282,7 @@ impl Module<gtk::Box> for SysInfoModule {
                         .any(|t| t.token.is_affected_by(refresh));
 
                     if is_affected {
-                        let rendered = Part::render_all(token_set, &client, interval);
+                        let rendered = Part::render_all(token_set, &client);
                         tx.send_update((i, rendered)).await;
                     }
                 }

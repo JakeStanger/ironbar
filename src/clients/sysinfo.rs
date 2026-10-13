@@ -1,11 +1,14 @@
-use crate::modules::sysinfo::Interval;
 use crate::{lock, register_client};
 use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::fmt::Debug;
+use std::ops::Deref;
 use std::str::FromStr;
 use std::sync::{Arc, Mutex};
-use sysinfo::{Components, Disks, LoadAvg, Networks, RefreshKind, System};
+use std::time::{Duration, Instant};
+use sysinfo::{
+    Components, Disks, LoadAvg, MINIMUM_CPU_UPDATE_INTERVAL, Networks, RefreshKind, System,
+};
 use thiserror::Error;
 
 #[repr(u64)]
@@ -142,12 +145,65 @@ impl Value {
     }
 }
 
+/// Data whose values are deltas since the previous refresh,
+/// such as disk and network throughput.
+///
+/// Every module refreshes the shared client on its own timer,
+/// so rates are calculated from the time the deltas actually cover.
+/// Like `sysinfo` does for CPU usage, refreshes less than
+/// [`MINIMUM_CPU_UPDATE_INTERVAL`] after the previous one are skipped,
+/// as deltas over such short windows are mostly noise.
+#[derive(Debug)]
+struct Delta<T> {
+    data: T,
+    refreshed_at: Instant,
+    window: Duration,
+}
+
+impl<T> Delta<T> {
+    fn new(data: T) -> Self {
+        Self {
+            data,
+            refreshed_at: Instant::now(),
+            window: Duration::ZERO,
+        }
+    }
+
+    fn refresh_with(&mut self, refresh: impl FnOnce(&mut T)) {
+        let now = Instant::now();
+        let elapsed = now.duration_since(self.refreshed_at);
+
+        if elapsed >= MINIMUM_CPU_UPDATE_INTERVAL {
+            refresh(&mut self.data);
+            self.refreshed_at = now;
+            self.window = elapsed;
+        }
+    }
+
+    /// Converts a delta into a per-second rate.
+    fn rate(&self, delta: u64) -> f64 {
+        if self.window.is_zero() {
+            0.0
+        } else {
+            delta as f64 / self.window.as_secs_f64()
+        }
+    }
+}
+
+impl<T> Deref for Delta<T> {
+    type Target = T;
+
+    fn deref(&self) -> &T {
+        &self.data
+    }
+}
+
 #[derive(Debug)]
 pub struct Client {
     system: Mutex<System>,
-    disks: Mutex<Disks>,
+    disks: Mutex<Delta<Disks>>,
     components: Mutex<Components>,
-    networks: Mutex<Networks>,
+    networks: Mutex<Delta<Networks>>,
     load_average: Mutex<LoadAvg>,
 }
 
@@ -163,9 +219,9 @@ impl Client {
 
         Self {
             system: Mutex::new(system),
-            disks: Mutex::new(disks),
+            disks: Mutex::new(Delta::new(disks)),
             components: Mutex::new(components),
-            networks: Mutex::new(networks),
+            networks: Mutex::new(Delta::new(networks)),
             load_average: Mutex::new(load_average),
         }
     }
@@ -179,7 +235,7 @@ impl Client {
     }
 
     pub fn refresh_network(&self) {
-        lock!(self.networks).refresh(true);
+        lock!(self.networks).refresh_with(|networks| networks.refresh(true));
     }
 
     pub fn refresh_temps(&self) {
@@ -187,7 +243,7 @@ impl Client {
     }
 
     pub fn refresh_disks(&self) {
-        lock!(self.disks).refresh(true);
+        lock!(self.disks).refresh_with(|disks| disks.refresh(true));
     }
 
     pub fn refresh_load_average(&self) {
@@ -332,49 +388,53 @@ impl Client {
             .collect()
     }
 
-    pub fn disk_read(&self, interval: Interval) -> ValueSet {
-        lock!(self.disks)
+    pub fn disk_read(&self) -> ValueSet {
+        let disks = lock!(self.disks);
+        disks
             .iter()
             .map(|disk| {
                 (
                     disk.mount_point().to_string_lossy().into(),
-                    Value::new(disk.usage().read_bytes as f64 / interval.disks() as f64),
+                    Value::new(disks.rate(disk.usage().read_bytes)),
                 )
             })
             .collect()
     }
 
-    pub fn disk_write(&self, interval: Interval) -> ValueSet {
-        lock!(self.disks)
+    pub fn disk_write(&self) -> ValueSet {
+        let disks = lock!(self.disks);
+        disks
             .iter()
             .map(|disk| {
                 (
                     disk.mount_point().to_string_lossy().into(),
-                    Value::new(disk.usage().written_bytes as f64 / interval.disks() as f64),
+                    Value::new(disks.rate(disk.usage().written_bytes)),
                 )
             })
             .collect()
     }
 
-    pub fn net_down(&self, interval: Interval) -> ValueSet {
-        lock!(self.networks)
+    pub fn net_down(&self) -> ValueSet {
+        let networks = lock!(self.networks);
+        networks
             .iter()
             .map(|(name, net)| {
                 (
                     name.as_str().into(),
-                    Value::new(net.received() as f64 / interval.networks() as f64),
+                    Value::new(networks.rate(net.received())),
                 )
             })
             .collect()
     }
 
-    pub fn net_up(&self, interval: Interval) -> ValueSet {
-        lock!(self.networks)
+    pub fn net_up(&self) -> ValueSet {
+        let networks = lock!(self.networks);
+        networks
             .iter()
             .map(|(name, net)| {
                 (
                     name.as_str().into(),
-                    Value::new(net.transmitted() as f64 / interval.networks() as f64),
+                    Value::new(networks.rate(net.transmitted())),
                 )
             })
             .collect()
@@ -590,10 +650,10 @@ impl Namespace for Client {
             TokenType::DiskTotal => Some(Arc::new(self.disk_total())),
             TokenType::DiskUsed => Some(Arc::new(self.disk_used())),
             TokenType::DiskPercent => Some(Arc::new(self.disk_percent())),
-            TokenType::DiskRead => Some(Arc::new(self.disk_read(Interval::All(1)))),
-            TokenType::DiskWrite => Some(Arc::new(self.disk_write(Interval::All(1)))),
-            TokenType::NetDown => Some(Arc::new(self.net_down(Interval::All(1)))),
-            TokenType::NetUp => Some(Arc::new(self.net_up(Interval::All(1)))),
+            TokenType::DiskRead => Some(Arc::new(self.disk_read())),
+            TokenType::DiskWrite => Some(Arc::new(self.disk_write())),
+            TokenType::NetDown => Some(Arc::new(self.net_down())),
+            TokenType::NetUp => Some(Arc::new(self.net_up())),
             TokenType::LoadAverage1 => None,
             TokenType::LoadAverage5 => None,
             TokenType::LoadAverage15 => None,
@@ -625,5 +685,27 @@ impl Namespace for ValueSet {
 
     fn get_namespace(&self, _key: &str) -> Option<Arc<dyn Namespace + Sync + Send>> {
         None
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn delta_rate_uses_elapsed_time_and_skips_short_windows() {
+        let mut delta = Delta {
+            data: 0,
+            refreshed_at: Instant::now() - Duration::from_secs(2),
+            window: Duration::ZERO,
+        };
+        assert!(delta.rate(1000).abs() < f64::EPSILON);
+
+        delta.refresh_with(|data| *data += 1);
+        assert_eq!(*delta, 1);
+        assert!((delta.rate(1000) - 500.0).abs() < 1.0);
+
+        delta.refresh_with(|data| *data += 1);
+        assert_eq!(*delta, 1);
     }
 }
