@@ -203,7 +203,7 @@ impl Module<Button> for ClockModule {
         // Reset selected date on each popup open
         context.popup.popover.connect_show(move |_| {
             let date = glib::DateTime::now_local().expect("should get current time");
-            calendar.select_day(&date);
+            calendar.set_date(Some(&date));
         });
 
         Some(container)

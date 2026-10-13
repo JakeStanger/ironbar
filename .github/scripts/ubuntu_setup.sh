@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 
 apt-get update && apt-get install --assume-yes \
+  build-essential \
+  ca-certificates \
+  git \
   libdbus-1-dev \
   pkg-config \
 	libgraphene-1.0-dev \
