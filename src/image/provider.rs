@@ -293,6 +293,9 @@ impl Provider {
             }
             #[cfg(feature = "http")]
             Some(ImageLocation::Remote(uri)) => {
+                warn!(
+                    "remote image fetching is DEPRECATED and will be removed in a future release"
+                );
                 let (tx, rx) = tokio::sync::oneshot::channel();
                 let uri = uri.clone();
                 spawn(async move {
