@@ -114,49 +114,49 @@ cargo build --release --no-default-features \
 
 > ⚠ Make sure you enable at least one `config` feature otherwise you will not be able to start the bar!
 
-| Feature             | Description                                                                                                          |
-|---------------------|----------------------------------------------------------------------------------------------------------------------|
-| **Core**            |                                                                                                                      |
-| http                | Enables HTTP features. Currently this includes the ability to load remote images.                                    |
-| ipc                 | Enables the IPC server.                                                                                              |
-| cli                 | Enables the CLI. Will also enable `ipc`.                                                                             |
-| config+all          | Enables support for all configuration languages.                                                                     |
-| config+json         | Enables configuration support for JSON.                                                                              |
-| config+yaml         | Enables configuration support for YAML.                                                                              |
-| config+toml         | Enables configuration support for TOML.                                                                              |
-| config+corn         | Enables configuration support for [Corn](https://github.com/jakestanger/corn).                                       |
-| **Modules**         |                                                                                                                      |
-| battery             | Enables the `battery` module.                                                                                        |
-| bindmode            | Enables the `bindmode` module.                                                                                       |
-| bluetooth           | Enables the `bluetooth` module.                                                                                      |
-| cairo               | Enables the `cairo` module                                                                                           |
-| clipboard           | Enables the `clipboard` module.                                                                                      |
-| clock               | Enables the `clock` module.                                                                                          |
-| custom              | Enables the `custom` module.                                                                                         |
-| focused             | Enables the `focused` module.                                                                                        |
-| inhibit             | Enables the `inhibit` module.                                                                                        |
-| keyboard            | Enables the `keyboard` module without keyboard layout support.                                                       |
-| keyboard+all        | Enables the `keyboard` module with keyboard layout support for all compositors.                                      |
-| keyboard+sway       | Enables the `keyboard` module with keyboard layout support for Sway.                                                 |
-| keyboard+hyprland   | Enables the `keyboard` module with keyboard layout support for Hyprland.                                             |
-| label               | Enables the `label` module.                                                                                          |
-| launcher            | Enables the `launcher` module.                                                                                       |
-| music+all           | Enables the `music` module with support for all player types.                                                        |
-| music+mpris         | Enables the `music` module with MPRIS support.                                                                       |
-| music+mpd           | Enables the `music` module with MPD support.                                                                         |
-| network_manager     | Enables the `network_manager` module.                                                                                |
-| notifications       | Enables the `notiications` module.                                                                                   |
-| sys_info            | Enables the `sys_info` module.                                                                                       |
-| script              | Enables the `script` module.                                                                                         |
-| tray                | Enables the `tray` module.                                                                                           |
-| volume              | Enables the `volume` module.                                                                                         |
-| workspaces+all      | Enables the `workspaces` module with support for all compositors.                                                    |
-| workspaces+sway     | Enables the `workspaces` module with support for Sway.                                                               |
-| workspaces+hyprland | Enables the `workspaces` module with support for Hyprland.                                                           |
-| workspaces+niri     | Enables the `workspaces` module with support for Niri.                                                               |
-| **Other**           |                                                                                                                      |
-| extra               | Enables JSON schema support, shell completion support, and the CLI `--print-schema` and `--print-completions` flags. |
-| battery.test        | Enables the `battery` module with a mock client in place of the upower one.                                          |
+| Feature              | Description                                                                                                          |
+|----------------------|----------------------------------------------------------------------------------------------------------------------|
+| **Core**             |                                                                                                                      |
+| [⚠ DEPRECATED] http | Enables HTTP features. Currently this includes the ability to load remote images.                                    |
+| ipc                  | Enables the IPC server.                                                                                              |
+| cli                  | Enables the CLI. Will also enable `ipc`.                                                                             |
+| config+all           | Enables support for all configuration languages.                                                                     |
+| config+json          | Enables configuration support for JSON.                                                                              |
+| config+yaml          | Enables configuration support for YAML.                                                                              |
+| config+toml          | Enables configuration support for TOML.                                                                              |
+| config+corn          | Enables configuration support for [Corn](https://github.com/jakestanger/corn).                                       |
+| **Modules**          |                                                                                                                      |
+| battery              | Enables the `battery` module.                                                                                        |
+| bindmode             | Enables the `bindmode` module.                                                                                       |
+| bluetooth            | Enables the `bluetooth` module.                                                                                      |
+| cairo                | Enables the `cairo` module                                                                                           |
+| clipboard            | Enables the `clipboard` module.                                                                                      |
+| clock                | Enables the `clock` module.                                                                                          |
+| custom               | Enables the `custom` module.                                                                                         |
+| focused              | Enables the `focused` module.                                                                                        |
+| inhibit              | Enables the `inhibit` module.                                                                                        |
+| keyboard             | Enables the `keyboard` module without keyboard layout support.                                                       |
+| keyboard+all         | Enables the `keyboard` module with keyboard layout support for all compositors.                                      |
+| keyboard+sway        | Enables the `keyboard` module with keyboard layout support for Sway.                                                 |
+| keyboard+hyprland    | Enables the `keyboard` module with keyboard layout support for Hyprland.                                             |
+| label                | Enables the `label` module.                                                                                          |
+| launcher             | Enables the `launcher` module.                                                                                       |
+| music+all            | Enables the `music` module with support for all player types.                                                        |
+| music+mpris          | Enables the `music` module with MPRIS support.                                                                       |
+| music+mpd            | Enables the `music` module with MPD support.                                                                         |
+| network_manager      | Enables the `network_manager` module.                                                                                |
+| notifications        | Enables the `notiications` module.                                                                                   |
+| sys_info             | Enables the `sys_info` module.                                                                                       |
+| script               | Enables the `script` module.                                                                                         |
+| tray                 | Enables the `tray` module.                                                                                           |
+| volume               | Enables the `volume` module.                                                                                         |
+| workspaces+all       | Enables the `workspaces` module with support for all compositors.                                                    |
+| workspaces+sway      | Enables the `workspaces` module with support for Sway.                                                               |
+| workspaces+hyprland  | Enables the `workspaces` module with support for Hyprland.                                                           |
+| workspaces+niri      | Enables the `workspaces` module with support for Niri.                                                               |
+| **Other**            |                                                                                                                      |
+| extra                | Enables JSON schema support, shell completion support, and the CLI `--print-schema` and `--print-completions` flags. |
+| battery.test         | Enables the `battery` module with a mock client in place of the upower one.                                          |
 
 
 ## Shell completions
