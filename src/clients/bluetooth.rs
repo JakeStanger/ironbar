@@ -262,25 +262,7 @@ impl Client {
         });
     }
 
-    async fn unblock_rfkill() {
-        match tokio::process::Command::new("rfkill")
-            .args(["unblock", "bluetooth"])
-            .status()
-            .await
-        {
-            Ok(status) if status.success() => {
-                debug!("rfkill unblock sucesss");
-                tokio::time::sleep(std::time::Duration::from_millis(400)).await;
-            }
-            Ok(status) => debug!("rfkill unblock exited with {status}"),
-            Err(err) => debug!("could not run rfkill: {err}"),
-        }
-    }
-
     async fn set_powered(session: bluer::Session, val: bool) -> Result<()> {
-        if val {
-            Self::unblock_rfkill().await;
-        }
         let adapter = session.default_adapter().await?;
         adapter.set_powered(val).await?;
         Ok(())
