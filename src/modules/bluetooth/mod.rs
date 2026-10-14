@@ -117,7 +117,13 @@ impl BluetoothDeviceBox {
             data.status == BluetoothDeviceStatus::Connected
                 || data.status == BluetoothDeviceStatus::Disconnected,
         );
+
         self.switch.set_state(
+            data.status == BluetoothDeviceStatus::Connected
+                || data.status == BluetoothDeviceStatus::Connecting,
+        );
+
+        self.switch.set_active(
             data.status == BluetoothDeviceStatus::Connected
                 || data.status == BluetoothDeviceStatus::Connecting,
         );
@@ -384,6 +390,8 @@ impl Module<Button> for BluetoothModule {
                         .inspect(|h| header_switch.block_signal(h));
                     header_switch
                         .set_state(state.is_enabled() || state == BluetoothState::Enabling);
+                    header_switch
+                        .set_active(state.is_enabled() || state == BluetoothState::Enabling);
                     enable_handle
                         .as_ref()
                         .inspect(|h| header_switch.unblock_signal(h));
