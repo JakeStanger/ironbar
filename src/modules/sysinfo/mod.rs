@@ -3,7 +3,7 @@ mod renderer;
 mod token;
 
 use crate::channels::{AsyncSenderExt, BroadcastReceiverExt};
-use crate::clients::sysinfo::TokenType;
+use crate::clients::sysinfo::RefreshType;
 use crate::config::{CommonConfig, LayoutConfig, ModuleOrientation};
 use crate::gtk_helpers::IronbarLabelExt;
 use crate::modules::sysinfo::token::Part;
@@ -13,9 +13,7 @@ use color_eyre::Result;
 use gtk::Label;
 use gtk::prelude::*;
 use serde::Deserialize;
-use std::time::Duration;
 use tokio::sync::mpsc;
-use tokio::time::sleep;
 
 #[derive(Debug, Deserialize, Clone, PartialEq)]
 #[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
@@ -127,86 +125,26 @@ impl Default for Interval {
 }
 
 impl Interval {
-    const fn memory(self) -> u64 {
+    const fn get(self, kind: RefreshType) -> u64 {
         match self {
             Self::All(n) => n,
-            Self::Individual(intervals) => intervals.memory,
-        }
-    }
-
-    const fn cpu(self) -> u64 {
-        match self {
-            Self::All(n) => n,
-            Self::Individual(intervals) => intervals.cpu,
-        }
-    }
-
-    const fn temps(self) -> u64 {
-        match self {
-            Self::All(n) => n,
-            Self::Individual(intervals) => intervals.temps,
-        }
-    }
-
-    const fn disks(self) -> u64 {
-        match self {
-            Self::All(n) => n,
-            Self::Individual(intervals) => intervals.disks,
-        }
-    }
-
-    const fn networks(self) -> u64 {
-        match self {
-            Self::All(n) => n,
-            Self::Individual(intervals) => intervals.networks,
-        }
-    }
-
-    const fn system(self) -> u64 {
-        match self {
-            Self::All(n) => n,
-            Self::Individual(intervals) => intervals.system,
+            Self::Individual(intervals) => match kind {
+                RefreshType::Memory => intervals.memory,
+                RefreshType::Cpu => intervals.cpu,
+                RefreshType::Temps => intervals.temps,
+                RefreshType::Disks => intervals.disks,
+                RefreshType::Network => intervals.networks,
+                RefreshType::System => intervals.system,
+            },
         }
     }
 }
 
-#[derive(Debug, Clone, Copy, Eq, PartialEq)]
-enum RefreshType {
-    Memory,
-    Cpu,
-    Temps,
-    Disks,
-    Network,
-    System,
-}
-
-impl TokenType {
-    fn is_affected_by(self, refresh_type: RefreshType) -> bool {
-        match self {
-            Self::CpuFrequency | Self::CpuPercent => refresh_type == RefreshType::Cpu,
-            Self::MemoryFree
-            | Self::MemoryAvailable
-            | Self::MemoryTotal
-            | Self::MemoryUsed
-            | Self::MemoryPercent
-            | Self::SwapFree
-            | Self::SwapTotal
-            | Self::SwapUsed
-            | Self::SwapPercent => refresh_type == RefreshType::Memory,
-            Self::TempC | Self::TempF => refresh_type == RefreshType::Temps,
-            Self::DiskFree
-            | Self::DiskTotal
-            | Self::DiskUsed
-            | Self::DiskPercent
-            | Self::DiskRead
-            | Self::DiskWrite => refresh_type == RefreshType::Disks,
-            Self::NetDown | Self::NetUp => refresh_type == RefreshType::Network,
-            Self::LoadAverage1 | Self::LoadAverage5 | Self::LoadAverage15 => {
-                refresh_type == RefreshType::System
-            }
-            Self::Uptime => refresh_type == RefreshType::System,
-        }
-    }
+/// Returns whether any token in the format string takes its value from the given kind of data.
+fn uses(token_set: &[Part], kind: RefreshType) -> bool {
+    token_set
+        .iter()
+        .any(|part| matches!(part, Part::Token(token) if token.token.refresh_type() == kind))
 }
 
 impl Module<gtk::Box> for SysInfoModule {
@@ -231,57 +169,24 @@ impl Module<gtk::Box> for SysInfoModule {
             .map(|format| parser::parse_input(format.as_str()))
             .collect::<Result<Vec<_>>>()?;
 
+        let intervals = RefreshType::ALL
+            .into_iter()
+            .filter(|&kind| format_tokens.iter().any(|token_set| uses(token_set, kind)))
+            .map(|kind| (kind, interval.get(kind)))
+            .collect();
+
+        let mut refresh_rx = client.subscribe(intervals);
+
         for (i, token_set) in format_tokens.iter().enumerate() {
             let rendered = Part::render_all(token_set, &client);
             context.tx.send_update_spawn((i, rendered));
         }
 
-        let (refresh_tx, mut refresh_rx) = mpsc::channel(16);
-
-        macro_rules! spawn_refresh {
-            ($refresh_type:expr, $func:ident) => {{
-                let tx = refresh_tx.clone();
-                spawn(async move {
-                    loop {
-                        tx.send_expect($refresh_type).await;
-                        sleep(Duration::from_secs(interval.$func())).await;
-                    }
-                });
-            }};
-        }
-
-        spawn_refresh!(RefreshType::Memory, memory);
-        spawn_refresh!(RefreshType::Cpu, cpu);
-        spawn_refresh!(RefreshType::Temps, temps);
-        spawn_refresh!(RefreshType::Disks, disks);
-        spawn_refresh!(RefreshType::Network, networks);
-        spawn_refresh!(RefreshType::System, system);
-
         let tx = context.tx.clone();
         spawn(async move {
-            while let Some(refresh) = refresh_rx.recv().await {
-                match refresh {
-                    RefreshType::Memory => client.refresh_memory(),
-                    RefreshType::Cpu => client.refresh_cpu(),
-                    RefreshType::Temps => client.refresh_temps(),
-                    RefreshType::Disks => client.refresh_disks(),
-                    RefreshType::Network => client.refresh_network(),
-                    RefreshType::System => client.refresh_load_average(),
-                }
-
+            while let Some(refreshed) = refresh_rx.recv().await {
                 for (i, token_set) in format_tokens.iter().enumerate() {
-                    let is_affected = token_set
-                        .iter()
-                        .filter_map(|part| {
-                            if let Part::Token(token) = part {
-                                Some(token)
-                            } else {
-                                None
-                            }
-                        })
-                        .any(|t| t.token.is_affected_by(refresh));
-
-                    if is_affected {
+                    if refreshed.iter().any(|&kind| uses(token_set, kind)) {
                         let rendered = Part::render_all(token_set, &client);
                         tx.send_update((i, rendered)).await;
                     }
