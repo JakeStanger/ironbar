@@ -2,6 +2,7 @@ use crate::channels::{AsyncSenderExt, MpscReceiverExt};
 use crate::config::CssSource;
 use crate::spawn;
 use gtk::ffi::GTK_STYLE_PROVIDER_PRIORITY_USER;
+use gtk::prelude::*;
 use gtk::{CssProvider, gio};
 use notify::event::ModifyKind;
 use notify::{Event, EventKind, RecursiveMode, Result, Watcher, recommended_watcher};
@@ -18,6 +19,18 @@ use tracing::{debug, error, info};
 /// write changes are detected on the file.
 pub fn load_css(source: &CssSource, hot_reload: bool) {
     let provider = CssProvider::new();
+
+    // GTK only applies the system color scheme to its own providers
+    if let Some(settings) = gtk::Settings::default() {
+        settings
+            .bind_property(
+                "gtk-interface-color-scheme",
+                &provider,
+                "prefers-color-scheme",
+            )
+            .sync_create()
+            .build();
+    }
 
     let path = match source {
         CssSource::Builtin(b) => {
