@@ -340,6 +340,7 @@ impl Module<Button> for MusicModule {
 
         let volume_icon = IconLabel::new(&icons.volume, self.icon_size, &image_provider);
         volume_icon.add_css_class("icon");
+        volume_icon.label().set_hexpand(true);
 
         volume_box.prepend(&volume_slider);
         volume_box.append(&*volume_icon);
