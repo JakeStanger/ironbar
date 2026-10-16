@@ -43,6 +43,8 @@ use crate::modules::music::MusicModule;
 use crate::modules::networkmanager::NetworkManagerModule;
 #[cfg(feature = "notifications")]
 use crate::modules::notifications::NotificationsModule;
+#[cfg(feature = "power_profiles")]
+use crate::modules::powerprofiles::PowerProfilesModule;
 #[cfg(feature = "script")]
 use crate::modules::script::ScriptModule;
 #[cfg(feature = "sys_info")]
@@ -151,6 +153,8 @@ pub enum ModuleConfig {
     NetworkManager(Box<NetworkManagerModule>),
     #[cfg(feature = "notifications")]
     Notifications(Box<NotificationsModule>),
+    #[cfg(feature = "power_profiles")]
+    PowerProfiles(Box<PowerProfilesModule>),
     #[cfg(feature = "script")]
     Script(Box<ScriptModule>),
     #[cfg(feature = "sys_info")]
@@ -211,6 +215,8 @@ impl ModuleConfig {
             Self::NetworkManager(module) => create!(module),
             #[cfg(feature = "notifications")]
             Self::Notifications(module) => create!(module),
+            #[cfg(feature = "power_profiles")]
+            Self::PowerProfiles(module) => create!(module),
             #[cfg(feature = "script")]
             Self::Script(module) => create!(module),
             #[cfg(feature = "sys_info")]
