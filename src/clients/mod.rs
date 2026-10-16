@@ -55,6 +55,8 @@ pub struct Clients {
     sway: Option<Arc<sway::Client>>,
     #[cfg(feature = "hyprland")]
     hyprland: Option<Arc<compositor::hyprland::Client>>,
+    #[cfg(feature = "niri")]
+    niri: Option<Arc<compositor::niri::Client>>,
     #[cfg(feature = "bindmode")]
     bindmode: Option<Arc<dyn compositor::BindModeClient>>,
     #[cfg(feature = "clipboard")]
@@ -182,6 +184,17 @@ impl Clients {
         } else {
             let client = Arc::new(compositor::hyprland::Client::new());
             self.hyprland.replace(client.clone());
+            client
+        }
+    }
+
+    #[cfg(feature = "niri")]
+    pub fn niri(&mut self) -> Arc<compositor::niri::Client> {
+        if let Some(client) = &self.niri {
+            client.clone()
+        } else {
+            let client = Arc::new(compositor::niri::Client::new());
+            self.niri.replace(client.clone());
             client
         }
     }
