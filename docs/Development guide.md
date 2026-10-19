@@ -17,6 +17,10 @@ This guide covers the client, ipc, and module creation process.
 
 ## Creating a new client
 
+> [!NOTE]
+> The clients code is currently undergoing a major refactor.
+> Details here are subject to change as the rewrite progresses.
+
 Any new module is likely going to need to talk to some external service. 
 A client module should be created to house the code for this.
 
@@ -28,41 +32,49 @@ to derive the `MethodContext::provide` method,
 allowing for `context.get_client` and `context.try_get_client` to be called by widgets.
 
 The first implementation step is to hold the instance on the `Clients` struct,
-and add a method to be able to get it. The method body will vary depending on how the client is initialized.
+and add a method to be able to get it.
 
-The below example shows how the volume client is implemented:
+>[!NOTE]
+> Clients were previously added as a struct field.
+> This is the old model, and new clients should instead be inserted into the registry
+> using `get_or_init`.
+
+The below example shows how the notifications client is added.
+`get_or_init` takes a constructor for the stopped client,
+which is used to create it the first time it is requested.
+The client is started automatically if it is not running.
 
 ```rust
-#[cfg(feature = "volume")]
-pub mod volume;
+#[cfg(feature = "notifications")]
+pub mod swaync;
 
 // ...
 
-struct Clients {
-  // ...
-  
-  #[cfg(feature = "volume")]
-  volume: Option<Arc<volume::Client>>
-
-  // ...
-}
-
 impl Clients {
-  // ...
+    // ...
 
-  #[cfg(feature = "volume")]
-  pub fn volume(&mut self) -> Arc<volume::Client> {
-    self.volume
-            .get_or_insert_with(volume::create_client)
-            .clone()
-  }
-  
-  // ...
+    #[cfg(feature = "notifications")]
+    pub fn notifications(&mut self) -> ClientResult<swaync::Client> {
+        // temp hack - sync/async boundary
+        let client = await_sync(async move { self.get_or_init(swaync::Client::new).await });
+        client.map_err(Into::into)
+    }
+
+    // ...
 }
 ```
 
-The actual `Client` implementation can vary greatly depending on the underlying service
-and intended use-case.
+The client struct must implement the `Client` trait, 
+which provides a standard pattern for consuming the service.
+At a high level, this provides:
+
+- Types for state, events, and errors.
+- Lifecycle events for starting and stopping the client.
+- A way to get the current state of the service.
+- A way to subscribe to events from the service.
+
+Consumers will receive a concrete type for your client, 
+so it is also possible to attach methods to the base implementation.
 
 Some general guidelines:
 
@@ -73,51 +85,135 @@ Some general guidelines:
   Effectively, any service consumers should not need to know about which OS component is being used. 
 - The client needs to provide a way of getting the current state of the service.
   This is used to populate a module instance when it is created. 
-  As clients exist for the application lifetime, and modules can be created/destroyed on config changes, this can be any time.
-  There are two general patterns to achieve this:
-  - The client provides a method to get the current state. This is preferable where possible.
-  - The `subscribe` method sends an `Init` event *immediately* after calling `tx.subscribe()`, containing all state.
+  As clients can exist for the application lifetime, and modules can be created/destroyed on config changes, this can be any time.
 - The client needs to provide a way of subscribing to events from the service.
-  This is normally achieved using a Tokio `broadcast` channel, and a `subscribe` method to create a new subscription to the `tx`.
+  This is achieved using a Tokio `broadcast` channel, and a `subscribe` method to create a new subscription to the `tx`.
   Each module can then call `client.subscribe()` in its controller to start listening to events.
 - Requests back to the underlying service should be exposed as methods in the client.
 
 As a simple example, the full `notifications` client for talking to SwayNC is broken down below.
 
-This starts with the struct, which holds the proxy for the application lifetime.
-It also holds a `broadcast` channel instance. The `tx` is held to allow for subscriptions, 
-and the `rx` is held to ensure the channel is not immediately dropped.
+The client in this case is represented as an enum so that the D-Bus connection
+is held when the client is started, and dropped when stopped.
+It also holds a `broadcast` channel instance. The `tx` is held to allow for subscriptions,
+and the `rx` is held to ensure the channel is not closed.
 
-> [!TIP]
-> It is also possible to use `std::mem::forget(rx)` to clean up `rx` without calling its `Drop` implementation.
-> This leaves the channel open.
+> [!WARNING]
+> A broadcast channel's `send` fails when there are no receivers.
+> Holding `_rx` on the client keeps the channel open
+> even before any modules have subscribed.
+>
+> Avoid using `std::mem::forget` for receiver channels
+> as this prevents them from being cleaned up when the client stops.
 
 ```rust
 #[derive(Debug)]
-pub struct Client {
-    proxy: SwayNcProxy<'static>,
-    tx: broadcast::Sender<Event>,
-    _rx: broadcast::Receiver<Event>,
+pub enum Client {
+    Stopped {
+        tx: broadcast::Sender<Event>,
+        _rx: broadcast::Receiver<Event>,
+    },
+    Started {
+        tx: broadcast::Sender<Event>,
+        _rx: broadcast::Receiver<Event>,
+        proxy: SwayNcProxy<'static>,
+        handle: tokio::task::JoinHandle<()>,
+    },
 }
 ```
 
-The implementation provides an `async` constructor. 
-This both creates and returns the client instance and sets up a task to listen to events from D-Bus.
+The implementation provides a constructor which returns a stopped instance of the client,
+ready to be started.
+
+It also includes:
+
+- Internal helper methods for getting the proxy & tx.
+- A single method for sending requests back to the service.
+  This method is called by the module controller when the user clicks the module toggle button.
 
 ```rust
 impl Client {
-    pub async fn new() -> Result<Self> {
+    pub(super) fn new() -> Self {
+        let (tx, rx) = broadcast::channel(8);
+        Self::Stopped { tx, _rx: rx }
+    }
+
+    fn proxy(&self) -> super::Result<&SwayNcProxy<'static>, zbus::Error> {
+        match self {
+            Client::Stopped { .. } => Err(super::Error::InvalidState),
+            Client::Started { proxy, .. } => Ok(proxy),
+        }
+    }
+
+    fn tx(&self) -> &broadcast::Sender<Event> {
+        match self {
+            Client::Stopped { tx, .. } => tx,
+            Client::Started { tx, .. } => tx,
+        }
+    }
+
+    pub async fn toggle_visibility(&self) -> super::Result<(), zbus::Error> {
+        debug!("Toggling visibility");
+        self.proxy()?.toggle_visibility().await?;
+        Ok(())
+    }
+}
+```
+
+Lastly the `Client` trait needs to be implemented.
+We'll tackle this in three sections.
+
+Firstly, we need to define the three type parameters:
+
+- `State` is the type of the state returned by the `state` method.
+- `Event` is the type of the events sent on the broadcast channel.
+- `Error` is the general error type which the underlying service can return.
+
+> [!TIP]
+> The `?` operator can be used to convert from `Self::Error` into `super::Error`,
+> creating a `super::Error::Service(E)` variant.
+
+```rust
+impl super::Client for Client {
+    // in this case we send the same data for events & state
+    type State = Self::Event;
+    type Event = Event;
+    type Error = zbus::Error;
+
+    // ...
+}
+```
+
+Next we need to define the lifecycle methods. 
+These both take and return `Self`, allowing for the instance to be modified as required.
+
+The `start` method is responsible for creating the underlying connection,
+and subscribing to any events from the service as required.
+
+The `stop` method should clean up and shut down any connections.
+Clients can be restarted, so it must return to a clean state.
+
+In both cases, if the client is already started/stopped,
+this should be a no-op.
+
+```rust
+impl super::Client for Client {
+    // ...
+
+    async fn start(self) -> Result<Self, Self::Error> {
+        let Self::Stopped { tx, _rx } = self else {
+            return Ok(self);
+        };
+
         let dbus = Box::pin(zbus::Connection::session()).await?;
 
         let proxy = SwayNcProxy::new(&dbus).await?;
-        let (tx, rx) = broadcast::channel(8);
 
         let mut stream = proxy.receive_subscribe_v2().await?;
 
-        {
+        let handle = spawn({
             let tx = tx.clone();
-
-            spawn(async move {
+            async move {
                 while let Some(ev) = stream.next().await {
                     let ev = ev
                         .message()
@@ -127,54 +223,69 @@ impl Client {
                     debug!("Received event: {ev:?}");
                     tx.send_expect(ev);
                 }
-            });
-        }
+            }
+        });
 
-        Ok(Self { proxy, tx, _rx: rx })
+        Ok(Self::Started {
+            tx,
+            _rx,
+            proxy,
+            handle,
+        })
     }
 
-    // ...
+    async fn stop(self) -> Result<Self, Self::Error> {
+        let Self::Started {
+            tx, _rx, handle, ..
+        } = self
+        else {
+            return Ok(self);
+        };
+
+        handle.abort();
+
+        Ok(Self::Stopped { tx, _rx })
+    }
 }
 ```
 
+
 With the skeleton client in place and receiving events from D-Bus,
-we can write the methods needed for consumers to be able to interact with the service.
+we write the methods needed for consumers to be able to interact with the service.
+
+The `state` method returns the current service state. This is used for module initialisation.
+In this case, we are able to get the full state in one call from D-Bus and convert the struct.
+More complex cases will likely need multiple calls, or will need to cache data.
 
 The `subscribe` method returns a broadcast receiver, allowing modules to listen to events.
 Logic here should be kept to a minimum, and absolutely no async work should occur 
 between calling `subscribe` and returning the resultant receiver.
 
-Next is the `state` method, which returns the current service state. This is used for module initialisation.
-In this case, we are able to get the full state in one call from D-Bus and convert the struct.
-More complex cases will likely need multiple calls, or will need to cache data.
-
-The last method, `toggle_visibility`, sends a request back to the service.
-This method is called by the module controller when the user clicks the module toggle button.
-
 ```rust
-impl Client {
+impl super::Client for Client {
     // ...
-  
-    pub fn subscribe(&self) -> broadcast::Receiver<Event> {
-        self.tx.subscribe()
-    }
 
-    pub async fn state(&self) -> Result<Event> {
+    async fn state(&self) -> super::Result<Self::State, Self::Error> {
         debug!("Getting subscribe data (current state)");
-        match self.proxy.get_subscribe_data().await {
-            Ok(data) => Ok(data.into()),
-            Err(err) => Err(Report::new(err)),
-        }
+        let data = self.proxy()?.get_subscribe_data().await?;
+        Ok(data.into())
     }
 
-    pub async fn toggle_visibility(&self) {
-        debug!("Toggling visibility");
-        if let Err(err) = self.proxy.toggle_visibility().await {
-            error!("{err:?}");
-        }
+    fn subscribe(&self) -> broadcast::Receiver<Self::Event> {
+        self.tx().subscribe()
     }
 }
 ```
+
+The last part of the implementation is to register the client
+to make obtaining an instance easier from modules:
+
+```rust
+register_fallible_client!(Client, notifications);
+```
+
+> [!NOTE]
+> This is likely to change in the future.
 
 ### Implementing Ironvar support
 
