@@ -35,7 +35,7 @@ pub trait SwayNc {
     fn change_config_value(
         &self,
         name: &str,
-        value: &zbus::zvariant::Value<'_>,
+        value: &zbus::Variant<'_>,
         write_to_file: bool,
         path: &str,
     ) -> zbus::Result<()>;

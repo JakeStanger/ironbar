@@ -7,8 +7,8 @@ use serde::Deserialize;
 use tokio::sync::broadcast;
 use tokio::task::JoinHandle;
 use tracing::{debug, error};
+use zbus::Type;
 use zbus::export::ordered_stream::OrderedStreamExt;
-use zbus::zvariant::Type;
 
 #[derive(Debug, Clone, Copy, Type, Deserialize)]
 #[allow(dead_code)]

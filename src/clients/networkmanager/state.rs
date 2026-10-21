@@ -1,4 +1,4 @@
-use zbus::zvariant::ObjectPath;
+use zbus::ObjectPath;
 
 use super::dbus::{DeviceState, DeviceType};
 

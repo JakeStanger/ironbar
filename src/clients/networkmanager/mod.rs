@@ -4,8 +4,7 @@ use std::sync::Arc;
 use tokio::sync::{RwLock as AsyncRwLock, broadcast};
 
 use color_eyre::Result;
-use zbus::Connection;
-use zbus::zvariant::ObjectPath;
+use zbus::{Connection, ObjectPath, OwnedObjectPath};
 
 use crate::{register_fallible_client, spawn};
 use dbus::{AccessPointDbusProxy, DbusProxy, DeviceDbusProxy};
@@ -78,7 +77,7 @@ impl Client {
         })
     }
 
-    async fn fetch_devices(&self, device_paths: &[ObjectPath<'_>]) -> Result<Vec<state::Device>> {
+    async fn fetch_devices(&self, device_paths: &[OwnedObjectPath]) -> Result<Vec<state::Device>> {
         let mut devices = Vec::with_capacity(device_paths.len());
         for device_path in device_paths {
             let device = self.fetch_device(device_path).await?;
@@ -98,7 +97,7 @@ impl Client {
     async fn fetch_device(&self, path: &ObjectPath<'_>) -> Result<state::Device> {
         let device_object = DeviceDbusProxy::new(&self.dbus_connection, path).await?;
         let state = device_object.state().await?;
-        let device_type = device_object.device_type().await?;
+        let device_type = device_object.device_type().await?.0;
         let interface = device_object.interface().await?;
         let ip4_config = if state == DeviceState::Activated {
             let ip4_config_path = device_object.ip4_config().await;

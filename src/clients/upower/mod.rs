@@ -7,7 +7,7 @@ mod test_client;
 use crate::register_fallible_client;
 use std::collections::HashMap;
 use std::fmt::{Display, Formatter};
-use zbus::zvariant::OwnedValue;
+use zbus::OwnedVariant;
 
 pub use dbus::BatteryState;
 
@@ -31,10 +31,10 @@ pub struct State {
     pub time_to_empty: i64,
 }
 
-impl TryFrom<HashMap<String, OwnedValue>> for State {
-    type Error = zbus::zvariant::Error;
+impl TryFrom<HashMap<String, OwnedVariant>> for State {
+    type Error = zbus::Error;
 
-    fn try_from(properties: HashMap<String, OwnedValue>) -> Result<Self, Self::Error> {
+    fn try_from(properties: HashMap<String, OwnedVariant>) -> Result<Self, Self::Error> {
         Ok(Self {
             percentage: properties["Percentage"].downcast_ref::<f64>()?,
             icon_name: properties["IconName"].downcast_ref::<&str>()?.to_string(),

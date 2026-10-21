@@ -19,5 +19,5 @@ pub trait Manager {
     // ListSessions method: id, uid, user, seat, path
     fn list_sessions(
         &self,
-    ) -> zbus::Result<Vec<(String, u32, String, String, zbus::zvariant::OwnedObjectPath)>>;
+    ) -> zbus::Result<Vec<(String, u32, String, String, zbus::OwnedObjectPath)>>;
 }
