@@ -1,4 +1,3 @@
-use super::Interval;
 use super::token::{Alignment, Part, Token};
 use crate::clients;
 use crate::clients::sysinfo::{TokenType, Value, ValueSet};
@@ -9,22 +8,15 @@ pub enum TokenValue {
 }
 
 impl Part {
-    pub fn render_all(
-        tokens: &[Self],
-        client: &clients::sysinfo::Client,
-        interval: Interval,
-    ) -> String {
-        tokens
-            .iter()
-            .map(|part| part.render(client, interval))
-            .collect()
+    pub fn render_all(tokens: &[Self], client: &clients::sysinfo::Client) -> String {
+        tokens.iter().map(|part| part.render(client)).collect()
     }
 
-    fn render(&self, client: &clients::sysinfo::Client, interval: Interval) -> String {
+    fn render(&self, client: &clients::sysinfo::Client) -> String {
         match self {
             Part::Static(str) => str.clone(),
             Part::Token(token) => {
-                match token.get(client, interval) {
+                match token.get(client) {
                     TokenValue::Number(value) => {
                         let fmt = token.formatting;
                         let mut str = format!("{value:.precision$}", precision = fmt.precision);
@@ -53,7 +45,7 @@ impl Part {
 }
 
 impl Token {
-    pub fn get(&self, client: &clients::sysinfo::Client, interval: Interval) -> TokenValue {
+    pub fn get(&self, client: &clients::sysinfo::Client) -> TokenValue {
         let get = |value: Value| TokenValue::Number(value.get(self.prefix));
         let apply = |set: ValueSet| TokenValue::Number(set.apply(&self.function, self.prefix));
 
@@ -76,10 +68,10 @@ impl Token {
             TokenType::DiskTotal => apply(client.disk_total()),
             TokenType::DiskUsed => apply(client.disk_used()),
             TokenType::DiskPercent => apply(client.disk_percent()),
-            TokenType::DiskRead => apply(client.disk_read(interval)),
-            TokenType::DiskWrite => apply(client.disk_write(interval)),
-            TokenType::NetDown => apply(client.net_down(interval)),
-            TokenType::NetUp => apply(client.net_up(interval)),
+            TokenType::DiskRead => apply(client.disk_read()),
+            TokenType::DiskWrite => apply(client.disk_write()),
+            TokenType::NetDown => apply(client.net_down()),
+            TokenType::NetUp => apply(client.net_up()),
             TokenType::LoadAverage1 => get(client.load_average_1()),
             TokenType::LoadAverage5 => get(client.load_average_5()),
             TokenType::LoadAverage15 => get(client.load_average_15()),

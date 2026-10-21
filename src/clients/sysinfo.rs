@@ -1,12 +1,41 @@
-use crate::modules::sysinfo::Interval;
-use crate::{lock, register_client};
+use crate::{lock, register_client, spawn};
 use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::fmt::Debug;
+use std::ops::Deref;
 use std::str::FromStr;
 use std::sync::{Arc, Mutex};
+use std::time::{Duration, Instant};
 use sysinfo::{Components, Disks, LoadAvg, Networks, RefreshKind, System};
 use thiserror::Error;
+use tokio::sync::mpsc;
+use tokio::time;
+
+/// Refreshes of the same kind closer together than this are skipped.
+/// The cached values are still fresh, and shorter windows make rates noisy.
+const MIN_REFRESH_GAP: Duration = Duration::from_millis(500);
+
+/// A kind of data that is refreshed together.
+#[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
+pub enum RefreshType {
+    Memory,
+    Cpu,
+    Temps,
+    Disks,
+    Network,
+    System,
+}
+
+impl RefreshType {
+    pub const ALL: [Self; 6] = [
+        Self::Memory,
+        Self::Cpu,
+        Self::Temps,
+        Self::Disks,
+        Self::Network,
+        Self::System,
+    ];
+}
 
 #[repr(u64)]
 #[derive(Debug, Default, Clone, Copy, Eq, PartialEq)]
@@ -142,13 +171,84 @@ impl Value {
     }
 }
 
+/// Data whose values are deltas since the previous refresh,
+/// such as disk and network throughput.
+///
+/// Refreshes don't happen at fixed intervals,
+/// so rates are calculated from the time the deltas actually cover.
+#[derive(Debug)]
+struct Delta<T> {
+    data: T,
+    refreshed_at: Instant,
+    window: Duration,
+}
+
+impl<T> Delta<T> {
+    fn new(data: T) -> Self {
+        Self {
+            data,
+            refreshed_at: Instant::now(),
+            window: Duration::ZERO,
+        }
+    }
+
+    fn refresh_with(&mut self, refresh: impl FnOnce(&mut T)) {
+        let now = Instant::now();
+        refresh(&mut self.data);
+        self.window = now.duration_since(self.refreshed_at);
+        self.refreshed_at = now;
+    }
+
+    /// Converts a delta into a per-second rate.
+    fn rate(&self, delta: u64) -> f64 {
+        if self.window.is_zero() {
+            0.0
+        } else {
+            delta as f64 / self.window.as_secs_f64()
+        }
+    }
+}
+
+impl<T> Deref for Delta<T> {
+    type Target = T;
+
+    fn deref(&self) -> &T {
+        &self.data
+    }
+}
+
+/// A module waiting for refreshes of some kinds of data, each at its own interval.
+#[derive(Debug)]
+struct Subscriber {
+    intervals: Vec<(RefreshType, u64)>,
+    tx: mpsc::Sender<Vec<RefreshType>>,
+}
+
+impl Subscriber {
+    /// Returns the kinds of data due at the given second.
+    fn due(&self, tick: u64) -> impl Iterator<Item = RefreshType> + '_ {
+        self.intervals
+            .iter()
+            .filter(move |&&(_, interval)| tick.is_multiple_of(interval))
+            .map(|&(kind, _)| kind)
+    }
+}
+
+#[derive(Debug, Default)]
+struct Scheduler {
+    subscribers: Vec<Subscriber>,
+    running: bool,
+}
+
 #[derive(Debug)]
 pub struct Client {
     system: Mutex<System>,
-    disks: Mutex<Disks>,
+    disks: Mutex<Delta<Disks>>,
     components: Mutex<Components>,
-    networks: Mutex<Networks>,
+    networks: Mutex<Delta<Networks>>,
     load_average: Mutex<LoadAvg>,
+    refreshed_at: Mutex<HashMap<RefreshType, Instant>>,
+    scheduler: Mutex<Scheduler>,
 }
 
 impl Client {
@@ -161,37 +261,139 @@ impl Client {
         let networks = Networks::new_with_refreshed_list();
         let load_average = System::load_average();
 
+        let now = Instant::now();
+
         Self {
             system: Mutex::new(system),
-            disks: Mutex::new(disks),
+            disks: Mutex::new(Delta::new(disks)),
             components: Mutex::new(components),
-            networks: Mutex::new(networks),
+            networks: Mutex::new(Delta::new(networks)),
             load_average: Mutex::new(load_average),
+            refreshed_at: Mutex::new(RefreshType::ALL.map(|kind| (kind, now)).into()),
+            scheduler: Mutex::new(Scheduler::default()),
         }
     }
 
-    pub fn refresh_cpu(&self) {
-        lock!(self.system).refresh_cpu_all();
+    /// Subscribes to refreshes of the given kinds of data,
+    /// each at its interval in seconds.
+    ///
+    /// Every kind is refreshed once per due second, no matter how many modules subscribe to it.
+    /// The receiver gets the kinds that were refreshed, and closes immediately if none are given.
+    pub fn subscribe(
+        self: &Arc<Self>,
+        intervals: Vec<(RefreshType, u64)>,
+    ) -> mpsc::Receiver<Vec<RefreshType>> {
+        let (tx, rx) = mpsc::channel(4);
+
+        if intervals.is_empty() {
+            return rx;
+        }
+
+        for &(kind, _) in &intervals {
+            self.refresh(kind);
+        }
+
+        let intervals = intervals
+            .into_iter()
+            .map(|(kind, interval)| (kind, interval.max(1)))
+            .collect();
+
+        let mut scheduler = lock!(self.scheduler);
+        scheduler.subscribers.push(Subscriber { intervals, tx });
+
+        if !scheduler.running {
+            scheduler.running = true;
+            spawn(self.clone().run_scheduler());
+        }
+
+        rx
     }
 
-    pub fn refresh_memory(&self) {
-        lock!(self.system).refresh_memory();
+    /// Sleeps until the next second any subscriber is due,
+    /// refreshes the due kinds of data once and notifies the due subscribers.
+    /// Stops once all subscribers are gone.
+    async fn run_scheduler(self: Arc<Self>) {
+        let start = time::Instant::now();
+        let mut tick = 0;
+
+        loop {
+            let next_tick = {
+                let mut scheduler = lock!(self.scheduler);
+                scheduler
+                    .subscribers
+                    .retain(|subscriber| !subscriber.tx.is_closed());
+
+                let next_tick = scheduler
+                    .subscribers
+                    .iter()
+                    .flat_map(|subscriber| &subscriber.intervals)
+                    .map(|&(_, interval)| (tick / interval + 1) * interval)
+                    .min();
+
+                let Some(next_tick) = next_tick else {
+                    scheduler.running = false;
+                    return;
+                };
+
+                next_tick
+            };
+
+            time::sleep_until(start + Duration::from_secs(next_tick)).await;
+            tick = next_tick;
+
+            let mut due = Vec::new();
+            for kind in lock!(self.scheduler)
+                .subscribers
+                .iter()
+                .flat_map(|subscriber| subscriber.due(tick))
+            {
+                if !due.contains(&kind) {
+                    due.push(kind);
+                }
+            }
+
+            for kind in due {
+                self.refresh(kind);
+            }
+
+            for subscriber in &lock!(self.scheduler).subscribers {
+                let refreshed: Vec<_> = subscriber.due(tick).collect();
+                if !refreshed.is_empty() {
+                    // if the channel is full, the module is still busy rendering
+                    // and will pick up the refreshed data with its next update anyway
+                    let _ = subscriber.tx.try_send(refreshed);
+                }
+            }
+        }
     }
 
-    pub fn refresh_network(&self) {
-        lock!(self.networks).refresh(true);
-    }
+    /// Refreshes one kind of data,
+    /// unless it was refreshed less than [`MIN_REFRESH_GAP`] ago.
+    fn refresh(&self, kind: RefreshType) {
+        {
+            let now = Instant::now();
+            let mut refreshed_at = lock!(self.refreshed_at);
 
-    pub fn refresh_temps(&self) {
-        lock!(self.components).refresh(true);
-    }
+            if refreshed_at
+                .get(&kind)
+                .is_some_and(|&at| now.duration_since(at) < MIN_REFRESH_GAP)
+            {
+                return;
+            }
 
-    pub fn refresh_disks(&self) {
-        lock!(self.disks).refresh(true);
-    }
+            refreshed_at.insert(kind, now);
+        }
 
-    pub fn refresh_load_average(&self) {
-        *lock!(self.load_average) = System::load_average();
+        match kind {
+            RefreshType::Memory => lock!(self.system).refresh_memory(),
+            RefreshType::Cpu => lock!(self.system).refresh_cpu_all(),
+            RefreshType::Temps => lock!(self.components).refresh(true),
+            RefreshType::Disks => lock!(self.disks).refresh_with(|disks| disks.refresh(true)),
+            RefreshType::Network => {
+                lock!(self.networks).refresh_with(|networks| networks.refresh(true));
+            }
+            RefreshType::System => *lock!(self.load_average) = System::load_average(),
+        }
     }
 
     pub fn cpu_frequency(&self) -> ValueSet {
@@ -332,49 +534,53 @@ impl Client {
             .collect()
     }
 
-    pub fn disk_read(&self, interval: Interval) -> ValueSet {
-        lock!(self.disks)
+    pub fn disk_read(&self) -> ValueSet {
+        let disks = lock!(self.disks);
+        disks
             .iter()
             .map(|disk| {
                 (
                     disk.mount_point().to_string_lossy().into(),
-                    Value::new(disk.usage().read_bytes as f64 / interval.disks() as f64),
+                    Value::new(disks.rate(disk.usage().read_bytes)),
                 )
             })
             .collect()
     }
 
-    pub fn disk_write(&self, interval: Interval) -> ValueSet {
-        lock!(self.disks)
+    pub fn disk_write(&self) -> ValueSet {
+        let disks = lock!(self.disks);
+        disks
             .iter()
             .map(|disk| {
                 (
                     disk.mount_point().to_string_lossy().into(),
-                    Value::new(disk.usage().written_bytes as f64 / interval.disks() as f64),
+                    Value::new(disks.rate(disk.usage().written_bytes)),
                 )
             })
             .collect()
     }
 
-    pub fn net_down(&self, interval: Interval) -> ValueSet {
-        lock!(self.networks)
+    pub fn net_down(&self) -> ValueSet {
+        let networks = lock!(self.networks);
+        networks
             .iter()
             .map(|(name, net)| {
                 (
                     name.as_str().into(),
-                    Value::new(net.received() as f64 / interval.networks() as f64),
+                    Value::new(networks.rate(net.received())),
                 )
             })
             .collect()
     }
 
-    pub fn net_up(&self, interval: Interval) -> ValueSet {
-        lock!(self.networks)
+    pub fn net_up(&self) -> ValueSet {
+        let networks = lock!(self.networks);
+        networks
             .iter()
             .map(|(name, net)| {
                 (
                     name.as_str().into(),
-                    Value::new(net.transmitted() as f64 / interval.networks() as f64),
+                    Value::new(networks.rate(net.transmitted())),
                 )
             })
             .collect()
@@ -490,6 +696,35 @@ impl FromStr for TokenType {
     }
 }
 
+impl TokenType {
+    /// The kind of data this token's value comes from.
+    pub const fn refresh_type(self) -> RefreshType {
+        match self {
+            Self::CpuFrequency | Self::CpuPercent => RefreshType::Cpu,
+            Self::MemoryFree
+            | Self::MemoryAvailable
+            | Self::MemoryTotal
+            | Self::MemoryUsed
+            | Self::MemoryPercent
+            | Self::SwapFree
+            | Self::SwapTotal
+            | Self::SwapUsed
+            | Self::SwapPercent => RefreshType::Memory,
+            Self::TempC | Self::TempF => RefreshType::Temps,
+            Self::DiskFree
+            | Self::DiskTotal
+            | Self::DiskUsed
+            | Self::DiskPercent
+            | Self::DiskRead
+            | Self::DiskWrite => RefreshType::Disks,
+            Self::NetDown | Self::NetUp => RefreshType::Network,
+            Self::LoadAverage1 | Self::LoadAverage5 | Self::LoadAverage15 | Self::Uptime => {
+                RefreshType::System
+            }
+        }
+    }
+}
+
 #[cfg(any(feature = "ipc", feature = "cairo"))]
 use crate::ironvar::{Namespace, NamespaceTrait};
 
@@ -499,6 +734,9 @@ impl Namespace for Client {
         let get = |value: Value| Some(value.get(Prefix::None).to_string());
 
         let token = TokenType::from_str(key).ok()?;
+        // modules only refresh the data they display
+        self.refresh(token.refresh_type());
+
         match token {
             TokenType::CpuFrequency => None,
             TokenType::CpuPercent => None,
@@ -571,6 +809,7 @@ impl Namespace for Client {
 
     fn get_namespace(&self, key: &str) -> Option<NamespaceTrait> {
         let token = TokenType::from_str(key).ok()?;
+        self.refresh(token.refresh_type());
 
         match token {
             TokenType::CpuFrequency => Some(Arc::new(self.cpu_frequency())),
@@ -590,10 +829,10 @@ impl Namespace for Client {
             TokenType::DiskTotal => Some(Arc::new(self.disk_total())),
             TokenType::DiskUsed => Some(Arc::new(self.disk_used())),
             TokenType::DiskPercent => Some(Arc::new(self.disk_percent())),
-            TokenType::DiskRead => Some(Arc::new(self.disk_read(Interval::All(1)))),
-            TokenType::DiskWrite => Some(Arc::new(self.disk_write(Interval::All(1)))),
-            TokenType::NetDown => Some(Arc::new(self.net_down(Interval::All(1)))),
-            TokenType::NetUp => Some(Arc::new(self.net_up(Interval::All(1)))),
+            TokenType::DiskRead => Some(Arc::new(self.disk_read())),
+            TokenType::DiskWrite => Some(Arc::new(self.disk_write())),
+            TokenType::NetDown => Some(Arc::new(self.net_down())),
+            TokenType::NetUp => Some(Arc::new(self.net_up())),
             TokenType::LoadAverage1 => None,
             TokenType::LoadAverage5 => None,
             TokenType::LoadAverage15 => None,
@@ -625,5 +864,38 @@ impl Namespace for ValueSet {
 
     fn get_namespace(&self, _key: &str) -> Option<Arc<dyn Namespace + Sync + Send>> {
         None
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn delta_rate_uses_elapsed_time() {
+        let mut delta = Delta {
+            data: 0,
+            refreshed_at: Instant::now() - Duration::from_secs(2),
+            window: Duration::ZERO,
+        };
+        assert!(delta.rate(1000).abs() < f64::EPSILON);
+
+        delta.refresh_with(|data| *data += 1);
+        assert_eq!(*delta, 1);
+        assert!((delta.rate(1000) - 500.0).abs() < 1.0);
+    }
+
+    #[test]
+    fn subscriber_is_due_at_multiples_of_its_intervals() {
+        let subscriber = Subscriber {
+            intervals: vec![(RefreshType::Cpu, 2), (RefreshType::Network, 3)],
+            tx: mpsc::channel(1).0,
+        };
+        let due = |tick| subscriber.due(tick).collect::<Vec<_>>();
+
+        assert!(due(1).is_empty());
+        assert_eq!(due(2), [RefreshType::Cpu]);
+        assert_eq!(due(3), [RefreshType::Network]);
+        assert_eq!(due(6), [RefreshType::Cpu, RefreshType::Network]);
     }
 }
