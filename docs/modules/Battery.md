@@ -117,11 +117,13 @@ This module does not include any default profiles.
 The following tokens can be used in the `format` config option,
 and will be replaced with values from the current battery state:
 
-| Token               | Description                              |
-|---------------------|------------------------------------------|
-| `{percentage}`      | The battery charge percentage.           |
-| `{state}`           | The current battery (dis)charging state. |
-| `{time_remaining}`  | The ETA to battery empty or full.        |
+| Token              | Description                                                 |
+|--------------------|-------------------------------------------------------------|
+| `{percentage}`     | The battery charge percentage.                              |
+| `{state}`          | The current battery (dis)charging state.                    |
+| `{time_remaining}` | The ETA to battery empty or full.                           |
+| `{level}`          | The battery charge level name (e.g. "Low", "High", "Full"). |
+| `{type}`           | The battery type (e.g. "Battery", "Keyboard", "Mouse").     |
 
 ## Styling
 

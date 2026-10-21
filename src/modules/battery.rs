@@ -138,6 +138,8 @@ struct BatteryUiUpdate {
     time_to_empty: i64,
     icon_name: String,
     state_name: String,
+    level: String,
+    battery_type: String,
 }
 
 impl Module<Button> for BatteryModule {
@@ -230,7 +232,9 @@ impl Module<Button> for BatteryModule {
                     .format
                     .replace("{percentage}", &state.percent.round().to_string())
                     .replace("{time_remaining}", &time_remaining)
-                    .replace("{state}", &properties.state_name);
+                    .replace("{state}", &properties.state_name)
+                    .replace("{level}", &properties.level)
+                    .replace("{type}", &properties.battery_type);
 
                 l.set_label_escaped(&format);
             }
@@ -252,6 +256,8 @@ impl Module<Button> for BatteryModule {
                 time_to_empty: properties.time_to_empty,
                 icon_name: properties.icon_name,
                 state_name: state.to_string(),
+                level: properties.level.to_string(),
+                battery_type: properties.battery_type.to_string(),
             };
 
             manager.update(

@@ -58,9 +58,7 @@ impl Client {
 
         let proxy = PropertiesProxy::builder(&dbus)
             .destination("org.freedesktop.UPower")
-            .expect("failed to set proxy destination address")
             .path(path)
-            .expect("failed to set proxy path")
             .cache_properties(CacheProperties::No)
             .build()
             .await?;

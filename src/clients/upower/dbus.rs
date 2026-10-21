@@ -1,11 +1,13 @@
-/// Originally taken from `upower-dbus` crate
-/// <https://github.com/pop-os/upower-dbus/blob/main/LICENSE>
-///  Copyright 2021 System76 <info@system76.com>
-///  SPDX-License-Identifier: MPL-2.0
-use zbus::proxy;
-use zbus::zvariant::{OwnedValue, Value};
+//! Originally taken from `upower-dbus` crate
+//! <https://github.com/pop-os/upower-dbus/blob/main/LICENSE>
+//!  Copyright 2021 System76 <info@system76.com>
+//!  SPDX-License-Identifier: MPL-2.0
 
-#[derive(Debug, Default, Copy, Clone, PartialEq, Eq, OwnedValue)]
+use serde::Deserialize;
+use zbus::{Type, Variant, proxy};
+
+#[derive(Debug, Default, Copy, Clone, PartialEq, Eq, Deserialize, Type)]
+#[serde(from = "u32")]
 #[repr(u32)]
 pub enum BatteryState {
     #[default]
@@ -32,18 +34,20 @@ impl From<u32> for BatteryState {
     }
 }
 
-impl TryFrom<&zbus::zvariant::Value<'_>> for BatteryState {
-    type Error = zbus::zvariant::Error;
+impl TryFrom<&zbus::Variant<'_>> for BatteryState {
+    type Error = zbus::Error;
 
-    fn try_from(value: &Value<'_>) -> Result<Self, Self::Error> {
+    fn try_from(value: &Variant<'_>) -> Result<Self, Self::Error> {
         let value = value.downcast_ref::<u32>()?;
         Ok(value.into())
     }
 }
 
-#[derive(Debug, Copy, Clone, OwnedValue)]
+#[derive(Debug, Default, Copy, Clone, Deserialize, Type)]
+#[serde(from = "u32")]
 #[repr(u32)]
 pub enum BatteryType {
+    #[default]
     Unknown = 0,
     LinePower = 1,
     Battery = 2,
@@ -55,9 +59,36 @@ pub enum BatteryType {
     Phone = 8,
 }
 
-#[derive(Debug, Copy, Clone, OwnedValue)]
+impl From<u32> for BatteryType {
+    fn from(number: u32) -> Self {
+        match number {
+            n if n == BatteryType::LinePower as u32 => BatteryType::LinePower,
+            n if n == BatteryType::Battery as u32 => BatteryType::Battery,
+            n if n == BatteryType::Ups as u32 => BatteryType::Ups,
+            n if n == BatteryType::Monitor as u32 => BatteryType::Monitor,
+            n if n == BatteryType::Mouse as u32 => BatteryType::Mouse,
+            n if n == BatteryType::Keyboard as u32 => BatteryType::Keyboard,
+            n if n == BatteryType::Pda as u32 => BatteryType::Pda,
+            n if n == BatteryType::Phone as u32 => BatteryType::Phone,
+            _ => BatteryType::Unknown,
+        }
+    }
+}
+
+impl TryFrom<&zbus::Variant<'_>> for BatteryType {
+    type Error = zbus::Error;
+
+    fn try_from(value: &zbus::Variant<'_>) -> Result<Self, Self::Error> {
+        let value = value.downcast_ref::<u32>()?;
+        Ok(value.into())
+    }
+}
+
+#[derive(Debug, Default, Copy, Clone, Deserialize, Type)]
+#[serde(from = "u32")]
 #[repr(u32)]
 pub enum BatteryLevel {
+    #[default]
     Unknown = 0,
     None = 1,
     Low = 3,
@@ -65,6 +96,29 @@ pub enum BatteryLevel {
     Normal = 6,
     High = 7,
     Full = 8,
+}
+
+impl From<u32> for BatteryLevel {
+    fn from(number: u32) -> Self {
+        match number {
+            n if n == BatteryLevel::None as u32 => BatteryLevel::None,
+            n if n == BatteryLevel::Low as u32 => BatteryLevel::Low,
+            n if n == BatteryLevel::Critical as u32 => BatteryLevel::Critical,
+            n if n == BatteryLevel::Normal as u32 => BatteryLevel::Normal,
+            n if n == BatteryLevel::High as u32 => BatteryLevel::High,
+            n if n == BatteryLevel::Full as u32 => BatteryLevel::Full,
+            _ => BatteryLevel::Unknown,
+        }
+    }
+}
+
+impl TryFrom<&zbus::Variant<'_>> for BatteryLevel {
+    type Error = zbus::Error;
+
+    fn try_from(value: &zbus::Variant<'_>) -> Result<Self, Self::Error> {
+        let value = value.downcast_ref::<u32>()?;
+        Ok(value.into())
+    }
 }
 
 #[proxy(
@@ -148,7 +202,7 @@ pub trait Device {
 #[proxy(interface = "org.freedesktop.UPower", assume_defaults = true)]
 pub trait UPower {
     /// EnumerateDevices method
-    fn enumerate_devices(&self) -> zbus::Result<Vec<zbus::zvariant::OwnedObjectPath>>;
+    fn enumerate_devices(&self) -> zbus::Result<Vec<zbus::OwnedObjectPath>>;
 
     /// GetCriticalAction method
     fn get_critical_action(&self) -> zbus::Result<String>;
@@ -159,11 +213,11 @@ pub trait UPower {
 
     /// DeviceAdded signal
     #[zbus(signal)]
-    fn device_added(&self, device: zbus::zvariant::ObjectPath<'_>) -> zbus::Result<()>;
+    fn device_added(&self, device: zbus::ObjectPath<'_>) -> zbus::Result<()>;
 
     /// DeviceRemoved signal
     #[zbus(signal)]
-    fn device_removed(&self, device: zbus::zvariant::ObjectPath<'_>) -> zbus::Result<()>;
+    fn device_removed(&self, device: zbus::ObjectPath<'_>) -> zbus::Result<()>;
 
     /// DaemonVersion property
     #[zbus(property)]
