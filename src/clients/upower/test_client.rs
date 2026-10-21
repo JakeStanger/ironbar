@@ -1,4 +1,4 @@
-use super::{BatteryState, State};
+use super::{BatteryLevel, BatteryState, BatteryType, State};
 use crate::channels::SyncSenderExt;
 use crate::clients::ClientResult;
 use crate::ironvar::NamespaceTrait;
@@ -15,6 +15,8 @@ fn base_state() -> State {
         state: BatteryState::Discharging,
         time_to_full: 0,
         time_to_empty: 20 * 60,
+        level: BatteryLevel::Full,
+        battery_type: BatteryType::Battery,
     }
 }
 
@@ -48,6 +50,16 @@ impl Client {
                             _ => "",
                         }
                         .to_string();
+
+                        state.level = match i {
+                            0..10 => BatteryLevel::Critical,
+                            10..33 => BatteryLevel::Low,
+                            33..67 => BatteryLevel::Normal,
+                            67..100 => BatteryLevel::Full,
+                            100 => BatteryLevel::Full,
+                            _ => BatteryLevel::Unknown,
+                        };
+
                         state.time_to_empty = i * 60;
 
                         tx.send_expect(state.clone());

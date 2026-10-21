@@ -1,8 +1,8 @@
-/// Originally taken from `upower-dbus` crate
-/// <https://github.com/pop-os/upower-dbus/blob/main/LICENSE>
-///  Copyright 2021 System76 <info@system76.com>
-///  SPDX-License-Identifier: MPL-2.0
-use zbus::{proxy, Variant, Type};
+//! Originally taken from `upower-dbus` crate
+//! <https://github.com/pop-os/upower-dbus/blob/main/LICENSE>
+//!  Copyright 2021 System76 <info@system76.com>
+//!  SPDX-License-Identifier: MPL-2.0
+
 use serde::Deserialize;
 use zbus::{Type, Variant, proxy};
 
@@ -43,10 +43,11 @@ impl TryFrom<&zbus::Variant<'_>> for BatteryState {
     }
 }
 
-#[derive(Debug, Copy, Clone, Deserialize, Type)]
+#[derive(Debug, Default, Copy, Clone, Deserialize, Type)]
 #[serde(from = "u32")]
 #[repr(u32)]
 pub enum BatteryType {
+    #[default]
     Unknown = 0,
     LinePower = 1,
     Battery = 2,
@@ -74,10 +75,20 @@ impl From<u32> for BatteryType {
     }
 }
 
-#[derive(Debug, Copy, Clone, Deserialize, Type)]
+impl TryFrom<&zbus::Variant<'_>> for BatteryType {
+    type Error = zbus::Error;
+
+    fn try_from(value: &zbus::Variant<'_>) -> Result<Self, Self::Error> {
+        let value = value.downcast_ref::<u32>()?;
+        Ok(value.into())
+    }
+}
+
+#[derive(Debug, Default, Copy, Clone, Deserialize, Type)]
 #[serde(from = "u32")]
 #[repr(u32)]
 pub enum BatteryLevel {
+    #[default]
     Unknown = 0,
     None = 1,
     Low = 3,
@@ -98,6 +109,15 @@ impl From<u32> for BatteryLevel {
             n if n == BatteryLevel::Full as u32 => BatteryLevel::Full,
             _ => BatteryLevel::Unknown,
         }
+    }
+}
+
+impl TryFrom<&zbus::Variant<'_>> for BatteryLevel {
+    type Error = zbus::Error;
+
+    fn try_from(value: &zbus::Variant<'_>) -> Result<Self, Self::Error> {
+        let value = value.downcast_ref::<u32>()?;
+        Ok(value.into())
     }
 }
 
