@@ -147,8 +147,6 @@ pub struct Clients {
     brightness: Option<Arc<brightness::Client>>,
     #[cfg(feature = "battery")]
     upower: Option<Arc<upower::Client>>,
-    #[cfg(feature = "power_profiles")]
-    power_profiles: Option<Arc<powerprofiles::Client>>,
     #[cfg(feature = "volume")]
     volume: Option<Arc<volume::Client>>,
     #[cfg(feature = "bluetooth")]
@@ -398,16 +396,8 @@ impl Clients {
 
     #[cfg(feature = "power_profiles")]
     pub fn power_profiles(&mut self) -> ClientResult<powerprofiles::Client> {
-        let client = if let Some(client) = &self.power_profiles {
-            client.clone()
-        } else {
-            let client = await_sync(async { powerprofiles::Client::new().await })?;
-
-            self.power_profiles.replace(client.clone());
-            client
-        };
-
-        Ok(client)
+        let client = await_sync(async move { self.get_or_init(powerprofiles::Client::new).await });
+        client.map_err(Into::into)
     }
 
     #[cfg(feature = "volume")]

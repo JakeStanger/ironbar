@@ -3,7 +3,7 @@
 
 use std::collections::HashMap;
 
-use zbus::{Result, proxy, zvariant::Str};
+use zbus::{self, Str, proxy};
 
 #[proxy(
     default_service = "org.freedesktop.UPower.PowerProfiles",
@@ -12,16 +12,16 @@ use zbus::{Result, proxy, zvariant::Str};
 )]
 pub trait PowerProfiles {
     #[zbus(property)]
-    fn active_profile(&self) -> Result<Str<'_>>;
+    fn active_profile(&self) -> zbus::Result<Box<str>>;
 
     #[zbus(property)]
-    fn set_active_profile(&self, value: Str<'_>) -> Result<()>;
+    fn set_active_profile(&self, value: Str<'_>) -> zbus::Result<()>;
 
     #[zbus(property)]
-    fn profiles(&self) -> Result<Vec<HashMap<Str<'_>, Str<'_>>>>;
+    fn profiles(&self) -> zbus::Result<Vec<HashMap<Box<str>, Box<str>>>>;
 
     #[zbus(property)]
-    fn performance_degraded(&self) -> Result<Str<'_>>;
+    fn performance_degraded(&self) -> zbus::Result<Box<str>>;
 
     // #[zbus(property)]
     // fn actions(&self) -> Result<Array<'_>>;
