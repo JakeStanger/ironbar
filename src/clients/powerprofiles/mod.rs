@@ -1,56 +1,79 @@
-use std::sync::Arc;
-use zbus::Result;
+use tokio::sync::broadcast;
 
-use crate::{
-    clients::{ClientResult, powerprofiles::dbus::PowerProfilesProxy},
-    register_fallible_client,
-};
+use crate::{clients::powerprofiles::dbus::PowerProfilesProxy, register_fallible_client};
 
 mod dbus;
+
+pub(crate) type Event = ();
 
 /// D-Bus client for the power profiles.
 ///
 /// Wraps around D-Bus properties.
 #[derive(Debug)]
-pub(crate) struct Client {
-    proxy: Arc<PowerProfilesProxy<'static>>,
+pub(crate) enum Client {
+    Stopped {
+        tx: broadcast::Sender<Event>,
+        _rx: broadcast::Receiver<Event>,
+    },
+    Started {
+        tx: broadcast::Sender<Event>,
+        _rx: broadcast::Receiver<Event>,
+        proxy: PowerProfilesProxy<'static>,
+    },
 }
 
 impl Client {
-    pub(crate) async fn new() -> ClientResult<Self> {
-        let dbus = zbus::Connection::system().await?;
+    pub(crate) fn new() -> Self {
+        let (tx, rx) = broadcast::channel(4);
+        Self::Stopped { tx, _rx: rx }
+    }
 
-        let proxy = Arc::new(PowerProfilesProxy::new(&dbus).await?);
+    fn proxy(&self) -> super::Result<&PowerProfilesProxy<'static>, zbus::Error> {
+        match self {
+            Client::Stopped { .. } => Err(super::Error::InvalidState),
+            Client::Started { proxy, .. } => Ok(proxy),
+        }
+    }
 
-        Ok(Arc::new(Self { proxy }))
+    fn tx(&self) -> &broadcast::Sender<Event> {
+        match self {
+            Client::Stopped { tx, .. } => tx,
+            Client::Started { tx, .. } => tx,
+        }
     }
 
     /// Get [Some] profile if the `current` profile is different from the one loaded.
-    pub(crate) async fn get_new_active_profile(&self, current: &str) -> Result<Option<Box<str>>> {
-        let profile = self.proxy.active_profile().await?;
+    pub(crate) async fn get_new_active_profile(
+        &self,
+        current: &str,
+    ) -> super::Result<Option<Box<str>>, zbus::Error> {
+        let profile = self.proxy()?.active_profile().await?;
 
-        Ok(if profile == current {
+        Ok(if *profile == *current {
             None
         } else {
-            Some(Box::from(profile.as_str()))
+            Some(profile)
         })
     }
 
     /// Set a new profile.
-    pub(crate) async fn set_profile(&self, value: &str) -> Result<()> {
-        self.proxy.set_active_profile(value.into()).await
+    pub(crate) async fn set_profile(&self, value: &str) -> super::Result<(), zbus::Error> {
+        self.proxy()?
+            .set_active_profile(value.into())
+            .await
+            .map_err(Into::into)
     }
 
-    /// Retrieve all the available profiles.
-    pub(crate) async fn available_profiles(&self) -> Result<Vec<Box<str>>> {
-        let array = self.proxy.profiles().await?;
+    /// Retrieve all the available profiles from D-Bus.
+    pub(crate) async fn available_profiles(&self) -> super::Result<Vec<Box<str>>, zbus::Error> {
+        let array = self.proxy()?.profiles().await?;
         let mut profiles = Vec::with_capacity(array.len());
 
-        for dict in array.iter() {
+        for mut dict in array.into_iter() {
             const PROFILE_KEY: &str = "Profile";
 
-            if let Some(entry) = dict.get(&PROFILE_KEY.into()) {
-                profiles.push(Box::from(entry.as_str()));
+            if let Some(entry) = dict.remove(PROFILE_KEY) {
+                profiles.push(entry);
             }
         }
 
@@ -61,14 +84,54 @@ impl Client {
     pub(crate) async fn get_new_performance_degraded_reason(
         &self,
         current: &str,
-    ) -> Result<Option<Box<str>>> {
-        let reason = self.proxy.performance_degraded().await?;
+    ) -> super::Result<Option<Box<str>>, zbus::Error> {
+        let reason = self.proxy()?.performance_degraded().await?;
 
-        Ok(if reason == current {
+        Ok(if *reason == *current {
             None
         } else {
-            Some(Box::from(reason.as_str()))
+            Some(reason)
         })
+    }
+}
+
+impl super::Client for Client {
+    type State = ();
+
+    type Event = ();
+
+    type Error = zbus::Error;
+
+    fn is_started(&self) -> bool {
+        matches!(self, Self::Started { .. })
+    }
+
+    async fn start(self) -> Result<Self, Self::Error> {
+        let Self::Stopped { tx, _rx } = self else {
+            return Ok(self);
+        };
+
+        let dbus = Box::pin(zbus::Connection::system()).await?;
+
+        let proxy = PowerProfilesProxy::new(&dbus).await?;
+
+        Ok(Self::Started { tx, _rx, proxy })
+    }
+
+    async fn stop(self) -> Result<Self, Self::Error> {
+        let Self::Started { tx, _rx, .. } = self else {
+            return Ok(self);
+        };
+
+        Ok(Self::Stopped { tx, _rx })
+    }
+
+    async fn state(&self) -> super::Result<Self::State, Self::Error> {
+        Ok(())
+    }
+
+    fn subscribe(&self) -> tokio::sync::broadcast::Receiver<Self::Event> {
+        self.tx().subscribe()
     }
 }
 
