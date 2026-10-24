@@ -1,10 +1,33 @@
-use tokio::sync::broadcast;
+use futures_lite::StreamExt;
+use tokio::{sync::broadcast, task::JoinHandle};
+use tracing::error;
+use zbus::{Str, fdo::PropertiesProxy, proxy::CacheProperties};
 
-use crate::{clients::powerprofiles::dbus::PowerProfilesProxy, register_fallible_client};
+use crate::{
+    channels::SyncSenderExt,
+    clients::powerprofiles::dbus::{
+        ACTIVE_PROFILE, OBJECT_PATH, PERFORMANCE_DEGRADED, PowerProfilesProxy, SERVICE,
+    },
+    register_fallible_client, spawn,
+};
 
 mod dbus;
 
-pub(crate) type Event = ();
+/// Set of events that can update the Client's [State].
+#[derive(Debug, Clone)]
+pub(crate) enum Event {
+    ActiveProfile(Box<str>),
+    PerformanceDegraded(Option<Box<str>>),
+}
+
+/// State of the Power Profiles Client
+///
+/// The active profile is listed under `active_profile`.
+/// If a performance degradation is currently taking place then `performance_degraded` is [Some] with the reason. Otherwise it is set to [None].
+pub(crate) struct State {
+    pub(crate) active_profile: Box<str>,
+    pub(crate) performance_degraded: Option<Box<str>>,
+}
 
 /// D-Bus client for the power profiles.
 ///
@@ -19,6 +42,7 @@ pub(crate) enum Client {
         tx: broadcast::Sender<Event>,
         _rx: broadcast::Receiver<Event>,
         proxy: PowerProfilesProxy<'static>,
+        handle: JoinHandle<()>,
     },
 }
 
@@ -42,18 +66,9 @@ impl Client {
         }
     }
 
-    /// Get [Some] profile if the `current` profile is different from the one loaded.
-    pub(crate) async fn get_new_active_profile(
-        &self,
-        current: &str,
-    ) -> super::Result<Option<Box<str>>, zbus::Error> {
-        let profile = self.proxy()?.active_profile().await?;
-
-        Ok(if *profile == *current {
-            None
-        } else {
-            Some(profile)
-        })
+    /// Retrieve the active profile.
+    async fn active_profile(&self) -> super::Result<Box<str>, zbus::Error> {
+        self.proxy()?.active_profile().await.map_err(Into::into)
     }
 
     /// Set a new profile.
@@ -80,25 +95,24 @@ impl Client {
         Ok(profiles)
     }
 
-    /// Get [Some] reason for the performance being degraded if different from `current`.
-    pub(crate) async fn get_new_performance_degraded_reason(
-        &self,
-        current: &str,
-    ) -> super::Result<Option<Box<str>>, zbus::Error> {
-        let reason = self.proxy()?.performance_degraded().await?;
+    /// Retrieve the performance degraded reason.
+    ///
+    /// Set to [None] if no performance degradation is taking place.
+    async fn performance_degraded_reason(&self) -> super::Result<Option<Box<str>>, zbus::Error> {
+        let perf_deg = self.proxy()?.performance_degraded().await?;
 
-        Ok(if *reason == *current {
+        Ok(if perf_deg.is_empty() {
             None
         } else {
-            Some(reason)
+            Some(perf_deg)
         })
     }
 }
 
 impl super::Client for Client {
-    type State = ();
+    type State = State;
 
-    type Event = ();
+    type Event = Event;
 
     type Error = zbus::Error;
 
@@ -115,19 +129,83 @@ impl super::Client for Client {
 
         let proxy = PowerProfilesProxy::new(&dbus).await?;
 
-        Ok(Self::Started { tx, _rx, proxy })
+        let properties_proxy = PropertiesProxy::builder(&dbus)
+            .destination(SERVICE)
+            .path(OBJECT_PATH)
+            .cache_properties(CacheProperties::No)
+            .build()
+            .await?;
+        let mut stream = properties_proxy.receive_properties_changed().await?;
+
+        let handle = spawn({
+            let tx = tx.clone();
+
+            async move {
+                while let Some(event) = stream.next().await {
+                    let args = match event.args() {
+                        Ok(args) => args,
+                        Err(err) => {
+                            error!("could not receive args for event: {err}");
+                            continue;
+                        }
+                    };
+
+                    for (key, value) in args.changed_properties {
+                        match key {
+                            ACTIVE_PROFILE => {
+                                let active_profile = value.downcast::<Str>().unwrap_or_default();
+                                if active_profile.is_empty() {
+                                    error!("empty profile received");
+                                    continue;
+                                }
+
+                                tx.send_expect(Event::ActiveProfile(Box::from(
+                                    active_profile.as_str(),
+                                )))
+                            }
+                            PERFORMANCE_DEGRADED => {
+                                let perf_deg = value.downcast::<Str>().unwrap_or_default();
+                                tx.send_expect(Event::PerformanceDegraded(
+                                    if perf_deg.is_empty() {
+                                        None
+                                    } else {
+                                        Some(Box::from(perf_deg.as_str()))
+                                    },
+                                ));
+                            }
+                            _ => (),
+                        }
+                    }
+                }
+            }
+        });
+
+        Ok(Self::Started {
+            tx,
+            _rx,
+            proxy,
+            handle,
+        })
     }
 
     async fn stop(self) -> Result<Self, Self::Error> {
-        let Self::Started { tx, _rx, .. } = self else {
+        let Self::Started {
+            tx, _rx, handle, ..
+        } = self
+        else {
             return Ok(self);
         };
+
+        handle.abort();
 
         Ok(Self::Stopped { tx, _rx })
     }
 
     async fn state(&self) -> super::Result<Self::State, Self::Error> {
-        Ok(())
+        Ok(State {
+            active_profile: self.active_profile().await?,
+            performance_degraded: self.performance_degraded_reason().await?,
+        })
     }
 
     fn subscribe(&self) -> tokio::sync::broadcast::Receiver<Self::Event> {

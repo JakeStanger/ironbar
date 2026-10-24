@@ -4,6 +4,12 @@
 use std::collections::HashMap;
 
 use zbus::{self, Str, proxy};
+pub(super) const OBJECT_PATH: &str = "/org/freedesktop/UPower/PowerProfiles";
+pub(super) const SERVICE: &str = "org.freedesktop.UPower.PowerProfiles";
+
+// Properties being watched
+pub(super) const ACTIVE_PROFILE: &str = "ActiveProfile";
+pub(super) const PERFORMANCE_DEGRADED: &str = "PerformanceDegraded";
 
 #[proxy(
     default_service = "org.freedesktop.UPower.PowerProfiles",

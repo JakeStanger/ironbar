@@ -1,4 +1,4 @@
-use std::time::Duration;
+use std::sync::Arc;
 
 use color_eyre::eyre::Result;
 use gtk::{
@@ -6,12 +6,15 @@ use gtk::{
     prelude::{BoxExt, ButtonExt, WidgetExt},
 };
 use serde::Deserialize;
-use tokio::time;
-use tracing::{error, trace};
+use tokio::sync::broadcast::error::RecvError;
+use tracing::{error, trace, warn};
 
 use crate::{
     channels::{AsyncSenderExt, BroadcastReceiverExt},
-    clients::powerprofiles,
+    clients::{
+        Client,
+        powerprofiles::{self, Event},
+    },
     config::{CommonConfig, LayoutConfig, ProfileUpdateEvent, Profiles, State, default},
     image::IconLabel,
     module_impl,
@@ -92,7 +95,61 @@ impl Default for PowerProfilesModule {
 #[derive(Debug, Clone)]
 pub enum ProfileEvent {
     ActiveProfile(Box<str>),
-    PerformanceDegraded(Box<str>),
+    PerformanceDegraded(Option<Box<str>>),
+}
+
+/// Switch to a `new_profile` updating `index`.
+///
+/// Only clone `new_profile` if it was not previously registered.
+#[allow(clippy::borrowed_box)]
+fn switch_profile(profiles: &mut Vec<Box<str>>, new_profile: &Box<str>, index: &mut usize) {
+    if let Some(idx) = profiles.iter().position(|profile| *profile == *new_profile) {
+        *index = idx;
+    } else {
+        profiles.push(new_profile.clone());
+        *index = profiles.len() - 1;
+    }
+}
+
+/// Initialize the profiles
+///
+/// Sends information to the UI about the initial [State] of the [Client].
+/// [Some] is returned even if the information could not be sent to the UI.
+///
+/// If the profiles could not be properly initialized then [None] is returned.
+/// Return the initial set of profiles by the client and the index pointing to the profile in use.
+async fn init_profiles(
+    tx: &tokio::sync::mpsc::Sender<super::ModuleUpdateEvent<ProfileEvent>>,
+    client: &Arc<powerprofiles::Client>,
+) -> Option<(Vec<Box<str>>, usize)> {
+    let mut profiles = match client.available_profiles().await {
+        Ok(profiles) => profiles,
+        Err(err) => {
+            error!("could not retrieve power profiles: {err}");
+            return None;
+        }
+    };
+    trace!("profiles: {profiles:?}");
+    if profiles.is_empty() {
+        error!("no profiles could be recovered");
+        return None;
+    }
+    let mut index = 0;
+
+    match client.state().await {
+        Ok(state) => {
+            switch_profile(&mut profiles, &state.active_profile, &mut index);
+            tx.send_update(ProfileEvent::ActiveProfile(state.active_profile))
+                .await;
+            tx.send_update(ProfileEvent::PerformanceDegraded(
+                state.performance_degraded,
+            ))
+            .await;
+        }
+        Err(err) => error!("{err:?}"),
+    };
+
+    Some((profiles, index))
 }
 
 impl Module<Button> for PowerProfilesModule {
@@ -115,96 +172,71 @@ impl Module<Button> for PowerProfilesModule {
     where
         <Self as Module<Button>>::SendMessage: Clone,
     {
-        const POLL_INTERVAL: Duration = Duration::from_millis(50);
         let tx = context.tx.clone();
         let client = context.try_client::<powerprofiles::Client>()?;
 
         spawn(async move {
-            /// Switch to a `new_profile` updating `index`.
-            fn switch_profile(
-                profiles: &mut Vec<Box<str>>,
-                new_profile: Box<str>,
-                index: &mut usize,
-            ) {
-                if let Some(idx) = profiles.iter().position(|profile| *profile == new_profile) {
-                    *index = idx;
-                } else {
-                    profiles.push(new_profile);
-                    *index = profiles.len() - 1;
-                }
-            }
-
-            let mut perf_reason = Box::from("");
-
-            let mut profiles = match client.available_profiles().await {
-                Ok(profiles) => profiles,
-                Err(err) => {
-                    error!("could not retrieve power profiles: {err}");
-                    return;
-                }
-            };
-            trace!("profiles: {profiles:?}");
-            if profiles.is_empty() {
-                error!("no profiles could be recovered");
+            let Some((mut profiles, mut index)) = init_profiles(&tx, &client).await else {
                 return;
+            };
+
+            let mut client_rx = client.subscribe();
+            enum EventType {
+                Client(Result<Event, RecvError>),
+                Ui,
             }
-            let mut index = 0;
-
-            tx.send_update(ProfileEvent::ActiveProfile(profiles[index].clone()))
-                .await;
-
-            let mut interval = time::interval(POLL_INTERVAL);
             loop {
                 let event = tokio::select! {
-                    event = rx.recv() => event,
-                    _ = interval.tick() => None,
+                    _event = rx.recv() => EventType::Ui,
+                    event = client_rx.recv() => EventType::Client(event)
                 };
 
-                trace!("got event {event:?}");
+                match event {
+                    EventType::Client(event) => {
+                        let event = match event {
+                            Ok(event) => event,
+                            Err(err) => match err {
+                                RecvError::Closed => break,
+                                RecvError::Lagged(_) => {
+                                    warn!("some events were lost");
+                                    continue;
+                                }
+                            },
+                        };
 
-                match client.get_new_active_profile(&profiles[index]).await {
-                    Ok(profile) => {
-                        if let Some(profile) = profile {
-                            switch_profile(&mut profiles, profile, &mut index);
-                            tx.send_update(ProfileEvent::ActiveProfile(profiles[index].clone()))
+                        match event {
+                            Event::ActiveProfile(active_profile) => {
+                                if active_profile != profiles[index] {
+                                    switch_profile(&mut profiles, &active_profile, &mut index);
+                                    tx.send_update(ProfileEvent::ActiveProfile(active_profile))
+                                        .await;
+                                }
+                            }
+                            Event::PerformanceDegraded(performance_degraded) => {
+                                tx.send_update(ProfileEvent::PerformanceDegraded(
+                                    performance_degraded,
+                                ))
                                 .await;
+                            }
                         }
                     }
-                    Err(err) => {
-                        error!("could not retrieve an active profile: {err}");
-                    }
-                };
-
-                match client
-                    .get_new_performance_degraded_reason(&perf_reason)
-                    .await
-                {
-                    Ok(reason) => {
-                        if let Some(reason) = reason {
-                            perf_reason = reason;
-                            tx.send_update(ProfileEvent::PerformanceDegraded(perf_reason.clone()))
-                                .await;
+                    EventType::Ui => {
+                        let mut buf_idx = index + 1;
+                        if buf_idx >= profiles.len() {
+                            buf_idx = 0;
                         }
-                    }
-                    Err(err) => {
-                        error!("could not retrieve a reason for performance degradation: {err}")
-                    }
-                }
 
-                if event.is_some() {
-                    let mut buf_idx = index + 1;
-                    if buf_idx >= profiles.len() {
-                        buf_idx = 0;
-                    }
-
-                    match client.set_profile(&profiles[buf_idx]).await {
-                        Ok(_) => {
-                            index = buf_idx;
-                            tx.send_update(ProfileEvent::ActiveProfile(profiles[index].clone()))
+                        match client.set_profile(&profiles[buf_idx]).await {
+                            Ok(_) => {
+                                index = buf_idx;
+                                tx.send_update(ProfileEvent::ActiveProfile(
+                                    profiles[index].clone(),
+                                ))
                                 .await;
-                        }
-                        Err(err) => {
-                            error!("could not update power profile: {err:?}");
+                            }
+                            Err(err) => {
+                                error!("could not update power profile: {err:?}");
+                            }
                         }
                     }
                 }
@@ -270,7 +302,7 @@ impl Module<Button> for PowerProfilesModule {
             ProfileEvent::PerformanceDegraded(reason) => {
                 const PERFORMANCE_CSS: &str = "performance_degraded";
 
-                if reason.is_empty() {
+                if reason.is_none() {
                     glib_button.remove_css_class(PERFORMANCE_CSS);
                 } else {
                     glib_button.add_css_class(PERFORMANCE_CSS);
