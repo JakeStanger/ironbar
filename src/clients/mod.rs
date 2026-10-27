@@ -106,11 +106,23 @@ pub trait Client: Debug + Any + Sized {
     fn subscribe(&self) -> broadcast::Receiver<Self::Event>;
 }
 
+type RegistryKey = (TypeId, Option<Box<str>>);
+
 /// Singleton wrapper consisting of
 /// all the singleton client types used by modules.
 #[derive(Debug, Default)]
 pub struct Clients {
-    registry: HashMap<TypeId, Box<dyn Any>>,
+    /// All currently registered clients, regardless of activation state.
+    ///
+    /// The second part of the key is an optional discriminator
+    /// used where multiple clients of the same type can be registered.
+    ///
+    /// An `Any` type is used to decouple this type from the client implementations.
+    ///
+    /// Note that all values inserted into this registry
+    /// MUST implement the `Client` trait - this is not typed here
+    /// due to compiler limitations.
+    registry: HashMap<RegistryKey, Box<dyn Any>>,
 
     // -- old - to sort -- \\
     wayland: Option<Arc<wayland::Client>>,
@@ -127,8 +139,6 @@ pub struct Clients {
     clipboard: Option<Arc<clipboard::Client>>,
     #[cfg(feature = "inhibit")]
     inhibit: Option<Arc<inhibit::Client>>,
-    #[cfg(feature = "keyboard")]
-    libinput: HashMap<Box<str>, Arc<libinput::Client>>,
     #[cfg(feature = "keyboard")]
     keyboard_layout: Option<Arc<dyn compositor::KeyboardLayoutClient>>,
     #[cfg(feature = "cairo")]
@@ -161,11 +171,15 @@ impl Clients {
     /// Gets a client from the registry,
     /// creating it using `init` if it does not exist,
     /// and starting it if it is not running.
+    ///
+    /// Use `key` as an optional discriminator where necessary
+    /// if multiple instances of the same client type could exist.
     async fn get_or_init<T: Client>(
         &mut self,
+        key: Option<&str>,
         init: impl FnOnce() -> T,
     ) -> Result<Arc<T>, T::Error> {
-        let key = TypeId::of::<T>();
+        let key = (TypeId::of::<T>(), key.map(Box::from));
 
         let entry = match self.registry.remove(&key) {
             Some(entry) => *entry
@@ -293,14 +307,12 @@ impl Clients {
     }
 
     #[cfg(feature = "keyboard")]
-    pub fn libinput(&mut self, seat: &str) -> Arc<libinput::Client> {
-        if let Some(client) = self.libinput.get(seat) {
-            client.clone()
-        } else {
-            let client = libinput::Client::init(seat.to_string());
-            self.libinput.insert(seat.into(), client.clone());
-            client
-        }
+    pub fn libinput(&mut self, seat: &str) -> ClientResult<libinput::Client> {
+        let client = await_sync(async move {
+            self.get_or_init(Some(seat), || libinput::Client::new(seat))
+                .await
+        });
+        client.map_err(Into::into)
     }
 
     #[cfg(feature = "music")]
@@ -324,7 +336,7 @@ impl Clients {
 
     #[cfg(feature = "notifications")]
     pub fn notifications(&mut self) -> ClientResult<swaync::Client> {
-        let client = await_sync(async move { self.get_or_init(swaync::Client::new).await });
+        let client = await_sync(async move { self.get_or_init(None, swaync::Client::new).await });
         client.map_err(Into::into)
     }
 

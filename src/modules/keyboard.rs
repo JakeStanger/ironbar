@@ -8,6 +8,7 @@ use tracing::{debug, error, trace};
 
 use super::{Module, ModuleInfo, ModuleParts, WidgetContext};
 use crate::channels::{AsyncSenderExt, BroadcastReceiverExt};
+use crate::clients::Client;
 use crate::clients::compositor::{self, KeyboardLayoutUpdate};
 use crate::clients::libinput::{Event, Key, KeyEvent};
 use crate::config::{CommonConfig, LayoutConfig};
@@ -166,7 +167,7 @@ impl Module<gtk::Box> for KeyboardModule {
         context: &WidgetContext<Self::SendMessage, Self::ReceiveMessage>,
         mut rx: mpsc::Receiver<Self::ReceiveMessage>,
     ) -> Result<()> {
-        let client = context.ironbar.clients.borrow_mut().libinput(&self.seat);
+        let client = context.ironbar.clients.borrow_mut().libinput(&self.seat)?;
 
         let tx = context.tx.clone();
         spawn(async move {
