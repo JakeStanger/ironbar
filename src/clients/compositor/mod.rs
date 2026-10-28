@@ -44,7 +44,7 @@ impl Display for Compositor {
                 Self::Sway => "Sway",
                 #[cfg(any(feature = "hyprland"))]
                 Self::Hyprland => "Hyprland",
-                #[cfg(feature = "workspaces+niri")]
+                #[cfg(feature = "niri")]
                 Self::Niri => "Niri",
                 Self::Unsupported => "Unsupported",
             }
@@ -106,9 +106,12 @@ impl Compositor {
             Self::Sway => Ok(clients.sway().map_err(|err| Error::Other(err.into()))?),
             #[cfg(feature = "keyboard+hyprland")]
             Self::Hyprland => Ok(clients.hyprland()),
-            #[cfg(feature = "niri")]
-            Self::Niri => Err(Error::Unsupported("keyboard", &["sway", "hyprland"])),
-            Self::Unsupported => Err(Error::Unsupported("keyboard", &["sway", "hyprland"])),
+            #[cfg(feature = "keyboard+niri")]
+            Self::Niri => Ok(clients.niri()),
+            Self::Unsupported => Err(Error::Unsupported(
+                "keyboard",
+                &["sway", "hyprland", "niri"],
+            )),
             #[allow(unreachable_patterns)]
             _ => Err(Error::Disabled("keyboard")),
         }
@@ -128,7 +131,7 @@ impl Compositor {
             #[cfg(feature = "workspaces+hyprland")]
             Self::Hyprland => Ok(clients.hyprland()),
             #[cfg(feature = "workspaces+niri")]
-            Self::Niri => Ok(Arc::new(niri::Client::new())),
+            Self::Niri => Ok(clients.niri()),
             Self::Unsupported => Err(Error::Unsupported(
                 "workspaces",
                 &["sway", "hyprland", "niri"],
