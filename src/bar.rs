@@ -201,6 +201,11 @@ impl Bar {
 
     /// Closes the bar, consuming it.
     pub fn close(self) {
+        let mut autohide_state = self.autohide_state.borrow_mut();
+        if let Some(autohide_state) = autohide_state.as_mut() {
+            autohide_state.hotspot_window.close();
+            autohide_state.hotspot_window.destroy();
+        }
         self.window.close();
         self.window.destroy();
     }
