@@ -265,7 +265,6 @@ impl Module<Button> for PowerProfilesModule {
             default::IconSize::Small as i32,
             &context.ironbar.image_provider(),
         );
-        button_icon.add_css_class("icon");
 
         let container = gtk::Box::new(self.layout.orientation(info), 5);
         container.add_css_class("contents");
