@@ -1,5 +1,9 @@
 Power Profiles status information with icons by default.
-You can switch profiles by clicking.
+Displays the currently active device power profile and any profile status information. 
+Clicking the module cycles between available profiles.
+
+> [!NOTE]
+> This module requires that `upower` is installed and its service is running.
 
 ## Configuration
 
