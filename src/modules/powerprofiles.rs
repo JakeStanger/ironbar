@@ -69,7 +69,7 @@ pub struct PowerProfilesModule {
     /// Supports [image](images) icons.
     ///
     /// **Default**: `Power profile: {name}`
-    tooltip_format: String,
+    tooltip: String,
 
     /// See [layout options](module-level-options#layout)
     #[serde(default, flatten)]
@@ -85,7 +85,7 @@ impl Default for PowerProfilesModule {
         Self {
             profiles: Profiles::default(),
             format: "".to_owned(),
-            tooltip_format: "Power profile: {name}".to_owned(),
+            tooltip: "Power profile: {name}".to_owned(),
             layout: LayoutConfig::default(),
             common: Some(CommonConfig::default()),
         }
@@ -287,9 +287,9 @@ impl Module<Button> for PowerProfilesModule {
             move |_, event: ProfileUpdateEvent<Box<str>, PowerProfilesProfile, ()>| {
                 button_icon.set_label(Some(&event.profile.icon));
                 button_label.set_label(&self.format.replace("{name}", &event.state));
-                if !self.tooltip_format.is_empty() {
+                if !self.tooltip.is_empty() {
                     profile_button.set_tooltip_markup(Some(
-                        &self.tooltip_format.replace("{name}", &event.state),
+                        &self.tooltip.replace("{name}", &event.state),
                     ));
                 }
             },
