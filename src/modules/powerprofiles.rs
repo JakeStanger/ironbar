@@ -299,7 +299,7 @@ impl Module<Button> for PowerProfilesModule {
         rx.recv_glib((), move |(), event| match event {
             ProfileEvent::ActiveProfile(profile) => manager.update(profile, ()),
             ProfileEvent::PerformanceDegraded(reason) => {
-                const PERFORMANCE_CSS: &str = "performance_degraded";
+                const PERFORMANCE_CSS: &str = "performance-degraded";
 
                 if reason.is_none() {
                     glib_button.remove_css_class(PERFORMANCE_CSS);
