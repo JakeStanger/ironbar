@@ -408,7 +408,8 @@ impl Clients {
 
     #[cfg(feature = "power_profiles")]
     pub fn power_profiles(&mut self) -> ClientResult<powerprofiles::Client> {
-        let client = await_sync(async move { self.get_or_init(powerprofiles::Client::new).await });
+        let client =
+            await_sync(async move { self.get_or_init(None, powerprofiles::Client::new).await });
         client.map_err(Into::into)
     }
 
