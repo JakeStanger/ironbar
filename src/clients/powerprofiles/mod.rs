@@ -68,15 +68,12 @@ impl Client {
 
     /// Retrieve the active profile.
     async fn active_profile(&self) -> super::Result<Box<str>, zbus::Error> {
-        self.proxy()?.active_profile().await.map_err(Into::into)
+        Ok(self.proxy()?.active_profile().await?)
     }
 
     /// Set a new profile.
     pub(crate) async fn set_profile(&self, value: &str) -> super::Result<(), zbus::Error> {
-        self.proxy()?
-            .set_active_profile(value.into())
-            .await
-            .map_err(Into::into)
+        Ok(self.proxy()?.set_active_profile(value.into()).await?)
     }
 
     /// Retrieve all the available profiles from D-Bus.
