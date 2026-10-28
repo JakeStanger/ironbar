@@ -44,6 +44,7 @@ default = [
     "music+all",
     "network_manager",
     "notifications",
+    "power_profiles",
     "script",
     "sys_info",
     "tray",
@@ -115,6 +116,8 @@ music = []
 network_manager = ["futures-lite", "zbus"]
 
 notifications = ["zbus"]
+
+power_profiles = []
 
 script = []
 

@@ -32,6 +32,8 @@ pub mod music;
 #[cfg(feature = "network_manager")]
 pub mod networkmanager;
 pub mod outputs;
+#[cfg(feature = "power_profiles")]
+pub mod powerprofiles;
 #[cfg(feature = "sway")]
 pub mod sway;
 #[cfg(feature = "notifications")]
@@ -402,6 +404,13 @@ impl Clients {
         };
 
         Ok(client)
+    }
+
+    #[cfg(feature = "power_profiles")]
+    pub fn power_profiles(&mut self) -> ClientResult<powerprofiles::Client> {
+        let client =
+            await_sync(async move { self.get_or_init(None, powerprofiles::Client::new).await });
+        client.map_err(Into::into)
     }
 
     #[cfg(feature = "volume")]
