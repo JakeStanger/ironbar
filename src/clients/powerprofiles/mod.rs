@@ -1,13 +1,10 @@
 use futures_lite::StreamExt;
 use tokio::{sync::broadcast, task::JoinHandle};
 use tracing::error;
-use zbus::{Str, fdo::PropertiesProxy, proxy::CacheProperties};
+use zbus::proxy::PropertyChanged;
 
 use crate::{
-    channels::SyncSenderExt,
-    clients::powerprofiles::dbus::{
-        ACTIVE_PROFILE, OBJECT_PATH, PERFORMANCE_DEGRADED, PowerProfilesProxy, SERVICE,
-    },
+    channels::SyncSenderExt, clients::powerprofiles::dbus::PowerProfilesProxy,
     register_fallible_client, spawn,
 };
 
@@ -126,51 +123,66 @@ impl super::Client for Client {
 
         let proxy = PowerProfilesProxy::new(&dbus).await?;
 
-        let properties_proxy = PropertiesProxy::builder(&dbus)
-            .destination(SERVICE)
-            .path(OBJECT_PATH)
-            .cache_properties(CacheProperties::No)
-            .build()
-            .await?;
-        let mut stream = properties_proxy.receive_properties_changed().await?;
+        let mut active_profile_watcher = proxy.receive_active_profile_changed().await;
+        let mut performance_degraded_watcher = proxy.receive_performance_degraded_changed().await;
 
         let handle = spawn({
             let tx = tx.clone();
 
             async move {
-                while let Some(event) = stream.next().await {
-                    let args = match event.args() {
-                        Ok(args) => args,
-                        Err(err) => {
-                            error!("could not receive args for event: {err}");
-                            continue;
+                loop {
+                    enum Property<'a> {
+                        ActiveProfile(PropertyChanged<'a, Box<str>>),
+                        PerformanceDegraded(PropertyChanged<'a, Box<str>>),
+                    }
+
+                    impl Property<'_> {
+                        async fn get_value(&self) -> Option<Box<str>> {
+                            let property = match self {
+                                Property::ActiveProfile(property_changed) => property_changed,
+                                Property::PerformanceDegraded(property_changed) => property_changed,
+                            };
+
+                            match property.get().await {
+                                Ok(value) => Some(value),
+                                Err(err) => {
+                                    error!(
+                                        "could not get value for property {}: {}",
+                                        property.name(),
+                                        err
+                                    );
+                                    None
+                                }
+                            }
                         }
+                    }
+
+                    let Some(property) = tokio::select! (
+                        next = active_profile_watcher.next() => next.map(Property::ActiveProfile),
+                        next = performance_degraded_watcher.next() => next.map(Property::PerformanceDegraded),
+                    ) else {
+                        continue;
                     };
 
-                    for (key, value) in args.changed_properties {
-                        match key {
-                            ACTIVE_PROFILE => {
-                                let active_profile = value.downcast::<Str>().unwrap_or_default();
-                                if active_profile.is_empty() {
-                                    error!("empty profile received");
-                                    continue;
-                                }
+                    let Some(value) = property.get_value().await else {
+                        continue;
+                    };
 
-                                tx.send_expect(Event::ActiveProfile(Box::from(
-                                    active_profile.as_str(),
-                                )))
+                    match property {
+                        Property::ActiveProfile(_) => {
+                            if value.is_empty() {
+                                error!("empty profile received");
+                                continue;
                             }
-                            PERFORMANCE_DEGRADED => {
-                                let perf_deg = value.downcast::<Str>().unwrap_or_default();
-                                tx.send_expect(Event::PerformanceDegraded(
-                                    if perf_deg.is_empty() {
-                                        None
-                                    } else {
-                                        Some(Box::from(perf_deg.as_str()))
-                                    },
-                                ));
-                            }
-                            _ => (),
+
+                            tx.send_expect(Event::ActiveProfile(value))
+                        }
+                        Property::PerformanceDegraded(_) => {
+                            tx.send_expect(Event::PerformanceDegraded(if value.is_empty() {
+                                None
+                            } else {
+                                Some(value)
+                            }));
                         }
                     }
                 }
