@@ -153,8 +153,6 @@ pub struct Clients {
     tray: Option<Arc<tray::Client>>,
     #[cfg(feature = "brightness")]
     brightness: Option<Arc<brightness::Client>>,
-    #[cfg(feature = "battery")]
-    upower: Option<Arc<upower::Client>>,
     #[cfg(feature = "volume")]
     volume: Option<Arc<volume::Client>>,
     #[cfg(feature = "bluetooth")]
@@ -389,17 +387,10 @@ impl Clients {
 
     #[cfg(feature = "battery")]
     pub fn upower(&mut self) -> ClientResult<upower::Client> {
-        let client = if let Some(client) = &self.upower {
-            client.clone()
-        } else {
-            let client = await_sync(async { upower::Client::new().await })?;
+        let client = await_sync(async move { self.get_or_init(None, upower::Client::new).await })?;
 
-            #[cfg(any(feature = "ipc", feature = "cairo"))]
-            Ironbar::variable_manager().register_namespace("upower", client.clone());
-
-            self.upower.replace(client.clone());
-            client
-        };
+        #[cfg(any(feature = "ipc", feature = "cairo"))]
+        Ironbar::variable_manager().register_namespace("upower", client.clone());
 
         Ok(client)
     }
@@ -485,4 +476,20 @@ macro_rules! register_fallible_client {
             }
         }
     };
+}
+
+#[macro_export]
+macro_rules! stop_basic {
+    ($self:ident) => {{
+        let Self::Started {
+            channel, handle, ..
+        } = $self
+        else {
+            return Ok($self);
+        };
+
+        handle.abort();
+
+        Ok(Self::Stopped(channel))
+    }};
 }

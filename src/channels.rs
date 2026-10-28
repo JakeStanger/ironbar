@@ -2,7 +2,42 @@ use crate::modules::ModuleUpdateEvent;
 use crate::spawn;
 use smithay_client_toolkit::reexports::calloop;
 use std::fmt::Debug;
+use std::ops::Deref;
 use tokio::sync::{broadcast, mpsc};
+
+/// Wrapper around a broadcast channel pair
+/// to reduce channel-related boilerplate.
+///
+/// Deref to the underlying broadcast sender.
+#[derive(Debug)]
+pub struct BroadcastChannel<T>
+where
+    T: Clone + Debug,
+{
+    tx: broadcast::Sender<T>,
+    _rx: broadcast::Receiver<T>,
+}
+
+impl<T> BroadcastChannel<T>
+where
+    T: Clone + Debug,
+{
+    pub fn new(capacity: usize) -> Self {
+        let (tx, _rx) = broadcast::channel(capacity);
+        Self { tx, _rx }
+    }
+}
+
+impl<T> Deref for BroadcastChannel<T>
+where
+    T: Clone + Debug,
+{
+    type Target = broadcast::Sender<T>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.tx
+    }
+}
 
 pub trait SyncSenderExt<T> {
     /// Asynchronously sends a message on the channel,
