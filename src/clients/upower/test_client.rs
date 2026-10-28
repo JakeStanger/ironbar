@@ -1,12 +1,10 @@
 use super::{BatteryLevel, BatteryState, BatteryType, State};
 use crate::channels::SyncSenderExt;
-use crate::clients::ClientResult;
 use crate::ironvar::NamespaceTrait;
 use crate::spawn;
-use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::broadcast;
-use zbus::Result;
+use tokio::task::JoinHandle;
 
 fn base_state() -> State {
     State {
@@ -21,16 +19,47 @@ fn base_state() -> State {
 }
 
 #[derive(Debug)]
-pub struct Client {
-    tx: broadcast::Sender<State>,
+pub enum Client {
+    Stopped {
+        tx: broadcast::Sender<State>,
+        _rx: broadcast::Receiver<State>,
+    },
+    Started {
+        tx: broadcast::Sender<State>,
+        _rx: broadcast::Receiver<State>,
+        handle: JoinHandle<()>,
+    },
 }
 
 impl Client {
-    pub async fn new() -> ClientResult<Self> {
+    pub(in crate::clients) fn new() -> Self {
         let (tx, rx) = broadcast::channel(16);
-        std::mem::forget(rx);
+        Self::Stopped { tx, _rx: rx }
+    }
 
-        spawn({
+    fn tx(&self) -> &broadcast::Sender<State> {
+        match self {
+            Self::Stopped { tx, .. } => tx,
+            Self::Started { tx, .. } => tx,
+        }
+    }
+}
+
+impl crate::clients::Client for Client {
+    type State = State;
+    type Event = State;
+    type Error = zbus::Error;
+
+    fn is_started(&self) -> bool {
+        matches!(self, Self::Started { .. })
+    }
+
+    async fn start(self) -> Result<Self, Self::Error> {
+        let Self::Stopped { tx, _rx } = self else {
+            return Ok(self);
+        };
+
+        let handle = spawn({
             let tx = tx.clone();
             async move {
                 let mut state = base_state();
@@ -90,15 +119,29 @@ impl Client {
             }
         });
 
-        Ok(Arc::new(Self { tx }))
+        Ok(Self::Started { tx, _rx, handle })
     }
 
-    pub async fn state(&self) -> Result<State> {
+    async fn stop(self) -> Result<Self, Self::Error> {
+        let Self::Started { tx, _rx, handle } = self else {
+            return Ok(self);
+        };
+
+        handle.abort();
+
+        Ok(Self::Stopped { tx, _rx })
+    }
+
+    async fn state(&self) -> crate::clients::Result<Self::State, Self::Error> {
+        if !self.is_started() {
+            return Err(crate::clients::Error::InvalidState);
+        }
+
         Ok(base_state())
     }
 
-    pub fn subscribe(&self) -> broadcast::Receiver<State> {
-        self.tx.subscribe()
+    fn subscribe(&self) -> broadcast::Receiver<Self::Event> {
+        self.tx().subscribe()
     }
 }
 

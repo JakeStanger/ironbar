@@ -1,13 +1,12 @@
 use super::dbus::UPowerProxy;
 use super::{BatteryState, State};
-use crate::channels::SyncSenderExt;
-use crate::clients::ClientResult;
-use crate::{await_sync, spawn};
+use crate::channels::{BroadcastChannel, SyncSenderExt};
+use crate::{await_sync, spawn, stop_basic};
 use futures_lite::StreamExt;
 use std::collections::HashMap;
-use std::sync::Arc;
 use tokio::sync::broadcast;
-use zbus::Result;
+use tokio::task::JoinHandle;
+use tracing::debug;
 use zbus::fdo::PropertiesProxy;
 use zbus::names::InterfaceName;
 use zbus::proxy::CacheProperties;
@@ -39,15 +38,54 @@ fn scale_ttf(ttf: i64, battery_pct: f64) -> i64 {
 }
 
 #[derive(Debug)]
-pub struct Client {
-    proxy: PropertiesProxy<'static>,
-    interface_name: InterfaceName<'static>,
-
-    tx: broadcast::Sender<State>,
+pub enum Client {
+    Stopped(BroadcastChannel<State>),
+    Started {
+        channel: BroadcastChannel<State>,
+        proxy: PropertiesProxy<'static>,
+        handle: JoinHandle<()>,
+    },
 }
 
 impl Client {
-    pub async fn new() -> ClientResult<Self> {
+    pub(in crate::clients) fn new() -> Self {
+        Self::Stopped(BroadcastChannel::new(16))
+    }
+
+    fn interface_name() -> InterfaceName<'static> {
+        InterfaceName::from_static_str("org.freedesktop.UPower.Device")
+            .expect("failed to create zbus InterfaceName")
+    }
+
+    fn proxy(&self) -> crate::clients::Result<&PropertiesProxy<'static>, zbus::Error> {
+        match self {
+            Self::Stopped { .. } => Err(crate::clients::Error::InvalidState),
+            Self::Started { proxy, .. } => Ok(proxy),
+        }
+    }
+
+    fn tx(&self) -> &broadcast::Sender<State> {
+        match self {
+            Self::Stopped(channel) => channel,
+            Self::Started { channel, .. } => channel,
+        }
+    }
+}
+
+impl crate::clients::Client for Client {
+    type State = State;
+    type Event = State;
+    type Error = zbus::Error;
+
+    fn is_started(&self) -> bool {
+        matches!(self, Self::Started { .. })
+    }
+
+    async fn start(self) -> Result<Self, Self::Error> {
+        let Self::Stopped(channel) = self else {
+            return Ok(self);
+        };
+
         let dbus = Box::pin(zbus::Connection::system()).await?;
 
         let device_proxy = UPowerProxy::new(&dbus).await?;
@@ -63,22 +101,15 @@ impl Client {
             .build()
             .await?;
 
-        let interface_name = InterfaceName::from_static_str("org.freedesktop.UPower.Device")
-            .expect("failed to create zbus InterfaceName");
+        let interface_name = Self::interface_name();
 
-        let (tx, rx) = broadcast::channel(16);
-        std::mem::forget(rx);
+        let mut stream = proxy.receive_properties_changed().await?;
+        let mut state: State = proxy.get_all(interface_name.clone()).await?.try_into()?;
 
-        spawn({
-            let tx = tx.clone();
-            let proxy = proxy.clone();
-            let interface_name = interface_name.clone();
-
-            let mut stream = proxy.receive_properties_changed().await?;
+        let handle = spawn({
+            let tx = channel.clone();
 
             async move {
-                let mut state: State = proxy.get_all(interface_name.clone()).await?.try_into()?;
-
                 while let Some(ev) = stream.next().await {
                     let args = ev.args().expect("Invalid signal arguments");
                     if args.interface_name != interface_name {
@@ -112,37 +143,42 @@ impl Client {
                     tx.send_expect(emit);
                 }
 
-                Ok::<_, zbus::Error>(())
+                debug!("upower properties stream ended");
             }
         });
 
-        Ok(Arc::new(Self {
+        Ok(Self::Started {
+            channel,
             proxy,
-            interface_name,
-            tx,
-        }))
+            handle,
+        })
     }
 
-    pub async fn state(&self) -> Result<State> {
+    async fn stop(self) -> Result<Self, Self::Error> {
+        stop_basic!(self)
+    }
+
+    async fn state(&self) -> crate::clients::Result<Self::State, Self::Error> {
         let mut state: State = self
-            .proxy
-            .get_all(self.interface_name.clone())
-            .await?
+            .proxy()?
+            .get_all(Self::interface_name())
+            .await
+            .map_err(zbus::Error::from)?
             .try_into()?;
         state.time_to_full = scale_ttf(state.time_to_full, state.percentage);
         Ok(state)
     }
 
-    pub fn subscribe(&self) -> broadcast::Receiver<State> {
-        self.tx.subscribe()
+    fn subscribe(&self) -> broadcast::Receiver<Self::Event> {
+        self.tx().subscribe()
     }
 }
 
 #[cfg(any(feature = "ipc", feature = "cairo"))]
 impl crate::ironvar::Namespace for Client {
     fn get(&self, key: &str) -> Option<String> {
-        let value =
-            await_sync(async { self.proxy.get(self.interface_name.clone(), key).await }).ok();
+        let proxy = self.proxy().ok()?;
+        let value = await_sync(async { proxy.get(Self::interface_name(), key).await }).ok();
         value.map(|v| v.to_string())
     }
 
@@ -151,10 +187,13 @@ impl crate::ironvar::Namespace for Client {
     }
 
     fn get_all(&self) -> HashMap<Box<str>, String> {
-        let properties =
-            await_sync(async { self.proxy.get_all(self.interface_name.clone()).await })
-                .ok()
-                .unwrap_or_default();
+        let Ok(proxy) = self.proxy() else {
+            return HashMap::new();
+        };
+
+        let properties = await_sync(async { proxy.get_all(Self::interface_name()).await })
+            .ok()
+            .unwrap_or_default();
 
         properties
             .into_iter()
