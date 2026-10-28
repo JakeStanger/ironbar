@@ -288,9 +288,8 @@ impl Module<Button> for PowerProfilesModule {
                 button_icon.set_label(Some(&event.profile.icon));
                 button_label.set_label(&self.format.replace("{name}", &event.state));
                 if !self.tooltip.is_empty() {
-                    profile_button.set_tooltip_markup(Some(
-                        &self.tooltip.replace("{name}", &event.state),
-                    ));
+                    profile_button
+                        .set_tooltip_markup(Some(&self.tooltip.replace("{name}", &event.state)));
                 }
             },
         );
