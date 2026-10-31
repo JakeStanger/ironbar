@@ -1,6 +1,6 @@
 use crate::channels::{AsyncSenderExt, BroadcastReceiverExt};
-use crate::clients::upower;
 use crate::clients::upower::BatteryState;
+use crate::clients::{Client, upower};
 use crate::config::{CommonConfig, LayoutConfig, Profiles, State, default};
 use crate::gtk_helpers::IronbarLabelExt;
 use crate::image::IconLabel;
