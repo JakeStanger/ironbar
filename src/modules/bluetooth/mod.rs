@@ -6,10 +6,12 @@ use glib::SignalHandlerId;
 use gtk::{Align, Button, Label, Orientation};
 use gtk::{ScrolledWindow, Spinner, prelude::*};
 use tokio::sync::mpsc;
+use tracing::error;
 
 pub use self::config::BluetoothModule;
 use self::config::PopupDeviceConfig;
 use crate::channels::{AsyncSenderExt, BroadcastReceiverExt};
+use crate::clients::Client;
 use crate::clients::bluetooth::{self, BluetoothDevice, BluetoothDeviceStatus, BluetoothState};
 use crate::gtk_helpers::IronbarGtkExt;
 use crate::image::IconLabel;
@@ -177,16 +179,18 @@ impl Module<Button> for BluetoothModule {
         let client = context.try_client::<bluetooth::Client>()?;
 
         {
-            let tx = context.tx.clone();
+            let client = client.clone();
             let mut rx = client.subscribe();
-            spawn(async move {
-                loop {
-                    let state = rx.borrow_and_update().clone();
-                    tx.send_update(state).await;
+            let tx = context.tx.clone();
 
-                    if rx.changed().await.is_err() {
-                        break;
-                    }
+            spawn(async move {
+                match client.state().await {
+                    Ok(state) => tx.send_update(state).await,
+                    Err(err) => error!("{err:?}"),
+                }
+
+                while let Ok(state) = rx.recv().await {
+                    tx.send_update(state).await;
                 }
             });
         }
@@ -194,11 +198,15 @@ impl Module<Button> for BluetoothModule {
         // ui events
         spawn(async move {
             while let Some(action) = rx.recv().await {
-                match action {
+                let res = match action {
                     BluetoothAction::Enable => client.enable(),
                     BluetoothAction::Disable => client.disable(),
                     BluetoothAction::Connect(addr) => client.connect(addr),
                     BluetoothAction::Disconnect(addr) => client.disconnect(addr),
+                };
+
+                if let Err(err) = res {
+                    error!("{err:?}");
                 }
             }
         });
