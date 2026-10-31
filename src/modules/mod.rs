@@ -56,6 +56,8 @@ pub mod music;
 pub mod networkmanager;
 #[cfg(feature = "notifications")]
 pub mod notifications;
+#[cfg(feature = "power_profiles")]
+pub mod powerprofiles;
 #[cfg(feature = "script")]
 pub mod script;
 #[cfg(feature = "sys_info")]
