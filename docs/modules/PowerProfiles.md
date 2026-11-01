@@ -79,7 +79,7 @@ end:
 {
   end = [
     {
-      type = "power_profile"
+      type = "power_profiles"
       format = "{name}"
 
       profiles.power_saving.when = "power-saver"
