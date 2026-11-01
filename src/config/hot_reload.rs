@@ -91,6 +91,10 @@ pub fn install(path: &Path, app: &Application, ironbar: &Rc<Ironbar>) {
                   bar_config: BarConfig,
                   mon_name: &str,
                   monitor: &Monitor| {
+                if diff.is_empty() {
+                    return;
+                }
+
                 let mut bars = ironbar.bars.borrow_mut();
                 let Some(bar) = bars.get_mut(position) else {
                     error!("failed to find bar for monitor {mon_name}");

@@ -116,6 +116,10 @@ impl ConfigDiff {
 
                     for (old_key, old) in old_monitors {
                         if let Some(new) = new_monitors.get(old_key) {
+                            if old == new {
+                                continue;
+                            }
+
                             let monitor_diff = MonitorUpdateDiffAction::diff(old, new);
                             diff.updated.insert(old_key.clone(), monitor_diff);
                         } else {
