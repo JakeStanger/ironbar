@@ -167,11 +167,10 @@ pub struct Ironbar {
 
 impl Ironbar {
     fn new(config_source: ConfigSource, css_source: CssSource) -> Self {
-        let (mut config, _) = Config::load(&config_source);
+        let (config, _) = Config::load(&config_source);
 
         let desktop_files = DesktopFiles::new();
-        let image_provider =
-            image::Provider::new(desktop_files.clone(), &mut config.icon_overrides);
+        let image_provider = image::Provider::new(desktop_files.clone(), &config.icon_overrides);
 
         Self {
             bars: rc_mut!(vec![]),

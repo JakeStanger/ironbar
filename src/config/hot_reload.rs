@@ -68,11 +68,12 @@ pub fn install(path: &Path, app: &Application, ironbar: &Rc<Ironbar>) {
         let new_config = ironbar.config.clone();
 
         let diff = ConfigDiff::diff(&old_config, &new_config.borrow());
+        debug!("config diff: {diff:?}");
 
         if diff.icon_theme || diff.icon_overrides {
             let provider = ironbar.image_provider();
             provider.set_icon_theme(new_config.borrow().icon_theme.as_deref());
-            provider.set_overrides(&mut new_config.borrow_mut().icon_overrides);
+            provider.set_overrides(&new_config.borrow_mut().icon_overrides);
 
             // Icon theme changes only apply when images are re-rendered.
             // In that case, it's far easier to drop everything and reload from scratch
@@ -90,6 +91,10 @@ pub fn install(path: &Path, app: &Application, ironbar: &Rc<Ironbar>) {
                   bar_config: BarConfig,
                   mon_name: &str,
                   monitor: &Monitor| {
+                if diff.is_empty() {
+                    return;
+                }
+
                 let mut bars = ironbar.bars.borrow_mut();
                 let Some(bar) = bars.get_mut(position) else {
                     error!("failed to find bar for monitor {mon_name}");

@@ -65,6 +65,28 @@ impl MonitorUpdateDiff {
     }
 }
 
+/// Diff for a single module container (start/center/end).
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub enum ModulesDiff {
+    /// The number of modules is unchanged.
+    /// The modules at these indices have changed
+    /// and should be replaced in place.
+    Changed(Vec<usize>),
+    /// The number of modules has changed,
+    /// including the container being added or removed entirely.
+    /// The container must be cleared and all modules recreated.
+    Reload,
+    /// Modules have not changed
+    #[default]
+    NoChange,
+}
+
+impl ModulesDiff {
+    pub fn is_empty(&self) -> bool {
+        matches!(self, Self::NoChange)
+    }
+}
+
 /// Action to take for an individual bar update.
 #[derive(Debug, Clone, PartialEq)]
 pub enum BarDiffAction {
@@ -94,6 +116,10 @@ impl ConfigDiff {
 
                     for (old_key, old) in old_monitors {
                         if let Some(new) = new_monitors.get(old_key) {
+                            if old == new {
+                                continue;
+                            }
+
                             let monitor_diff = MonitorUpdateDiffAction::diff(old, new);
                             diff.updated.insert(old_key.clone(), monitor_diff);
                         } else {
