@@ -157,8 +157,6 @@ pub struct Clients {
     brightness: Option<Arc<brightness::Client>>,
     #[cfg(feature = "volume")]
     volume: Option<Arc<volume::Client>>,
-    #[cfg(feature = "bluetooth")]
-    bluetooth: Option<Arc<bluetooth::Client>>,
 }
 
 pub type ClientResult<T> = color_eyre::Result<Arc<T>>;
@@ -413,16 +411,9 @@ impl Clients {
 
     #[cfg(feature = "bluetooth")]
     pub fn bluetooth(&mut self) -> ClientResult<bluetooth::Client> {
-        let client = if let Some(client) = &self.bluetooth {
-            client.clone()
-        } else {
-            let client = await_sync(async { bluetooth::Client::new().await })?;
-            let client = Arc::new(client);
-            self.bluetooth.replace(client.clone());
-            client
-        };
-
-        Ok(client)
+        let client =
+            await_sync(async move { self.get_or_init(None, bluetooth::Client::new).await });
+        client.map_err(Into::into)
     }
 }
 
