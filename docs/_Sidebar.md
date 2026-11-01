@@ -43,7 +43,7 @@
 - [Music](music)
 - [Network Manager](network-manager)
 - [Notifications](notifications)
-- [Power Profiles](power_profiles)
+- [Power Profiles](powerprofiles)
 - [Sys Info](sys-info)
 - [Tray](tray)
 - [Volume](volume)
