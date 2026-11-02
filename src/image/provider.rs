@@ -80,9 +80,9 @@ pub struct Provider {
 }
 
 impl Provider {
-    pub fn new(desktop_files: DesktopFiles, overrides: &mut HashMap<String, String>) -> Self {
+    pub fn new(desktop_files: DesktopFiles, overrides: &HashMap<String, String>) -> Self {
         let mut overrides_map = HashMap::with_capacity(overrides.len());
-        overrides_map.extend(overrides.drain());
+        overrides_map.extend(overrides.clone());
 
         Self {
             desktop_files,
@@ -385,9 +385,9 @@ impl Provider {
         lock!(self.cache).clear();
     }
 
-    pub fn set_overrides(&self, overrides: &mut HashMap<String, String>) {
+    pub fn set_overrides(&self, overrides: &HashMap<String, String>) {
         let mut overrides_map = HashMap::with_capacity(overrides.len());
-        overrides_map.extend(overrides.drain());
+        overrides_map.extend(overrides.clone());
 
         self.overrides.replace(overrides_map);
 

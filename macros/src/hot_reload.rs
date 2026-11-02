@@ -9,7 +9,8 @@ enum HotReloadPolicy {
     Recreate,
     /// A change of this property can be updated normally.
     Normal(String),
-    /// A module has changed, requiring a full module diff.
+    /// A module list has changed, requiring a full module diff.
+    /// If the number of modules has changed, the container is re-rendered.
     Modules(String),
     /// This property is not hot-reloadable and should not be checked.
     Ignore,
@@ -43,7 +44,6 @@ pub(crate) fn parse_diff_struct(input: DeriveInput) -> Result<proc_macro2::Token
     }
 
     let mut recreate_checks = Vec::with_capacity(fields.named.len());
-    let mut module_len_checks = Vec::with_capacity(3);
     let mut normal_diffs = Vec::new();
     let mut module_diffs = Vec::new();
 
@@ -84,27 +84,33 @@ pub(crate) fn parse_diff_struct(input: DeriveInput) -> Result<proc_macro2::Token
             HotReloadPolicy::Modules(field) => {
                 let field_ident = format_ident!("{field}");
 
-                module_len_checks.push(quote! {
-                    self.#field_ident.as_ref().map(Vec::len).unwrap_or_default()
-                        != new.#field_ident.as_ref().map(Vec::len).unwrap_or_default()
-                });
-
                 module_diffs.push(quote! {
-                    if let (Some(modules_old), Some(modules_new)) =
-                        (self.#field_ident.as_ref(), new.#field_ident.as_ref())
                     {
-                        diff.#field_ident = modules_old
-                            .iter()
-                            .zip(modules_new)
-                            .enumerate()
-                            .filter(|(_, (old, new))| old != new)
-                            .map(|(i, _)| i)
-                            .collect();
+                        let modules_old = self.#field_ident.as_deref().unwrap_or_default();
+                        let modules_new = new.#field_ident.as_deref().unwrap_or_default();
+
+                        diff.#field_ident = if modules_old.len() == modules_new.len() {
+                            let changed_idx = modules_old
+                                .iter()
+                                .zip(modules_new)
+                                .enumerate()
+                                .filter(|(_, (old, new))| old != new)
+                                .map(|(i, _)| i)
+                                .collect::<Vec<_>>();
+
+                            if changed_idx.is_empty() {
+                                crate::config::diff::ModulesDiff::NoChange
+                            } else {
+                                crate::config::diff::ModulesDiff::Changed(changed_idx)
+                            }
+                        } else {
+                            crate::config::diff::ModulesDiff::Reload
+                        };
                     }
                 });
 
                 module_diff_fields.push(quote! {
-                    pub #field_ident: Vec<usize>,
+                    pub #field_ident: crate::config::diff::ModulesDiff,
                 });
 
                 module_diff_empty_checks.push(quote! {
@@ -117,7 +123,6 @@ pub(crate) fn parse_diff_struct(input: DeriveInput) -> Result<proc_macro2::Token
 
     let recreate_required = recreate_checks
         .into_iter()
-        .chain(module_len_checks)
         .reduce(|recreate, check| quote!(#recreate || #check))
         .unwrap_or_else(|| quote!(false));
 

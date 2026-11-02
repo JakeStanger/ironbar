@@ -1,4 +1,4 @@
-use crate::config::diff::BarConfigDiff;
+use crate::config::diff::{BarConfigDiff, ModulesDiff};
 use crate::config::{AutohideListener, BarConfig, BarPosition, MarginConfig, ModuleConfig};
 use crate::modules::{BarModuleFactory, ModuleInfo, ModuleLocation, ModuleRef};
 use crate::popup::Popup;
@@ -331,10 +331,53 @@ impl Bar {
             Inner::Loaded { module_refs, .. } => module_refs,
         };
 
+        let content = &self.content;
+
         let mut load_modules = |mut modules: Vec<ModuleConfig>,
-                                diffs: Vec<usize>,
+                                diff: ModulesDiff,
                                 container: &gtk::Box,
                                 location: ModuleLocation| {
+            let diffs = match diff {
+                ModulesDiff::Changed(diffs) => diffs,
+                ModulesDiff::Reload => {
+                    debug!("re-rendering {location:?} modules");
+
+                    for existing_module in module_refs.iter().filter(|m| m.location == location) {
+                        let existing_wrapper = existing_module
+                            .root_widget
+                            .parent()
+                            .expect("root should have revealer parent");
+                        container.remove(&existing_wrapper);
+                    }
+
+                    module_refs.retain(|m| m.location != location);
+
+                    let container = (!modules.is_empty()).then_some(container);
+                    match location {
+                        ModuleLocation::Start => content.set_start_widget(container),
+                        ModuleLocation::Center => content.set_center_widget(container),
+                        ModuleLocation::End => content.set_end_widget(container),
+                    }
+
+                    let Some(container) = container else {
+                        return;
+                    };
+
+                    for module in modules {
+                        let name = module.name();
+                        match module.create(&module_factory, container, &info!(location)) {
+                            Ok(module) => module_refs.push(module),
+                            Err(err) => error!("failed to create module {name}: {:?}", err),
+                        }
+                    }
+
+                    return;
+                }
+                ModulesDiff::NoChange => {
+                    vec![]
+                }
+            };
+
             // avoid potential panic if all modules are disabled, but...
             if modules.is_empty() {
                 return;
@@ -373,17 +416,26 @@ impl Bar {
             }
         };
 
-        if let Some(modules) = config.start {
-            load_modules(modules, diff.start, &self.start, ModuleLocation::Start);
-        }
+        load_modules(
+            config.start.unwrap_or_default(),
+            diff.start,
+            &self.start,
+            ModuleLocation::Start,
+        );
 
-        if let Some(modules) = config.center {
-            load_modules(modules, diff.center, &self.center, ModuleLocation::Center);
-        }
+        load_modules(
+            config.center.unwrap_or_default(),
+            diff.center,
+            &self.center,
+            ModuleLocation::Center,
+        );
 
-        if let Some(modules) = config.end {
-            load_modules(modules, diff.end, &self.end, ModuleLocation::End);
-        }
+        load_modules(
+            config.end.unwrap_or_default(),
+            diff.end,
+            &self.end,
+            ModuleLocation::End,
+        );
     }
 
     /// Sets up GTK layer shell for a provided application window.
