@@ -1943,8 +1943,6 @@ version = "0.20.0-pre"
 dependencies = [
  "bluer",
  "chrono",
- "clap",
- "clap_complete",
  "color-eyre",
  "colpetto",
  "config",
@@ -1956,7 +1954,10 @@ dependencies = [
  "gtk4-layer-shell",
  "hyprland",
  "indexmap",
- "ironbar_macros",
+ "ironbar-args",
+ "ironbar-core",
+ "ironbar-ipc-types",
+ "ironbar-macros",
  "libpulse-binding",
  "lua-src",
  "mlua",
@@ -1987,8 +1988,45 @@ dependencies = [
 ]
 
 [[package]]
-name = "ironbar_macros"
-version = "0.1.0"
+name = "ironbar-args"
+version = "0.20.0-pre"
+dependencies = [
+ "clap",
+ "ironbar-core",
+ "ironbar-ipc-types",
+]
+
+[[package]]
+name = "ironbar-cli"
+version = "0.20.0-pre"
+dependencies = [
+ "clap_complete",
+ "ironbar-args",
+ "ironbar-core",
+ "ironbar-ipc-types",
+ "serde_json",
+]
+
+[[package]]
+name = "ironbar-core"
+version = "0.20.0-pre"
+dependencies = [
+ "serde",
+]
+
+[[package]]
+name = "ironbar-ipc-types"
+version = "0.20.0-pre"
+dependencies = [
+ "clap",
+ "ironbar-macros",
+ "serde",
+ "tracing",
+]
+
+[[package]]
+name = "ironbar-macros"
+version = "0.20.0-pre"
 dependencies = [
  "proc-macro2",
  "quote",

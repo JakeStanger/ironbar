@@ -44,7 +44,7 @@
         ironbar =
           let
             props = builtins.fromTOML (builtins.readFile ./Cargo.toml);
-            version = props.package.version;
+            version = props.workspace.package.version;
             craneLib = crane.mkLib pkgs;
           in
           pkgs.callPackage ./nix/package.nix {

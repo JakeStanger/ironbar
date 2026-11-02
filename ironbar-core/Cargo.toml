@@ -1,0 +1,13 @@
+[package]
+name = "ironbar-core"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+description.workspace = true
+repository.workspace = true
+categories.workspace = true
+keywords.workspace = true
+
+[dependencies]
+serde.workspace = true

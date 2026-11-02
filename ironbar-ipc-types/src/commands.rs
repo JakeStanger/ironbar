@@ -1,10 +1,9 @@
-use clap::ArgAction;
+use ironbar_macros::EnumList;
+use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
-use clap::{Args, Subcommand};
-use serde::{Deserialize, Serialize};
-
-#[derive(Subcommand, Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, EnumList)]
+#[cfg_attr(feature = "clap", derive(clap::Subcommand))]
 #[serde(tag = "command", rename_all = "snake_case")]
 pub enum Command {
     /// Pong
@@ -17,18 +16,19 @@ pub enum Command {
     Reload,
 
     /// Get and set reactive Ironvar values.
-    #[command(subcommand)]
+    #[cfg_attr(feature = "clap", command(subcommand))]
     Var(IronvarCommand),
 
     /// Interact with a specific bar.
     Bar(BarCommand),
 
     /// Load stylesheets and dynamically add/remove classes
-    #[command(subcommand)]
+    #[cfg_attr(feature = "clap", command(subcommand))]
     Style(StyleCommand),
 }
 
-#[derive(Subcommand, Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
+#[cfg_attr(feature = "clap", derive(clap::Subcommand))]
 #[serde(tag = "subcommand", rename_all = "snake_case")]
 pub enum IronvarCommand {
     /// Set an `ironvar` value.
@@ -52,17 +52,19 @@ pub enum IronvarCommand {
     List { namespace: Option<Box<str>> },
 }
 
-#[derive(Args, Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
+#[cfg_attr(feature = "clap", derive(clap::Args))]
 pub struct BarCommand {
     /// The name of the bar.
     pub name: String,
 
-    #[command(subcommand)]
+    #[cfg_attr(feature = "clap", command(subcommand))]
     #[serde(flatten)]
     pub subcommand: BarCommandType,
 }
 
-#[derive(Subcommand, Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
+#[cfg_attr(feature = "clap", derive(clap::Subcommand))]
 #[serde(tag = "subcommand", rename_all = "snake_case")]
 pub enum BarCommandType {
     // == Visibility == \\
@@ -73,10 +75,9 @@ pub enum BarCommandType {
     /// Set the bar's visibility state via an argument.
     SetVisible {
         /// The new visibility state.
-        #[clap(
-            num_args(1),
-            require_equals(true),
-            action = ArgAction::Set,
+        #[cfg_attr(
+            feature = "clap",
+            arg(num_args(1), require_equals(true), action = clap::ArgAction::Set)
         )]
         visible: bool,
     },
@@ -100,10 +101,9 @@ pub enum BarCommandType {
         /// The configured name of the widget.
         widget_name: String,
 
-        #[clap(
-            num_args(1),
-            require_equals(true),
-            action = ArgAction::Set,
+        #[cfg_attr(
+            feature = "clap",
+            arg(num_args(1), require_equals(true), action = clap::ArgAction::Set)
         )]
         visible: bool,
     },
@@ -119,16 +119,16 @@ pub enum BarCommandType {
     // == Exclusivity == \\
     /// Set whether the bar reserves an exclusive zone.
     SetExclusive {
-        #[clap(
-            num_args(1),
-            require_equals(true),
-            action = ArgAction::Set,
+        #[cfg_attr(
+            feature = "clap",
+            arg(num_args(1), require_equals(true), action = clap::ArgAction::Set)
         )]
         exclusive: bool,
     },
 }
 
-#[derive(Subcommand, Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
+#[cfg_attr(feature = "clap", derive(clap::Subcommand))]
 #[serde(tag = "subcommand", rename_all = "snake_case")]
 pub enum StyleCommand {
     /// Load an additional CSS stylesheet.
