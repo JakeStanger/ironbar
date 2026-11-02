@@ -121,7 +121,10 @@ in
 
     propagatedBuildInputs = [gtk4];
 
-    cargoExtraArgs = builtins.concatStringsSep " " (builtins.filter (s: s != "") flags);
+    cargoExtraArgs = builtins.concatStringsSep " " ([
+        "--package ironbar"
+        "--package ironbar-cli"
+    ] ++ builtins.filter (s: s != "") flags);
 
     preFixup = ''
       gappsWrapperArgs+=(
@@ -130,15 +133,15 @@ in
     '';
 
     postInstall = ''
-      mkdir -p target/completions
-      target/release/ironbar --print-completions bash > target/completions/ironbar.bash
-      target/release/ironbar --print-completions zsh > target/completions/_ironbar
-      target/release/ironbar --print-completions fish > target/completions/ironbar.fish
+      mkdir -p completions
+      $out/bin/ironbar --print-completions bash > completions/ironbar.bash
+      $out/bin/ironbar --print-completions zsh > completions/_ironbar
+      $out/bin/ironbar --print-completions fish >completions/ironbar.fish
 
       installShellCompletion --cmd ironbar \
-        --bash target/completions/ironbar.bash \
-        --fish target/completions/ironbar.fish \
-        --zsh target/completions/_ironbar
+        --bash completions/ironbar.bash \
+        --fish completions/ironbar.fish \
+        --zsh completions/_ironbar
     '';
 
     passthru = {

@@ -5,6 +5,10 @@ pub enum ExitCode {
     IpcResponseError = 3,
     WaylandDispatchError = 4,
     CliError = 5,
+
+    // <https://man.archlinux.org/man/exit.1p.txt>
+    ServerExecutableExecError = 126,
+    ServerExecutableNotFound = 127,
 }
 
 pub const ERR_MUTEX_LOCK: &str = "Failed to get lock on Mutex";
