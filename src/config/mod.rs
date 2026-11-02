@@ -71,11 +71,8 @@ use gtk::prelude::ObjectExt;
 use ironbar_macros::HotReload;
 #[cfg(feature = "extras")]
 use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use std::collections::HashMap;
-use std::convert::Infallible;
-use std::path::PathBuf;
-use std::str::FromStr;
 use std::sync::OnceLock;
 use tracing::{error, warn};
 
@@ -640,26 +637,6 @@ pub enum DoubleClickTime {
 impl Default for DoubleClickTime {
     fn default() -> Self {
         Self::Ms(250)
-    }
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-#[serde(untagged)]
-pub enum ConfigLocation {
-    Minimal,
-    Desktop,
-    Custom(PathBuf),
-}
-
-impl FromStr for ConfigLocation {
-    type Err = Infallible;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "minimal" => Ok(ConfigLocation::Minimal),
-            "desktop" => Ok(ConfigLocation::Desktop),
-            _ => Ok(ConfigLocation::Custom(PathBuf::from(s))),
-        }
     }
 }
 

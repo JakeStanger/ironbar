@@ -1,6 +1,14 @@
-Ironbar is a single monolithic Rust project, with all code inside the standard `src` folder.
+Ironbar is made of the primary `ironbar` crate, which contains the bulk of the implementation,
+as well as several helper crates. These are as follows:
 
-The three most important code modules to be aware of when expanding Ironbar are as follows: 
+- `ironbar-core` - some central shared types.
+- `ironbar-args` - the CLI argument types, as these are needed by both the CLI and main bar.
+- `ironbar-ipc-types` - the command/response definitions for IPC, and base struct.
+- `ironbar-macros` - derive macros used by other crates.
+
+The primary `ironbar` crate lives in the repo root and its source can be found in the `src` folder.
+
+The three most important code areas to be aware of when expanding Ironbar are as follows: 
 
 - `clients` - Contains code for interacting with external services, such as Wayland, D-Bus, etc.
 - `ipc` - Contains commands and responses, and implementation code for the IPC server. Commands/responses also map to the CLI automatically.
@@ -488,7 +496,7 @@ impl State for ProfileState {
 
 ### Implementation
 
-The module behaviour itself is implemented using the `crate::modules::Module` trait. 
+The module behaviour itself is implemented using the `ironbar::modules::Module` trait. 
 This takes a generic argument which determines the GTK widget type returned by this module. 
 In most cases, this is likely to be a `Box`, `Label`, or `Button`, although all widget types can be used in theory. 
 
@@ -512,7 +520,7 @@ Every module needs the following types:
 
 Each module also requires a `name` method used to determine its `type` config option, 
 and `take_common` method used to grab the common options. 
-These can be automatically generated using the `crate::module_impl` macro.
+These can be automatically generated using the `ironbar::module_impl` macro.
 
 ```rust
 impl Module<Button> for ClockModule {
@@ -722,13 +730,13 @@ The actual implementation would then look something like the below:
 
 ## Creating a new IPC command
 
-Commands are initially defined in the `crate::ipc::Command` module. 
+Commands are initially defined in the `ironbar-ipc-types::Command` module. 
 This is an enum, containing child enums and structs which represents each possible command.
 
 The struct is shared by the CLI implementation, so necessary `clap` traits must be derived as appropriate.
 This automatically handles the client-side implementation.
 
-On the server side, the command needs to be handled inside the `crate::ipc::server` module, 
+On the server side, the command needs to be handled inside the `ironbar::ipc` module, 
 in the `Ipc::handle_command` method.
 
 This takes the top-level subcommand and forwards it onto the child module.

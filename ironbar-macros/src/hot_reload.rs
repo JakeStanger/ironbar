@@ -161,8 +161,7 @@ pub(crate) fn parse_diff_struct(input: DeriveInput) -> Result<proc_macro2::Token
                 !(#has_changes)
             }
         }
-    }
-    .into())
+    })
 }
 
 /// Attempts to parse the field attributes to find a `#[hot_reload(...)]` policy,

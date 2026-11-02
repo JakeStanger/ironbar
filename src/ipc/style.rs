@@ -1,10 +1,10 @@
 use crate::Ironbar;
 use crate::bar::Bar;
 use crate::config::CssSource;
-use crate::ipc::{Response, StyleCommand};
 use crate::modules::ModuleRef;
 use crate::style::load_css;
 use gtk::prelude::*;
+use ironbar_ipc_types::{Response, StyleCommand};
 
 pub fn handle_command(command: StyleCommand, ironbar: &Ironbar) -> Response {
     match command {

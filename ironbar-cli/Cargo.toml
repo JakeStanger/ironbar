@@ -1,0 +1,29 @@
+[package]
+name = "ironbar-cli"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+description.workspace = true
+repository.workspace = true
+categories.workspace = true
+keywords.workspace = true
+
+[[bin]]
+name = "ironbar"
+path = "src/main.rs"
+
+[features]
+default = ["completions", "schema"]
+completions = ["dep:clap_complete", "ironbar-args/completions"]
+# needed for help & completions
+schema = ["ironbar-args/schema"]
+
+[dependencies]
+ironbar-args.workspace = true
+ironbar-core.workspace = true
+ironbar-ipc-types.workspace = true
+
+serde_json.workspace = true
+
+clap_complete = { version = "4.6.5", optional = true }

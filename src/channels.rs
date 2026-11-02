@@ -51,28 +51,32 @@ pub trait SyncSenderExt<T> {
 impl<T> SyncSenderExt<T> for std::sync::mpsc::Sender<T> {
     #[inline]
     fn send_expect(&self, message: T) {
-        self.send(message).expect(crate::error::ERR_CHANNEL_SEND);
+        self.send(message)
+            .expect(ironbar_core::error::ERR_CHANNEL_SEND);
     }
 }
 
 impl<T> SyncSenderExt<T> for calloop::channel::Sender<T> {
     #[inline]
     fn send_expect(&self, message: T) {
-        self.send(message).expect(crate::error::ERR_CHANNEL_SEND);
+        self.send(message)
+            .expect(ironbar_core::error::ERR_CHANNEL_SEND);
     }
 }
 
 impl<T: Debug> SyncSenderExt<T> for broadcast::Sender<T> {
     #[inline]
     fn send_expect(&self, message: T) {
-        self.send(message).expect(crate::error::ERR_CHANNEL_SEND);
+        self.send(message)
+            .expect(ironbar_core::error::ERR_CHANNEL_SEND);
     }
 }
 
 impl<T: Debug> SyncSenderExt<T> for mpsc::UnboundedSender<T> {
     #[inline]
     fn send_expect(&self, message: T) {
-        self.send(message).expect(crate::error::ERR_CHANNEL_SEND);
+        self.send(message)
+            .expect(ironbar_core::error::ERR_CHANNEL_SEND);
     }
 }
 
@@ -129,7 +133,7 @@ impl<T: Send> AsyncSenderExt<T> for mpsc::Sender<T> {
     async fn send_expect(&self, message: T) {
         self.send(message)
             .await
-            .expect(crate::error::ERR_CHANNEL_SEND);
+            .expect(ironbar_core::error::ERR_CHANNEL_SEND);
     }
 }
 

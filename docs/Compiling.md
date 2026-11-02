@@ -4,10 +4,16 @@ Just clone the repo and build:
 ```sh
 git clone https://github.com/jakestanger/ironbar.git
 cd ironbar
-cargo build --locked --release
+cargo build --workspace --release
 # change path to wherever you want to install
 install target/release/ironbar ~/.local/bin/ironbar
+install target/release/ironbard ~/.local/bin/ironbard
 ```
+
+> [!TIP]
+> By default, Ironbar ships two binaries - the CLI, and the bar daemon.
+> If you do not want the CLI, you can compile only the main `ironbar` crate.
+> This provides the `ironbard` binary, which you could symlink/alias to `ironbar`.
 
 It is also recommended to install a [Nerd Font](https://www.nerdfonts.com/#home) for displaying symbols.
 
@@ -118,8 +124,8 @@ cargo build --release --no-default-features \
 |----------------------|----------------------------------------------------------------------------------------------------------------------|
 | **Core**             |                                                                                                                      |
 | [⚠ DEPRECATED] http | Enables HTTP features. Currently this includes the ability to load remote images.                                    |
-| ipc                  | Enables the IPC server.                                                                                              |
-| cli                  | Enables the CLI. Will also enable `ipc`.                                                                             |
+| ipc                  | Enables the IPC server.                                                                                   |
+| cli                  | Enables CLI support within the bar. Does not control the separate CLI binary. Will also enable `ipc`.                                                                             |
 | config+all           | Enables support for all configuration languages.                                                                     |
 | config+json          | Enables configuration support for JSON.                                                                              |
 | config+yaml          | Enables configuration support for YAML.                                                                              |
