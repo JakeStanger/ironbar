@@ -201,10 +201,15 @@ impl Bar {
 
     /// Closes the bar, consuming it.
     pub fn close(self) {
-        let mut autohide_state = self.autohide_state.borrow_mut();
-        if let Some(autohide_state) = autohide_state.as_mut() {
-            autohide_state.hotspot_window.close();
-            autohide_state.hotspot_window.destroy();
+        let hotspot_window = self
+            .autohide_state
+            .borrow()
+            .as_ref()
+            .map(|state| state.hotspot_window.clone());
+
+        if let Some(hotspot_window) = hotspot_window {
+            hotspot_window.close();
+            hotspot_window.destroy();
         }
         self.window.close();
         self.window.destroy();
@@ -246,17 +251,28 @@ impl Bar {
     }
 
     pub fn set_locked(&self, locked: bool) {
-        let mut autohide_state = self.autohide_state.borrow_mut();
-        let Some(autohide_state) = autohide_state.as_mut() else {
-            return;
+        // hiding the window can synchronously emit signals
+        // which re-borrow the autohide state, so the borrow must be dropped first.
+        let hotspot_window = {
+            let mut autohide_state = self.autohide_state.borrow_mut();
+            let Some(autohide_state) = autohide_state.as_mut() else {
+                return;
+            };
+
+            if locked {
+                autohide_state.lock_state = LockState::Locked;
+                None
+            } else if autohide_state.lock_state == LockState::LockedPendingClose {
+                autohide_state.lock_state = LockState::Unlocked;
+                Some(autohide_state.hotspot_window.clone())
+            } else {
+                None
+            }
         };
 
-        if locked {
-            autohide_state.lock_state = LockState::Locked;
-        } else if autohide_state.lock_state == LockState::LockedPendingClose {
+        if let Some(hotspot_window) = hotspot_window {
             self.window.set_visible(false);
-            autohide_state.hotspot_window.set_visible(true);
-            autohide_state.lock_state = LockState::Unlocked;
+            hotspot_window.set_visible(true);
         }
     }
 
@@ -574,8 +590,14 @@ impl Bar {
 
     fn autohide_show(&self) {
         self.window.set_visible(true);
-        if let Some(state) = self.autohide_state.borrow().as_ref() {
-            state.hotspot_window.set_visible(false);
+        let hotspot_window = self
+            .autohide_state
+            .borrow()
+            .as_ref()
+            .map(|state| state.hotspot_window.clone());
+
+        if let Some(hotspot_window) = hotspot_window {
+            hotspot_window.set_visible(false);
         }
     }
 
@@ -598,23 +620,31 @@ impl Bar {
 
         let timeout_id =
             glib::timeout_add_local_once(Duration::from_millis(timeout_ms), move || {
-                let mut state = autohide_state.borrow_mut();
-                let Some(state) = state.as_mut() else {
-                    return;
+                let hotspot_window = {
+                    let mut state = autohide_state.borrow_mut();
+                    let Some(state) = state.as_mut() else {
+                        return;
+                    };
+
+                    state.timeout_id = None;
+
+                    if popup.as_ref().is_some_and(|popup| popup.visible()) {
+                        return;
+                    }
+
+                    if state.lock_state == LockState::Locked {
+                        state.lock_state = LockState::LockedPendingClose;
+                        return;
+                    }
+
+                    state.hotspot_window.clone()
                 };
 
-                state.timeout_id = None;
-
-                if popup.as_ref().is_some_and(|popup| popup.visible()) {
-                    return;
-                }
-
-                if state.lock_state == LockState::Locked {
-                    state.lock_state = LockState::LockedPendingClose;
-                } else {
-                    win.set_visible(false);
-                    state.hotspot_window.set_visible(true);
-                }
+                // hiding the window also hides the popover,
+                // which synchronously emits `hide`/`leave` signals that re-borrow the autohide state.
+                // The borrow must be dropped before this point.
+                win.set_visible(false);
+                hotspot_window.set_visible(true);
             });
 
         if let Some(state) = self.autohide_state.borrow_mut().as_mut() {
