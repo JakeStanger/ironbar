@@ -290,13 +290,15 @@ impl super::Client for Client {
                 local.spawn_local(async move {
                     let stream = match Self::connect(&seat) {
                         Ok(stream) => {
-                            ready_tx.send(Ok(())).expect(crate::error::ERR_CHANNEL_SEND);
+                            ready_tx
+                                .send(Ok(()))
+                                .expect(ironbar_core::error::ERR_CHANNEL_SEND);
                             stream
                         }
                         Err(err) => {
                             ready_tx
                                 .send(Err(err))
-                                .expect(crate::error::ERR_CHANNEL_SEND);
+                                .expect(ironbar_core::error::ERR_CHANNEL_SEND);
                             return;
                         }
                     };

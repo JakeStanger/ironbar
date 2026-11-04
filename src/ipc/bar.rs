@@ -1,7 +1,6 @@
-use super::Response;
 use crate::Ironbar;
 use crate::bar::Bar;
-use crate::ipc::{BarCommand, BarCommandType};
+use ironbar_ipc_types::{BarCommand, BarCommandType, Response};
 
 pub fn handle_command(command: &BarCommand, ironbar: &Ironbar) -> Response {
     use BarCommandType::*;

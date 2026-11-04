@@ -1,0 +1,22 @@
+[package]
+name = "ironbar-args"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+description.workspace = true
+repository.workspace = true
+categories.workspace = true
+keywords.workspace = true
+
+[features]
+default = []
+# Adds the `--print-schema` flag. Handling lives in the bar.
+schema = []
+# Adds the `--print-completions` flag. Handling lives in the CLI.
+completions = []
+
+[dependencies]
+ironbar-core.workspace = true
+ironbar-ipc-types = { workspace = true, features = ["clap"] }
+clap = { workspace = true, features = ["env"] }

@@ -1,0 +1,24 @@
+[package]
+name = "ironbar-ipc-types"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+description.workspace = true
+repository.workspace = true
+categories.workspace = true
+keywords.workspace = true
+
+[features]
+default = []
+# Derives clap parsers for the command types. Only needed by arg parsing,
+# not by the IPC server/client wire format.
+clap = ["dep:clap"]
+# Log via `tracing` instead of stderr. Enabled by the bar, which installs a subscriber.
+tracing = ["dep:tracing"]
+
+[dependencies]
+ironbar-macros.workspace = true
+clap = { workspace = true, optional = true }
+serde.workspace = true
+tracing = { workspace = true, optional = true }
