@@ -6,6 +6,7 @@ on:
 
 jobs:
   update-nix-flake-lock:
+    if: github.repository == 'JakeStanger/ironbar'
     runs-on: ubuntu-latest
 
     steps:
