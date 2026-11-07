@@ -7,7 +7,7 @@ use tracing::{debug, error, info, warn};
 
 use crate::clients::Clients;
 use crate::clients::lua::LuaClients;
-use crate::ironvar::{Namespace, VariableManager};
+use crate::ironvar::{Namespace, VariableManager, WritableNamespace};
 use crate::{Ironbar, await_sync, spawn};
 
 /// Wrapper around Lua instance
@@ -113,6 +113,15 @@ impl IronbarUserData {
         Ok(Value::Table(table))
     }
 
+    fn var_set(&self, key: String, value: Value) -> Result<Value, Error> {
+        match self.variable_manager.set(&key, value.to_string()?) {
+            Ok(_) => Ok(Value::Nil),
+            Err(err) => Err(Error::RuntimeError(format!(
+                "Failed to set variable: {err}"
+            ))),
+        }
+    }
+
     fn to_value(lua: &Lua, value: String) -> Result<Value, Error> {
         if let Ok(i) = value.parse::<i64>() {
             i.into_lua(lua)
@@ -170,6 +179,7 @@ impl UserData for IronbarUserData {
         methods.add_method("var_list", |lua, this, namespace| {
             this.var_list(lua, namespace)
         });
+        methods.add_method("var_set", |_, this, (key, value)| this.var_set(key, value));
 
         methods.add_function("spawn", |lua, func: mlua::Function| {
             let thread = lua.create_thread(func)?;

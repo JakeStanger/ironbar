@@ -95,27 +95,8 @@ Every script must return a function or callable table with three parameters:
 - Width of the drawing area (can be omitted)
 - Height of the drawing area (can be omitted)
 
-Outside of this, you can do whatever you like. 
-The full lua `stdlib` is available, and you can load in additional system packages as desired.
-
-Additionally there is basic access to the ironbar via the `ironbar` global:
-- `ironbar.config_dir`: Absolute path to the configuration directory. This can be used for relative file imports, e.g.:
-  ```lua
-   local_module = dofile(ironbar.config_dir .. "local_mod.lua")`
-   ```
-- `ironbar:log_debug(msg)`, `ironbar:log_info(msg)`, `ironbar:log_warn(msg)`, `ironbar:log_error(msg)`: Write a log message.
-- `ironbar:unixtime()`: Returns high-resolution unixtime (stdlib only offers second-resolution). Will return a table:
-  - `secs`: Seconds since unix-epoch with fractions
-  - `subsec_millis`: Sub-second milliseconds as integer
-  - `subsec_micros`: Sub-second microseconds as integer
-- `ironbar:var_get(key)`: Get an ironbar variable, e.g.
-  ```lua
-  memory_free = ironbar:var_get("sysinfo.memory_free")
-  ```
-- `ironbar:var_list(namespace)`: Get all variables of a namespace as table (non-recursive), e.g.:
-  ```lua
-  memory_free = ironbar:var_list("sysinfo")["memory_free"]
-  ```
+Outside of this, you can do whatever you like.
+Ironbar's own API is documented [here](lua).
 
 Basic examples, which draw a red square
 - As anonymous function:
