@@ -115,27 +115,6 @@ Each client is lazy-loaded on first access.
 Their instances are shared with the main bar modules,
 although the associated modules do not need to be present to use the client.
 
-Each client has two methods associated with it:
-
-#### `<client>:state()`
-
-Returns the current state. This is async, so must be called inside a spawned task ([`ironbar:spawn`](#ironbarspawn)).
-
-#### `<client>:subscribe(fn)`
-
-Calls `fn(event)` on each client event. 
-
-```lua
-local kb = ironbar.clients.libinput("seat0")
-
-kb:subscribe(function(ev)
-	ironbar.log_info("key: " .. ev.key .. " | state: " .. tostring(ev.state))
-end)
-```
-
-  - `client:state()`: 
-  - `client:subscribe(fn)`: Calls `fn(event)` on each client event. Returns a handle with an `unsubscribe()` method.
-
 Currently supported clients:
 
 - `ironbar.clients.notifications`

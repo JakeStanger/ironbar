@@ -185,18 +185,31 @@ impl UserData for IronbarUserData {
             let thread = lua.create_thread(func)?;
             let fut = thread.into_async::<()>(())?;
 
-            spawn(async move {
+            let handle = spawn(async move {
                 if let Err(err) = fut.await {
                     error!("lua task failed: {err}");
                 }
             });
 
-            Ok(())
+            Ok(LuaJoinHandle(handle))
         });
 
         methods.add_async_function("sleep", |_, ms: f64| async move {
             tokio::time::sleep(std::time::Duration::from_millis(ms as u64)).await;
             Ok(())
         });
+    }
+}
+
+struct LuaJoinHandle(tokio::task::JoinHandle<()>);
+
+impl UserData for LuaJoinHandle {
+    fn add_methods<M: UserDataMethods<Self>>(methods: &mut M) {
+        methods.add_method("abort", |_, this, ()| {
+            this.0.abort();
+            Ok(())
+        });
+
+        methods.add_method("is_finished", |_, this, ()| Ok(this.0.is_finished()));
     }
 }
