@@ -1922,6 +1922,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "inventory"
+version = "0.3.24"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a4f0c30c76f2f4ccee3fe55a2435f691ca00c0e4bd87abe4f4a851b1d4dac39b"
+dependencies = [
+ "rustversion",
+]
+
+[[package]]
 name = "ipnet"
 version = "2.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2291,8 +2300,11 @@ checksum = "7a7ae6b65bf54b7fdd4cf5b6f44f60862350ebf3fe3779b3a9cc005e7fa14f81"
 dependencies = [
  "bstr",
  "either",
+ "futures-util",
+ "inventory",
  "libc",
  "mlua-sys",
+ "mlua_derive",
  "num-traits",
  "parking_lot",
  "rustc-hash",
@@ -2308,6 +2320,17 @@ dependencies = [
  "cfg-if",
  "libc",
  "pkg-config",
+]
+
+[[package]]
+name = "mlua_derive"
+version = "0.12.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9c4070bd35dad9477c94311c4668145bae8991b8accacf7201a77b14cab8a9e3"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.117",
 ]
 
 [[package]]

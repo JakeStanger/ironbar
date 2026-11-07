@@ -1,4 +1,5 @@
 use futures_lite::StreamExt;
+use std::fmt::{Display, Formatter};
 use tokio::{sync::broadcast, task::JoinHandle};
 use tracing::error;
 use zbus::proxy::PropertyChanged;
@@ -10,6 +11,9 @@ use crate::{
 
 mod dbus;
 
+#[cfg(feature = "lua")]
+pub mod lua;
+
 /// Set of events that can update the Client's [State].
 #[derive(Debug, Clone)]
 pub(crate) enum Event {
@@ -17,10 +21,20 @@ pub(crate) enum Event {
     PerformanceDegraded(Option<Box<str>>),
 }
 
+impl Display for Event {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        f.write_str(match self {
+            Self::ActiveProfile(_) => "active_profile",
+            Self::PerformanceDegraded(_) => "performance_degraded",
+        })
+    }
+}
+
 /// State of the Power Profiles Client
 ///
 /// The active profile is listed under `active_profile`.
 /// If a performance degradation is currently taking place then `performance_degraded` is [Some] with the reason. Otherwise it is set to [None].
+#[cfg_attr(feature = "lua", derive(mlua::UserData))]
 pub(crate) struct State {
     pub(crate) active_profile: Box<str>,
     pub(crate) performance_degraded: Option<Box<str>>,

@@ -13,7 +13,7 @@ use crate::clients::compositor::{self, KeyboardLayoutUpdate};
 use crate::clients::libinput::{Event, Key, KeyEvent};
 use crate::config::{CommonConfig, LayoutConfig};
 use crate::image::{IconButton, IconLabel};
-use crate::{module_impl, spawn};
+use crate::{lock, module_impl, spawn};
 
 #[derive(Debug, Deserialize, Clone, PartialEq)]
 #[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
@@ -167,7 +167,7 @@ impl Module<gtk::Box> for KeyboardModule {
         context: &WidgetContext<Self::SendMessage, Self::ReceiveMessage>,
         mut rx: mpsc::Receiver<Self::ReceiveMessage>,
     ) -> Result<()> {
-        let client = context.ironbar.clients.borrow_mut().libinput(&self.seat)?;
+        let client = lock!(context.ironbar.clients).libinput(&self.seat)?;
 
         let tx = context.tx.clone();
         spawn(async move {

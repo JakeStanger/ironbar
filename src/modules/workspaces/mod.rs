@@ -10,7 +10,7 @@ use crate::gtk_helpers::{IronbarGlibExt, IronbarGtkExt};
 use crate::modules::workspaces::button_map::{ButtonMap, Identifier};
 use crate::modules::workspaces::open_state::OpenState;
 use crate::modules::{Module, ModuleInfo, ModuleParts, WidgetContext};
-use crate::{image, module_impl, spawn};
+use crate::{image, lock, module_impl, spawn};
 use color_eyre::{Report, Result};
 use gtk::prelude::*;
 use serde::Deserialize;
@@ -288,7 +288,7 @@ impl Module<gtk::Box> for WorkspacesModule {
         mut rx: mpsc::Receiver<Self::ReceiveMessage>,
     ) -> Result<()> {
         let tx = context.tx.clone();
-        let client = context.ironbar.clients.borrow_mut().workspaces()?;
+        let client = lock!(context.ironbar.clients).workspaces()?;
         // Subscribe & send events
         spawn(async move {
             let mut srx = client.subscribe();

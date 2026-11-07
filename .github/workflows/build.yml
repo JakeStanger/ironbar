@@ -99,6 +99,7 @@ jobs:
           - config+yaml
           - config+toml
           - config+corn
+          - lua
           - battery
           - bindmode+all
           - bindmode+sway

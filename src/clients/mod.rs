@@ -3,8 +3,6 @@ use std::any::{Any, TypeId};
 use std::collections::HashMap;
 use std::fmt::Debug;
 use std::future::Future;
-use std::path::Path;
-use std::rc::Rc;
 use std::sync::Arc;
 use tokio::sync::broadcast;
 
@@ -25,7 +23,7 @@ pub mod compositor;
 pub mod inhibit;
 #[cfg(feature = "keyboard")]
 pub mod libinput;
-#[cfg(feature = "cairo")]
+#[cfg(feature = "lua")]
 pub mod lua;
 #[cfg(feature = "music")]
 pub mod music;
@@ -68,7 +66,7 @@ enum RegistryEntry<T> {
     Shared(Arc<T>),
 }
 
-pub trait Client: Debug + Any + Sized {
+pub trait Client: Debug + Any + Send + Sync + Sized {
     /// The current client data, used to initialize a module.
     type State;
     /// The type of event emitted by the client.
@@ -124,7 +122,7 @@ pub struct Clients {
     /// Note that all values inserted into this registry
     /// MUST implement the `Client` trait - this is not typed here
     /// due to compiler limitations.
-    registry: HashMap<RegistryKey, Box<dyn Any>>,
+    registry: HashMap<RegistryKey, Box<dyn Any + Send + Sync>>,
 
     // -- old - to sort -- \\
     wayland: Option<Arc<wayland::Client>>,
@@ -143,8 +141,6 @@ pub struct Clients {
     inhibit: Option<Arc<inhibit::Client>>,
     #[cfg(feature = "keyboard")]
     keyboard_layout: Option<Arc<dyn compositor::KeyboardLayoutClient>>,
-    #[cfg(feature = "cairo")]
-    lua: Option<Rc<lua::LuaEngine>>,
     #[cfg(feature = "music")]
     music: HashMap<music::ClientType, Arc<dyn music::MusicClient>>,
     #[cfg(feature = "network_manager")]
@@ -297,13 +293,6 @@ impl Clients {
         }
     }
 
-    #[cfg(feature = "cairo")]
-    pub fn lua(&mut self, config_dir: &Path) -> Rc<lua::LuaEngine> {
-        self.lua
-            .get_or_insert_with(|| Rc::new(lua::LuaEngine::new(config_dir)))
-            .clone()
-    }
-
     #[cfg(feature = "keyboard")]
     pub fn libinput(&mut self, seat: &str) -> ClientResult<libinput::Client> {
         let client = await_sync(async move {
@@ -344,7 +333,7 @@ impl Clients {
             .get_or_insert_with(|| {
                 let client = Arc::new(sysinfo::Client::new());
 
-                #[cfg(any(feature = "ipc", feature = "cairo"))]
+                #[cfg(any(feature = "ipc", feature = "lua"))]
                 Ironbar::variable_manager().register_namespace("sysinfo", client.clone());
 
                 client
@@ -389,7 +378,7 @@ impl Clients {
     pub fn upower(&mut self) -> ClientResult<upower::Client> {
         let client = await_sync(async move { self.get_or_init(None, upower::Client::new).await })?;
 
-        #[cfg(any(feature = "ipc", feature = "cairo"))]
+        #[cfg(any(feature = "ipc", feature = "lua"))]
         Ironbar::variable_manager().register_namespace("upower", client.clone());
 
         Ok(client)
@@ -449,7 +438,7 @@ macro_rules! register_client {
             TSend: Clone,
         {
             fn provide(&self) -> std::sync::Arc<$ty> {
-                self.ironbar.clients.borrow_mut().$method()
+                $crate::lock!(self.ironbar.clients).$method()
             }
         }
     };
@@ -472,7 +461,7 @@ macro_rules! register_fallible_client {
             TSend: Clone,
         {
             fn try_provide(&self) -> color_eyre::Result<std::sync::Arc<$ty>> {
-                self.ironbar.clients.borrow_mut().$method()
+                $crate::lock!(self.ironbar.clients).$method()
             }
         }
     };

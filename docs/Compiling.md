@@ -125,6 +125,7 @@ cargo build --release --no-default-features \
 | config+yaml          | Enables configuration support for YAML.                                                                              |
 | config+toml          | Enables configuration support for TOML.                                                                              |
 | config+corn          | Enables configuration support for [Corn](https://github.com/jakestanger/corn).                                       |
+| lua | Enables Lua support.                                                                                                 |
 | **Modules**          |                                                                                                                      |
 | battery              | Enables the `battery` module.                                                                                        |
 | bindmode             | Enables the `bindmode` module.                                                                                       |

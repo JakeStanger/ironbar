@@ -1,8 +1,12 @@
 #[cfg(not(feature = "battery.test"))]
 mod client;
 mod dbus;
+
 #[cfg(feature = "battery.test")]
 mod test_client;
+
+#[cfg(feature = "lua")]
+pub mod lua;
 
 use crate::register_fallible_client;
 use std::collections::HashMap;
@@ -18,14 +22,18 @@ pub use client::Client;
 pub use test_client::Client;
 
 #[derive(Clone, Debug, Default)]
+#[cfg_attr(feature = "lua", derive(mlua::UserData))]
 pub struct State {
     /// Battery charge percentage.
     pub percentage: f64,
     /// Battery level name (Unknown, None, Low, Critical, Normal, High, Full)
+    #[cfg_attr(feature = "lua", lua(get))]
     pub level: BatteryLevel,
     /// Battery state (charging, discharging, ...)
+    #[cfg_attr(feature = "lua", lua(get))]
     pub state: BatteryState,
     /// The type of battery connected.
+    #[cfg_attr(feature = "lua", lua(get))]
     pub battery_type: BatteryType,
     /// Icon to display for the state and percentage.
     pub icon_name: String,

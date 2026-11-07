@@ -1,164 +1,123 @@
-use mlua::{Error, IntoLua, Lua, UserData, Value};
-use std::path::Path;
-use std::time::{SystemTime, UNIX_EPOCH};
-use std::{ops::Deref, sync::Arc};
-use tracing::{debug, error, info, warn};
+use crate::clients::{Client, Clients};
+use crate::spawn;
+use mlua::{Error, Function, MetaMethod, UserData, UserDataMethods, Value};
+use std::sync::{Arc, Mutex};
+use tokio::task::JoinHandle;
+use tracing::error;
 
-use crate::Ironbar;
-use crate::ironvar::{Namespace, VariableManager};
+/// Lua handle to the client registry, exposed as `ironbar.clients`.
+pub struct LuaClients(pub Arc<Mutex<Clients>>);
 
-/// Wrapper around Lua instance
-/// to create a singleton and handle initialization.
-#[derive(Debug)]
-pub struct LuaEngine {
-    lua: Lua,
+/// Generates the name -> accessor dispatch for singleton clients.
+macro_rules! lua_clients {
+    ($lua:expr, $clients:expr, $name:expr, { $($(#[$meta:meta])* $key:literal => $method:ident),* $(,)? }) => {{
+        // avoid unused warnings when no client features are enabled
+        let _ = (&$lua, &$clients);
+        match $name {
+            $(
+                $(#[$meta])*
+                $key => {
+                    let client = crate::lock!($clients).$method();
+                    mlua::IntoLua::into_lua(LuaClient(client.map_err(Error::external)?), $lua)
+                }
+            )*
+            _ => Ok(Value::Nil),
+        }
+    }};
 }
 
-impl LuaEngine {
-    pub fn new(config_dir: &Path) -> Self {
-        let lua = unsafe { Lua::unsafe_new() };
-
-        if let Err(err) = lua
-            .globals()
-            .set("ironbar", IronbarUserData::new(config_dir))
-        {
-            error!("{err:?}");
-        }
-
-        let user_init = config_dir.join("init.lua");
-        if user_init.exists() {
-            debug!("loading user init script");
-
-            if let Err(err) = lua.load(user_init).exec() {
-                error!("{err:?}");
+impl UserData for LuaClients {
+    fn add_methods<M: UserDataMethods<Self>>(methods: &mut M) {
+        methods.add_meta_method(MetaMethod::Index, |lua, this, name: String| {
+            // keyed clients are exposed as functions taking the key,
+            // so they are accessed with `.` like singleton clients.
+            #[cfg(feature = "keyboard")]
+            if name == "libinput" {
+                let clients = this.0.clone();
+                let func = lua.create_function(move |lua, seat: String| {
+                    let client = crate::lock!(clients).libinput(&seat);
+                    mlua::IntoLua::into_lua(LuaClient(client.map_err(Error::external)?), lua)
+                })?;
+                return Ok(Value::Function(func));
             }
-        }
 
-        debug!("loading internal init script");
-        if let Err(err) = lua.load(include_str!("../../lua/init.lua")).exec() {
-            error!("{err:?}");
-        }
-
-        Self { lua }
+            lua_clients!(lua, this.0, name.as_str(), {
+                #[cfg(feature = "notifications")]
+                "notifications" => notifications,
+                #[cfg(feature = "battery")]
+                "upower" => upower,
+                #[cfg(feature = "power_profiles")]
+                "power_profiles" => power_profiles,
+                #[cfg(feature = "bluetooth")]
+                "bluetooth" => bluetooth,
+            })
+        });
     }
 }
 
-impl Deref for LuaEngine {
-    type Target = Lua;
+/// Lua wrapper around a client,
+/// exposing its state and event stream.
+pub struct LuaClient<C: Client>(pub Arc<C>);
 
-    fn deref(&self) -> &Self::Target {
-        &self.lua
+impl<C: Client> Clone for LuaClient<C> {
+    fn clone(&self) -> Self {
+        LuaClient(self.0.clone())
     }
 }
 
-struct IronbarUserData {
-    variable_manager: Arc<VariableManager>,
-    config_dir: String,
-}
+impl<C> UserData for LuaClient<C>
+where
+    C: Client + 'static,
+    <C as Client>::State: UserData + Send + Sync + 'static,
+    <C as Client>::Event: UserData + Send + Sync + Clone + 'static,
+    <C as Client>::Error: 'static,
+{
+    fn add_methods<M: UserDataMethods<Self>>(methods: &mut M) {
+        methods.add_async_method("state", async |_, client, _: ()| {
+            client.0.state().await.map_err(Error::external)
+        });
 
-impl IronbarUserData {
-    fn new(config_dir: &Path) -> Self {
-        IronbarUserData {
-            variable_manager: Ironbar::variable_manager().clone(),
-            config_dir: config_dir.to_string_lossy().into(),
-        }
-    }
+        methods.add_method("subscribe", |_, client, func: Function| {
+            let mut rx = client.0.subscribe();
 
-    fn var_get(&self, lua: &Lua, mut key: String) -> Result<Value, Error> {
-        let mut ns: Arc<dyn Namespace + Sync + Send> = self.variable_manager.clone();
-
-        if key.contains('.') {
-            for part in key.split('.') {
-                ns = if let Some(ns) = ns.get_namespace(part) {
-                    ns.clone()
-                } else {
-                    key = part.into();
-                    break;
-                };
-            }
-        }
-
-        match ns.get(&key) {
-            Some(value) => Self::to_value(lua, value),
-            None => Err(Error::RuntimeError(format!("Variable not found: {key}"))),
-        }
-    }
-
-    fn var_list(&self, lua: &Lua, namespace: Option<String>) -> Result<Value, Error> {
-        let mut ns: Arc<dyn Namespace + Sync + Send> = self.variable_manager.clone();
-
-        if let Some(namespace) = namespace {
-            for part in namespace.split('.') {
-                ns = match ns.get_namespace(part) {
-                    Some(ns) => ns.clone(),
-                    None => {
-                        return Err(Error::RuntimeError(format!("Namespace not found: {part}")));
+            let handle = spawn(async move {
+                while let Ok(ev) = rx.recv().await {
+                    if let Err(err) = func.call_async::<()>(ev).await {
+                        error!("Error calling Lua function: {err}");
                     }
-                };
+                }
+            });
+
+            Ok(LuaSubscription(handle))
+        });
+    }
+}
+
+/// Handle to a client subscription created from Lua.
+#[allow(dead_code)] // unused if no registry client features are enabled
+struct LuaSubscription(JoinHandle<()>);
+
+impl UserData for LuaSubscription {
+    fn add_methods<M: UserDataMethods<Self>>(methods: &mut M) {
+        methods.add_method("unsubscribe", |_, this, ()| {
+            this.0.abort();
+            Ok(())
+        });
+    }
+}
+
+/// Implements [`mlua::IntoLua`] for each type,
+/// converting to a Lua string using its [`Debug`] impl.
+macro_rules! into_lua_debug {
+    ($($ty:ty),* $(,)?) => {
+        $(
+            impl mlua::IntoLua for $ty {
+                fn into_lua(self, lua: &mlua::Lua) -> mlua::Result<mlua::Value> {
+                    mlua::IntoLua::into_lua(format!("{self:?}"), lua)
+                }
             }
-        }
-
-        let table = lua.create_table()?;
-
-        for (key, value) in ns.get_all() {
-            table.set(key, Self::to_value(lua, value)?)?;
-        }
-
-        Ok(Value::Table(table))
-    }
-
-    fn to_value(lua: &Lua, value: String) -> Result<Value, Error> {
-        if let Ok(i) = value.parse::<i64>() {
-            i.into_lua(lua)
-        } else if let Ok(f) = value.parse::<f64>() {
-            f.into_lua(lua)
-        } else {
-            value.into_lua(lua)
-        }
-    }
-
-    fn unixtime(lua: &Lua) -> Result<Value, Error> {
-        let now = match SystemTime::now().duration_since(UNIX_EPOCH) {
-            Ok(now) => now,
-            Err(err) => return Err(Error::RuntimeError(format!("SystemTime: {err}"))),
-        };
-        let table = lua.create_table()?;
-        table.set("secs", now.as_secs_f64())?;
-        table.set("subsec_millis", now.subsec_millis())?;
-        table.set("subsec_micros", now.subsec_micros())?;
-
-        Ok(Value::Table(table))
-    }
+        )*
+    };
 }
 
-impl UserData for IronbarUserData {
-    fn add_fields<F: mlua::UserDataFields<Self>>(fields: &mut F) {
-        fields.add_field_method_get("config_dir", |lua, this| {
-            lua.create_string(&this.config_dir)
-        });
-    }
-
-    fn add_methods<M: mlua::UserDataMethods<Self>>(methods: &mut M) {
-        methods.add_method("log_debug", |_, _, message: String| {
-            debug!(message);
-            Ok(())
-        });
-        methods.add_method("log_info", |_, _, message: String| {
-            info!(message);
-            Ok(())
-        });
-        methods.add_method("log_warn", |_, _, message: String| {
-            warn!(message);
-            Ok(())
-        });
-        methods.add_method("log_error", |_, _, message: String| {
-            error!(message);
-            Ok(())
-        });
-        methods.add_method("unixtime", |lua, _, ()| Self::unixtime(lua));
-        methods.add_method("var_get", |lua, this, key| this.var_get(lua, key));
-        methods.add_method("var_list", |lua, this, namespace| {
-            this.var_list(lua, namespace)
-        });
-    }
-}
+pub(crate) use into_lua_debug;

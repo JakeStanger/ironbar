@@ -174,7 +174,7 @@ impl crate::clients::Client for Client {
     }
 }
 
-#[cfg(any(feature = "ipc", feature = "cairo"))]
+#[cfg(any(feature = "ipc", feature = "lua"))]
 impl crate::ironvar::Namespace for Client {
     fn get(&self, key: &str) -> Option<String> {
         let proxy = self.proxy().ok()?;

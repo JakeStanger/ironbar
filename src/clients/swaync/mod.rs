@@ -11,6 +11,7 @@ use zbus::Type;
 use zbus::export::ordered_stream::OrderedStreamExt;
 
 #[derive(Debug, Clone, Copy, Type, Deserialize)]
+#[cfg_attr(feature = "lua", derive(mlua::UserData))]
 #[allow(dead_code)]
 pub struct Event {
     pub count: u32,

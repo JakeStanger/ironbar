@@ -10,7 +10,7 @@ use std::path::PathBuf;
 use std::process::exit;
 use std::rc::Rc;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
-use std::sync::{Arc, OnceLock, mpsc};
+use std::sync::{Arc, Mutex, OnceLock, mpsc};
 
 #[cfg(feature = "cli")]
 use clap::Parser;
@@ -31,8 +31,10 @@ use crate::clients::outputs::MonitorState;
 use crate::config::{Config, ConfigSource, CssSource, MonitorConfig, hot_reload, resolve_sources};
 use crate::desktop_file::DesktopFiles;
 use crate::error::ExitCode;
-#[cfg(any(feature = "ipc", feature = "cairo"))]
+#[cfg(any(feature = "ipc", feature = "lua"))]
 use crate::ironvar::VariableManager;
+#[cfg(feature = "lua")]
+use crate::lua::LuaEngine;
 use crate::style::load_css;
 
 mod bar;
@@ -48,9 +50,11 @@ mod gtk_helpers;
 mod image;
 #[cfg(feature = "ipc")]
 mod ipc;
-#[cfg(any(feature = "ipc", feature = "cairo"))]
+#[cfg(any(feature = "ipc", feature = "lua"))]
 mod ironvar;
 mod logging;
+#[cfg(feature = "lua")]
+mod lua;
 mod macros;
 mod modules;
 mod popup;
@@ -156,13 +160,15 @@ fn run_with_args() {
 #[derive(Debug)]
 pub struct Ironbar {
     bars: Rc<RefCell<Vec<Bar>>>,
-    clients: Rc<RefCell<Clients>>,
+    clients: Arc<Mutex<Clients>>,
     config: Rc<RefCell<Config>>,
     css_source: Rc<CssSource>,
     config_source: ConfigSource,
     scripts: Rc<RefCell<HashMap<String, Sender<()>>>>,
     desktop_files: DesktopFiles,
     image_provider: image::Provider,
+    #[cfg(feature = "lua")]
+    lua_engine: Rc<LuaEngine>,
 }
 
 impl Ironbar {
@@ -172,15 +178,31 @@ impl Ironbar {
         let desktop_files = DesktopFiles::new();
         let image_provider = image::Provider::new(desktop_files.clone(), &config.icon_overrides);
 
+        let clients = arc_mut!(Clients::new());
+
+        #[cfg(feature = "lua")]
+        let config_dir = match &config_source {
+            ConfigSource::Builtin(_) => {
+                let xdg_path = ConfigSource::xdg_config_path();
+                xdg_path.parent().unwrap_or(&xdg_path).to_path_buf()
+            }
+            ConfigSource::File(path) => path.parent().unwrap_or(path).to_path_buf(),
+        };
+
+        #[cfg(feature = "lua")]
+        let lua_engine = LuaEngine::new(&config_dir, clients.clone());
+
         Self {
             bars: rc_mut!(vec![]),
-            clients: rc_mut!(Clients::new()),
+            clients,
             config: rc_mut!(config),
             css_source: Rc::new(css_source),
             config_source,
             scripts: rc_mut!(HashMap::new()),
             desktop_files,
             image_provider,
+            #[cfg(feature = "lua")]
+            lua_engine: Rc::new(lua_engine),
         }
     }
 
@@ -206,7 +228,7 @@ impl Ironbar {
         let instance2 = instance.clone();
 
         // force start wayland client ahead of ui
-        let wl = instance.clients.borrow_mut().wayland();
+        let wl = lock!(instance.clients).wayland();
         wl.roundtrip();
 
         app.connect_activate(move |app| {
@@ -276,7 +298,7 @@ impl Ironbar {
                     }
                 }
 
-                let outputs = instance.clients.borrow_mut().outputs();
+                let outputs = lock!(instance.clients).outputs();
                 let mut rx_outputs = outputs.subscribe();
 
                 outputs.start(instance.clone());
@@ -352,7 +374,7 @@ impl Ironbar {
     }
 
     /// Gets the `Ironvar` manager singleton.
-    #[cfg(any(feature = "ipc", feature = "cairo"))]
+    #[cfg(any(feature = "ipc", feature = "lua"))]
     #[must_use]
     pub fn variable_manager() -> Arc<VariableManager> {
         static VARIABLE_MANAGER: OnceLock<Arc<VariableManager>> = OnceLock::new();
@@ -505,7 +527,7 @@ fn load_output_bars_for(
 ///
 /// Will error if any output doies not have a name.
 pub fn load_output_bars(ironbar: &Rc<Ironbar>, app: &Application) -> Result<()> {
-    let wl = ironbar.clients.borrow_mut().wayland();
+    let wl = lock!(ironbar.clients).wayland();
     let outputs = wl.output_info_all();
 
     for output in outputs {

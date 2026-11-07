@@ -1,7 +1,6 @@
 use crate::channels::{AsyncSenderExt, BroadcastReceiverExt};
-use crate::clients::lua::LuaEngine;
 use crate::config::CommonConfig;
-use crate::config::ConfigSource;
+use crate::lua::LuaEngine;
 use crate::modules::{Module, ModuleInfo, ModuleParts, WidgetContext};
 use crate::{module_impl, rc_mut, spawn};
 use glib::translate::ToGlibPtr;
@@ -181,15 +180,7 @@ impl Module<gtk::Box> for CairoModule {
 
         let area = DrawingArea::new();
 
-        let config_dir = match &context.ironbar.config_source {
-            ConfigSource::Builtin(_) => {
-                let xdg_path = ConfigSource::xdg_config_path();
-                xdg_path.parent().unwrap_or(&xdg_path).to_path_buf()
-            }
-            ConfigSource::File(path) => path.parent().unwrap_or(path).to_path_buf(),
-        };
-
-        let lua = context.ironbar.clients.borrow_mut().lua(&config_dir);
+        let lua = context.ironbar.lua_engine.clone();
 
         // Keep draw function in a mutex so it can be replaced on file change
         let draw_function = rc_mut!(self.load_draw_function(&lua));

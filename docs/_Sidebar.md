@@ -15,6 +15,7 @@
 - [Scripts](scripts)
 - [Ironvars](ironvars)
 - [IPC Specification](ipc)
+- [Lua](lua)
 
 # Examples
 

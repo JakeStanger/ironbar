@@ -2,7 +2,7 @@ use crate::bar::create_bar;
 use crate::channels::{AsyncSenderExt, MpscReceiverExt};
 use crate::config::diff::{BarDiffAction, ConfigDiff, MonitorDiff, MonitorUpdateDiffAction};
 use crate::config::{BarConfig, Config, MonitorConfig};
-use crate::{Ironbar, find_monitor_for_output, load_output_bars_for, spawn};
+use crate::{Ironbar, find_monitor_for_output, load_output_bars_for, lock, spawn};
 use gtk::Application;
 use gtk::gdk::Monitor;
 use notify::event::{DataChange, ModifyKind};
@@ -55,7 +55,7 @@ pub fn install(path: &Path, app: &Application, ironbar: &Rc<Ironbar>) {
         }
     });
 
-    let wl = ironbar.clients.borrow_mut().wayland();
+    let wl = lock!(ironbar.clients).wayland();
 
     let ironbar = ironbar.clone();
 
