@@ -8,11 +8,11 @@ pub enum TokenValue {
 }
 
 impl Part {
-    pub fn render_all(tokens: &[Self], client: &clients::sysinfo::Client) -> String {
+    pub fn render_all(tokens: &[Self], client: &clients::sysinfo::Data) -> String {
         tokens.iter().map(|part| part.render(client)).collect()
     }
 
-    fn render(&self, client: &clients::sysinfo::Client) -> String {
+    fn render(&self, client: &clients::sysinfo::Data) -> String {
         match self {
             Part::Static(str) => str.clone(),
             Part::Token(token) => {
@@ -45,7 +45,7 @@ impl Part {
 }
 
 impl Token {
-    pub fn get(&self, client: &clients::sysinfo::Client) -> TokenValue {
+    pub fn get(&self, client: &clients::sysinfo::Data) -> TokenValue {
         let get = |value: Value| TokenValue::Number(value.get(self.prefix));
         let apply = |set: ValueSet| TokenValue::Number(set.apply(&self.function, self.prefix));
 
@@ -77,7 +77,9 @@ impl Token {
             TokenType::LoadAverage15 => get(client.load_average_15()),
 
             // String tokens
-            TokenType::Uptime => TokenValue::String(clients::sysinfo::Client::uptime()),
+            TokenType::Uptime => {
+                TokenValue::String(clients::sysinfo::Client::uptime().unwrap_or_default())
+            }
         }
     }
 }

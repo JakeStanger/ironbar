@@ -104,6 +104,10 @@ pub trait Client: Debug + Any + Send + Sync + Sized {
 
     /// Returns a broadcast receiver for the client's events.
     fn subscribe(&self) -> broadcast::Receiver<Self::Event>;
+
+    /// Registers any client-specific Lua methods.
+    #[cfg(feature = "lua")]
+    fn add_lua_methods<M: mlua::UserDataMethods<lua::LuaClient<Self>>>(_methods: &mut M) {}
 }
 
 type RegistryKey = (TypeId, Option<Box<str>>);
@@ -145,8 +149,6 @@ pub struct Clients {
     music: HashMap<music::ClientType, Arc<dyn music::MusicClient>>,
     #[cfg(feature = "network_manager")]
     network_manager: Option<Arc<networkmanager::Client>>,
-    #[cfg(feature = "sys_info")]
-    sys_info: Option<Arc<sysinfo::Client>>,
     #[cfg(feature = "tray")]
     tray: Option<Arc<tray::Client>>,
     #[cfg(feature = "brightness")]
@@ -328,17 +330,13 @@ impl Clients {
     }
 
     #[cfg(feature = "sys_info")]
-    pub fn sys_info(&mut self) -> Arc<sysinfo::Client> {
-        self.sys_info
-            .get_or_insert_with(|| {
-                let client = Arc::new(sysinfo::Client::new());
+    pub fn sys_info(&mut self) -> ClientResult<sysinfo::Client> {
+        let client = await_sync(async move { self.get_or_init(None, sysinfo::Client::new).await })?;
 
-                #[cfg(any(feature = "ipc", feature = "lua"))]
-                Ironbar::variable_manager().register_namespace("sysinfo", client.clone());
+        #[cfg(any(feature = "ipc", feature = "lua"))]
+        Ironbar::variable_manager().register_namespace("sysinfo", client.clone());
 
-                client
-            })
-            .clone()
+        Ok(client)
     }
 
     #[cfg(feature = "tray")]

@@ -161,7 +161,8 @@ impl Module<gtk::Box> for SysInfoModule {
     ) -> Result<()> {
         let interval = self.interval;
 
-        let client = context.client::<clients::sysinfo::Client>();
+        let client = context.try_client::<clients::sysinfo::Client>()?;
+        let data = client.data()?.clone();
 
         let format_tokens = self
             .format
@@ -175,10 +176,10 @@ impl Module<gtk::Box> for SysInfoModule {
             .map(|kind| (kind, interval.get(kind)))
             .collect();
 
-        let mut refresh_rx = client.subscribe(intervals);
+        let mut refresh_rx = client.subscribe_intervals(intervals)?;
 
         for (i, token_set) in format_tokens.iter().enumerate() {
-            let rendered = Part::render_all(token_set, &client);
+            let rendered = Part::render_all(token_set, &data);
             context.tx.send_update_spawn((i, rendered));
         }
 
@@ -187,7 +188,7 @@ impl Module<gtk::Box> for SysInfoModule {
             while let Some(refreshed) = refresh_rx.recv().await {
                 for (i, token_set) in format_tokens.iter().enumerate() {
                     if refreshed.iter().any(|&kind| uses(token_set, kind)) {
-                        let rendered = Part::render_all(token_set, &client);
+                        let rendered = Part::render_all(token_set, &data);
                         tx.send_update((i, rendered)).await;
                     }
                 }

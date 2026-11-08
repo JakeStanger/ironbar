@@ -122,6 +122,7 @@ Currently supported clients:
 - `ironbar.clients.power_profiles`
 - `ironbar.clients.bluetooth`
 - `ironbar.clients.libinput(seat)`
+- `ironbar.clients.sysinfo`
 
 > [!NOTE]
 > The full client set is currently in the process of being refactored,
@@ -147,3 +148,5 @@ end)
 
 The method returns a handle with an `unsubscribe()` method,
 which can be used to stop receiving events.
+
+Client-specific documentation can be found on the relevant module page.
