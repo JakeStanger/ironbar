@@ -2,13 +2,10 @@ mod macros;
 mod wl_output;
 mod wl_seat;
 
-use crate::error::{ERR_CHANNEL_RECV, ExitCode};
-use crate::{arc_mut, lock, register_client, spawn, spawn_blocking};
-use std::process::exit;
-use std::sync::{Arc, Mutex};
-
 use crate::channels::SyncSenderExt;
+use crate::{arc_mut, lock, register_client, spawn, spawn_blocking};
 use calloop_channel::Event::Msg;
+use ironbar_core::error::{ERR_CHANNEL_RECV, ExitCode};
 use smithay_client_toolkit::output::OutputState;
 use smithay_client_toolkit::reexports::calloop;
 use smithay_client_toolkit::reexports::calloop::EventLoop;
@@ -19,6 +16,8 @@ use smithay_client_toolkit::seat::SeatState;
 use smithay_client_toolkit::{
     delegate_output, delegate_registry, delegate_seat, registry_handlers,
 };
+use std::process::exit;
+use std::sync::{Arc, Mutex};
 use thiserror::Error;
 use tokio::sync::{broadcast, mpsc};
 use tracing::{debug, error, trace};

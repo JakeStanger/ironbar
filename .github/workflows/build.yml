@@ -28,7 +28,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Check formatting
-        run: cargo fmt --check
+        run: cargo fmt --check --all
 
 
   clippy-base:
@@ -42,7 +42,7 @@ jobs:
         name: Cache dependencies
 
       - name: Clippy
-        run: cargo clippy --no-default-features --features config+json
+        run: cargo clippy --workspace --no-default-features --features config+json
         env:
           # Allow some warnings through as we'll never get it perfect in a zero-feature situation
           RUSTFLAGS: '-Dwarnings -A unused-imports -A unused-variables -A unused-mut -A unused-macros -A dead-code'
@@ -59,7 +59,7 @@ jobs:
         name: Cache dependencies
 
       - name: Clippy
-        run: cargo clippy --all-targets --all-features
+        run: cargo clippy --workspace --all-targets --all-features
 
 
   build:
@@ -74,12 +74,11 @@ jobs:
         name: Cache dependencies
 
       - name: Build
-        run: cargo build --verbose
+        run: cargo build --workspace --verbose
 
       - name: Run tests
-        uses: actions-rs/cargo@v1
-        with:
-          command: test
+        run: cargo test --workspace
+
 
   feature-checks:
     name: 'Check feature flag'

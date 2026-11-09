@@ -12,40 +12,34 @@ use std::rc::Rc;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex, OnceLock, mpsc};
 
-#[cfg(feature = "cli")]
-use clap::Parser;
-use color_eyre::{Report, Result};
-use gtk::Application;
-use gtk::gdk::{Display, Monitor};
-use gtk::prelude::*;
-use smithay_client_toolkit::output::OutputInfo;
-use tokio::runtime::Runtime;
-use tokio::sync::oneshot::Sender;
-use tokio::task::{JoinHandle, block_in_place};
-use tracing::{debug, error, info};
-
 use crate::bar::{Bar, create_bar};
 use crate::channels::SyncSenderExt;
 use crate::clients::Clients;
 use crate::clients::outputs::MonitorState;
 use crate::config::{Config, ConfigSource, CssSource, MonitorConfig, hot_reload, resolve_sources};
 use crate::desktop_file::DesktopFiles;
-use crate::error::ExitCode;
 #[cfg(any(feature = "ipc", feature = "lua"))]
 use crate::ironvar::VariableManager;
 #[cfg(feature = "lua")]
 use crate::lua::LuaEngine;
 use crate::style::load_css;
+use color_eyre::{Report, Result};
+use gtk::Application;
+use gtk::gdk::{Display, Monitor};
+use gtk::prelude::*;
+use ironbar_core::error::ExitCode;
+use smithay_client_toolkit::output::OutputInfo;
+use tokio::runtime::Runtime;
+use tokio::sync::oneshot::Sender;
+use tokio::task::{JoinHandle, block_in_place};
+use tracing::{debug, error, info};
 
 mod bar;
 mod channels;
-#[cfg(feature = "cli")]
-mod cli;
 mod clients;
 mod config;
 mod desktop_file;
 mod dynamic_value;
-mod error;
 mod gtk_helpers;
 mod image;
 #[cfg(feature = "ipc")]
@@ -71,8 +65,8 @@ fn main() {
         feature = "cli" => {run_with_args();}
         _ => {
             let (config_source, css_source) = resolve_sources(
-                env::var("IRONBAR_CONFIG").map(PathBuf::from).ok().map(config::ConfigLocation::Custom),
-                env::var("IRONBAR_CSS").map(PathBuf::from).ok().map(config::ConfigLocation::Custom),
+                env::var("IRONBAR_CONFIG").map(PathBuf::from).ok().map(ironbar_core::config::ConfigLocation::Custom),
+                env::var("IRONBAR_CSS").map(PathBuf::from).ok().map(ironbar_core::config::ConfigLocation::Custom),
             );
             start_ironbar(false, config_source, css_source);
         }
@@ -81,7 +75,9 @@ fn main() {
 
 #[cfg(feature = "cli")]
 fn run_with_args() {
-    let args = cli::Args::parse();
+    use ironbar_args::Parser;
+
+    let args = ironbar_args::Args::parse();
 
     #[cfg(feature = "extras")]
     if args.print_schema {
@@ -93,45 +89,7 @@ fn run_with_args() {
         return;
     }
 
-    #[cfg(feature = "extras")]
-    if let Some(shell) = args.print_completions {
-        use clap::CommandFactory;
-
-        let mut cmd = cli::Args::command();
-        let name = cmd.get_name().to_string();
-        clap_complete::generate(
-            clap_complete::Shell::from(shell),
-            &mut cmd,
-            name,
-            &mut std::io::stdout(),
-        );
-        return;
-    }
-
     match args.command {
-        Some(command) => {
-            if args.debug {
-                eprintln!("REQUEST: {command:?}");
-            }
-
-            let rt = create_runtime();
-            rt.block_on(async move {
-                let ipc = ipc::Ipc::new();
-                match ipc.send(command, args.debug).await {
-                    Ok(res) => {
-                        if args.debug {
-                            eprintln!("RESPONSE: {res:?}");
-                        }
-
-                        cli::handle_response(res, args.format.unwrap_or_default());
-                    }
-                    Err(err) => {
-                        error!("{err:#}");
-                        exit(ExitCode::IpcResponseError as i32)
-                    }
-                }
-            });
-        }
         #[cfg(feature = "config")]
         None if args.validate_config > 0 => {
             let _guard = logging::install_logging(args.debug);
@@ -153,6 +111,10 @@ fn run_with_args() {
         None => {
             let (config_source, css_source) = resolve_sources(args.config, args.theme);
             start_ironbar(args.debug, config_source, css_source);
+        }
+        Some(_) => {
+            error!("ipc command should be sent to the cli executable");
+            exit(ExitCode::CliError as i32)
         }
     }
 }
@@ -241,7 +203,9 @@ impl Ironbar {
 
             #[cfg(feature = "ipc")]
             let ipc = {
-                let ipc = ipc::Ipc::new();
+                use ipc::IpcServer;
+
+                let ipc = ironbar_ipc_types::Ipc::new();
                 ipc.start(app, instance.clone());
                 ipc
             };
@@ -259,18 +223,21 @@ impl Ironbar {
             // -- shutdown --
 
             #[cfg(feature = "ipc")]
-            let ipc_path = ipc.path().to_path_buf();
-            spawn(async move {
-                tokio::signal::ctrl_c()
-                    .await
-                    .expect("should handle SIGTERM");
+            spawn({
+                use ipc::IpcServer;
+                use ironbar_ipc_types::Ipc;
 
-                info!("Shutting down");
+                let ipc_path = ipc.path().to_path_buf();
+                async move {
+                    tokio::signal::ctrl_c()
+                        .await
+                        .expect("should handle SIGTERM");
 
-                #[cfg(feature = "ipc")]
-                ipc::Ipc::shutdown(ipc_path);
+                    info!("Shutting down");
 
-                exit(0);
+                    Ipc::stop(ipc_path);
+                    exit(0);
+                }
             });
 
             let hold = app.hold();
