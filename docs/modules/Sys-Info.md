@@ -153,6 +153,12 @@ More information about each of these and the additional options can be found fur
 | `{swap_used}`            | N/A              | GB           | `0<4.1`            | 
 | `{swap_total}`           | N/A              | GB           | `0<4.1`            | 
 | `{swap_percent}`         | N/A              | GB           | `0<4.1`            | 
+| **GPU**                  |                  |              |                    | 
+| `{gpu_percent}`          | N/A              | %            | `0<2`                   | 
+| `{gpu_memory_free}`      | N/A              | GB           | `0<4.1`                  | 
+| `{gpu_memory_total}`     | N/A              | GB           | `0<4.1`                  | 
+| `{gpu_memory_used}`      | N/A              | GB           | `0<4.1`                   | 
+| `{gpu_memory_percent}`   | N/A              | %            | `0<2`                   | 
 | **Temperature**          |                  |              |                    | 
 | `{temp_c[@sensor]}`      | `max`            | °C           |                    | 
 | `{temp_f[@sensor]}`      | `max`            | °F           |                    | 
@@ -196,6 +202,7 @@ It is also possible to get only a single value from the set by specifying a name
 | Token category | Valid name                               |
 |----------------|------------------------------------------|
 | CPU            | A CPU thread, eg `cpu0`, `cpu1`, ...     |
+| GPU            | A PCI bus address, eg `0000:07:00.0`     |
 | Temperature    | A sensor name, eg `CPUTIN`.              |
 | Disk           | A disk mountpoint, eg `/`, `/home`, ...  |
 | Network        | An adapter name, eg `eth0` or `enp30s0`. |
@@ -357,6 +364,7 @@ Possible types:
 
 - `Memory`
 - `Cpu`
+- `Gpu`
 - `Temps`
 - `Disks`
 - `Network`

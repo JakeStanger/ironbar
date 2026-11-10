@@ -11,7 +11,12 @@ impl Function {
             | TokenType::CpuPercent
             | TokenType::TempC
             | TokenType::DiskPercent => Self::Mean,
-            TokenType::DiskFree
+            TokenType::GpuPercent
+            | TokenType::GpuMemoryFree
+            | TokenType::GpuMemoryTotal
+            | TokenType::GpuMemoryUsed
+            | TokenType::GpuMemoryPercent
+            | TokenType::DiskFree
             | TokenType::DiskTotal
             | TokenType::DiskUsed
             | TokenType::DiskRead
@@ -34,6 +39,9 @@ impl Prefix {
             | TokenType::SwapFree
             | TokenType::SwapTotal
             | TokenType::SwapUsed
+            | TokenType::GpuMemoryFree
+            | TokenType::GpuMemoryTotal
+            | TokenType::GpuMemoryUsed
             | TokenType::DiskFree
             | TokenType::DiskTotal
             | TokenType::DiskUsed => Self::Giga,
@@ -95,7 +103,7 @@ impl Formatting {
                 align: Alignment::default(),
                 precision: 2,
             },
-            TokenType::CpuPercent => Self {
+            TokenType::CpuPercent | TokenType::GpuPercent | TokenType::GpuMemoryPercent => Self {
                 width: 2,
                 fill: '0',
                 align: Alignment::default(),
@@ -109,7 +117,10 @@ impl Formatting {
             | TokenType::SwapFree
             | TokenType::SwapTotal
             | TokenType::SwapUsed
-            | TokenType::SwapPercent => Self {
+            | TokenType::SwapPercent
+            | TokenType::GpuMemoryFree
+            | TokenType::GpuMemoryTotal
+            | TokenType::GpuMemoryUsed => Self {
                 width: 4,
                 fill: '0',
                 align: Alignment::default(),

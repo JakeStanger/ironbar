@@ -53,25 +53,37 @@ impl Token {
             // Number tokens
             TokenType::CpuFrequency => apply(client.cpu_frequency()),
             TokenType::CpuPercent => apply(client.cpu_percent()),
+
             TokenType::MemoryFree => get(client.memory_free()),
             TokenType::MemoryAvailable => get(client.memory_available()),
             TokenType::MemoryTotal => get(client.memory_total()),
             TokenType::MemoryUsed => get(client.memory_used()),
             TokenType::MemoryPercent => get(client.memory_percent()),
+
             TokenType::SwapFree => get(client.swap_free()),
             TokenType::SwapTotal => get(client.swap_total()),
             TokenType::SwapUsed => get(client.swap_used()),
             TokenType::SwapPercent => get(client.swap_percent()),
+
+            TokenType::GpuPercent => apply(client.gpu_percent()),
+            TokenType::GpuMemoryFree => apply(client.gpu_memory_free()),
+            TokenType::GpuMemoryTotal => apply(client.gpu_memory_total()),
+            TokenType::GpuMemoryUsed => apply(client.gpu_memory_used()),
+            TokenType::GpuMemoryPercent => apply(client.gpu_memory_percent()),
+
             TokenType::TempC => apply(client.temp_c()),
             TokenType::TempF => apply(client.temp_f()),
+
             TokenType::DiskFree => apply(client.disk_free()),
             TokenType::DiskTotal => apply(client.disk_total()),
             TokenType::DiskUsed => apply(client.disk_used()),
             TokenType::DiskPercent => apply(client.disk_percent()),
             TokenType::DiskRead => apply(client.disk_read()),
             TokenType::DiskWrite => apply(client.disk_write()),
+
             TokenType::NetDown => apply(client.net_down()),
             TokenType::NetUp => apply(client.net_up()),
+
             TokenType::LoadAverage1 => get(client.load_average_1()),
             TokenType::LoadAverage5 => get(client.load_average_5()),
             TokenType::LoadAverage15 => get(client.load_average_15()),

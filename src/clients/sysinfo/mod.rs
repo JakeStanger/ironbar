@@ -12,9 +12,11 @@ use std::collections::HashMap;
 use std::fmt::Debug;
 use std::str::FromStr;
 use std::sync::{Arc, Mutex};
+use std::thread;
 use std::time::{Duration, Instant};
 use sysinfo::{
-    Component, Components, Cpu, Disk, Disks, LoadAvg, NetworkData, Networks, RefreshKind, System,
+    Component, Components, Cpu, Disk, Disks, Gpus, LoadAvg, NetworkData, Networks, RefreshKind,
+    System,
 };
 use thiserror::Error;
 use tokio::sync::{broadcast, mpsc};
@@ -35,6 +37,7 @@ const MIN_REFRESH_GAP: Duration = Duration::from_millis(500);
 pub enum RefreshType {
     Memory,
     Cpu,
+    Gpu,
     Temps,
     Disks,
     Network,
@@ -42,9 +45,10 @@ pub enum RefreshType {
 }
 
 impl RefreshType {
-    pub const ALL: [Self; 6] = [
+    pub const ALL: [Self; 7] = [
         Self::Memory,
         Self::Cpu,
+        Self::Gpu,
         Self::Temps,
         Self::Disks,
         Self::Network,
@@ -67,6 +71,12 @@ pub enum TokenType {
     SwapTotal,
     SwapUsed,
     SwapPercent,
+
+    GpuPercent,
+    GpuMemoryFree,
+    GpuMemoryTotal,
+    GpuMemoryUsed,
+    GpuMemoryPercent,
 
     TempC,
     TempF,
@@ -112,6 +122,12 @@ impl FromStr for TokenType {
             "swap_used" => Ok(Self::SwapUsed),
             "swap_percent" => Ok(Self::SwapPercent),
 
+            "gpu_percent" => Ok(Self::GpuPercent),
+            "gpu_memory_free" => Ok(Self::GpuMemoryFree),
+            "gpu_memory_total" => Ok(Self::GpuMemoryTotal),
+            "gpu_memory_used" => Ok(Self::GpuMemoryUsed),
+            "gpu_memory_percent" => Ok(Self::GpuMemoryPercent),
+
             "temp_c" => Ok(Self::TempC),
             "temp_f" => Ok(Self::TempF),
 
@@ -150,6 +166,11 @@ impl TokenType {
             | Self::SwapTotal
             | Self::SwapUsed
             | Self::SwapPercent => RefreshType::Memory,
+            Self::GpuPercent
+            | Self::GpuMemoryFree
+            | Self::GpuMemoryTotal
+            | Self::GpuMemoryUsed
+            | Self::GpuMemoryPercent => RefreshType::Gpu,
             Self::TempC | Self::TempF => RefreshType::Temps,
             Self::DiskFree
             | Self::DiskTotal
@@ -209,6 +230,17 @@ pub struct State {
     pub memory_used: Value,
     #[cfg_attr(feature = "lua", lua(get))]
     pub memory_percent: Value,
+
+    #[cfg_attr(feature = "lua", lua(get))]
+    pub gpu_percent: ValueSet,
+    #[cfg_attr(feature = "lua", lua(get))]
+    pub gpu_memory_free: ValueSet,
+    #[cfg_attr(feature = "lua", lua(get))]
+    pub gpu_memory_total: ValueSet,
+    #[cfg_attr(feature = "lua", lua(get))]
+    pub gpu_memory_used: ValueSet,
+    #[cfg_attr(feature = "lua", lua(get))]
+    pub gpu_memory_percent: ValueSet,
 
     #[cfg_attr(feature = "lua", lua(get))]
     pub swap_free: Value,
@@ -347,6 +379,11 @@ impl super::Client for Client {
             swap_total: data.swap_total(),
             swap_used: data.swap_used(),
             swap_percent: data.swap_percent(),
+            gpu_percent: data.gpu_percent(),
+            gpu_memory_free: data.gpu_memory_free(),
+            gpu_memory_total: data.gpu_memory_total(),
+            gpu_memory_used: data.gpu_memory_used(),
+            gpu_memory_percent: data.gpu_memory_percent(),
             temp_c: data.temp_c(),
             temp_f: data.temp_f(),
             disk_free: data.disk_free(),
@@ -380,6 +417,8 @@ impl super::Client for Client {
 #[derive(Debug)]
 pub struct Data {
     system: Mutex<System>,
+    gpu_worker: GpuWorker,
+    gpus: Mutex<Vec<GpuStats>>,
     disks: Mutex<Delta<Disks>>,
     components: Mutex<Components>,
     networks: Mutex<Delta<Networks>>,
@@ -394,6 +433,7 @@ impl Data {
         let refresh_kind = RefreshKind::everything().without_processes();
 
         let system = System::new_with_specifics(refresh_kind)?;
+        let (gpu_worker, gpus) = GpuWorker::spawn()?;
         let disks = Disks::new_with_refreshed_list()?;
         let components = Components::new_with_refreshed_list()?;
         let networks = Networks::new_with_refreshed_list()?;
@@ -403,6 +443,8 @@ impl Data {
 
         Ok(Self {
             system: Mutex::new(system),
+            gpu_worker,
+            gpus: Mutex::new(gpus),
             disks: Mutex::new(Delta::new(disks)),
             components: Mutex::new(components),
             networks: Mutex::new(Delta::new(networks)),
@@ -525,6 +567,10 @@ impl Data {
         match kind {
             RefreshType::Memory => lock!(self.system).refresh_memory(),
             RefreshType::Cpu => lock!(self.system).refresh_cpu_all(),
+            RefreshType::Gpu => match self.gpu_worker.refresh() {
+                Some(gpus) => *lock!(self.gpus) = gpus,
+                None => warn!("failed to refresh gpus: worker thread is not running"),
+            },
             RefreshType::Temps => lock!(self.components).refresh(true),
             RefreshType::Disks => lock!(self.disks).refresh_with(|disks| disks.refresh(true)),
             RefreshType::Network => {
@@ -587,6 +633,41 @@ impl Data {
         let used = lock!(self.system).used_swap() as f64;
 
         Value::new(used / total * 100.0)
+    }
+
+    pub fn gpu_percent(&self) -> ValueSet {
+        self.map_gpus(|gpu| Value::new(gpu.usage.unwrap_or_default() as f64))
+    }
+
+    pub fn gpu_memory_free(&self) -> ValueSet {
+        self.map_gpus(|gpu| {
+            Value::new(
+                gpu.total_memory
+                    .unwrap_or_default()
+                    .saturating_sub(gpu.used_memory.unwrap_or_default()) as f64,
+            )
+        })
+    }
+
+    pub fn gpu_memory_total(&self) -> ValueSet {
+        self.map_gpus(|gpu| Value::new(gpu.total_memory.unwrap_or_default() as f64))
+    }
+
+    pub fn gpu_memory_used(&self) -> ValueSet {
+        self.map_gpus(|gpu| Value::new(gpu.used_memory.unwrap_or_default() as f64))
+    }
+
+    pub fn gpu_memory_percent(&self) -> ValueSet {
+        self.map_gpus(|gpu| {
+            let total = gpu.total_memory.unwrap_or_default() as f64;
+            let used = gpu.used_memory.unwrap_or_default() as f64;
+
+            Value::new(if total > 0.0 {
+                used / total * 100.0
+            } else {
+                0.0
+            })
+        })
     }
 
     pub fn temp_c(&self) -> ValueSet {
@@ -657,6 +738,14 @@ impl Data {
     }
 
     #[inline]
+    fn map_gpus(&self, value: impl Fn(&GpuStats) -> Value) -> ValueSet {
+        lock!(self.gpus)
+            .iter()
+            .map(|gpu| (gpu.pci.as_str().into(), value(gpu)))
+            .collect()
+    }
+
+    #[inline]
     fn map_components(&self, value: impl Fn(&Component) -> f64) -> ValueSet {
         lock!(self.components)
             .iter()
@@ -690,6 +779,88 @@ impl Data {
                 )
             })
             .collect()
+    }
+}
+
+/// A `Send` snapshot of a single GPU's stats.
+///
+/// [`Gpus`] holds raw handles to dynamically loaded libraries (NVML, Vulkan) so is `!Send`.
+#[derive(Debug, Clone)]
+struct GpuStats {
+    pci: String,
+    usage: Option<f32>,
+    total_memory: Option<u64>,
+    used_memory: Option<u64>,
+}
+
+impl GpuStats {
+    fn snapshot(gpus: &Gpus) -> Vec<Self> {
+        gpus.iter()
+            .map(|gpu| Self {
+                pci: gpu.pci().to_string(),
+                usage: gpu.usage(),
+                total_memory: gpu.total_memory(),
+                used_memory: gpu.used_memory(),
+            })
+            .collect()
+    }
+}
+
+/// Handle to a dedicated thread which owns the `!Send` [`Gpus`].
+#[derive(Debug)]
+struct GpuWorker {
+    tx: std::sync::mpsc::Sender<std::sync::mpsc::SyncSender<Vec<GpuStats>>>,
+}
+
+impl GpuWorker {
+    fn spawn() -> Result<(Self, Vec<GpuStats>), sysinfo::Error> {
+        use std::sync::mpsc;
+
+        let (init_tx, init_rx) = mpsc::sync_channel(1);
+        let (tx, rx) = mpsc::channel::<mpsc::SyncSender<Vec<GpuStats>>>();
+
+        let spawned = thread::Builder::new()
+            .name("ironbar-sysinfo-gpu".to_string())
+            .spawn(move || {
+                let mut gpus = match Gpus::new_with_refreshed_list() {
+                    Ok(gpus) => {
+                        let _ = init_tx.send(Ok(GpuStats::snapshot(&gpus)));
+                        gpus
+                    }
+                    Err(err) => {
+                        let _ = init_tx.send(Err(err));
+                        return;
+                    }
+                };
+
+                for reply in rx {
+                    gpus.refresh(true);
+                    let _ = reply.send(GpuStats::snapshot(&gpus));
+                }
+            });
+
+        if let Err(err) = spawned {
+            warn!("failed to spawn gpu worker thread: {err}");
+            return Ok((Self { tx }, Vec::new()));
+        }
+
+        match init_rx.recv() {
+            Ok(Ok(gpus)) => Ok((Self { tx }, gpus)),
+            Ok(Err(err)) => Err(err),
+            Err(_) => {
+                warn!("gpu worker thread exited during initialisation");
+                Ok((Self { tx }, Vec::new()))
+            }
+        }
+    }
+
+    /// Refreshes the GPU data.
+    ///
+    /// Returns `None` if the worker thread is not running.
+    fn refresh(&self) -> Option<Vec<GpuStats>> {
+        let (reply_tx, reply_rx) = std::sync::mpsc::sync_channel(1);
+        self.tx.send(reply_tx).ok()?;
+        reply_rx.recv().ok()
     }
 }
 
