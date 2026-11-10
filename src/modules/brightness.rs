@@ -1,5 +1,6 @@
 use crate::channels::{AsyncSenderExt, BroadcastReceiverExt};
-use crate::clients::brightness::{self, brightness, default_resource_name, max_brightness};
+use crate::clients::Client;
+use crate::clients::brightness::{self, Key, Scale, default_resource_name};
 use crate::config::{
     CommonConfig, LayoutConfig, ProfileUpdateEvent, Profiles, TruncateMode, default,
 };
@@ -12,27 +13,95 @@ use gtk::{Button, Label};
 use gtk::{EventControllerScroll, EventControllerScrollFlags, prelude::*};
 use serde::Deserialize;
 use tokio::sync::mpsc;
-use tokio::time::sleep;
-use tracing::{debug, trace};
+use tracing::{debug, error, trace};
 
 #[derive(Debug, Clone, Deserialize, PartialEq, Eq)]
 #[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum BrightnessDataSource {
-    /// using the keyboard dbus. Note: this only works for keyboards, not for screen brightness.
-    Keyboard,
-    /// using the login1 dbus and fs for reading. This works for keyboard and screen brightness, but needs the filesystem for reading the data and dbus for adjusting.
+    /// using the keyboard D-Bus. Use `busctl` to find the keyboard you want under interface `org.freedesktop.UPower` then check for the path `/org/freedesktop/UPower/KbdBacklight/<device>`.
+    ///
+    /// Note: this only works for keyboards, not for screen brightness.
+    ///
+    /// **Default**: `None`
+    Keyboard { path: Option<Box<str>> },
+    /// using the login1 D-Bus and fs for reading. This works for keyboard and screen brightness, but needs the filesystem for reading the data and D-Bus for adjusting.
     Systemd {
         /// The subsystem to read the data from, e.g. `backlight` or `leds`. Subsystem refers to the directory within `/sys/class/`.
         ///
         /// **Default**: `backlight`
-        subsystem: String,
+        subsystem: Box<str>,
 
         /// The name of the resource, see `/sys/class/<subsystem>` for available resources. If empty, ironbar will try to resolve it via a hardcoded list of common resources
         ///
         /// **Default**: `None`
-        name: Option<String>,
+        name: Option<Box<str>>,
     },
+}
+
+const PATH_RESOLVED: &str = "path to be resolved";
+const NAME_RESOLVED: &str = "name to be resolved";
+
+impl BrightnessDataSource {
+    /// Resolves empty field from [BrightnessDataSource].
+    ///
+    /// # Error
+    ///
+    /// When no default namespace could be resolved.
+    fn resolve(&mut self) -> Result<(), ()> {
+        match self {
+            BrightnessDataSource::Keyboard { path } => {
+                if path.is_some() {
+                    return Ok(());
+                }
+
+                *path = Some(Box::from(
+                    "/org/freedesktop/UPower/KbdBacklight/kdb_backlight",
+                ));
+            }
+            BrightnessDataSource::Systemd { subsystem, name } => {
+                if name.is_some() {
+                    return Ok(());
+                }
+
+                *name = default_resource_name(subsystem);
+
+                if name.is_none() {
+                    return Err(());
+                }
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Get the [Key] for the [BrightnessDataSource] in use.
+    fn key(&self) -> Key {
+        match self {
+            BrightnessDataSource::Keyboard { path } => Key::Kbd {
+                path: path.as_ref().expect(PATH_RESOLVED).clone(),
+            },
+            BrightnessDataSource::Systemd { subsystem, name } => Key::SysFs {
+                subsystem: subsystem.clone(),
+                device: name.as_ref().expect(NAME_RESOLVED).clone(),
+            },
+        }
+    }
+}
+
+#[derive(Debug, Clone, Deserialize, PartialEq, Eq, Default)]
+#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
+#[serde(tag = "type", rename_all = "snake_case")]
+pub enum BrightnessScaleControl {
+    /// Let Ironbar decide what is best for your device.
+    #[default]
+    Automatic,
+    /// Treat brightness data from your device as linear. This is the legacy behavior.
+    Linear,
+    /// Use a Gamma 2.2 curve to interpret brightness values.
+    Gamma2_2,
+    /// Use a Gamma 2.4 curve to interpret brightness values. see [wiki](https://en.wikipedia.org/wiki/SRGB#Transfer_function_(%22gamma%22))
+    Gamma2_4,
 }
 
 #[derive(Debug, Clone, Deserialize, PartialEq, Eq)]
@@ -99,11 +168,16 @@ pub struct BrightnessModule {
     /// See [BrightnessDataSource].
     mode: BrightnessDataSource,
 
+    /// Control how to interpret brightness data from your device.
+    ///
+    /// See [BrightnessScaleControl].
+    scale: BrightnessScaleControl,
+
     /// A multiplier from to control the speed of smooth scrolling on trackpad.
     /// Choose a negative number to swap scrolling direction.
     ///
     /// **Default**: `1.0`
-    smooth_scroll_speed: f64,
+    smooth_scroll_speed: f32,
 
     // -- Common --
     /// See [truncate options](module-level-options#truncate-mode).
@@ -125,6 +199,7 @@ impl Default for BrightnessModule {
         Self {
             profiles: Profiles::default(),
             mode: BrightnessDataSource::default(),
+            scale: BrightnessScaleControl::default(),
             smooth_scroll_speed: 1.0,
             truncate: None,
             layout: LayoutConfig::default(),
@@ -136,7 +211,7 @@ impl Default for BrightnessModule {
 impl Default for BrightnessDataSource {
     fn default() -> Self {
         BrightnessDataSource::Systemd {
-            subsystem: "backlight".to_string(),
+            subsystem: Box::from("backlight"),
             name: None,
         }
     }
@@ -144,94 +219,94 @@ impl Default for BrightnessDataSource {
 
 #[derive(Clone, Debug, Default)]
 pub struct BrightnessProperties {
-    screen_brightness: f64,
-}
-
-struct BrightnessData {
-    percent: f64,
-    current: i32,
-    max: i32,
-}
-
-#[derive(Debug)]
-enum SystemdError {
-    NoResourceName,
-}
-
-impl std::fmt::Display for SystemdError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            SystemdError::NoResourceName => write!(
-                f,
-                "No Resource name was provided and no resource name could be resolved for your subsystem"
-            ),
-        }
-    }
-}
-
-impl std::error::Error for SystemdError {}
-
-impl BrightnessModule {
-    async fn get_brightness(
-        client: &brightness::Client,
-        datasource: &BrightnessDataSource,
-        default_resource_name: Option<&str>,
-    ) -> Result<BrightnessData> {
-        let (current, max): (i32, i32) = match datasource {
-            BrightnessDataSource::Keyboard => {
-                let brightness_kbd = client.keyboard().get_brightness().await?;
-                let max_brightness_kbd = client.keyboard().get_max_brightness().await?;
-                (brightness_kbd, max_brightness_kbd)
-            }
-            BrightnessDataSource::Systemd { subsystem, name } => {
-                let name = name
-                    .as_deref()
-                    .or(default_resource_name)
-                    .ok_or(SystemdError::NoResourceName)?;
-                let brightness_screen = brightness(subsystem, name)?;
-                let max_brightness_screen = max_brightness(subsystem, name)?;
-                (brightness_screen, max_brightness_screen)
-            }
-        };
-
-        let percent: f64 = current as f64 / (max as f64) * 100.0;
-
-        Ok(BrightnessData {
-            percent,
-            current,
-            max,
-        })
-    }
-
-    async fn set_brightness(
-        client: &brightness::Client,
-        datasource: &BrightnessDataSource,
-        default_resource_name: Option<&str>,
-        brightness: i32,
-    ) -> Result<()> {
-        match datasource {
-            BrightnessDataSource::Keyboard => {
-                client.keyboard().set_brightness(brightness).await?;
-            }
-            BrightnessDataSource::Systemd { subsystem, name } => {
-                let name = name
-                    .as_deref()
-                    .or(default_resource_name)
-                    .ok_or(SystemdError::NoResourceName)?;
-                client
-                    .screen_writer()
-                    .set_brightness(subsystem, name, brightness as u32)
-                    .await?;
-            }
-        }
-        Ok(())
-    }
+    screen_brightness: f32,
 }
 
 #[derive(Debug, Clone, Copy)]
 pub enum UiEvent {
     AdjustBrightnessScroll(f64),
-    Refresh,
+}
+
+const GAMMA_22: f32 = 2.2;
+const GAMMA_24: f32 = 2.4;
+const GAMMA_LOW_COEF: f32 = 12.92;
+const GAMMA_HIGH_COEF: f32 = 1.055;
+const GAMMA_OFFSET: f32 = 0.055;
+
+const MIN_PERCENTAGE: f32 = 0.0;
+const MAX_SETTABLE_PERCENTAGE: f32 = 1.0;
+
+/// Convert `brightness` through a gamma curve.
+fn gamma(brightness: i32, max_brightness: i32, gamma: f32) -> f32 {
+    let linear = linear(brightness, max_brightness);
+
+    if linear <= 0.0031308 {
+        GAMMA_LOW_COEF * linear
+    } else {
+        GAMMA_HIGH_COEF * linear.powf(1f32 / gamma) - GAMMA_OFFSET
+    }
+    .max(MIN_PERCENTAGE)
+}
+
+/// Convert `percent` back to a brightness using a gamma curve.
+fn revert_gamma(percent: f32, max_brightness: i32, gamma: f32) -> i32 {
+    let linear = if percent <= 0.04045 {
+        percent / GAMMA_LOW_COEF
+    } else {
+        ((percent + GAMMA_OFFSET) / GAMMA_HIGH_COEF).powf(gamma)
+    };
+
+    revert_linear(linear, max_brightness)
+}
+
+/// Convert `brightness` through a linear scale.
+fn linear(brightness: i32, max_brightness: i32) -> f32 {
+    (brightness as f32 / max_brightness as f32).max(MIN_PERCENTAGE)
+}
+
+/// Convert `percentage` back to a brightness values using a linear scale.
+fn revert_linear(percentage: f32, max_brightness: i32) -> i32 {
+    ((percentage * max_brightness as f32) as i32).clamp(0, max_brightness)
+}
+
+/// Convert the `brightness` to a percentage from 0.0 to 1.0.
+///
+/// `strategy` is used for the conversion strategy.
+fn percent_from(
+    brightness: i32,
+    max_brightness: i32,
+    strategy: &BrightnessScaleControl,
+    scale: &Scale,
+) -> f32 {
+    match (strategy, scale) {
+        (BrightnessScaleControl::Automatic, Scale::Unknown)
+        | (BrightnessScaleControl::Linear, _) => linear(brightness, max_brightness),
+        (BrightnessScaleControl::Gamma2_2, _) => gamma(brightness, max_brightness, GAMMA_22),
+        (BrightnessScaleControl::Gamma2_4, _)
+        | (BrightnessScaleControl::Automatic, Scale::Linear) => {
+            gamma(brightness, max_brightness, GAMMA_24)
+        }
+    }
+}
+
+/// Convert the `percentage` value back into a brightness value.s
+///
+/// `strategy` is used for the conversion strategy.
+fn brightness_from(
+    percentage: f32,
+    max_brightness: i32,
+    strategy: &BrightnessScaleControl,
+    scale: &Scale,
+) -> i32 {
+    match (strategy, scale) {
+        (BrightnessScaleControl::Automatic, Scale::Unknown)
+        | (BrightnessScaleControl::Linear, _) => revert_linear(percentage, max_brightness),
+        (BrightnessScaleControl::Gamma2_2, _) => revert_gamma(percentage, max_brightness, GAMMA_22),
+        (BrightnessScaleControl::Gamma2_4, _)
+        | (BrightnessScaleControl::Automatic, Scale::Linear) => {
+            revert_gamma(percentage, max_brightness, GAMMA_24)
+        }
+    }
 }
 
 impl Module<Button> for BrightnessModule {
@@ -250,103 +325,140 @@ impl Module<Button> for BrightnessModule {
         context: &WidgetContext<Self::SendMessage, Self::ReceiveMessage>,
         mut rx: mpsc::Receiver<Self::ReceiveMessage>,
     ) -> Result<()> {
-        const POLL_INTERVAL: std::time::Duration = std::time::Duration::from_millis(50);
         let tx = context.tx.clone();
-        let controller_tx = context.controller_tx.clone();
         let client = context.try_client::<brightness::Client>()?;
-        let datasource = self.mode.clone();
+        let mut brightness_events = client.subscribe();
+        let strategy = self.scale.clone();
         let scroll_speed = self.smooth_scroll_speed;
-        let default_resource_name =
-            if let BrightnessDataSource::Systemd { subsystem, .. } = &datasource {
-                default_resource_name(subsystem)
-            } else {
-                None
-            };
+
+        let key = {
+            let mut data_source = self.mode.clone();
+            match data_source.resolve() {
+                Ok(_) => (),
+                Err(_) => {
+                    return Err(color_eyre::Report::msg(
+                        "no default could be resolved for brightness module",
+                    ));
+                }
+            }
+            data_source.key()
+        };
 
         spawn(async move {
-            // make sure we have a value on startup and not have to wait for 1 interval
-            controller_tx.send_expect(UiEvent::Refresh).await;
+            let mut brightness = match &key {
+                Key::Kbd { path } => match client.track_new_kbd(path).await {
+                    Ok(brightness) => brightness,
+                    Err(err) => {
+                        error!("could not track {path} over D-Bus: {err}");
+                        return;
+                    }
+                },
+                Key::SysFs { subsystem, device } => {
+                    match client.track_new_kernel_device(subsystem, device) {
+                        Ok(brightness) => brightness,
+                        Err(err) => {
+                            error!("could not track device /sys/class/{subsystem}/{device}: {err}");
+                            return;
+                        }
+                    }
+                }
+            };
+            let Some((max_brightness, scale)) = ({
+                let state = match client.state().await {
+                    Ok(state) => state,
+                    Err(err) => {
+                        error!("could not read client's state: {err}");
+                        return;
+                    }
+                };
 
-            let mut partial_scroll: f64 = 0.0;
+                let mut init_values = None;
+                for device in state.tracked {
+                    if device.key() == key.get() {
+                        init_values = Some(match device {
+                            brightness::BrightnessDeviceState::DBus { max_brightness, .. } => {
+                                (max_brightness, Scale::Unknown)
+                            }
+                            brightness::BrightnessDeviceState::SysFs {
+                                max_brightness,
+                                scale,
+                                ..
+                            } => (max_brightness, scale),
+                        })
+                    }
+                }
+
+                init_values
+            }) else {
+                error!("could not find initial values for device {}", key.get());
+                return;
+            };
+
+            let mut percent = percent_from(brightness, max_brightness, &strategy, &scale);
+            tx.send_update(BrightnessProperties {
+                screen_brightness: percent,
+            })
+            .await;
+
+            let mut partial_scroll: f32 = 0.0;
 
             loop {
+                #[derive(Debug)]
+                enum Event {
+                    Ui(UiEvent),
+                    Client(brightness::Event),
+                }
+
                 let event = tokio::select! {
-                    v = rx.recv() => v,
-                    () = sleep(POLL_INTERVAL) => None,
+                    Some(ui) = rx.recv() => Event::Ui(ui),
+                    Ok(client) = brightness_events.recv() => Event::Client(client),
                 };
 
                 trace!("got event: {event:?}");
 
-                let BrightnessData {
-                    mut percent,
-                    current,
-                    max,
-                } = match Self::get_brightness(
-                    &client,
-                    &datasource,
-                    default_resource_name.as_deref(),
-                )
-                .await
-                {
-                    Ok(d) => d,
-                    Err(err) => match err.downcast::<SystemdError>() {
-                        Ok(err) => {
-                            tracing::error!(
-                                ?err,
-                                "Could not retrieve brightness levels. Error is unrecoverable."
-                            );
-                            break;
-                        }
-                        Err(err) => {
-                            tracing::error!(?err, "Could not retrieve brightness levels");
-                            continue;
-                        }
-                    },
-                };
+                let mut new_percent = percent;
+                match event {
+                    Event::Ui(ui_event) => {
+                        let UiEvent::AdjustBrightnessScroll(dy) = ui_event;
 
-                if let Some(UiEvent::AdjustBrightnessScroll(dy)) = event {
-                    debug!("processing scroll event (dy={dy})");
+                        debug!("processing scroll event (dy={dy})");
 
-                    partial_scroll += dy * scroll_speed;
+                        partial_scroll += dy as f32 * scroll_speed;
 
-                    if partial_scroll.abs() >= 1.0 {
-                        let num_steps = partial_scroll.floor() as i32;
-                        partial_scroll -= partial_scroll.floor();
+                        if partial_scroll.abs() >= 1.0 {
+                            let offset = partial_scroll.floor();
+                            partial_scroll -= offset;
 
-                        let step_len = (max / 100).max(1); // ensure step_len is at least 1, otherwise the div by i32 might produce a step_len of 0 due to truncing
+                            new_percent = (percent + offset / 100f32)
+                                .clamp(MIN_PERCENTAGE, MAX_SETTABLE_PERCENTAGE);
+                            brightness =
+                                brightness_from(new_percent, max_brightness, &strategy, &scale);
 
-                        let new_brightness = (current - num_steps * step_len).max(0).min(max); // not using .clamp to avoid panic in case max is ever < 0
-                        percent = new_brightness as f64 / (max as f64) * 100.0;
-
-                        // set brightness on separate task
-                        // to avoid causing backlog
-                        spawn({
-                            let client = client.clone();
-                            let datasource = datasource.clone();
-                            let default_resource_name = default_resource_name.clone();
-
-                            async move {
-                                debug!("setting brightness to {new_brightness} ({percent}%)");
-
-                                if let Err(err) = Self::set_brightness(
-                                    &client,
-                                    &datasource,
-                                    default_resource_name.as_deref(),
-                                    new_brightness,
-                                )
-                                .await
-                                {
-                                    tracing::error!(?err, "Could not change brightness");
+                            match client.set_brightness(&key, brightness).await {
+                                Ok(_) => (),
+                                Err(err) => {
+                                    error!("could not set brightness: {err}");
+                                    continue;
                                 }
                             }
-                        });
+                        }
+                    }
+                    Event::Client(event) => {
+                        if event.cmp_key(&key) {
+                            brightness = event.brightness();
+                            new_percent =
+                                percent_from(brightness, max_brightness, &strategy, &scale);
+                        }
                     }
                 }
 
-                tx.send_update(BrightnessProperties {
-                    screen_brightness: percent,
-                })
-                .await;
+                if new_percent != percent {
+                    percent = new_percent;
+                    tx.send_update(BrightnessProperties {
+                        screen_brightness: percent,
+                    })
+                    .await;
+                }
             }
         });
 
@@ -412,8 +524,9 @@ impl Module<Button> for BrightnessModule {
         );
 
         rx.recv_glib((), move |(), properties| {
-            let percentage = properties.screen_brightness;
-            manager.update(percentage, ());
+            // UI displays values from 0 to 100.
+            let percentage = properties.screen_brightness * 100f32;
+            manager.update(percentage.into(), ());
         });
 
         Ok(ModuleParts::new(button, None))
