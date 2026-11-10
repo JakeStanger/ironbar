@@ -27,6 +27,7 @@
 - [Power Menu](power-menu)
 - [Weather](weather)
 - [Cairo CPU Graph](cpu-cores-graph)
+- [Lua Sysinfo Toggle Styles](sysinfo-toggle-styles)
 
 # Modules
 

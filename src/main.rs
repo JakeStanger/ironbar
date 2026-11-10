@@ -298,6 +298,9 @@ impl Ironbar {
                     }
                 }
 
+                #[cfg(feature = "lua")]
+                instance.lua_engine.gtk_init();
+
                 let outputs = lock!(instance.clients).outputs();
                 let mut rx_outputs = outputs.subscribe();
 
