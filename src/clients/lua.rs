@@ -50,6 +50,8 @@ impl UserData for LuaClients {
                 "power_profiles" => power_profiles,
                 #[cfg(feature = "bluetooth")]
                 "bluetooth" => bluetooth,
+                #[cfg(feature = "sys_info")]
+                "sysinfo" => sys_info,
             })
         });
     }
@@ -90,6 +92,8 @@ where
 
             Ok(LuaSubscription(handle))
         });
+
+        C::add_lua_methods(methods);
     }
 }
 

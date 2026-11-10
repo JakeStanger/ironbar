@@ -333,3 +333,66 @@ left-padded with spaces to a min width of 5, and shown to 2dp as follows:
 | `.sysinfo .item` | Individual information label |
 
 For more information on styling, please see the [styling guide](styling-guide).
+
+## Lua API
+
+### `<client>:state()` 
+
+Refreshes all system data and returns a snapshot.
+See the list of [formatting tokens](#formatting-tokens) for the available fields.
+
+```lua
+local client = ironbar.clients.sysinfo
+local state = client:state()
+
+print(state.cpu_percent:get("mean"))
+```
+
+### `<client>:subscribe(cb)`
+
+Send a refresh type event every time a client requests a re-render of that system.
+Use `ev.kind` or `tostring(ev)` to get the event type.
+
+Possible types:
+
+- `Memory`
+- `Cpu`
+- `Temps`
+- `Disks`
+- `Network`
+- `System`
+
+```lua
+local client = ironbar.clients.sysinfo
+client:subscribe(function(ev)
+    print(ev.kind)
+end)
+```
+
+---
+
+Each property is also available as its own method, 
+such as `sysinfo:cpu_percent()` or `sysinfo:uptime()`.
+These only refresh the data they need, and unlike `state()` they are not async.
+
+Single values (memory, swap, load average) have:
+
+- `<value>.value` - The value in its base unit.
+- `<value>:get(prefix)` - The value scaled to a unit prefix, for example `"M"`, `"Gi"`, or `"Mb"`.
+
+Value sets (CPU, temperatures, disks, networks) have:
+
+- `<set>.values` - A table of each named value in its base unit, keyed by CPU, sensor, mount point, or interface name.
+- `<set>:get(function, prefix)` - Applies `sum`, `min`, `max`, or `mean`, or picks a single named value. `prefix` is optional.
+
+```lua
+local sysinfo = ironbar.clients.sysinfo
+
+local cpu_percent = sysinfo:cpu_percent()
+local memory_percent = sysinfo:memory_percent()
+local net_down = sysinfo:net_down()
+
+ironbar.log_info("memory: " .. memory_percent.value .. "%")
+ironbar.log_info("cpu: " .. cpu_percent:get("mean") .. "%")
+ironbar.log_info("down: " .. net_down:get("sum", "Mb") .. " Mbps")
+```
