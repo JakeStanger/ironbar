@@ -1,6 +1,13 @@
 use super::{brightness, fs_reader::available_resource_names, max_brightness};
-use crate::await_sync;
-use std::sync::Arc;
+use crate::{
+    await_sync,
+    clients::brightness::{BrightnessDevice, BrightnessTypeProperties},
+    lock,
+};
+use std::{
+    collections::HashMap,
+    sync::{Arc, Mutex},
+};
 
 const KDB_NAMESPACE: &str = "kbd_backlight";
 const KDB_KEY_MAX_BRIGHTNESS: &str = "max";
@@ -10,8 +17,12 @@ const BACKLIGHT_MAX_NAMESPACE: &str = "backlight_max";
 const LEDS_CURRENT_NAMESPACE: &str = "leds_current";
 const LEDS_MAX_NAMESPACE: &str = "leds_max";
 
-#[derive(Debug)]
 pub(super) struct KbdBacklight {
+    keyboards: Arc<Mutex<HashMap<Box<str>, BrightnessDevice>>>,
+}
+
+#[derive(Debug)]
+pub(super) struct KbdBacklightDevice {
     keyboard: Arc<super::KbdBacklightProxy<'static>>,
 }
 
@@ -28,6 +39,40 @@ enum Property {
 }
 
 impl crate::ironvar::Namespace for KbdBacklight {
+    fn get(&self, _: &str) -> Option<String> {
+        None
+    }
+
+    fn list(&self) -> Vec<String> {
+        Vec::new()
+    }
+
+    fn namespaces(&self) -> Vec<String> {
+        let mut namespaces = Vec::new();
+
+        let devices = lock!(self.keyboards);
+
+        for (key, values) in devices.iter() {
+            if matches!(values.properties, BrightnessTypeProperties::Kbd { .. }) {
+                namespaces.push(key.to_string());
+            }
+        }
+
+        namespaces
+    }
+
+    fn get_namespace(&self, key: &str) -> Option<crate::ironvar::NamespaceTrait> {
+        let devices = lock!(self.keyboards);
+        match &devices.get(key)?.properties {
+            BrightnessTypeProperties::Kbd { proxy, .. } => Some(Arc::new(KbdBacklightDevice {
+                keyboard: Arc::new(proxy.clone()),
+            })),
+            BrightnessTypeProperties::SysFs { .. } => None,
+        }
+    }
+}
+
+impl crate::ironvar::Namespace for KbdBacklightDevice {
     fn get(&self, key: &str) -> Option<String> {
         match key {
             KDB_KEY_MAX_BRIGHTNESS => await_sync(self.keyboard.get_max_brightness())
@@ -49,7 +94,7 @@ impl crate::ironvar::Namespace for KbdBacklight {
     }
 
     fn namespaces(&self) -> Vec<String> {
-        vec![]
+        Vec::new()
     }
 
     fn get_namespace(&self, _key: &str) -> Option<crate::ironvar::NamespaceTrait> {
@@ -69,6 +114,9 @@ impl crate::ironvar::Namespace for FsBacklight {
 
     fn list(&self) -> Vec<String> {
         available_resource_names(&self.subsystem)
+            .iter()
+            .map(|s| s.to_string())
+            .collect()
     }
 
     fn namespaces(&self) -> Vec<String> {
@@ -101,9 +149,12 @@ impl crate::ironvar::Namespace for super::Client {
 
     fn get_namespace(&self, key: &str) -> Option<crate::ironvar::NamespaceTrait> {
         match key {
-            KDB_NAMESPACE => Some(Arc::new(KbdBacklight {
-                keyboard: self.keyboard.clone(),
-            })),
+            KDB_NAMESPACE => match self {
+                super::Client::Stopped { .. } => None,
+                super::Client::Started { devices, .. } => Some(Arc::new(KbdBacklight {
+                    keyboards: devices.clone(),
+                })),
+            },
             BACKLIGHT_CURRENT_NAMESPACE => Some(Arc::new(FsBacklight {
                 subsystem: "backlight".to_string(),
                 property: Property::Brightness,

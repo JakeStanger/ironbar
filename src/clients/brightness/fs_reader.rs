@@ -9,6 +9,18 @@ pub enum ReadParseError {
     Parse(std::num::ParseIntError),
 }
 
+impl From<std::io::Error> for ReadParseError {
+    fn from(value: std::io::Error) -> Self {
+        Self::Read(value)
+    }
+}
+
+impl From<std::num::ParseIntError> for ReadParseError {
+    fn from(value: std::num::ParseIntError) -> Self {
+        Self::Parse(value)
+    }
+}
+
 impl fmt::Display for ReadParseError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
@@ -22,27 +34,52 @@ impl std::error::Error for ReadParseError {}
 
 const SYS_PATH: &str = "/sys/class";
 
-pub fn brightness(subsystem: &str, name: &str) -> Result<i32, ReadParseError> {
+/// Build path from `subsystem` and `name`.
+///
+/// The path built has [SYS_PATH] as a prefix.
+fn build_path(subsystem: &str, name: &str) -> PathBuf {
     let mut path = PathBuf::from(SYS_PATH);
     path.push(subsystem);
     path.push(name);
-    path.push("brightness");
-    let s = fs::read_to_string(path).map_err(ReadParseError::Read)?;
-    let value = s.trim().parse::<i32>().map_err(ReadParseError::Parse)?;
-    Ok(value)
+    path
 }
 
-pub fn max_brightness(subsystem: &str, name: &str) -> Result<i32, ReadParseError> {
-    let mut path = PathBuf::from(SYS_PATH);
-    path.push(subsystem);
-    path.push(name);
-    path.push("max_brightness");
-    let s = fs::read_to_string(path).map_err(ReadParseError::Read)?;
-    let value = s.trim().parse::<i32>().map_err(ReadParseError::Parse)?;
-    Ok(value)
+/// Read an [i32] for a specific `attribute`.
+///
+/// Select within [SYS_PATH] the `subsystem` and the `driver` for the `attribute` you want to read an [i32] from.
+fn read_i32_from_file(
+    subsystem: &str,
+    driver: &str,
+    attribute: &str,
+) -> Result<i32, ReadParseError> {
+    let mut path = build_path(subsystem, driver);
+    path.push(attribute);
+    let s = fs::read_to_string(path)?;
+    Ok(s.trim().parse::<i32>()?)
 }
 
-pub(super) fn available_resource_names(subsystem: &str) -> Vec<String> {
+/// Get the `brightness` attribute from the `subsystem` and `driver` within [SYS_PATH].
+pub fn brightness(subsystem: &str, driver: &str) -> Result<i32, ReadParseError> {
+    read_i32_from_file(subsystem, driver, "brightness")
+}
+
+/// Get the `max_brightness` attribute from the `subsystem` and `driver` within [SYS_PATH].
+pub fn max_brightness(subsystem: &str, driver: &str) -> Result<i32, ReadParseError> {
+    read_i32_from_file(subsystem, driver, "max_brightness")
+}
+
+/// Get the scaling of the brightness.
+///
+/// Possible values are:
+///     - "unknown"
+///     - "linear"
+pub(super) fn scaling(subsystem: &str, driver: &str) -> Result<Box<str>, ReadParseError> {
+    let mut path = build_path(subsystem, driver);
+    path.push("scale");
+    Ok(Box::from(fs::read_to_string(path)?.as_str()))
+}
+
+pub(super) fn available_resource_names(subsystem: &str) -> Vec<Box<str>> {
     let mut path = PathBuf::from(SYS_PATH);
     path.push(subsystem);
 
@@ -53,7 +90,7 @@ pub(super) fn available_resource_names(subsystem: &str) -> Vec<String> {
             if path.is_dir()
                 && let Some(name) = entry.file_name().to_str()
             {
-                resource_names.push(name.to_string());
+                resource_names.push(Box::from(name));
             }
         }
     }
@@ -61,7 +98,7 @@ pub(super) fn available_resource_names(subsystem: &str) -> Vec<String> {
     resource_names
 }
 
-pub fn default_resource_name(subsystem: &str) -> Option<String> {
+pub fn default_resource_name(subsystem: &str) -> Option<Box<str>> {
     let possible_files = available_resource_names(subsystem);
 
     match subsystem {
@@ -82,8 +119,8 @@ pub fn default_resource_name(subsystem: &str) -> Option<String> {
 
             TO_CHECK
                 .iter()
-                .find(|item| possible_files.iter().any(|v| v == **item))
-                .map(ToString::to_string)
+                .find(|&item| possible_files.iter().any(|v| **v == **item))
+                .map(|s| Box::from(*s))
         }
         "leds" => {
             // almost all leds have the same postfix
