@@ -298,36 +298,42 @@ impl super::Client for Client {
             let tx = channel.clone();
             let known_devices = known_devices.clone();
 
-            std::thread::spawn(move || {
-                let local = LocalSet::new();
+            let thread = std::thread::Builder::new()
+                .name("ironbar-libinput".to_string())
+                .spawn(move || {
+                    let local = LocalSet::new();
 
-                local.spawn_local(async move {
-                    let stream = match Self::connect(&seat) {
-                        Ok(stream) => {
-                            ready_tx.send(Ok(())).expect(crate::error::ERR_CHANNEL_SEND);
-                            stream
-                        }
-                        Err(err) => {
-                            ready_tx
-                                .send(Err(err))
-                                .expect(crate::error::ERR_CHANNEL_SEND);
-                            return;
-                        }
-                    };
-
-                    tokio::select! {
-                        res = Self::run(stream, &tx, &known_devices) => {
-                            if let Err(err) = res {
-                                error!("{err:?}");
+                    local.spawn_local(async move {
+                        let stream = match Self::connect(&seat) {
+                            Ok(stream) => {
+                                ready_tx.send(Ok(())).expect(crate::error::ERR_CHANNEL_SEND);
+                                stream
                             }
+                            Err(err) => {
+                                ready_tx
+                                    .send(Err(err))
+                                    .expect(crate::error::ERR_CHANNEL_SEND);
+                                return;
+                            }
+                        };
+
+                        tokio::select! {
+                            res = Self::run(stream, &tx, &known_devices) => {
+                                if let Err(err) = res {
+                                    error!("{err:?}");
+                                }
+                            }
+                            // resolves on explicit stop, or when the client is dropped
+                            _ = stop_rx => debug!("stopping libinput client for seat '{seat}'"),
                         }
-                        // resolves on explicit stop, or when the client is dropped
-                        _ = stop_rx => debug!("stopping libinput client for seat '{seat}'"),
-                    }
+                    });
+
+                    Ironbar::runtime().block_on(local);
                 });
 
-                Ironbar::runtime().block_on(local);
-            });
+            if let Err(err) = thread {
+                error!("{err:?}");
+            }
         }
 
         ready_rx.await.map_err(|_| Error::ThreadExited)??;

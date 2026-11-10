@@ -76,6 +76,11 @@ pub struct Intervals {
     /// **Default**: `5`
     cpu: u64,
 
+    /// The number of seconds between refreshing GPU data.
+    ///
+    /// **Default**: `5`
+    gpu: u64,
+
     /// The number of seconds between refreshing temperature data.
     ///
     /// **Default**: `5`
@@ -102,6 +107,7 @@ impl Default for Intervals {
         Self {
             memory: 5,
             cpu: 5,
+            gpu: 5,
             temps: 5,
             disks: 5,
             networks: 5,
@@ -131,6 +137,7 @@ impl Interval {
             Self::Individual(intervals) => match kind {
                 RefreshType::Memory => intervals.memory,
                 RefreshType::Cpu => intervals.cpu,
+                RefreshType::Gpu => intervals.gpu,
                 RefreshType::Temps => intervals.temps,
                 RefreshType::Disks => intervals.disks,
                 RefreshType::Network => intervals.networks,

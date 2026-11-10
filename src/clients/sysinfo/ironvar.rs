@@ -15,28 +15,41 @@ impl Namespace for Client {
         match token {
             TokenType::CpuFrequency => None,
             TokenType::CpuPercent => None,
+
             TokenType::MemoryFree => get(data.memory_free()),
             TokenType::MemoryAvailable => get(data.memory_available()),
             TokenType::MemoryTotal => get(data.memory_total()),
             TokenType::MemoryUsed => get(data.memory_used()),
             TokenType::MemoryPercent => get(data.memory_percent()),
+
             TokenType::SwapFree => get(data.swap_free()),
             TokenType::SwapTotal => get(data.swap_total()),
             TokenType::SwapUsed => get(data.swap_used()),
             TokenType::SwapPercent => get(data.swap_percent()),
+
+            TokenType::GpuPercent => None,
+            TokenType::GpuMemoryFree => None,
+            TokenType::GpuMemoryTotal => None,
+            TokenType::GpuMemoryUsed => None,
+            TokenType::GpuMemoryPercent => None,
+
             TokenType::TempC => None,
             TokenType::TempF => None,
+
             TokenType::DiskFree => None,
             TokenType::DiskTotal => None,
             TokenType::DiskUsed => None,
             TokenType::DiskPercent => None,
             TokenType::DiskRead => None,
             TokenType::DiskWrite => None,
+
             TokenType::NetDown => None,
             TokenType::NetUp => None,
+
             TokenType::LoadAverage1 => get(data.load_average_1()),
             TokenType::LoadAverage5 => get(data.load_average_5()),
             TokenType::LoadAverage15 => get(data.load_average_15()),
+
             TokenType::Uptime => Client::uptime(),
         }
     }
@@ -66,6 +79,10 @@ impl Namespace for Client {
         vec![
             "cpu_frequency",
             "cpu_percent",
+            "gpu_percent",
+            "gpu_memory_total",
+            "gpu_memory_used",
+            "gpu_memory_percent",
             "temp_c",
             "temp_f",
             "disk_free",
@@ -90,28 +107,41 @@ impl Namespace for Client {
         match token {
             TokenType::CpuFrequency => Some(Arc::new(data.cpu_frequency())),
             TokenType::CpuPercent => Some(Arc::new(data.cpu_percent())),
+
             TokenType::MemoryFree => None,
             TokenType::MemoryAvailable => None,
             TokenType::MemoryTotal => None,
             TokenType::MemoryUsed => None,
             TokenType::MemoryPercent => None,
+
             TokenType::SwapFree => None,
             TokenType::SwapTotal => None,
             TokenType::SwapUsed => None,
             TokenType::SwapPercent => None,
+
+            TokenType::GpuPercent => Some(Arc::new(data.gpu_percent())),
+            TokenType::GpuMemoryFree => Some(Arc::new(data.gpu_memory_free())),
+            TokenType::GpuMemoryTotal => Some(Arc::new(data.gpu_memory_total())),
+            TokenType::GpuMemoryUsed => Some(Arc::new(data.gpu_memory_used())),
+            TokenType::GpuMemoryPercent => Some(Arc::new(data.gpu_memory_percent())),
+
             TokenType::TempC => Some(Arc::new(data.temp_c())),
             TokenType::TempF => Some(Arc::new(data.temp_f())),
+
             TokenType::DiskFree => Some(Arc::new(data.disk_free())),
             TokenType::DiskTotal => Some(Arc::new(data.disk_total())),
             TokenType::DiskUsed => Some(Arc::new(data.disk_used())),
             TokenType::DiskPercent => Some(Arc::new(data.disk_percent())),
             TokenType::DiskRead => Some(Arc::new(data.disk_read())),
             TokenType::DiskWrite => Some(Arc::new(data.disk_write())),
+
             TokenType::NetDown => Some(Arc::new(data.net_down())),
             TokenType::NetUp => Some(Arc::new(data.net_up())),
+
             TokenType::LoadAverage1 => None,
             TokenType::LoadAverage5 => None,
             TokenType::LoadAverage15 => None,
+
             TokenType::Uptime => None,
         }
     }
