@@ -1,8 +1,7 @@
-use crate::clients::{Client, Clients};
-use crate::spawn;
+use super::{Client, Clients};
+use crate::lua::LocalTaskState;
 use mlua::{Error, Function, MetaMethod, UserData, UserDataMethods, Value};
 use std::sync::{Arc, Mutex};
-use tokio::task::JoinHandle;
 use tracing::error;
 
 /// Lua handle to the client registry, exposed as `ironbar.clients`.
@@ -82,7 +81,7 @@ where
         methods.add_method("subscribe", |_, client, func: Function| {
             let mut rx = client.0.subscribe();
 
-            let handle = spawn(async move {
+            let state = LocalTaskState::spawn(async move {
                 while let Ok(ev) = rx.recv().await {
                     if let Err(err) = func.call_async::<()>(ev).await {
                         error!("Error calling Lua function: {err}");
@@ -90,7 +89,7 @@ where
                 }
             });
 
-            Ok(LuaSubscription(handle))
+            Ok(SubscriptionHandle(state))
         });
 
         C::add_lua_methods(methods);
@@ -98,10 +97,9 @@ where
 }
 
 /// Handle to a client subscription created from Lua.
-#[allow(dead_code)] // unused if no registry client features are enabled
-struct LuaSubscription(JoinHandle<()>);
+struct SubscriptionHandle(Arc<LocalTaskState>);
 
-impl UserData for LuaSubscription {
+impl UserData for SubscriptionHandle {
     fn add_methods<M: UserDataMethods<Self>>(methods: &mut M) {
         methods.add_method("unsubscribe", |_, this, ()| {
             this.0.abort();

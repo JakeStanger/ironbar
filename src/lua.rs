@@ -1,19 +1,21 @@
-use mlua::{Error, IntoLua, Lua, UserData, UserDataFields, UserDataMethods, Value};
-use std::path::Path;
-use std::sync::Mutex;
-use std::time::{SystemTime, UNIX_EPOCH};
-use std::{ops::Deref, sync::Arc};
-use tracing::{debug, error, info, warn};
-
 use crate::clients::Clients;
 use crate::clients::lua::LuaClients;
 use crate::ironvar::{Namespace, VariableManager, WritableNamespace};
-use crate::{Ironbar, await_sync, spawn};
+use crate::{Ironbar, await_sync};
+use mlua::{Error, IntoLua, Lua, UserData, UserDataFields, UserDataMethods, Value};
+use std::path::{Path, PathBuf};
+use std::sync::Mutex;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::time::{SystemTime, UNIX_EPOCH};
+use std::{ops::Deref, sync::Arc};
+use tokio::sync::Notify;
+use tracing::{debug, error, info, warn};
 
 /// Wrapper around Lua instance
 /// to create a singleton and handle initialisation.
 #[derive(Debug)]
 pub struct LuaEngine {
+    config_dir: PathBuf,
     lua: Lua,
 }
 
@@ -29,21 +31,52 @@ impl LuaEngine {
             error!("{err:?}");
         }
 
-        let user_init = config_dir.join("init.lua");
-        if user_init.exists() {
-            debug!("loading user init script");
-
-            if let Err(err) = await_sync(async { lua.load(user_init).exec_async().await }) {
-                error!("{err:?}");
-            }
-        }
-
-        debug!("loading internal init script");
-        if let Err(err) = lua.load(include_str!("../lua/init.lua")).exec() {
+        debug!("loading gtk4 lgi overrides");
+        if let Err(err) = lua
+            .load(include_str!("../lua/gtk4_overrides.lua"))
+            .set_name("ironbar:gtk4_overrides")
+            .exec()
+        {
             error!("{err:?}");
         }
 
-        Self { lua }
+        debug!("loading internal init script");
+        if let Err(err) = lua
+            .load(include_str!("../lua/init.lua"))
+            .set_name("ironbar:init")
+            .exec()
+        {
+            error!("{err:?}");
+        }
+
+        debug!("loading api");
+        if let Err(err) = lua
+            .load(include_str!("../lua/api.lua"))
+            .set_name("ironbar:api")
+            .exec()
+        {
+            error!("{err:?}");
+        }
+
+        Self {
+            lua,
+            config_dir: config_dir.to_path_buf(),
+        }
+    }
+
+    /// Loads the GTK bindings and runs the user's `init.lua`.
+    ///
+    /// This must be called on the main thread,
+    /// after the application has activated.
+    pub fn gtk_init(&self) {
+        let user_init = self.config_dir.join("init.lua");
+        if user_init.exists() {
+            debug!("loading user init script");
+
+            if let Err(err) = await_sync(async { self.lua.load(user_init).exec_async().await }) {
+                error!("{err}");
+            }
+        }
     }
 }
 
@@ -185,13 +218,13 @@ impl UserData for IronbarUserData {
             let thread = lua.create_thread(func)?;
             let fut = thread.into_async::<()>(())?;
 
-            let handle = spawn(async move {
+            let state = LocalTaskState::spawn(async move {
                 if let Err(err) = fut.await {
                     error!("lua task failed: {err}");
                 }
             });
 
-            Ok(LuaJoinHandle(handle))
+            Ok(LocalJoinHandle(state))
         });
 
         methods.add_async_function("sleep", |_, ms: f64| async move {
@@ -201,9 +234,55 @@ impl UserData for IronbarUserData {
     }
 }
 
-struct LuaJoinHandle(tokio::task::JoinHandle<()>);
+/// Shared state between a task spawned on the glib main context
+/// and its Lua handle.
+#[derive(Default)]
+pub struct LocalTaskState {
+    finished: AtomicBool,
+    abort: Notify,
+}
 
-impl UserData for LuaJoinHandle {
+impl LocalTaskState {
+    /// Spawns `fut` on the glib main context,
+    /// returning thread-safe state which can be used to abort it.
+    ///
+    /// The glib handle is `!Send`, so it is detached
+    /// and Tokio primitives are used to emulate it instead.
+    pub fn spawn(fut: impl Future<Output = ()> + 'static) -> Arc<Self> {
+        let state = Arc::new(Self::default());
+
+        glib::spawn_future_local({
+            let state = state.clone();
+            async move {
+                tokio::select! {
+                    () = fut => {},
+                    () = state.abort.notified() => {}
+                }
+
+                state.finished.store(true, Ordering::Release);
+            }
+        });
+
+        state
+    }
+
+    /// Aborts the task.
+    pub fn abort(&self) {
+        // `notify_one` stores a permit,
+        // so this works even if the task has not been polled yet.
+        self.abort.notify_one();
+    }
+
+    /// Whether the task has completed or been aborted.
+    pub fn is_finished(&self) -> bool {
+        self.finished.load(Ordering::Acquire)
+    }
+}
+
+/// Thread-safe handle to a task spawned on the glib main context.
+pub struct LocalJoinHandle(Arc<LocalTaskState>);
+
+impl UserData for LocalJoinHandle {
     fn add_methods<M: UserDataMethods<Self>>(methods: &mut M) {
         methods.add_method("abort", |_, this, ()| {
             this.0.abort();
