@@ -48,7 +48,7 @@ where
         + ToplevelManagerHandler
         + ToplevelHandleHandler
         + 'static,
-    V: ToplevelHandleDataExt + Default + 'static + Send + Sync,
+    V: ToplevelHandleDataExt + Default + Send + Sync + 'static,
 {
     event_created_child!(D, ZwlrForeignToplevelManagerV1, [
         0 => (ZwlrForeignToplevelHandleV1, V::default())
