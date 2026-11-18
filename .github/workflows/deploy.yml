@@ -55,32 +55,3 @@ jobs:
         uses: katyo/publish-crates@v1
         with:
           registry-token: ${{ secrets.CARGO_REGISTRY_TOKEN }}
-
-
-  publish-schema:
-    name: 'Publish Schema'
-    runs-on: ubuntu-latest
-    container: ghcr.io/jakestanger/ironbar-build:master
-
-    steps:
-      - uses: actions/checkout@v3
-
-      - uses: Swatinem/rust-cache@v2
-        name: Cache dependencies
-
-      - name: Ensure target folder
-        run: mkdir -p target
-
-      - name: Build schema
-        run: cargo run --features extras -- --print-schema > target/schema-${{ github.ref_name }}.json
-
-      - name: Copy file via SSH
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: ${{ secrets.SSH_HOST }}
-          port: ${{ secrets.SSH_PORT }}
-          username: ${{ secrets.SSH_USERNAME }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          source: "target/schema-${{ github.ref_name }}.json"
-          target: /storage/Public/github/ironbar
-          strip_components: 1
