@@ -7,6 +7,8 @@ use tracing::debug;
 
 #[cfg(feature = "hyprland")]
 pub mod hyprland;
+#[cfg(feature = "mangowm")]
+pub mod mangowm;
 #[cfg(feature = "niri")]
 pub mod niri;
 #[cfg(feature = "sway")]
@@ -31,6 +33,8 @@ pub enum Compositor {
     Hyprland,
     #[cfg(feature = "niri")]
     Niri,
+    #[cfg(feature = "mangowm")]
+    MangoWm,
     Unsupported,
 }
 
@@ -46,6 +50,8 @@ impl Display for Compositor {
                 Self::Hyprland => "Hyprland",
                 #[cfg(feature = "workspaces+niri")]
                 Self::Niri => "Niri",
+                #[cfg(feature = "workspaces+mangowm")]
+                Self::MangoWm => "MangoWm",
                 Self::Unsupported => "Unsupported",
             }
         )
@@ -53,8 +59,6 @@ impl Display for Compositor {
 }
 
 impl Compositor {
-    /// Attempts to get the current compositor.
-    /// This is done by checking system env vars.
     fn get_current() -> Self {
         if std::env::var("SWAYSOCK").is_ok() {
             cfg_select! {
@@ -70,6 +74,11 @@ impl Compositor {
             cfg_select! {
                 feature = "niri" => Self::Niri,
                 _ => {tracing::error!("Not compiled with Niri support"); Self::Unsupported }
+            }
+        } else if std::env::var("MANGO_INSTANCE_SIGNATURE").is_ok() {
+            cfg_if! {
+                if #[cfg(feature = "mangowm")] { Self::MangoWm }
+                else { tracing::error!("Not compiled with MangoWm support"); Self::Unsupported }
             }
         } else {
             Self::Unsupported
@@ -114,8 +123,6 @@ impl Compositor {
         }
     }
 
-    /// Creates a new instance of
-    /// the workspace client for the current compositor.
     #[cfg(feature = "workspaces")]
     pub fn create_workspace_client(
         clients: &mut super::Clients,
@@ -129,9 +136,11 @@ impl Compositor {
             Self::Hyprland => Ok(clients.hyprland()),
             #[cfg(feature = "workspaces+niri")]
             Self::Niri => Ok(Arc::new(niri::Client::new())),
+            #[cfg(feature = "workspaces+mangowm")]
+            Self::MangoWm => Ok(Arc::new(mangowm::Client::new())),
             Self::Unsupported => Err(Error::Unsupported(
                 "workspaces",
-                &["sway", "hyprland", "niri"],
+                &["sway", "hyprland", "niri", "mangowm"],
             )),
             #[allow(unreachable_patterns)]
             _ => Err(Error::Disabled("workspaces")),
@@ -141,20 +150,13 @@ impl Compositor {
 
 #[derive(Debug, Clone)]
 pub struct Workspace {
-    /// Unique identifier
     pub id: i64,
-    /// The workspace index (e.g. for sorting)
     pub index: i64,
-    /// Workspace friendly name
     pub name: String,
-    /// Name of the monitor (output) the workspace is located on
     pub monitor: String,
-    /// How visible the workspace is
     pub visibility: Visibility,
 }
 
-/// Indicates workspace visibility.
-/// Visible workspaces have a boolean flag to indicate if they are also focused.
 #[derive(Debug, Copy, Clone)]
 pub enum Visibility {
     Visible { focused: bool },
@@ -190,13 +192,10 @@ pub struct KeyboardLayoutUpdate(pub String);
 #[derive(Debug, Clone)]
 #[cfg(feature = "workspaces")]
 pub enum WorkspaceUpdate {
-    /// Provides an initial list of workspaces.
-    /// This is re-sent to all subscribers when a new subscription is created.
     Init(Vec<Workspace>),
     Add(Workspace),
     Remove(i64),
     Move(Workspace),
-    /// Declares focus moved from the old workspace to the new.
     Focus {
         old: Option<Workspace>,
         new: Workspace,
@@ -207,34 +206,25 @@ pub enum WorkspaceUpdate {
         name: String,
     },
 
-    /// The urgent state of a node changed.
     Urgent {
         id: i64,
         urgent: bool,
     },
 
-    /// An update was triggered by the compositor but this was not mapped by Ironbar.
-    ///
-    /// This is purely used for ergonomics within the compositor clients
-    /// and should be ignored by consumers.
     Unknown,
 }
 
 #[derive(Clone, Debug)]
 #[cfg(feature = "bindmode")]
 pub struct BindModeUpdate {
-    /// The binding mode that became active.
     pub name: String,
-    /// Whether the mode should be parsed as pango markup.
     pub pango_markup: bool,
 }
 
 #[cfg(feature = "workspaces")]
 pub trait WorkspaceClient: Debug + Send + Sync {
-    /// Requests the workspace with this id is focused.
     fn focus(&self, id: i64);
 
-    /// Creates a new to workspace event receiver.
     fn subscribe(&self) -> broadcast::Receiver<WorkspaceUpdate>;
 }
 
@@ -243,10 +233,8 @@ register_fallible_client!(dyn WorkspaceClient, workspaces);
 
 #[cfg(feature = "keyboard")]
 pub trait KeyboardLayoutClient: Debug + Send + Sync {
-    /// Switches to the next layout.
     fn set_next_active(&self);
 
-    /// Creates a new to keyboard layout event receiver.
     fn subscribe(&self) -> broadcast::Receiver<KeyboardLayoutUpdate>;
 }
 
@@ -255,7 +243,6 @@ register_fallible_client!(dyn KeyboardLayoutClient, keyboard_layout);
 
 #[cfg(feature = "bindmode")]
 pub trait BindModeClient: Debug + Send + Sync {
-    /// Add a callback for bindmode updates.
     fn subscribe(&self) -> Result<broadcast::Receiver<BindModeUpdate>>;
 }
 
