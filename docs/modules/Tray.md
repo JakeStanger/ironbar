@@ -12,13 +12,32 @@ Displays a fully interactive icon tray using the KDE `libappindicator` and `com.
 | `icon_size`              | `integer`                                                  | `16`                    | Size in pixels to display tray icons as.                                                                                                                            |
 | `prefer_theme_icons`     | `bool`                                                     | `true`                  | Requests that icons from the theme be used over the item-provided item. Most items only provide one or the other so this will have no effect in most circumstances. |
 | `icon_order`                  | `string[]`                                                 | `[]`                    | Order of tray icons by id. The match is case insensitive and each entry must only be contained in the id received by the bar. Any icon that does not match will be added to the left or on top depending on orientation.|
-
 | `on_click_left`          | `string`                                                   | `'default'`             | Action to perform on left-click. See [Click Actions](#click-actions) below.                                                                                         |
 | `on_click_right`         | `string`                                                   | `'menu'`                | Action to perform on right-click. See [Click Actions](#click-actions) below.                                                                                        |
 | `on_click_middle`        | `string`                                                   | `'none'`                | Action to perform on middle-click. See [Click Actions](#click-actions) below.                                                                                       |
 | `on_click_left_double`   | `string`                                                   | `'none'`                | Action to perform on double-left-click. See [Click Actions](#click-actions) below.                                                                                  |
 | `on_click_right_double`  | `string`                                                   | `'none'`                | Action to perform on double-right-click. See [Click Actions](#click-actions) below.                                                                                 |
 | `on_click_middle_double` | `string`                                                   | `'none'`                | Action to perform on double-middle-click. See [Click Actions](#click-actions) below.                                                                                |
+
+### Icon IDs
+
+The `icon_order` option requires a list of icon IDs, which may not be immediately obvious.
+
+These can be queried using `ironbar var list tray`, assuming Ironbar is running with at least one tray module added.
+
+Some common application IDs:
+
+  - Element: `Element_status_icon_1`
+  - OBS: `obs`
+  - Proton Mail: `Proton Mail Bridge`
+  - Proton VPN: `proton.vpn.app.gtk`
+  - Discord: `discord_status_icon_1`
+  - Vesktop: `vesktop_status_icon_1`
+  - Nextcloud: `Nextcloud`
+  - KeePassXC: `KeePassXC`
+  - Steam: `steam`
+  - Tidal: `tidal-hifi_status_icon_1`
+
 
 ### Click Actions
 
@@ -114,25 +133,6 @@ end:
   }]
 }
 ```
-
-**Icon IDs**
-
-The `icon_order` option requires a list of icon IDs, which may not be immediately obvious.
-
-These can be queried using `ironbar var list tray`, assuming Ironbar is running with at least one tray module added.
-
-Some common application IDs:
-
-  - Element: `Element_status_icon_1`
-  - OBS: `obs`
-  - Proton Mail: `Proton Mail Bridge`
-  - Proton VPN: `proton.vpn.app.gtk`
-  - Discord: `discord_status_icon_1`
-  - Vesktop: `vesktop_status_icon_1`
-  - Nextcloud: `Nextcloud`
-  - KeePassXC: `KeePassXC`
-  - Steam: `steam`
-  - Tidal: `tidal-hifi_status_icon_1`
 
 </details>
 
