@@ -4,6 +4,8 @@ on:
   workflow_dispatch:
   push:
     branches: [ "master" ]
+    tags:
+      - v[0-9]+.[0-9]+.[0-9]+
     paths:
       - 'src/**/*'
       - 'Cargo.*'
@@ -21,7 +23,10 @@ jobs:
     container: ghcr.io/jakestanger/ironbar-build:master
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v7
+
+      - name: Install cURL
+        run: apt-get update && apt-get install --assume-yes curl
 
       - uses: Swatinem/rust-cache@v2
         name: Cache dependencies
@@ -32,13 +37,22 @@ jobs:
       - name: Print schema
         run: cargo run -- --print-schema > target/schema.json
 
-      - name: Copy file via SSH
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: ${{ secrets.SSH_HOST }}
-          port: ${{ secrets.SSH_PORT }}
-          username: ${{ secrets.SSH_USERNAME }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          source: "target/schema.json"
-          target: /storage/Public/github/ironbar
-          strip_components: 1
+      - name: Upload schema to bucket
+        env:
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+        run: |
+          if [ "$GITHUB_REF_TYPE" = "tag" ]; then
+            filename="schema-${GITHUB_REF_NAME}"
+          else
+            filename="schema"
+          fi
+          
+          curl --fail-with-body -sS \
+            --user "${R2_ACCESS_KEY_ID}:${R2_SECRET_ACCESS_KEY}" \
+            --aws-sigv4 "aws:amz:auto:s3" \
+            -H "x-amz-content-sha256: UNSIGNED-PAYLOAD" \
+            -H "Content-Type: application/json" \
+            -T target/schema.json \
+            "https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com/ironbar/${filename}.json"
