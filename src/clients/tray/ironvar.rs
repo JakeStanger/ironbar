@@ -11,7 +11,7 @@ struct App {
     status: StatusNotifierItem,
 }
 
-#[cfg(feature = "ipc")]
+#[cfg(any(feature = "ipc", feature = "lua"))]
 impl crate::ironvar::Namespace for App {
     fn get(&self, key: &str) -> Option<String> {
         match key {
@@ -34,7 +34,7 @@ impl crate::ironvar::Namespace for App {
     }
 }
 
-#[cfg(feature = "ipc")]
+#[cfg(any(feature = "ipc", feature = "lua"))]
 impl crate::ironvar::Namespace for super::Client {
     fn get(&self, _: &str) -> Option<String> {
         None

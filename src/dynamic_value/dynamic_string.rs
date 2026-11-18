@@ -1,5 +1,3 @@
-#[cfg(feature = "ipc")]
-use crate::Ironbar;
 use crate::channels::{AsyncSenderExt, Dependency, MpscReceiverExt};
 use crate::script::{OutputStream, Script};
 use crate::{arc_mut, lock, spawn};
@@ -12,7 +10,7 @@ use tokio::sync::mpsc;
 enum DynamicStringSegment {
     Static(String),
     Script(Script),
-    #[cfg(feature = "ipc")]
+    #[cfg(any(feature = "ipc", feature = "lua"))]
     Variable(Box<str>),
 }
 
@@ -64,7 +62,7 @@ where
                         .await;
                 });
             }
-            #[cfg(feature = "ipc")]
+            #[cfg(any(feature = "ipc", feature = "lua"))]
             DynamicStringSegment::Variable(name) => {
                 let tx = tx.clone();
                 let label_parts = label_parts.clone();
@@ -73,7 +71,7 @@ where
                 lock!(label_parts).push(String::new());
 
                 spawn(async move {
-                    let variable_manager = Ironbar::variable_manager();
+                    let variable_manager = crate::Ironbar::variable_manager();
                     let mut rx = variable_manager.subscribe(name);
 
                     while let Ok(value) = rx.recv().await {
@@ -120,7 +118,7 @@ fn parse_input(input: &str) -> (Vec<DynamicStringSegment>, bool) {
         let (token, skip) = match char_pair {
             Some(['{', '{']) => parse_script(&chars),
             Some(['#', '#']) => (DynamicStringSegment::Static("#".to_string()), 2),
-            #[cfg(feature = "ipc")]
+            #[cfg(any(feature = "ipc", feature = "lua"))]
             Some(['#', _]) => parse_variable(&chars),
             _ => parse_static(&chars),
         };
@@ -151,7 +149,7 @@ fn parse_script(chars: &[char]) -> (DynamicStringSegment, usize) {
     (DynamicStringSegment::Script(script), len)
 }
 
-#[cfg(feature = "ipc")]
+#[cfg(any(feature = "ipc", feature = "lua"))]
 fn parse_variable(chars: &[char]) -> (DynamicStringSegment, usize) {
     const SKIP_HASH: usize = 1;
 

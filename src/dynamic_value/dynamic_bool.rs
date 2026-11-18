@@ -1,5 +1,3 @@
-#[cfg(feature = "ipc")]
-use crate::Ironbar;
 use crate::channels::{AsyncSenderExt, Dependency, MpscReceiverExt};
 use crate::script::Script;
 use crate::spawn;
@@ -13,7 +11,7 @@ pub enum DynamicBool {
     /// Either a script or variable, to be determined.
     Unknown(String),
     Script(Script),
-    #[cfg(feature = "ipc")]
+    #[cfg(any(feature = "ipc", feature = "lua"))]
     Variable(Box<str>),
 }
 
@@ -52,9 +50,9 @@ impl DynamicBool {
                         })
                         .await;
                 }
-                #[cfg(feature = "ipc")]
+                #[cfg(any(feature = "ipc", feature = "lua"))]
                 DynamicBool::Variable(variable) => {
-                    let variable_manager = Ironbar::variable_manager();
+                    let variable_manager = crate::Ironbar::variable_manager();
 
                     let variable_name = variable[1..].into(); // remove hash
                     let mut rx = variable_manager.subscribe(variable_name);
@@ -74,7 +72,7 @@ impl DynamicBool {
 /// i.e should be evaluated to true.
 ///
 /// This loosely follows the common JavaScript cases.
-#[cfg(feature = "ipc")]
+#[cfg(any(feature = "ipc", feature = "lua"))]
 fn is_truthy(string: &str) -> bool {
     !(string.is_empty() || string == "0" || string == "false")
 }

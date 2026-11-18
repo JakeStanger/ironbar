@@ -1,8 +1,7 @@
 use config::FileFormat;
+use ironbar_core::config::ConfigLocation;
 use std::path::{Path, PathBuf};
 use tracing::error;
-
-use super::ConfigLocation;
 
 #[derive(Debug, Clone)]
 pub enum Builtin {

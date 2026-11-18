@@ -1,6 +1,7 @@
 use proc_macro::TokenStream;
-use syn::{parse_macro_input, Error, DeriveInput};
+use syn::{DeriveInput, Error, parse_macro_input};
 
+mod enum_list;
 mod hot_reload;
 
 /// Derive macro specifically for the `BarConfig` struct.
@@ -13,6 +14,15 @@ pub fn derive_hot_reload(item: TokenStream) -> TokenStream {
     let input = parse_macro_input!(item as DeriveInput);
 
     hot_reload::parse_diff_struct(input)
+        .unwrap_or_else(Error::into_compile_error)
+        .into()
+}
+
+#[proc_macro_derive(EnumList)]
+pub fn derive_enum_list(item: TokenStream) -> TokenStream {
+    let input = parse_macro_input!(item as DeriveInput);
+
+    enum_list::parse_enum_list(input)
         .unwrap_or_else(Error::into_compile_error)
         .into()
 }

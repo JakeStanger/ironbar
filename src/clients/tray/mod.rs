@@ -1,4 +1,4 @@
-#[cfg(feature = "ipc")]
+#[cfg(any(feature = "ipc", feature = "lua"))]
 mod ironvar;
 
 use super::ClientResult;

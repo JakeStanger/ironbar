@@ -36,10 +36,7 @@ macro_rules! module_impl {
 /// ```
 #[macro_export]
 macro_rules! lock {
-    ($mutex:expr) => {{
-        // tracing::trace!("Locking {}", std::stringify!($mutex));
-        $mutex.lock().expect($crate::error::ERR_MUTEX_LOCK)
-    }};
+    ($mutex:expr) => {{ $mutex.lock().expect(::ironbar_core::error::ERR_MUTEX_LOCK) }};
 }
 
 /// Gets a read lock on a `RwLock`.
@@ -53,7 +50,7 @@ macro_rules! lock {
 #[macro_export]
 macro_rules! read_lock {
     ($rwlock:expr) => {
-        $rwlock.read().expect($crate::error::ERR_READ_LOCK)
+        $rwlock.read().expect(::ironbar_core::error::ERR_READ_LOCK)
     };
 }
 
@@ -68,7 +65,9 @@ macro_rules! read_lock {
 #[macro_export]
 macro_rules! write_lock {
     ($rwlock:expr) => {
-        $rwlock.write().expect($crate::error::ERR_WRITE_LOCK)
+        $rwlock
+            .write()
+            .expect(::ironbar_core::error::ERR_WRITE_LOCK)
     };
 }
 

@@ -2,8 +2,8 @@ use super::manager::DataControlDeviceManagerState;
 use super::offer::{
     DataControlOfferData, DataControlOfferDataExt, DataControlOfferHandler, SelectionOffer,
 };
-use crate::error::ERR_WAYLAND_DATA;
 use crate::lock;
+use ironbar_core::error::ERR_WAYLAND_DATA;
 use std::sync::{Arc, Mutex};
 use tracing::warn;
 use wayland_client::{Connection, Dispatch, Proxy, QueueHandle, event_created_child};
