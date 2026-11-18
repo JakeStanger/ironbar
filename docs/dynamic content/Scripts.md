@@ -62,41 +62,6 @@ Scripts can be embedded in these cases using `{{double braces}}` and the shortha
 
 An object consisting of the `cmd` key and optionally the `mode` and/or `interval` keys.
 
-<details>
-<summary>JSON</summary>
-
-```json
-{
-  "mode": "poll",
-  "interval": 5000,
-  "cmd": "uptime -p | cut -d ' ' -f2-"
-}
-```
-</details>
-
-<details>
-<summary>YAML</summary>
-
-```yaml
-mode: poll
-interval: 5000
-cmd: "uptime -p | cut -d ' ' -f2-"
-```
-</details>
-
-<details>
-<summary>TOML</summary>
-
-```toml
-mode = "poll"
-interval = 5000
-cmd = "uptime -p | cut -d ' ' -f2-"
-```
-</details>
-
-<details>
-<summary>Corn</summary>
-
 ```corn
 {
   mode = "poll"
@@ -104,4 +69,3 @@ cmd = "uptime -p | cut -d ' ' -f2-"
   cmd = "uptime -p | cut -d ' ' -f2-"
 }
 ```
-</details>

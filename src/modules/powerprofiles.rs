@@ -60,7 +60,11 @@ pub struct PowerProfilesModule {
     profiles: Profiles<Box<str>, PowerProfilesProfile>,
 
     /// The format string to use for the widget button label.
-    /// For available tokens, see [below](#formatting-tokens).
+    /// The following tokens can be used:
+    ///
+    /// | Token          | Description                            |
+    /// |----------------|----------------------------------------|
+    /// | `{name}`       | Name of the active profile.            |
     ///
     /// **Default**: `{icon}`
     format: String,
