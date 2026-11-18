@@ -4,6 +4,13 @@
     <content url="file://$MODULE_DIR$">
       <sourceFolder url="file://$MODULE_DIR$/examples" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/ironbar-cli/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/ironbar-core/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/ironbar-ipc-types/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/ironbar-macros/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/ironbar-args/src" isTestSource="false" />
+      <excludeFolder url="file://$MODULE_DIR$/ironbar-ipc-types/target" />
+      <excludeFolder url="file://$MODULE_DIR$/ironbar-macros/target" />
       <excludeFolder url="file://$MODULE_DIR$/target" />
     </content>
     <orderEntry type="inheritedJdk" />
