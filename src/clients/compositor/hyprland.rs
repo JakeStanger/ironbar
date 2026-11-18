@@ -7,13 +7,15 @@ use crate::channels::SyncSenderExt;
 use crate::{arc_mut, lock, spawn_blocking};
 use hyprland::Result;
 use hyprland::ctl::switch_xkb_layout;
-use hyprland::data::{Devices, Workspace as HWorkspace, Workspaces};
+use hyprland::data::{Devices, Workspace as HWorkspace};
 use hyprland::dispatch::{Dispatch, DispatchType, WorkspaceIdentifierWithSpecial};
 use hyprland::event_listener::EventListener;
 use hyprland::prelude::*;
-use hyprland::shared::{HyprDataVec, WorkspaceType};
+use hyprland::shared::WorkspaceType;
 #[cfg(feature = "workspaces+hyprland")]
 use serde::Deserialize;
+#[cfg(feature = "workspaces+hyprland")]
+use serde::de::DeserializeOwned;
 #[cfg(feature = "workspaces+hyprland")]
 use std::io::{Read, Write};
 #[cfg(feature = "workspaces+hyprland")]
@@ -403,7 +405,7 @@ impl Client {
     /// Gets a workspace by name from the server, given the active workspace if known.
     #[cfg(feature = "workspaces+hyprland")]
     fn get_workspace(name: &str, active: Option<&Workspace>) -> Result<Option<Workspace>> {
-        let workspace = Workspaces::get()?.into_iter().find_map(|w| {
+        let workspace = get_workspaces()?.into_iter().find_map(|w| {
             if w.name == name {
                 let vis = Visibility::from((&w, active.map(|w| w.name.as_ref()), &|w| {
                     create_is_visible()(w)
@@ -447,7 +449,7 @@ impl super::WorkspaceClient for Client {
         let active_id = HWorkspace::get_active().ok().map(|active| active.name);
         let is_visible = create_is_visible();
 
-        match Workspaces::get() {
+        match get_workspaces() {
             Ok(workspaces) => {
                 let workspaces = workspaces
                     .into_iter()
@@ -570,10 +572,37 @@ fn get_workspace_name(name: WorkspaceType) -> String {
 ///
 /// This function makes a Hyprland call that allocates so it should be cached when possible,
 /// but it is only valid so long as workspaces do not change so it should not be stored long term
+#[cfg(feature = "workspaces+hyprland")]
 fn create_is_visible() -> impl Fn(&HWorkspace) -> bool {
-    let monitors = hyprland::data::Monitors::get().map_or(Vec::new(), HyprDataVec::to_vec);
+    let monitors: Vec<ActiveMonitorWorkspace> = hyprctl_json("monitors").unwrap_or_default();
 
     move |w| monitors.iter().any(|m| m.active_workspace.id == w.id)
+}
+
+#[cfg(feature = "workspaces+hyprland")]
+#[derive(Deserialize)]
+struct ActiveMonitorWorkspace {
+    #[serde(rename = "activeWorkspace")]
+    active_workspace: hyprland::data::WorkspaceBasic,
+}
+
+#[cfg(feature = "workspaces+hyprland")]
+fn hyprctl_json<T: DeserializeOwned>(command: &str) -> Result<T> {
+    let output = std::process::Command::new("hyprctl")
+        .args(["-j", command])
+        .output()?;
+
+    Ok(serde_json::from_slice(&output.stdout)?)
+}
+
+#[cfg(feature = "workspaces+hyprland")]
+fn get_workspaces() -> Result<Vec<HWorkspace>> {
+    let raw: Vec<serde_json::Value> = hyprctl_json("workspaces")?;
+
+    raw.into_iter()
+        .filter(|workspace| workspace.get("id").is_some())
+        .map(|workspace| Ok(serde_json::from_value(workspace)?))
+        .collect()
 }
 
 impl From<(Visibility, HWorkspace)> for Workspace {
