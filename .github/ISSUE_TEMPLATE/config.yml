@@ -1,0 +1,4 @@
+contact_links:
+  - name: Questions
+    url: https://github.com/JakeStanger/ironbar/discussions
+    about: Ask questions here, not in issues

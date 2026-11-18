@@ -2,7 +2,7 @@
 name: Bug report
 about: Report an issue with the bar not working as expected
 title: ''
-labels: T:Bug
+type: Bug
 assignees: ''
 
 ---
