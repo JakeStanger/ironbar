@@ -31,8 +31,8 @@ A hosted schema is available for the latest Git version ~~and each versioned rel
 JSON and YAML both support schema checking by adding the `$schema` key 
 to the top level of your config.
 
-- master: `https://f.jstanger.dev/github/ironbar/schema.json`
-- release: `https://f.jstanger.dev/github/ironbar/schema-v0.18.0.json` 
+- master: `https://f.ironb.ar/schema.json`
+- release: `https://f.ironb.ar/schema-v0.19.1.json` 
 
 ## 2. Pick your use-case
 
