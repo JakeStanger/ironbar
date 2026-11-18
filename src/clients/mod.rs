@@ -349,7 +349,7 @@ impl Clients {
             client
         };
 
-        #[cfg(feature = "ipc")]
+        #[cfg(any(feature = "ipc", feature = "lua"))]
         Ironbar::variable_manager().register_namespace("tray", client.clone());
 
         Ok(client)
@@ -362,7 +362,7 @@ impl Clients {
         } else {
             let client = await_sync(async { brightness::Client::new().await })?;
 
-            #[cfg(feature = "ipc")]
+            #[cfg(any(feature = "ipc", feature = "lua"))]
             Ironbar::variable_manager().register_namespace("brightness", client.clone());
 
             self.brightness.replace(client.clone());

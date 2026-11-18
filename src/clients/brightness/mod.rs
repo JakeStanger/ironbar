@@ -1,7 +1,7 @@
 mod dbus_keyboard;
 mod dbus_login1;
 mod fs_reader;
-#[cfg(feature = "ipc")]
+#[cfg(any(feature = "ipc", feature = "lua"))]
 mod ironvar;
 
 use super::ClientResult;
