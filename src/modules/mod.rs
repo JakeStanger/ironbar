@@ -64,6 +64,8 @@ pub mod script;
 pub mod sysinfo;
 #[cfg(feature = "tray")]
 pub mod tray;
+#[cfg(feature = "udisks")]
+pub mod udisks;
 #[cfg(feature = "volume")]
 pub mod volume;
 #[cfg(feature = "workspaces")]
