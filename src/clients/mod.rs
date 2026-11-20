@@ -151,8 +151,6 @@ pub struct Clients {
     network_manager: Option<Arc<networkmanager::Client>>,
     #[cfg(feature = "tray")]
     tray: Option<Arc<tray::Client>>,
-    #[cfg(feature = "brightness")]
-    brightness: Option<Arc<brightness::Client>>,
     #[cfg(feature = "volume")]
     volume: Option<Arc<volume::Client>>,
 }
@@ -357,17 +355,11 @@ impl Clients {
 
     #[cfg(feature = "brightness")]
     pub fn brightness(&mut self) -> ClientResult<brightness::Client> {
-        let client = if let Some(client) = &self.brightness {
-            client.clone()
-        } else {
-            let client = await_sync(async { brightness::Client::new().await })?;
+        let client =
+            await_sync(async move { self.get_or_init(None, brightness::Client::new).await })?;
 
-            #[cfg(any(feature = "ipc", feature = "lua"))]
-            Ironbar::variable_manager().register_namespace("brightness", client.clone());
-
-            self.brightness.replace(client.clone());
-            client
-        };
+        #[cfg(any(feature = "ipc", feature = "lua"))]
+        Ironbar::variable_manager().register_namespace("brightness", client.clone());
 
         Ok(client)
     }
