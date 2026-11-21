@@ -51,6 +51,8 @@ use crate::modules::script::ScriptModule;
 use crate::modules::sysinfo::SysInfoModule;
 #[cfg(feature = "tray")]
 use crate::modules::tray::TrayModule;
+#[cfg(feature = "udisks")]
+use crate::modules::udisks::UdisksModule;
 #[cfg(feature = "volume")]
 use crate::modules::volume::VolumeModule;
 #[cfg(feature = "workspaces")]
@@ -162,6 +164,8 @@ pub enum ModuleConfig {
     Volume(Box<VolumeModule>),
     #[cfg(feature = "workspaces")]
     Workspaces(Box<WorkspacesModule>),
+    #[cfg(feature = "udisks")]
+    Udisks(Box<UdisksModule>),
 }
 
 impl ModuleConfig {
@@ -224,6 +228,8 @@ impl ModuleConfig {
             Self::Volume(module) => create!(module),
             #[cfg(feature = "workspaces")]
             Self::Workspaces(module) => create!(module),
+            #[cfg(feature = "udisks")]
+            Self::Udisks(module) => create!(module),
         }
     }
 
@@ -271,6 +277,8 @@ impl ModuleConfig {
             ModuleConfig::Volume(_) => "Volume",
             #[cfg(feature = "workspaces")]
             ModuleConfig::Workspaces(_) => "Workspaces",
+            #[cfg(feature = "udisks")]
+            ModuleConfig::Udisks(_) => "Udisks",
             // in case no modules are compiled
             #[allow(unreachable_patterns)]
             _ => "",

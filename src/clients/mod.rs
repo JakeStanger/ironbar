@@ -29,6 +29,8 @@ pub mod lua;
 pub mod music;
 #[cfg(feature = "network_manager")]
 pub mod networkmanager;
+#[cfg(feature = "notify")]
+pub mod notify;
 pub mod outputs;
 #[cfg(feature = "power_profiles")]
 pub mod powerprofiles;
@@ -40,6 +42,8 @@ pub mod swaync;
 pub mod sysinfo;
 #[cfg(feature = "tray")]
 pub mod tray;
+#[cfg(feature = "udisks")]
+pub mod udisks;
 #[cfg(feature = "battery")]
 pub mod upower;
 #[cfg(feature = "volume")]
@@ -155,6 +159,10 @@ pub struct Clients {
     brightness: Option<Arc<brightness::Client>>,
     #[cfg(feature = "volume")]
     volume: Option<Arc<volume::Client>>,
+    #[cfg(feature = "udisks")]
+    udisks: Option<Arc<udisks::Client>>,
+    #[cfg(feature = "notify")]
+    notify: Option<Arc<notify::Client>>,
 }
 
 pub type ClientResult<T> = color_eyre::Result<Arc<T>>;
@@ -401,6 +409,32 @@ impl Clients {
         let client =
             await_sync(async move { self.get_or_init(None, bluetooth::Client::new).await });
         client.map_err(Into::into)
+    }
+
+    #[cfg(feature = "udisks")]
+    pub fn udisks(&mut self) -> ClientResult<udisks::Client> {
+        let client = if let Some(client) = &self.udisks {
+            client.clone()
+        } else {
+            let client = await_sync(async { udisks::Client::new().await })?;
+            self.udisks.replace(client.clone());
+            client
+        };
+
+        Ok(client)
+    }
+
+    #[cfg(feature = "notify")]
+    pub fn notify(&mut self) -> ClientResult<notify::Client> {
+        let client = if let Some(client) = &self.notify {
+            client.clone()
+        } else {
+            let client = await_sync(async { notify::Client::new().await })?;
+            self.notify.replace(client.clone());
+            client
+        };
+
+        Ok(client)
     }
 }
 
