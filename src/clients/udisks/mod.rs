@@ -8,9 +8,9 @@ use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use tokio::sync::broadcast;
 use tracing::{debug, warn};
-use zbus::zvariant::OwnedObjectPath;
-use zbus::zvariant::OwnedValue;
-use zbus::zvariant::Value;
+use zbus::OwnedObjectPath;
+use zbus::OwnedVariant;
+use zbus::Variant;
 use zbus::{Connection, Result, fdo::ObjectManagerProxy, names::InterfaceName};
 
 #[derive(Debug, Clone)]
@@ -28,8 +28,8 @@ pub enum UdisksEvent {
     Removed(Drive),
 }
 
-fn parse_drive(object_path: &str, props: &HashMap<String, OwnedValue>) -> Drive {
-    let prop_str = |props: &HashMap<String, OwnedValue>, key: &str| -> String {
+fn parse_drive(object_path: &str, props: &HashMap<String, OwnedVariant>) -> Drive {
+    let prop_str = |props: &HashMap<String, OwnedVariant>, key: &str| -> String {
         props
             .get(key)
             .and_then(|v| <&str>::try_from(&**v).ok())
@@ -70,6 +70,7 @@ fn path_to_uri(path: &[u8]) -> String {
 const BLOCK_IFACE: &str = "org.freedesktop.UDisks2.Block";
 const FS_IFACE: &str = "org.freedesktop.UDisks2.Filesystem";
 const DRIVE_IFACE: &str = "org.freedesktop.UDisks2.Drive";
+const DESTINATION: &str = "org.freedesktop.UDisks2";
 
 #[derive(Debug)]
 pub struct Client {
@@ -86,8 +87,7 @@ impl Client {
         let dbus = Box::pin(zbus::Connection::system()).await?;
 
         let object_manager_proxy =
-            ObjectManagerProxy::new(&dbus, "org.freedesktop.UDisks2", "/org/freedesktop/UDisks2")
-                .await?;
+            ObjectManagerProxy::new(&dbus, DESTINATION, "/org/freedesktop/UDisks2").await?;
 
         let interface_name = InterfaceName::from_static_str(DRIVE_IFACE)
             .expect("failed to create zbus InterfaceName");
@@ -183,12 +183,8 @@ impl Client {
 
     /// Object paths of every filesystem block device that belongs to the drive.
     async fn filesystems_of(&self, object_path: &str) -> Result<Vec<OwnedObjectPath>> {
-        let object_manager_proxy = ObjectManagerProxy::new(
-            &self.dbus,
-            "org.freedesktop.UDisks2",
-            "/org/freedesktop/UDisks2",
-        )
-        .await?;
+        let object_manager_proxy =
+            ObjectManagerProxy::new(&self.dbus, DESTINATION, "/org/freedesktop/UDisks2").await?;
 
         let mut found = Vec::new();
 
@@ -200,7 +196,8 @@ impl Client {
             }
 
             let block = BlockProxy::builder(&self.dbus)
-                .path(path.as_str())?
+                .destination(DESTINATION)
+                .path(path.as_str())
                 .build()
                 .await?;
 
@@ -217,14 +214,15 @@ impl Client {
         &self,
         object_path: &str,
     ) -> std::result::Result<(), Box<dyn std::error::Error>> {
-        let yes = Value::from(true);
+        let yes = Variant::from(true);
         let options = || HashMap::from([("auth.no_user_interaction", &yes)]);
 
         let mut uris = Vec::new();
 
         for path in self.filesystems_of(object_path).await? {
             let fs = FilesystemProxy::builder(&self.dbus)
-                .path(path.as_str())?
+                .destination(DESTINATION)
+                .path(path.as_str())
                 .build()
                 .await?;
 
@@ -277,7 +275,8 @@ impl Client {
             }
 
             let block = BlockProxy::builder(&self.dbus)
-                .path(path.as_str())?
+                .destination(DESTINATION)
+                .path(path.as_str())
                 .build()
                 .await?;
 
@@ -286,7 +285,8 @@ impl Client {
             }
 
             let fs = FilesystemProxy::builder(&self.dbus)
-                .path(path.as_str())?
+                .destination(DESTINATION)
+                .path(path.as_str())
                 .build()
                 .await?;
 
@@ -299,14 +299,15 @@ impl Client {
 
             fs.unmount(HashMap::from([(
                 "auth.no_user_interaction",
-                &Value::from(true),
+                &Variant::from(true),
             )]))
             .await?;
         }
 
         // 2. Eject the drive, then power it off if the hardware supports it
         let drive = DriveProxy::builder(&self.dbus)
-            .path(object_path)?
+            .destination(DESTINATION)
+            .path(object_path)
             .build()
             .await?;
 
@@ -315,7 +316,7 @@ impl Client {
             drive
                 .eject(HashMap::from([(
                     "auth.no_user_interaction",
-                    &Value::from(true),
+                    &Variant::from(true),
                 )]))
                 .await?;
         }
@@ -326,7 +327,7 @@ impl Client {
             if let Err(err) = drive
                 .power_off(HashMap::from([(
                     "auth.no_user_interaction",
-                    &Value::from(true),
+                    &Variant::from(true),
                 )]))
                 .await
             {

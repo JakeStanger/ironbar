@@ -170,7 +170,7 @@ impl Module<Button> for UdisksModule {
                     UIEvent::Eject(drive) => {
                         if client.eject(&drive.object_path).await.is_ok() {
                             let summary = format!(
-                                "The '{}' device can now be safely reemoveed from the computer.",
+                                "The '{}' device can now be safely removed from the computer.",
                                 drive.model
                             );
                             let _ = notify_client
