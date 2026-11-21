@@ -31,9 +31,7 @@ pub trait Drive {
 
     /// Configuration property
     #[zbus(property)]
-    fn configuration(
-        &self,
-    ) -> zbus::Result<std::collections::HashMap<String, zbus::OwnedVariant>>;
+    fn configuration(&self) -> zbus::Result<std::collections::HashMap<String, zbus::OwnedVariant>>;
 
     /// ConnectionBus property
     #[zbus(property)]
@@ -218,10 +216,7 @@ pub trait Block {
     /// AddConfigurationItem method
     fn add_configuration_item(
         &self,
-        item: &(
-            &str,
-            std::collections::HashMap<&str, &zbus::Variant<'_>>,
-        ),
+        item: &(&str, std::collections::HashMap<&str, &zbus::Variant<'_>>),
         options: std::collections::HashMap<&str, &zbus::Variant<'_>>,
     ) -> zbus::Result<()>;
 
@@ -271,10 +266,7 @@ pub trait Block {
     /// RemoveConfigurationItem method
     fn remove_configuration_item(
         &self,
-        item: &(
-            &str,
-            std::collections::HashMap<&str, &zbus::Variant<'_>>,
-        ),
+        item: &(&str, std::collections::HashMap<&str, &zbus::Variant<'_>>),
         options: std::collections::HashMap<&str, &zbus::Variant<'_>>,
     ) -> zbus::Result<()>;
 
@@ -294,14 +286,8 @@ pub trait Block {
     /// UpdateConfigurationItem method
     fn update_configuration_item(
         &self,
-        old_item: &(
-            &str,
-            std::collections::HashMap<&str, &zbus::Variant<'_>>,
-        ),
-        new_item: &(
-            &str,
-            std::collections::HashMap<&str, &zbus::Variant<'_>>,
-        ),
+        old_item: &(&str, std::collections::HashMap<&str, &zbus::Variant<'_>>),
+        new_item: &(&str, std::collections::HashMap<&str, &zbus::Variant<'_>>),
         options: std::collections::HashMap<&str, &zbus::Variant<'_>>,
     ) -> zbus::Result<()>;
 
@@ -438,4 +424,3 @@ pub trait FileManager1 {
         &self,
     ) -> zbus::Result<std::collections::HashMap<String, Vec<String>>>;
 }
-
