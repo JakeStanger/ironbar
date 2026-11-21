@@ -84,8 +84,6 @@ struct BatteryProfile {
     /// | `{time_remaining}`  | The ETA to battery empty or full.                           |
     /// | `{level}`           | The battery charge level name (e.g. "Low", "High", "Full"). |
     /// | `{type}`            | The battery type (e.g. "Battery", "Keyboard", "Mouse").     |
-    ///
-    /// **Default**: `{percentage}%`
     format: String,
 }
 
@@ -94,8 +92,6 @@ struct BatteryProfile {
 #[serde(default)]
 pub struct BatteryModule {
     /// The size to render the icon at, in pixels.
-    ///
-    /// **Default**: `24`
     icon_size: i32,
 
     // -- Common --
@@ -104,13 +100,9 @@ pub struct BatteryModule {
     layout: LayoutConfig,
 
     /// Whether to show the icon.
-    ///
-    /// **Default**: `true`
     show_icon: bool,
 
     /// Whether to show the label.
-    ///
-    /// **Default**: `true`
     show_label: bool,
 
     /// See [profiles](profiles).

@@ -29,18 +29,12 @@ pub struct CairoModule {
     path: PathBuf,
 
     /// The number of milliseconds between each draw call.
-    ///
-    /// **Default**: `200`
     frequency: u64,
 
     /// The canvas width in pixels.
-    ///
-    /// **Default**: `42`
     width: u32,
 
     /// The canvas height in pixels.
-    ///
-    /// **Default**: `42`
     height: u32,
 
     /// See [common options](module-level-options#common-options).

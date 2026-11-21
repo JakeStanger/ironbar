@@ -28,41 +28,30 @@ pub struct CommonConfig {
     /// It is best practise (although not required) to ensure that the value is
     /// globally unique throughout the Ironbar instance
     /// to avoid clashes.
-    ///
-    /// **Default**: `null`
     pub name: Option<String>,
 
     /// Sets one or more CSS classes,
     /// allowing you to target it in CSS using `.class`.
     ///
     /// Unlike [name](#name), the `class` property is not expected to be unique.
-    ///
-    /// **Default**: `null`
     pub class: Option<String>,
 
     /// Shows this text on hover.
     /// Supports embedding scripts between `{{double braces}}`.
     ///
     /// Note that full dynamic string support is not currently supported.
-    ///
-    /// **Default**: `null`
     pub tooltip: Option<String>,
 
     /// Shows the module only if the dynamic boolean evaluates to true.
     ///
     /// This allows for modules to be dynamically shown or hidden
     /// based on custom events.
-    ///
-    /// **Default**: `null`
     pub show_if: Option<DynamicBool>,
 
     /// The transition animation to use when showing/hiding the widget.
     ///
     /// Note this has no effect if `show_if` is not configured.
     ///
-    /// **Valid options**: `slide_start`, `slide_end`, `crossfade`, `none`
-    /// <br>
-    /// **Default**: `slide_start`
     #[cfg_attr(feature = "extras", schemars(extend("default" = "slide_start")))]
     pub transition_type: Option<TransitionType>,
 
@@ -71,15 +60,12 @@ pub struct CommonConfig {
     ///
     /// Note this has no effect if `show_if` is not configured.
     ///
-    /// **Default**: `250`
     #[cfg_attr(feature = "extras", schemars(extend("default" = 250)))]
     pub transition_duration: Option<u32>,
 
     /// A [script](scripts) to run when the module is left-clicked.
     ///
     /// **Supported script types**: `oneshot`.
-    /// <br>
-    /// **Default**: `null`
     ///
     /// # Example
     ///
@@ -91,8 +77,6 @@ pub struct CommonConfig {
     /// A [script](scripts) to run when the module is right-clicked.
     ///
     /// **Supported script types**: `oneshot`.
-    /// <br>
-    /// **Default**: `null`
     /// /// # Example
     ///
     /// ```corn
@@ -103,8 +87,6 @@ pub struct CommonConfig {
     /// A [script](scripts) to run when the module is middle-clicked.
     ///
     /// **Supported script types**: `oneshot`.
-    /// <br>
-    /// **Default**: `null`
     /// # Example
     ///
     /// ```corn
@@ -115,8 +97,6 @@ pub struct CommonConfig {
     /// A [script](scripts) to run when the module is double-left-clicked.
     ///
     /// **Supported script types**: `oneshot`.
-    /// <br>
-    /// **Default**: `null`
     ///
     /// # Example
     ///
@@ -128,8 +108,6 @@ pub struct CommonConfig {
     /// A [script](scripts) to run when the module is double-right-clicked.
     ///
     /// **Supported script types**: `oneshot`.
-    /// <br>
-    /// **Default**: `null`
     ///
     /// # Example
     ///
@@ -141,8 +119,6 @@ pub struct CommonConfig {
     /// A [script](scripts) to run when the module is double-middle-clicked.
     ///
     /// **Supported script types**: `oneshot`.
-    /// <br>
-    /// **Default**: `null`
     ///
     /// # Example
     ///
@@ -154,8 +130,6 @@ pub struct CommonConfig {
     /// A [script](scripts) to run when the module is scrolled up on.
     ///
     /// **Supported script types**: `oneshot`.
-    /// <br>
-    /// **Default**: `null`
     /// # Example
     ///
     /// ```corn
@@ -166,8 +140,6 @@ pub struct CommonConfig {
     /// A [script](scripts) to run when the module is scrolled down on.
     ///
     /// **Supported script types**: `oneshot`.
-    /// <br>
-    /// **Default**: `null`
     /// # Example
     ///
     /// ```corn
@@ -178,15 +150,12 @@ pub struct CommonConfig {
     /// A multiplier from `0.0` - `10.0` to control the speed
     /// of smooth scrolling on trackpad.
     ///
-    /// **Default**: `1.0`
     #[serde(default = "default_smooth_scroll_speed")]
     pub smooth_scroll_speed: f64,
 
     /// A [script](scripts) to run when the cursor begins hovering over the module.
     ///
     /// **Supported script types**: `oneshot`.
-    /// <br>
-    /// **Default**: `null`
     /// # Example
     ///
     /// ```corn
@@ -197,8 +166,6 @@ pub struct CommonConfig {
     /// A [script](scripts) to run when the cursor stops hovering over the module.
     ///
     /// **Supported script types**: `oneshot`.
-    /// <br>
-    /// **Default**: `null`
     /// # Example
     ///
     /// ```corn

@@ -42,8 +42,6 @@ pub struct CustomEntry {
     pub label: String,
 
     /// Name of the image icon to show next to the label.
-    ///
-    /// **Default**: `null`
     pub icon: Option<String>,
 
     /// Shell command to execute when the button is clicked.
@@ -57,21 +55,15 @@ pub struct CustomEntry {
 #[serde(default)]
 pub struct MenuModule {
     /// Items to add to the start of the main menu.
-    ///
-    /// **Default**: `[]`
     pub(super) start: Vec<MenuConfig>,
 
     /// Items to add to the start of the main menu.
     ///
     /// By default, this shows a number of XDG entries
     /// that should cover all common applications.
-    ///
-    /// **Default**: See `examples/menu/default`
     pub(super) center: Vec<MenuConfig>,
 
     /// Items to add to the end of the main menu.
-    ///
-    /// **Default**: `[]`
     pub(super) end: Vec<MenuConfig>,
 
     /// Fixed height of the menu.
@@ -80,8 +72,6 @@ pub struct MenuModule {
     /// a scrollbar will be shown.
     ///
     /// Leave null to resize dynamically.
-    ///
-    /// **Default**: `null`
     pub(super) height: Option<i32>,
 
     /// Fixed width of the menu.
@@ -93,13 +83,9 @@ pub struct MenuModule {
     pub(super) width: Option<i32>,
 
     /// Label to show on the menu button on the bar.
-    ///
-    /// **Default**: `≡`
     pub(super) label: Option<String>,
 
     /// Icon to show on the menu button on the bar.
-    ///
-    /// **Default**: `null`
     pub(super) label_icon: Option<String>,
 
     /// Size of the `label_icon` image.
@@ -109,16 +95,12 @@ pub struct MenuModule {
     pub(super) app_icon_size: i32,
 
     /// Command used to launch applications.
-    ///
-    /// **Default**: `gtk-launch`
     pub launch_command: String,
 
     // -- common --
     /// Truncate options to apply to (sub)menu item labels.
     ///
     /// See [truncate options](module-level-options#truncate-mode).
-    ///
-    /// **Default**: `Auto (end)`
     pub(super) truncate: TruncateMode,
 
     /// See [common options](module-level-options#common-options).

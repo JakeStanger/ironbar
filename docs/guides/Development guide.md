@@ -364,8 +364,7 @@ pub struct ClockModule {
     /// Detail on available tokens can be found here:
     /// <https://docs.rs/chrono/latest/chrono/format/strftime/index.html>
     ///
-    /// **Default**: `%d/%m/%Y %H:%M`
-    format: String,
+        format: String,
     
     // ...
   

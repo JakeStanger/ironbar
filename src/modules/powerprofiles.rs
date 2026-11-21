@@ -65,14 +65,10 @@ pub struct PowerProfilesModule {
     /// | Token          | Description                            |
     /// |----------------|----------------------------------------|
     /// | `{name}`       | Name of the active profile.            |
-    ///
-    /// **Default**: `{icon}`
     format: String,
 
     /// The icon to show on the bar widget button.
     /// Supports [image](images) icons.
-    ///
-    /// **Default**: `Power profile: {name}`
     tooltip: String,
 
     /// See [layout options](module-level-options#layout)

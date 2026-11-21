@@ -111,7 +111,6 @@ pub struct WorkspacesModule {
     /// This can either be an array of workspace names,
     /// or a map of monitor names to arrays of workspace names.
     ///
-    /// **Default**: `{}`
     ///
     /// # Example
     ///
@@ -139,14 +138,11 @@ pub struct WorkspacesModule {
     ///
     /// This may be useful for scratchpad/special workspaces, for example.
     ///
-    /// **Default**: `[]`
     #[serde(default)]
     hidden: Vec<String>,
 
     /// Whether to display workspaces from all monitors.
     /// When false, only shows workspaces on the current monitor.
-    ///
-    /// **Default**: `false`
     all_monitors: bool,
 
     /// The method used for sorting workspaces.
@@ -155,16 +151,11 @@ pub struct WorkspacesModule {
     /// - `label` sorts by displayed value.
     /// - `name` sorts by workspace name.
     ///
-    /// **Valid options**: `added`, `label`, `name`.
-    /// <br>
-    /// **Default**: `label`
     #[serde(default)]
     #[cfg_attr(feature = "extras", schemars(extend("default" = "'label'")))]
     sort: SortOrder,
 
     /// The size to render icons at (image icons only).
-    ///
-    /// **Default**: `32`
     icon_size: i32,
 
     /// The format string for displaying workspaces.
@@ -181,7 +172,6 @@ pub struct WorkspacesModule {
     /// | `{index}`   | The workspace index.                             |
     ///
     ///
-    /// **Default**: `"{label}"`
     #[serde(default)]
     #[cfg_attr(feature = "extras", schemars(extend("default" = "'{label}'")))]
     format: Format,

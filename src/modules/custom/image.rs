@@ -11,13 +11,9 @@ use serde::Deserialize;
 #[serde(default)]
 pub struct ImageWidget {
     /// Widget name.
-    ///
-    /// **Default**: `null`
     name: Option<String>,
 
     /// Widget class name.
-    ///
-    /// **Default**: `null`
     class: Option<String>,
 
     /// Image source.
@@ -29,8 +25,6 @@ pub struct ImageWidget {
 
     /// The width/height of the image.
     /// Aspect ratio is preserved.
-    ///
-    /// **Default**: `32`
     size: i32,
 }
 

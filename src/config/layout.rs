@@ -6,17 +6,10 @@ use serde::Deserialize;
 #[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
 pub struct LayoutConfig {
     /// The orientation to display the widget contents.
-    ///
-    /// **Valid options**: `horizontal`, `vertical`
-    /// <br>
-    /// **Default**: `horizontal`
     orientation: Option<ModuleOrientation>,
 
     /// The justification (alignment) of the widget text shown on the bar.
     ///
-    /// **Valid options**: `left`, `right`, `center`, `fill`
-    /// <br>
-    /// **Default**: `left`
     #[serde(default)]
     pub justify: ModuleJustification,
 }

@@ -6,7 +6,6 @@ use std::time::Duration;
 
 /// Command to control inhibit state.
 ///
-/// **Valid options**: `toggle`, `cycle`
 #[derive(Debug, Clone, Copy, Deserialize, PartialEq, Eq)]
 #[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
 #[serde(rename_all = "lowercase")]
@@ -31,25 +30,15 @@ pub struct InhibitModule {
 
     /// Command to execute on left click.
     ///
-    /// **Valid options**: `toggle`, `cycle`
-    /// <br>
-    /// **Default**: `toggle`
     #[cfg_attr(feature = "extras", schemars(extend("default" = "'toggle'")))]
     pub(super) on_click_left: Option<InhibitCommand>,
 
     /// Command to execute on right click.
     ///
-    /// **Valid options**: `toggle`, `cycle`
-    /// <br>
-    /// **Default**: `cycle`
     #[cfg_attr(feature = "extras", schemars(extend("default" = "'cycle'")))]
     pub(super) on_click_right: Option<InhibitCommand>,
 
     /// Command to execute on middle click.
-    ///
-    /// **Valid options**: `toggle`, `cycle`
-    /// <br>
-    /// **Default**: `null`
     pub(super) on_click_middle: Option<InhibitCommand>,
 
     /// Format string when inhibit is active.
@@ -60,16 +49,12 @@ pub struct InhibitModule {
     /// | Token        | Description       |
     /// |--------------|-------------------|
     /// | `{duration}` | Current duration. |
-    ///
-    /// **Default**: `"☕ {duration}"`
     pub(super) format_on: String,
 
     /// Format string when inhibit is inactive.
     /// `{duration}` token shows selected duration.
     ///
     /// See [format_on](#format_on) for available tokens.
-    ///
-    /// **Default**: `"💤 {duration}"`
     pub(super) format_off: String,
 
     /// See [layout options](module-level-options#layout).

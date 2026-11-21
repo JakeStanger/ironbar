@@ -34,36 +34,21 @@ impl From<ModuleAlignment> for gtk::Align {
 #[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
 pub struct BoxWidget {
     /// Widget name.
-    ///
-    /// **Default**: `null`
     name: Option<String>,
 
     /// Widget class name.
-    ///
-    /// **Default**: `null`
     class: Option<String>,
 
     /// Whether child widgets should be horizontally or vertically added.
-    ///
-    /// **Valid options**: `horizontal`, `vertical`, `h`, `v`
-    /// **Default**: `horizontal`
     orientation: Option<ModuleOrientation>,
 
     /// Horizontal alignment of the box relative to its parent.
-    ///
-    /// **Valid options**: `start`, `center`, `end`, `fill`
-    /// **Default**: `fill`
     halign: Option<ModuleAlignment>,
 
     /// Vertical alignment of the box relative to its parent.
-    ///
-    /// **Valid options**: `start`, `center`, `end`, `fill`
-    /// **Default**: `fill`
     valign: Option<ModuleAlignment>,
 
     /// Modules and widgets to add to this box.
-    ///
-    /// **Default**: `null`
     widgets: Option<Vec<WidgetConfig>>,
 }
 

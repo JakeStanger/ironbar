@@ -32,13 +32,9 @@ use tracing::{debug, error};
 #[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
 pub struct CustomModule {
     /// Modules and widgets to add to the bar container.
-    ///
-    /// **Default**: `[]`
     bar: Vec<WidgetConfig>,
 
     /// Modules and widgets to add to the popup container.
-    ///
-    /// **Default**: `null`
     popup: Option<Vec<WidgetConfig>>,
 
     /// See [common options](module-level-options#common-options).

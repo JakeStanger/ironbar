@@ -53,8 +53,6 @@ pub struct MusicModule {
     /// | `{track}`    | Track number                         |
     /// | `{disc}`     | Disc number                          |
     /// | `{genre}`    | Genre                                |
-    ///
-    /// **Default**: `{title} / {artist}`
     pub(crate) format: String,
 
     /// Player state icons.
@@ -64,15 +62,11 @@ pub struct MusicModule {
 
     /// Whether to show the play/pause status icon
     /// on the bar.
-    ///
-    /// **Default**: `true`
     pub(crate) show_status_icon: bool,
 
     /// Whether to reverse the play/pause status icon shown
     /// on the bar: a pause icon while playing and a play
     /// icon while paused, matching the popup's visible button.
-    ///
-    /// **Default**: `false`
     pub(crate) reverse_status_icon: bool,
 
     /// Size to render the icons at, in pixels (image icons only).
@@ -81,8 +75,6 @@ pub struct MusicModule {
     pub(crate) icon_size: i32,
 
     /// Size to render the album art image at inside the popup, in pixels.
-    ///
-    /// **Default**: `128`
     pub(crate) cover_image_size: i32,
 
     // -- MPD --
@@ -92,8 +84,6 @@ pub struct MusicModule {
     ///
     /// TCP or Unix socket address of the MPD server.
     /// For TCP, this should include the port number.
-    ///
-    /// **Default**: `localhost:6600`
     pub(crate) host: String,
 
     /// :::note
@@ -102,14 +92,10 @@ pub struct MusicModule {
     ///
     /// Path to root of the MPD server's music directory.
     /// This is required for displaying album art.
-    ///
-    /// **Default**: `$HOME/Music`
     pub(crate) music_dir: PathBuf,
 
     // -- Common --
     /// See [truncate options](module-level-options#truncate-mode).
-    ///
-    /// **Default**: `null`
     pub(crate) truncate: Option<TruncateMode>,
 
     /// See [marquee options](module-level-options#marquee-mode).
@@ -117,8 +103,6 @@ pub struct MusicModule {
     pub(crate) marquee: MarqueeMode,
 
     /// See [truncate options](module-level-options#truncate-mode).
-    ///
-    /// **Default**: `null`
     pub(crate) truncate_popup_artist: Option<TruncateMode>,
 
     /// See [marquee options](module-level-options#marquee-mode).
@@ -126,8 +110,6 @@ pub struct MusicModule {
     pub(crate) marquee_popup_artist: MarqueeMode,
 
     /// See [truncate options](module-level-options#truncate-mode).
-    ///
-    /// **Default**: `null`
     pub(crate) truncate_popup_album: Option<TruncateMode>,
 
     /// See [marquee options](module-level-options#marquee-mode).
@@ -135,8 +117,6 @@ pub struct MusicModule {
     pub(crate) marquee_popup_album: MarqueeMode,
 
     /// See [truncate options](module-level-options#truncate-mode).
-    ///
-    /// **Default**: `null`
     pub(crate) truncate_popup_title: Option<TruncateMode>,
 
     /// See [marquee options](module-level-options#marquee-mode).
@@ -183,43 +163,27 @@ impl Default for MusicModule {
 #[serde(default)]
 pub struct Icons {
     /// Icon to display when playing.
-    ///
-    /// **Default**: ``
     pub(crate) play: String,
 
     /// Icon to display when paused.
-    ///
-    /// **Default**: ``
     pub(crate) pause: String,
 
     /// Icon to display for previous button.
-    ///
-    /// **Default**: `󰒮`
     pub(crate) prev: String,
 
     /// Icon to display for next button.
-    ///
-    /// **Default**: `󰒭`
     pub(crate) next: String,
 
     /// Icon to display under volume slider.
-    ///
-    /// **Default**: `󰕾`
     pub(crate) volume: String,
 
     /// Icon to display nex to track title.
-    ///
-    /// **Default**: `󰎈`
     pub(crate) track: String,
 
     /// Icon to display nex to album name.
-    ///
-    /// **Default**: `󰀥`
     pub(crate) album: String,
 
     /// Icon to display nex to artist name.
-    ///
-    /// **Default**: `󰠃`
     pub(crate) artist: String,
 }
 

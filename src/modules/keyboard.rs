@@ -20,8 +20,6 @@ use crate::{lock, module_impl, spawn};
 #[serde(default)]
 pub struct KeyboardModule {
     /// Whether to show capslock indicator.
-    ///
-    /// **Default**: `true`
     show_caps: bool,
 
     /// Whether to show num lock indicator.
@@ -51,8 +49,6 @@ pub struct KeyboardModule {
 
     /// The Wayland seat to attach to.
     /// You almost certainly do not need to change this.
-    ///
-    /// **Default**: `seat0`
     seat: String,
 
     // -- common --
@@ -86,33 +82,21 @@ impl Default for KeyboardModule {
 #[serde(default)]
 struct Icons {
     /// Icon to show when capslock is enabled.
-    ///
-    /// **Default**: `󰪛`
     caps_on: String,
 
     /// Icon to show when capslock is disabled.
-    ///
-    /// **Default**: `""`
     caps_off: String,
 
     /// Icon to show when num lock is enabled.
-    ///
-    /// **Default**: ``
     num_on: String,
 
     /// Icon to show when num lock is disabled.
-    ///
-    /// **Default**: `""`
     num_off: String,
 
     /// Icon to show when scroll lock is enabled.
-    ///
-    /// **Default**: ``
     scroll_on: String,
 
     /// Icon to show when scroll lock is disabled.
-    ///
-    /// **Default**: `""`
     scroll_off: String,
 
     /// Map of icons or labels to show for a particular keyboard layout.
@@ -120,7 +104,6 @@ struct Icons {
     /// If a layout is not present in the map,
     /// it will fall back to using its actual name.
     ///
-    /// **Default**: `{}`
     ///
     /// # Example
     ///

@@ -24,29 +24,19 @@ pub enum MarqueeOnHover {
 pub struct MarqueeMode {
     /// Whether to enable scrolling on long lines of text.
     /// This may not be supported by all modules.
-    ///
-    /// **Default**: `false`
     pub enable: bool,
 
     /// The maximum length of text (roughly, in characters) before it gets truncated and starts scrolling.
-    ///
-    /// **Default**: `null`
     pub max_length: Option<i32>,
 
     /// Scroll speed in pixels per frame.
     /// Higher values scroll faster.
-    ///
-    /// **Default**: `0.5`
     pub scroll_speed: f64,
 
     /// Duration in milliseconds to pause at each loop point.
-    ///
-    /// **Default**: `5000` (5 seconds)
     pub pause_duration: u64,
 
     /// String displayed between the end and beginning of text as it loops.
-    ///
-    /// **Default**: `"    "` (4 spaces)
     pub separator: String,
 
     /// Controls marquee behavior on hover.
@@ -55,8 +45,6 @@ pub struct MarqueeMode {
     /// - `"none"`: Always scroll (default)
     /// - `"pause"`: Pause scrolling on hover
     /// - `"play"`: Only scroll on hover
-    ///
-    /// **Default**: `"none"`
     pub on_hover: MarqueeOnHover,
 }
 

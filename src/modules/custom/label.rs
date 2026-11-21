@@ -12,13 +12,9 @@ use crate::gtk_helpers::IronbarLabelExt;
 #[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
 pub struct LabelWidget {
     /// Widget name.
-    ///
-    /// **Default**: `null`
     name: Option<String>,
 
     /// Widget class name.
-    ///
-    /// **Default**: `null`
     class: Option<String>,
 
     /// Widget text label. Pango markup and embedded scripts are supported.
@@ -33,8 +29,6 @@ pub struct LabelWidget {
     layout: LayoutConfig,
 
     /// See [truncate options](module-level-options#truncate-mode).
-    ///
-    /// **Default**: `null`
     truncate: Option<TruncateMode>,
 }
 

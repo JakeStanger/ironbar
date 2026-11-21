@@ -61,28 +61,18 @@ impl Default for BluetoothModule {
 #[serde(default)]
 pub struct FormatConfig {
     /// Format string to use for the widget button when bluetooth adapter not found.
-    ///
-    /// **Default**: `""`
     pub not_found: String,
 
     /// Format string to use for the widget button when bluetooth adapter is disabled.
-    ///
-    /// **Default**: `" Off"`
     pub disabled: String,
 
     /// Format string to use for the widget button when bluetooth adapter is enabled but no devices are connected.
-    ///
-    /// **Default**: `" On"`
     pub enabled: String,
 
     /// Format string to use for the widget button when bluetooth adapter is enabled and a device is connected.
-    ///
-    /// **Default**: `" {device_alias}"`
     pub connected: String,
 
     /// Format string to use for the widget button when bluetooth adapter is enabled, a device is connected and `{device_battery_percent}` is available.
-    ///
-    /// **Default**: `" {device_alias} • {device_battery_percent}%"`
     pub connected_battery: String,
 }
 
@@ -127,18 +117,12 @@ pub struct PopupConfig {
     /// The maximum height the window can reach before scrolling.
     /// Specify either as `pixels` or `devices`.
     /// Leave blank to allow the popup to grow indefinitely.
-    ///
-    /// **Default**: `Some(SizeLimit::Pixel(330))`
     pub max_height: Option<SizeLimit>,
 
     /// Format string to use for the header of popup window.
-    ///
-    /// **Default**: `" Enable Bluetooth"`
     pub header: String,
 
     /// Format string to use for the message that is displayed when the adapter is not found or disabled.
-    ///
-    /// **Default**: `"{adapter_status}"`
     pub disabled: String,
 
     /// Device box related configuration
@@ -161,28 +145,18 @@ impl Default for PopupConfig {
 #[serde(default)]
 pub struct AdapterStatus {
     /// The value of `{adapter_status}` formatting token when adapter is enabling.
-    ///
-    /// **Default**: `"Enabling Bluetooth..."`
     pub enabling: String,
 
     /// The value of `{adapter_status}` formatting token when adapter is enabled.
-    ///
-    /// **Default**: `"Bluetooth enabled"`
     pub enabled: String,
 
     /// The value of `{adapter_status}` formatting token when adapter is disabling.
-    ///
-    /// **Default**: `"Disabling Bluetooth..."`
     pub disabling: String,
 
     /// The value of `{adapter_status}` formatting token when adapter is disabled.
-    ///
-    /// **Default**: `"Bluetooth disabled"`
     pub disabled: String,
 
     /// The value of `{adapter_status}` formatting token when adapter not found.
-    ///
-    /// **Default**: `"No Bluetooth adapters found"`
     pub not_found: String,
 }
 
@@ -203,23 +177,17 @@ impl Default for AdapterStatus {
 #[serde(default)]
 pub struct DeviceStatus {
     /// The value of `{device_status}` formatting token when device is connecting.
-    ///
-    /// **Default**: `"Connecting..."`
     pub connecting: String,
 
     /// The value of `{device_status}` formatting token when device is connected.
-    ///
-    /// **Default**: `"Connected"`
     pub connected: String,
 
     /// The value of `{device_status}` formatting token when device is disconnecting.
     ///
-    /// **Default**: `"Disconnecting..."`
     pub disconnecting: String,
 
     /// The value of `{device_status}` formatting token when device is disconnected.
     ///
-    /// **Default**: `"Disconnect"`
     pub disconnected: String,
 }
 
@@ -240,22 +208,18 @@ impl Default for DeviceStatus {
 pub struct PopupDeviceConfig {
     /// Format string to use for the header of device box.
     ///
-    /// **Default**: `"{device_alias}"`
     pub header: String,
 
     /// Format string to use for the header of device box when `{device_battery_percent}` is available.
     ///
-    /// **Default**: `"{device_alias}"`
     pub header_battery: String,
 
     /// Format string to use for the footer of device box.
     ///
-    /// **Default**: `"{device_status}"`
     pub footer: String,
 
     /// Format string to use for the footer of device box when `{device_battery_percent}` is available.
     ///
-    /// **Default**: `"{device_status} • Battery {device_battery_percent}%"`
     pub footer_battery: String,
 }
 

@@ -16,23 +16,15 @@ use tracing::{debug, trace};
 #[serde(default)]
 pub struct FocusedModule {
     /// Whether to show icon on the bar.
-    ///
-    /// **Default**: `true`
     show_icon: bool,
     /// Whether to show app name on the bar.
-    ///
-    /// **Default**: `true`
     show_title: bool,
 
     /// Icon size in pixels.
-    ///
-    /// **Default**: `32`
     icon_size: i32,
 
     // -- common --
     /// See [truncate options](module-level-options#truncate-mode).
-    ///
-    /// **Default**: `null`
     truncate: Option<TruncateMode>,
 
     /// See [layout options](module-level-options#layout)

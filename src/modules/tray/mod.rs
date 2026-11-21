@@ -70,9 +70,6 @@ pub enum TrayClickAction {
 pub struct TrayClickHandlers {
     /// Action to perform on left-click.
     ///
-    /// **Valid options**: `menu`, `default`, `secondary`, `none`, or any custom shell command
-    /// <br>
-    /// **Default**: `default` (current behaviour, for backwards compatibility)
     ///
     /// Custom commands support the following placeholders:
     /// - `{name}` - The tray item's identifier/name
@@ -92,38 +89,19 @@ pub struct TrayClickHandlers {
 
     /// Action to perform on right-click.
     ///
-    /// **Valid options**: `menu`, `default`, `secondary`, `none`, or any custom shell command
-    /// <br>
-    /// **Default**: `menu`
     #[cfg_attr(feature = "extras", schemars(extend("default" = "'menu'")))]
     on_click_right: TrayClickAction,
 
     /// Action to perform on middle-click.
-    ///
-    /// **Valid options**: `menu`, `default`, `secondary`, `none`, or any custom shell command
-    /// <br>
-    /// **Default**: `none`
     on_click_middle: TrayClickAction,
 
     /// Action to perform on double-left-click.
-    ///
-    /// **Valid options**: `menu`, `default`, `secondary`, `none`, or any custom shell command
-    /// <br>
-    /// **Default**: `none`
     on_click_left_double: TrayClickAction,
 
     /// Action to perform on double-right-click.
-    ///
-    /// **Valid options**: `menu`, `default`, `secondary`, `none`, or any custom shell command
-    /// <br>
-    /// **Default**: `none`
     on_click_right_double: TrayClickAction,
 
     /// Action to perform on double-middle-click.
-    ///
-    /// **Valid options**: `menu`, `default`, `secondary`, `none`, or any custom shell command
-    /// <br>
-    /// **Default**: `none`
     on_click_middle_double: TrayClickAction,
 }
 
@@ -159,20 +137,13 @@ impl Default for TrayClickAction {
 pub struct TrayModule {
     /// Requests that icons from the theme be used over the item-provided item.
     /// Most items only provide one or the other so this will have no effect in most circumstances.
-    ///
-    /// **Default**: `true`
     prefer_theme_icons: bool,
 
     /// Size in pixels to display the tray icons as.
-    ///
-    /// **Default**: `16`
     icon_size: u32,
 
     /// The direction in which to pack tray icons.
     ///
-    /// **Valid options**: `horizontal`, `vertical`
-    /// <br>
-    /// **Default**: `horizontal` for horizontal bars, `vertical` for vertical bars
     #[cfg_attr(feature = "extras", schemars(extend("default" = "[matches bar orientation]")))]
     direction: Option<ModuleOrientation>,
 
@@ -195,8 +166,6 @@ pub struct TrayModule {
     ///   - KeePassXC: `KeePassXC`
     ///   - Steam: `steam`
     ///   - Tidal: `tidal-hifi_status_icon_1`
-    ///
-    /// **Default**: icons are pre append when received by the bar.
     icon_order: Vec<String>,
 
     /// See [common options](module-level-options#common-options).

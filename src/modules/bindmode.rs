@@ -16,8 +16,6 @@ use tracing::{info, trace};
 pub struct BindmodeModule {
     // -- Common --
     /// See [truncate options](module-level-options#truncate-mode).
-    ///
-    /// **Default**: `null`
     pub truncate: Option<TruncateMode>,
 
     /// See [layout options](module-level-options#layout)

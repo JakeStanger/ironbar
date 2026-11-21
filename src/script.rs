@@ -379,7 +379,6 @@ impl Script {
     ///
     /// This has some overhead,
     /// as the script has to be cloned to the thread.
-    ///
     pub fn run_as_oneshot(&self, args: Option<&[String]>) {
         let script = self.clone();
         let args = args.map(<[String]>::to_vec);

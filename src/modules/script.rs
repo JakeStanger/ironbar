@@ -31,8 +31,6 @@ pub struct ScriptModule {
     mode: ScriptMode,
 
     /// Time in milliseconds between executions.
-    ///
-    /// **Default**: `5000`
     interval: u64,
 
     // -- Common --

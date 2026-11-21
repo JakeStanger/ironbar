@@ -20,27 +20,19 @@ use crate::{build, spawn};
 #[serde(default)]
 pub struct SliderWidget {
     /// Widget name.
-    ///
-    /// **Default**: `null`
     name: Option<String>,
 
     /// Widget class name.
-    ///
-    /// **Default**: `null`
     class: Option<String>,
 
     /// Orientation of the slider.
     ///
-    /// **Valid options**: `horizontal`, `vertical`, `h`, `v`
     /// <br />
-    /// **Default**: `horizontal`
     #[serde(default)]
     orientation: ModuleOrientation,
 
     /// Script to run to get the slider value.
     /// Output must be a valid number.
-    ///
-    /// **Default**: `null`
     value: Option<ScriptInput>,
 
     /// Command to execute when the slider changes.
@@ -48,36 +40,24 @@ pub struct SliderWidget {
     ///
     /// Note that this will provide the floating point value as an argument.
     /// If your input program requires an integer, you will need to round it.
-    ///
-    /// **Default**: `null`
     on_change: Option<String>,
 
     /// Minimum slider value.
-    ///
-    /// **Default**: `0`
     min: f64,
 
     /// Maximum slider value.
-    ///
-    /// **Default**: `100`
     max: f64,
 
     /// If the increment to change when scrolling with the mousewheel.
     /// If left blank, GTK will use the default value,
     /// determined by the current environment.
-    ///
-    /// **Default**: `null`
     step: Option<f64>,
 
     /// The slider length.
     /// GTK will automatically determine the size if left blank.
-    ///
-    /// **Default**: `null`
     length: Option<i32>,
 
     /// Whether to show the value label above the slider.
-    ///
-    /// **Default**: `true`
     show_label: bool,
 }
 

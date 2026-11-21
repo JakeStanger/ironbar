@@ -18,8 +18,6 @@ pub struct LabelModule {
 
     // -- Common --
     /// See [truncate options](module-level-options#truncate-mode).
-    ///
-    /// **Default**: `null`
     truncate: Option<TruncateMode>,
 
     /// See [layout options](module-level-options#layout)

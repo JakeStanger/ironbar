@@ -29,7 +29,6 @@ impl From<EllipsizeMode> for GtkEllipsizeMode {
 ///
 /// The option can be configured in one of two modes.
 ///
-/// **Default**: `Auto (end)`
 ///
 #[derive(Debug, Deserialize, Clone, Copy, PartialEq, Eq)]
 #[serde(untagged)]
@@ -56,10 +55,6 @@ pub enum TruncateMode {
     /// ```corn
     /// { truncate = "start" }
     /// ```
-    ///
-    /// **Valid options**: `start`, `middle`, `end`
-    /// <br>
-    /// **Default**: `end`
     Auto(EllipsizeMode),
 
     /// Length mode defines a fixed point at which to ellipsize.
@@ -78,9 +73,6 @@ pub enum TruncateMode {
     /// ```
     Length {
         /// The location to truncate text from and place the ellipsis.
-        /// **Valid options**: `start`, `middle`, `end`
-        /// <br>
-        /// **Default**: `null`
         mode: EllipsizeMode,
 
         /// The fixed width (in characters) of the widget.
@@ -89,16 +81,12 @@ pub enum TruncateMode {
         /// if it would have otherwise been smaller.
         ///
         /// Leave unset to let GTK automatically handle.
-        ///
-        /// **Default**: `null`
         length: Option<i32>,
 
         /// The maximum number of characters to show
         /// before truncating.
         ///
         /// Leave unset to let GTK automatically handle.
-        ///
-        /// **Default**: `null`
         max_length: Option<i32>,
     },
 }
