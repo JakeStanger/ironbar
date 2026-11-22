@@ -1,13 +1,16 @@
 use crate::config::{CommonConfig, LayoutConfig};
 use chrono::Timelike;
+#[cfg(feature = "extras")]
+use schemars::{JsonSchema, Schema, SchemaGenerator, json_schema};
 use serde::de::Error;
 use serde::{Deserialize, Deserializer};
+#[cfg(feature = "extras")]
+use std::borrow::Cow;
 use std::time::Duration;
 
 /// Command to control inhibit state.
-///
 #[derive(Debug, Clone, Copy, Deserialize, PartialEq, Eq)]
-#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "extras", derive(serde::Serialize, schemars::JsonSchema))]
 #[serde(rename_all = "lowercase")]
 pub enum InhibitCommand {
     /// Toggle inhibit on/off.
@@ -17,7 +20,7 @@ pub enum InhibitCommand {
 }
 
 #[derive(Debug, Deserialize, Clone, PartialEq)]
-#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "extras", derive(serde::Serialize, schemars::JsonSchema))]
 #[serde(default)]
 pub struct InhibitModule {
     /// See [common options](module-level-options#common-options).
@@ -25,17 +28,13 @@ pub struct InhibitModule {
     pub common: Option<CommonConfig>,
 
     /// See [DurationSpec]
-    #[serde(flatten)]
+    #[serde(flatten, skip_serializing)]
     pub(super) duration_spec: DurationSpec,
 
     /// Command to execute on left click.
-    ///
-    #[cfg_attr(feature = "extras", schemars(extend("default" = "'toggle'")))]
     pub(super) on_click_left: Option<InhibitCommand>,
 
     /// Command to execute on right click.
-    ///
-    #[cfg_attr(feature = "extras", schemars(extend("default" = "'cycle'")))]
     pub(super) on_click_right: Option<InhibitCommand>,
 
     /// Command to execute on middle click.
@@ -87,19 +86,14 @@ fn parse_duration(s: &str) -> Result<Duration, String> {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
 pub(super) struct DurationSpec {
     /// List of durations to cycle through.
     /// Use `0` for infinite inhibit. Format: `HH:MM:SS` (e.g., `01:30:00`).
     ///
     /// If `default_duration` is not specified, the first item in `durations` is used.
-    #[cfg_attr(feature = "extras", schemars(with = "Vec<String>"))]
-    #[cfg_attr(feature = "extras", schemars(extend("default" = ["00:30:00", "01:00:00", "01:30:00", "02:00:00", "inf"])))]
     pub(super) durations: Vec<Duration>,
 
     /// Starting duration. See [durations](#durations) above for information.
-    #[cfg_attr(feature = "extras", schemars(with = "String"))]
-    #[cfg_attr(feature = "extras", schemars(extend("default" = "00:30:00")))]
     pub(super) default_duration: Duration,
 }
 
@@ -152,6 +146,40 @@ impl<'de> Deserialize<'de> for DurationSpec {
         Ok(Self {
             durations,
             default_duration,
+        })
+    }
+}
+
+#[cfg(feature = "extras")]
+impl JsonSchema for DurationSpec {
+    fn schema_name() -> Cow<'static, str> {
+        "DurationSpec".into()
+    }
+
+    fn json_schema(_generator: &mut SchemaGenerator) -> Schema {
+        /// Matches the formats accepted by [`parse_duration`].
+        const PATTERN: &str = r"^(0|inf|([01]?\d|2[0-3]):[0-5]?\d:[0-5]?\d)$";
+
+        json_schema!({
+            "type": "object",
+            "properties": {
+                "durations": {
+                    "description": "List of durations to cycle through.\nUse `0` for infinite inhibit. Format: `HH:MM:SS` (e.g., `01:30:00`).\n\nIf `default_duration` is not specified, the first item in `durations` is used.",
+                    "type": "array",
+                    "items": {
+                        "type": "string",
+                        "pattern": PATTERN
+                    },
+                    "minItems": 1,
+                    "default": ["00:30:00", "01:00:00", "01:30:00", "02:00:00", "inf"]
+                },
+                "default_duration": {
+                    "description": "Starting duration. Must be present in `durations`. See [durations](#durations) above for information.",
+                    "type": "string",
+                    "pattern": PATTERN,
+                    "default": "00:30:00"
+                }
+            }
         })
     }
 }

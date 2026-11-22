@@ -19,13 +19,15 @@ use tracing::{debug, error, trace, warn};
 ///
 /// Internally this is treated as a polling script that polls exactly once.
 #[derive(Debug, Deserialize, Clone, PartialEq)]
-#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "extras", derive(serde::Serialize, schemars::JsonSchema))]
 pub struct OneshotScriptInput(String);
 
 #[derive(Debug, Deserialize, Clone, PartialEq)]
 #[serde(untagged)]
-#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "extras", derive(serde::Serialize, schemars::JsonSchema))]
 pub enum ScriptInput {
+    /// # Shorthand
+    ///
     /// A shorthand script input represented as a string.
     ///
     /// Shorthand scripts should be written in the format:
@@ -40,6 +42,8 @@ pub enum ScriptInput {
     /// poll:5000:uptime -p | cut -d ' ' -f2-
     /// ```
     String(String),
+    /// # Longform
+    ///
     /// A longform script input represented as its own object.
     Struct(Script),
 }
@@ -52,7 +56,7 @@ impl From<OneshotScriptInput> for ScriptInput {
 
 #[derive(Debug, Default, Deserialize, Clone, Copy, Eq, PartialEq)]
 #[serde(rename_all = "snake_case")]
-#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "extras", derive(serde::Serialize, schemars::JsonSchema))]
 pub enum ScriptMode {
     #[default]
     Poll,
@@ -102,7 +106,7 @@ impl ScriptMode {
 }
 
 #[derive(Debug, Deserialize, Clone, PartialEq)]
-#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "extras", derive(serde::Serialize, schemars::JsonSchema))]
 #[serde(default)]
 pub struct Script {
     /// The method used to execute the script.

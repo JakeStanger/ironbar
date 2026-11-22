@@ -16,33 +16,25 @@ use crate::image::{IconButton, IconLabel};
 use crate::{lock, module_impl, spawn};
 
 #[derive(Debug, Deserialize, Clone, PartialEq)]
-#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "extras", derive(serde::Serialize, schemars::JsonSchema))]
 #[serde(default)]
 pub struct KeyboardModule {
     /// Whether to show capslock indicator.
     show_caps: bool,
 
     /// Whether to show num lock indicator.
-    ///
-    ///  **Default**: `true`
     show_num: bool,
 
     /// Whether to show scroll lock indicator.
-    ///
-    ///  **Default**: `true`
     show_scroll: bool,
 
     /// Whether to show the current keyboard layout.
-    ///
-    ///  **Default**: `true`
     show_layout: bool,
 
     /// Size to render the icons at, in pixels (image icons only).
-    ///
-    /// **Default** `32`
     icon_size: i32,
 
-    /// Player state icons.
+    /// Keyboard state icons.
     ///
     /// See [icons](#icons).
     icons: Icons,
@@ -78,7 +70,7 @@ impl Default for KeyboardModule {
 }
 
 #[derive(Debug, Deserialize, Clone, PartialEq)]
-#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "extras", derive(serde::Serialize, schemars::JsonSchema))]
 #[serde(default)]
 struct Icons {
     /// Icon to show when capslock is enabled.

@@ -16,7 +16,7 @@ use crate::script::{OutputStream, Script, ScriptInput};
 use crate::{build, spawn};
 
 #[derive(Debug, Deserialize, Clone, PartialEq)]
-#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "extras", derive(serde::Serialize, schemars::JsonSchema))]
 #[serde(default)]
 pub struct SliderWidget {
     /// Widget name.

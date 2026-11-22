@@ -19,7 +19,7 @@ use tokio::sync::mpsc;
 use tracing::{debug, error};
 
 #[derive(Debug, Deserialize, Clone, PartialEq)]
-#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "extras", derive(serde::Serialize, schemars::JsonSchema))]
 #[serde(default)]
 pub struct ClipboardModule {
     /// The icon to show on the bar widget button.
@@ -41,14 +41,12 @@ pub struct ClipboardModule {
     image_max_height: f64,
 
     // -- Common --
-    /// See [truncate options](module-level-options#truncate-mode).
+    /// The truncation options to apply to each entry in the clipboard history.
     truncate: Option<TruncateMode>,
 
-    /// See [layout options](module-level-options#layout)
     #[serde(default, flatten)]
     layout: LayoutConfig,
 
-    /// See [common options](module-level-options#common-options).
     #[serde(flatten)]
     pub common: Option<CommonConfig>,
 

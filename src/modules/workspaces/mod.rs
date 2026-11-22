@@ -22,7 +22,7 @@ use tracing::{debug, trace, warn};
 
 #[derive(Debug, Deserialize, Default, Clone, Copy, Eq, PartialEq)]
 #[serde(rename_all = "snake_case")]
-#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "extras", derive(serde::Serialize, schemars::JsonSchema))]
 pub enum SortOrder {
     /// Shows workspaces in the order they're added.
     Added,
@@ -50,7 +50,7 @@ pub enum SortOrder {
 
 #[derive(Debug, Deserialize, Clone, PartialEq)]
 #[serde(untagged)]
-#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "extras", derive(serde::Serialize, schemars::JsonSchema))]
 pub enum Favorites {
     /// A map of monitor names, where each value is a list of favourites.
     ByMonitor(HashMap<String, Vec<String>>),
@@ -66,14 +66,17 @@ impl Default for Favorites {
 
 #[derive(Debug, Deserialize, Clone, PartialEq, Eq)]
 #[serde(untagged)]
-#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "extras", derive(serde::Serialize, schemars::JsonSchema))]
 pub enum Format {
     /// Format shared by both named and unnamed workspaces.
     String(String),
     /// Allows setting named and unnamed workspace formats individually.
     Pair {
+        /// Named workspaces.
         #[serde(default = "default_format")]
         named: String,
+        /// Unnamed workspaces.
+        /// These are usually numerical.
         #[serde(default = "default_format")]
         unnamed: String,
     },
@@ -95,7 +98,7 @@ impl Format {
 }
 
 #[derive(Debug, Deserialize, Clone, PartialEq)]
-#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "extras", derive(serde::Serialize, schemars::JsonSchema))]
 #[serde(default)]
 pub struct WorkspacesModule {
     /// Map of actual workspace names to custom names.
@@ -137,7 +140,6 @@ pub struct WorkspacesModule {
     /// A list of workspace names to never show.
     ///
     /// This may be useful for scratchpad/special workspaces, for example.
-    ///
     #[serde(default)]
     hidden: Vec<String>,
 
@@ -150,9 +152,7 @@ pub struct WorkspacesModule {
     /// - `added` always appends to the end.
     /// - `label` sorts by displayed value.
     /// - `name` sorts by workspace name.
-    ///
     #[serde(default)]
-    #[cfg_attr(feature = "extras", schemars(extend("default" = "'label'")))]
     sort: SortOrder,
 
     /// The size to render icons at (image icons only).
@@ -170,10 +170,7 @@ pub struct WorkspacesModule {
     /// | `{label}`   | The display label (from `name_map` or the name). |
     /// | `{name}`    | The actual workspace name.                       |
     /// | `{index}`   | The workspace index.                             |
-    ///
-    ///
     #[serde(default)]
-    #[cfg_attr(feature = "extras", schemars(extend("default" = "'{label}'")))]
     format: Format,
 
     // -- Common --

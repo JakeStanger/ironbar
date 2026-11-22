@@ -3,7 +3,7 @@ use serde::Deserialize;
 
 #[derive(Debug, Deserialize, Clone, Copy, Default, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
-#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "extras", derive(serde::Serialize, schemars::JsonSchema))]
 pub enum EllipsizeMode {
     None,
     Start,
@@ -28,12 +28,12 @@ impl From<EllipsizeMode> for GtkEllipsizeMode {
 /// which is defined below.
 ///
 /// The option can be configured in one of two modes.
-///
-///
 #[derive(Debug, Deserialize, Clone, Copy, PartialEq, Eq)]
 #[serde(untagged)]
-#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "extras", derive(serde::Serialize, schemars::JsonSchema))]
 pub enum TruncateMode {
+    /// # Off
+    ///
     /// Do not truncate content.
     ///
     /// Setting this option may cause excessively long content to overflow other widgets,
@@ -43,8 +43,11 @@ pub enum TruncateMode {
     ///
     /// ```corn
     /// { truncate = null }
+    /// ```
     Off,
 
+    /// # Auto
+    ///
     /// Auto mode lets GTK decide when to ellipsize.
     ///
     /// To use this mode, set the truncate option to a string
@@ -57,6 +60,8 @@ pub enum TruncateMode {
     /// ```
     Auto(EllipsizeMode),
 
+    /// # Length
+    ///
     /// Length mode defines a fixed point at which to ellipsize.
     ///
     /// Generally you will want to set only one of `length` or `max_length`,

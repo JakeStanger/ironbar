@@ -6,7 +6,7 @@ use serde::Deserialize;
 
 /// An individual entry in the main menu section.
 #[derive(Debug, Deserialize, Clone, PartialEq)]
-#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "extras", derive(serde::Serialize, schemars::JsonSchema))]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum MenuConfig {
     /// Contains all applications matching the configured `categories`.
@@ -18,7 +18,7 @@ pub enum MenuConfig {
 }
 
 #[derive(Debug, Deserialize, Clone, PartialEq)]
-#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "extras", derive(serde::Serialize, schemars::JsonSchema))]
 pub struct XdgEntry {
     /// Text to display on the button.
     #[serde(default)]
@@ -35,7 +35,7 @@ pub struct XdgEntry {
 
 /// Individual shell command entry.
 #[derive(Debug, Deserialize, Clone, PartialEq)]
-#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "extras", derive(serde::Serialize, schemars::JsonSchema))]
 pub struct CustomEntry {
     /// Text to display on the button.
     #[serde(default)]
@@ -51,13 +51,13 @@ pub struct CustomEntry {
 }
 
 #[derive(Debug, Deserialize, Clone, PartialEq)]
-#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "extras", derive(serde::Serialize, schemars::JsonSchema))]
 #[serde(default)]
 pub struct MenuModule {
     /// Items to add to the start of the main menu.
     pub(super) start: Vec<MenuConfig>,
 
-    /// Items to add to the start of the main menu.
+    /// Items to add to the center of the main menu.
     ///
     /// By default, this shows a number of XDG entries
     /// that should cover all common applications.
@@ -98,12 +98,9 @@ pub struct MenuModule {
     pub launch_command: String,
 
     // -- common --
-    /// Truncate options to apply to (sub)menu item labels.
-    ///
-    /// See [truncate options](module-level-options#truncate-mode).
+    /// The truncation options to apply to (sub)menu item labels.
     pub(super) truncate: TruncateMode,
 
-    /// See [common options](module-level-options#common-options).
     #[serde(flatten)]
     pub common: Option<CommonConfig>,
 }

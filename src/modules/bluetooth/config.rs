@@ -6,10 +6,20 @@ use crate::{
 };
 
 #[derive(Debug, Deserialize, Clone, PartialEq)]
-#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "extras", derive(serde::Serialize, schemars::JsonSchema))]
 #[serde(default)]
 pub struct BluetoothModule {
     /// Format strings for on-bar button.
+    ///
+    /// Available tokens:
+    ///
+    /// | Token                      | Description                                                                                                             |
+    /// | -------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+    /// | `{adapter_status}`         | The current adapter status. The mapping of a status to a string could be defined using `adapter_status` config section. |
+    /// | `{device_alias}`           | The device name or address if name is not available.                                                                    |
+    /// | `{device_status}`          | The current device status. The mapping of a status to a string could be defined using `device_status` config section.   |
+    /// | `{device_battery_percent}` | The device battery percentage.                                                                                          |
+    /// | `{device_address}`         | The device address, e.g `00:11:22:33:FF:EE`.                                                                            |
     pub format: FormatConfig,
 
     /// Popup related configuration.
@@ -22,8 +32,6 @@ pub struct BluetoothModule {
     pub device_status: DeviceStatus,
 
     /// Size to render the icons at, in pixels (image icons only).
-    ///
-    /// **Default** `32`
     pub icon_size: i32,
 
     /// See [common options](module-level-options#common-options).
@@ -57,7 +65,7 @@ impl Default for BluetoothModule {
 /// | `{device_address}`         | The device address, e.g `00:11:22:33:FF:EE`.                                                                            |
 
 #[derive(Debug, Deserialize, Clone, PartialEq)]
-#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "extras", derive(serde::Serialize, schemars::JsonSchema))]
 #[serde(default)]
 pub struct FormatConfig {
     /// Format string to use for the widget button when bluetooth adapter not found.
@@ -89,7 +97,7 @@ impl Default for FormatConfig {
 }
 
 #[derive(Debug, Deserialize, Clone, PartialEq, Eq)]
-#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "extras", derive(serde::Serialize, schemars::JsonSchema))]
 #[serde(rename_all = "snake_case")]
 pub enum SizeLimit {
     /// The maximum number of devices the window can reach before scrolling.
@@ -111,7 +119,7 @@ pub enum SizeLimit {
 }
 
 #[derive(Debug, Deserialize, Clone, PartialEq)]
-#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "extras", derive(serde::Serialize, schemars::JsonSchema))]
 #[serde(default)]
 pub struct PopupConfig {
     /// The maximum height the window can reach before scrolling.
@@ -141,7 +149,7 @@ impl Default for PopupConfig {
 }
 
 #[derive(Debug, Deserialize, Clone, PartialEq)]
-#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "extras", derive(serde::Serialize, schemars::JsonSchema))]
 #[serde(default)]
 pub struct AdapterStatus {
     /// The value of `{adapter_status}` formatting token when adapter is enabling.
@@ -173,7 +181,7 @@ impl Default for AdapterStatus {
 }
 
 #[derive(Debug, Deserialize, Clone, PartialEq)]
-#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "extras", derive(serde::Serialize, schemars::JsonSchema))]
 #[serde(default)]
 pub struct DeviceStatus {
     /// The value of `{device_status}` formatting token when device is connecting.
@@ -183,11 +191,9 @@ pub struct DeviceStatus {
     pub connected: String,
 
     /// The value of `{device_status}` formatting token when device is disconnecting.
-    ///
     pub disconnecting: String,
 
     /// The value of `{device_status}` formatting token when device is disconnected.
-    ///
     pub disconnected: String,
 }
 
@@ -203,23 +209,19 @@ impl Default for DeviceStatus {
 }
 
 #[derive(Debug, Deserialize, Clone, PartialEq)]
-#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "extras", derive(serde::Serialize, schemars::JsonSchema))]
 #[serde(default)]
 pub struct PopupDeviceConfig {
     /// Format string to use for the header of device box.
-    ///
     pub header: String,
 
     /// Format string to use for the header of device box when `{device_battery_percent}` is available.
-    ///
     pub header_battery: String,
 
     /// Format string to use for the footer of device box.
-    ///
     pub footer: String,
 
     /// Format string to use for the footer of device box when `{device_battery_percent}` is available.
-    ///
     pub footer_battery: String,
 }
 

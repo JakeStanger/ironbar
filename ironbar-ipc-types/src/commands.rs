@@ -362,7 +362,7 @@ pub enum StyleCommand {
     /// Removes a CSS class `name` from all modules
     /// matching `module_name`.
     /// If the module also has a popup,
-    /// the class is added to the top container.
+    /// the class is removed from the top container.
     ///
     /// Response with `ok` if at least one module is found, otherwise `error`.
     ///

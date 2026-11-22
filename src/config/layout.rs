@@ -3,13 +3,12 @@ use crate::modules::ModuleInfo;
 use serde::Deserialize;
 
 #[derive(Clone, Debug, Deserialize, Default, PartialEq, Eq)]
-#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "extras", derive(serde::Serialize, schemars::JsonSchema))]
 pub struct LayoutConfig {
     /// The orientation to display the widget contents.
     orientation: Option<ModuleOrientation>,
 
     /// The justification (alignment) of the widget text shown on the bar.
-    ///
     #[serde(default)]
     pub justify: ModuleJustification,
 }

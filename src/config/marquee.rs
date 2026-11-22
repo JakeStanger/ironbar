@@ -3,7 +3,7 @@ use serde::Deserialize;
 /// Defines the behavior of marquee scrolling on hover.
 #[derive(Debug, Deserialize, Clone, Copy, Default, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
-#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "extras", derive(serde::Serialize, schemars::JsonSchema))]
 pub enum MarqueeOnHover {
     /// Scrolling is always active, hover has no effect.
     #[default]
@@ -17,10 +17,9 @@ pub enum MarqueeOnHover {
 /// Some modules provide options for scrolling text (marquee effect).
 /// This is controlled using a common `MarqueeMode` type,
 /// which is defined below.
-///
 #[derive(Debug, Deserialize, Clone, PartialEq)]
 #[serde(default)]
-#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "extras", derive(serde::Serialize, schemars::JsonSchema))]
 pub struct MarqueeMode {
     /// Whether to enable scrolling on long lines of text.
     /// This may not be supported by all modules.
@@ -40,11 +39,6 @@ pub struct MarqueeMode {
     pub separator: String,
 
     /// Controls marquee behavior on hover.
-    ///
-    /// **Options**:
-    /// - `"none"`: Always scroll (default)
-    /// - `"pause"`: Pause scrolling on hover
-    /// - `"play"`: Only scroll on hover
     pub on_hover: MarqueeOnHover,
 }
 

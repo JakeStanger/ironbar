@@ -29,12 +29,44 @@ use tokio::sync::mpsc;
 use tracing::{debug, error};
 
 #[derive(Debug, Deserialize, Clone, PartialEq)]
-#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "extras", derive(serde::Serialize, schemars::JsonSchema))]
 pub struct CustomModule {
-    /// Modules and widgets to add to the bar container.
+    /// An array of modules and widgets to add to the bar container.
+    ///
+    /// This takes any module or widget type.
+    /// Refer to the modules section of the documentation
+    /// or the [widgets](#widgets) section of this page for more information.
+    ///
+    /// # Example
+    ///
+    /// ```corn
+    /// {
+    ///     type = "custom"
+    ///     bar = [
+    ///         { type = "label" label = "hello" }
+    ///         { type = "label" label = "world" }
+    ///     ]
+    /// }
+    /// ```
     bar: Vec<WidgetConfig>,
 
-    /// Modules and widgets to add to the popup container.
+    /// An array of modules and widgets to add to the popup container.
+    ///
+    /// This takes any module or widget type.
+    /// Refer to the modules section of the documentation
+    /// or the [widgets](#widgets) section of this page for more information.
+    ///
+    /// # Example
+    ///
+    /// ```corn
+    /// {
+    ///     type = "custom"
+    ///     popup = [
+    ///         { type = "button" label = "shutdown" on_click = "!shutdown now" }
+    ///         { type = "button" label = "restart" on_click = "!reboot" }
+    ///     ]
+    /// }
+    /// ```
     popup: Option<Vec<WidgetConfig>>,
 
     /// See [common options](module-level-options#common-options).
@@ -43,7 +75,7 @@ pub struct CustomModule {
 }
 
 #[derive(Debug, Deserialize, Clone, PartialEq)]
-#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "extras", derive(serde::Serialize, schemars::JsonSchema))]
 pub struct WidgetConfig {
     /// One of a custom module native Ironbar module.
     #[serde(flatten)]
@@ -56,7 +88,7 @@ pub struct WidgetConfig {
 
 #[derive(Debug, Deserialize, Clone, PartialEq)]
 #[serde(untagged)]
-#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "extras", derive(serde::Serialize, schemars::JsonSchema))]
 pub enum WidgetOrModule {
     /// A custom-module specific basic widget
     Widget(Widget),
@@ -67,7 +99,7 @@ pub enum WidgetOrModule {
 
 #[derive(Debug, Deserialize, Clone, PartialEq)]
 #[serde(tag = "type", rename_all = "snake_case")]
-#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "extras", derive(serde::Serialize, schemars::JsonSchema))]
 pub enum Widget {
     /// A container to place nested widgets inside.
     Box(BoxWidget),

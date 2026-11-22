@@ -18,7 +18,7 @@ use tokio::time::sleep;
 use tracing::{debug, error};
 
 #[derive(Debug, Clone, Deserialize, PartialEq)]
-#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "extras", derive(serde::Serialize, schemars::JsonSchema))]
 #[cfg_attr(feature = "extras", schemars(extend("required" = ["path"])))]
 #[serde(default)]
 pub struct CairoModule {
@@ -26,6 +26,7 @@ pub struct CairoModule {
     /// This can be absolute, or relative to the working directory.
     ///
     /// The script must contain the entry `draw` function.
+    #[cfg_attr(feature = "extras", schemars(extend("default" = null)))]
     path: PathBuf,
 
     /// The number of milliseconds between each draw call.

@@ -7,7 +7,7 @@ use crate::profiles;
 use serde::Deserialize;
 
 #[derive(Debug, Default, Clone, Deserialize, PartialEq)]
-#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "extras", derive(serde::Serialize, schemars::JsonSchema))]
 #[serde(default)]
 pub struct VolumeProfile {
     pub(super) icons: Icons,
@@ -32,15 +32,29 @@ pub(super) fn default_profiles() -> Profiles<f64, VolumeProfile> {
 }
 
 #[derive(Debug, Clone, Deserialize, PartialEq)]
-#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "extras", derive(serde::Serialize, schemars::JsonSchema))]
 #[serde(default)]
 pub struct VolumeModule {
     /// The format string to use for the widget button label.
-    /// For available tokens, see [below](#formatting-tokens).
+    ///
+    /// Available tokens:
+    ///
+    /// | Token          | Description                               |
+    /// |----------------|-------------------------------------------|
+    /// | `{percentage}` | The active device volume percentage.      |
+    /// | `{icon}`       | The icon representing the current volume. |
+    /// | `{name}`       | The active device name.                   |
     pub(super) format: String,
 
     /// The format string to use for the widget button label when muted.
-    /// For available tokens, see [below](#formatting-tokens).
+    ///
+    /// Available tokens:
+    ///
+    /// | Token          | Description                               |
+    /// |----------------|-------------------------------------------|
+    /// | `{percentage}` | The active device volume percentage.      |
+    /// | `{icon}`       | The icon representing the current volume. |
+    /// | `{name}`       | The active device name.                   |
     pub(super) mute_format: String,
 
     /// Maximum value to allow volume sliders to reach.
@@ -65,7 +79,6 @@ pub struct VolumeModule {
     /// Show pulseaudio sink monitors for mic outputs
     pub(super) show_monitors: bool,
 
-    /// See [profiles](profiles).
     #[serde(flatten)]
     pub(super) profiles: Profiles<f64, VolumeProfile>,
 
@@ -75,22 +88,19 @@ pub struct VolumeModule {
     pub(super) name_map: HashMap<Box<str>, String>,
 
     // -- Common --
-    /// See [truncate options](module-level-options#truncate-mode).
+    /// Controls the truncation options of text displayed on the bar.
     pub(crate) truncate: Option<TruncateMode>,
 
-    // -- Common --
-    /// See [truncate options](module-level-options#truncate-mode).
+    /// Controls the truncation options of device and application labels displayed in the popup.
     pub(crate) truncate_popup: Option<TruncateMode>,
 
-    /// See [marquee options](module-level-options#marquee-mode).
+    /// Controls the marquee mode for application labels displayed in the popup.
     #[serde(default)]
     pub(crate) marquee: MarqueeMode,
 
-    /// See [layout options](module-level-options#layout)
     #[serde(default, flatten)]
     pub(super) layout: LayoutConfig,
 
-    /// See [common options](module-level-options#common-options).
     #[serde(flatten)]
     pub common: Option<CommonConfig>,
 
@@ -126,20 +136,16 @@ impl Default for VolumeModule {
 }
 
 #[derive(Debug, Clone, Deserialize, PartialEq, Eq)]
-#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "extras", derive(serde::Serialize, schemars::JsonSchema))]
 #[serde(default)]
 pub struct Icons {
     /// Icon to show to represent each volume level.
-    ///
-    ///  **Default**: `󰕾`
     pub(super) volume: String,
 
     /// Icon to show for muted outputs.
     pub(super) muted: String,
 
     /// Icon to show to represent each microphone volume level.
-    ///
-    ///  **Default**: ``
     pub(super) mic_volume: String,
 
     /// Icon to show for muted inputs.

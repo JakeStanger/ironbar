@@ -29,7 +29,7 @@ impl State for Box<str> {
 }
 
 #[derive(Debug, Clone, Default, Deserialize, PartialEq)]
-#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "extras", derive(serde::Serialize, schemars::JsonSchema))]
 #[serde(default)]
 pub struct PowerProfilesProfile {
     icon: Box<str>,
@@ -52,7 +52,7 @@ fn default_profiles() -> Profiles<Box<str>, PowerProfilesProfile> {
 }
 
 #[derive(Debug, Clone, Deserialize, PartialEq)]
-#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "extras", derive(serde::Serialize, schemars::JsonSchema))]
 #[serde(default)]
 pub struct PowerProfilesModule {
     /// See [profiles](profiles).
@@ -67,10 +67,6 @@ pub struct PowerProfilesModule {
     /// | `{name}`       | Name of the active profile.            |
     format: String,
 
-    /// The icon to show on the bar widget button.
-    /// Supports [image](images) icons.
-    tooltip: String,
-
     /// See [layout options](module-level-options#layout)
     #[serde(default, flatten)]
     layout: LayoutConfig,
@@ -78,6 +74,11 @@ pub struct PowerProfilesModule {
     /// See [common options](module-level-options#common-options).
     #[serde(flatten)]
     pub common: Option<CommonConfig>,
+
+    // -- Common Overrides --
+    /// The icon to show on the bar widget button.
+    /// Supports [image](images) icons.
+    tooltip: String,
 }
 
 impl Default for PowerProfilesModule {

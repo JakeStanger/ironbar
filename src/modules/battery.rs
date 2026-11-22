@@ -23,7 +23,7 @@ const MINUTE: i64 = 60;
 
 /// The battery module uses a compound state object.
 #[derive(Debug, Deserialize, Clone, PartialEq)]
-#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "extras", derive(serde::Serialize, schemars::JsonSchema))]
 #[serde(default)]
 struct ProfileState {
     /// Battery charged percentage.
@@ -69,7 +69,7 @@ impl State for ProfileState {
 }
 
 #[derive(Debug, Deserialize, Clone, PartialEq)]
-#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "extras", derive(serde::Serialize, schemars::JsonSchema))]
 #[serde(default)]
 struct BatteryProfile {
     /// The format string to use for the widget button label.
@@ -88,7 +88,7 @@ struct BatteryProfile {
 }
 
 #[derive(Debug, Deserialize, Clone, PartialEq)]
-#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "extras", derive(serde::Serialize, schemars::JsonSchema))]
 #[serde(default)]
 pub struct BatteryModule {
     /// The size to render the icon at, in pixels.

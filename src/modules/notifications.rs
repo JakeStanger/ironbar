@@ -11,7 +11,7 @@ use tokio::sync::mpsc::Receiver;
 use tracing::error;
 
 #[derive(Debug, Deserialize, Clone, PartialEq)]
-#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "extras", derive(serde::Serialize, schemars::JsonSchema))]
 #[serde(default)]
 pub struct NotificationsModule {
     /// Whether to show the current notification count.
@@ -38,7 +38,7 @@ impl Default for NotificationsModule {
 }
 
 #[derive(Debug, Deserialize, Clone, PartialEq, Eq)]
-#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "extras", derive(serde::Serialize, schemars::JsonSchema))]
 #[serde(default)]
 struct Icons {
     /// Icon to show when the panel is closed, with no notifications.

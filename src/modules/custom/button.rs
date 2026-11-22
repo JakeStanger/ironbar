@@ -11,7 +11,7 @@ use crate::gtk_helpers::IronbarLabelExt;
 use crate::modules::PopupButton;
 
 #[derive(Debug, Deserialize, Clone, PartialEq)]
-#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "extras", derive(serde::Serialize, schemars::JsonSchema))]
 pub struct ButtonWidget {
     /// Widget name.
     name: Option<String>,

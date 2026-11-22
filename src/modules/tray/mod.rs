@@ -31,7 +31,7 @@ struct IconConfig {
 
 /// Reserved tray click actions
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
-#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "extras", derive(serde::Serialize, schemars::JsonSchema))]
 #[serde(rename_all = "snake_case")]
 pub enum ReservedTrayAction {
     /// Open the tray icon's popup menu.
@@ -46,7 +46,7 @@ pub enum ReservedTrayAction {
 
 /// Action to perform when clicking on a tray icon
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
-#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "extras", derive(serde::Serialize, schemars::JsonSchema))]
 #[serde(untagged)]
 pub enum TrayClickAction {
     /// A built-in action.
@@ -65,7 +65,7 @@ pub enum TrayClickAction {
 
 /// Click action handlers for tray icons
 #[derive(Debug, Clone, Deserialize, PartialEq)]
-#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "extras", derive(serde::Serialize, schemars::JsonSchema))]
 #[serde(default)]
 pub struct TrayClickHandlers {
     /// Action to perform on left-click.
@@ -84,12 +84,9 @@ pub struct TrayClickHandlers {
     /// { on_click_left = "notify-send 'Clicked {name}'" }
     /// { on_click_left = "if [ '{name}' = 'copyq' ]; then copyq toggle; fi" }
     /// ```
-    #[cfg_attr(feature = "extras", schemars(extend("default" = "'default'")))]
     on_click_left: TrayClickAction,
 
     /// Action to perform on right-click.
-    ///
-    #[cfg_attr(feature = "extras", schemars(extend("default" = "'menu'")))]
     on_click_right: TrayClickAction,
 
     /// Action to perform on middle-click.
@@ -132,7 +129,7 @@ impl Default for TrayClickAction {
 }
 
 #[derive(Debug, Deserialize, Clone, PartialEq)]
-#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "extras", derive(serde::Serialize, schemars::JsonSchema))]
 #[serde(default)]
 pub struct TrayModule {
     /// Requests that icons from the theme be used over the item-provided item.
@@ -143,7 +140,6 @@ pub struct TrayModule {
     icon_size: u32,
 
     /// The direction in which to pack tray icons.
-    ///
     #[cfg_attr(feature = "extras", schemars(extend("default" = "[matches bar orientation]")))]
     direction: Option<ModuleOrientation>,
 
@@ -172,10 +168,7 @@ pub struct TrayModule {
     #[serde(flatten)]
     pub common: Option<CommonConfig>,
 
-    // NOTE:
-    // Click handlers MUST be below `common`
-    // to take precedence in schema generation.
-
+    // -- Common Overrides --
     /// Click action handlers for tray icons.
     ///
     /// Click actions can be one of the following built-in actions, or any custom shell command:

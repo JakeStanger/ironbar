@@ -10,21 +10,20 @@ use serde::Deserialize;
 use tokio::sync::mpsc;
 
 #[derive(Debug, Deserialize, Clone, PartialEq)]
-#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "extras", derive(serde::Serialize, schemars::JsonSchema))]
 pub struct LabelModule {
     /// The text to show on the label.
     /// This is a [Dynamic String](dynamic-values#dynamic-string).
     label: String,
 
     // -- Common --
-    /// See [truncate options](module-level-options#truncate-mode).
+
+    /// The truncation options to use for the label text.
     truncate: Option<TruncateMode>,
 
-    /// See [layout options](module-level-options#layout)
     #[serde(default, flatten)]
     layout: LayoutConfig,
 
-    /// See [common options](module-level-options#common-options).
     #[serde(flatten)]
     pub common: Option<CommonConfig>,
 }

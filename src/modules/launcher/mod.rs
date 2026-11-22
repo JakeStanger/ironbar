@@ -27,7 +27,7 @@ use tokio::sync::mpsc;
 use tracing::{debug, error, trace, warn};
 
 #[derive(Debug, Deserialize, Clone, PartialEq)]
-#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "extras", derive(serde::Serialize, schemars::JsonSchema))]
 #[serde(default)]
 pub struct LauncherModule {
     /// List of app IDs (or classes) to always show regardless of open state,
@@ -75,15 +75,13 @@ pub struct LauncherModule {
     launch_command: String,
 
     // -- common --
-    /// Truncate application names on the bar if they get too long.
-    /// See [truncate options](module-level-options#truncate-mode).
+
+    /// The truncation options to use for application names displayed on the bar.
     truncate: TruncateMode,
 
-    /// Truncate application names in popups if they get too long.
-    /// See [truncate options](module-level-options#truncate-mode).
+    /// The truncation options to use for application names displayed in popups.
     truncate_popup: TruncateMode,
 
-    /// See [layout options](module-level-options#layout)
     #[serde(default, flatten)]
     layout: LayoutConfig,
 
@@ -118,13 +116,13 @@ impl Default for LauncherModule {
 }
 
 #[derive(Debug, Deserialize, Clone, PartialEq, Eq)]
-#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "extras", derive(serde::Serialize, schemars::JsonSchema))]
 #[serde(default)]
 struct Icons {
     /// Icon to show for page back button.
     page_back: String,
 
-    /// Icon to show for page back button.
+    /// Icon to show for page forward button.
     page_forward: String,
 }
 

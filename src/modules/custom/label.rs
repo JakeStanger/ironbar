@@ -9,7 +9,7 @@ use crate::dynamic_value::dynamic_string;
 use crate::gtk_helpers::IronbarLabelExt;
 
 #[derive(Debug, Deserialize, Clone, PartialEq)]
-#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "extras", derive(serde::Serialize, schemars::JsonSchema))]
 pub struct LabelWidget {
     /// Widget name.
     name: Option<String>,
@@ -20,15 +20,14 @@ pub struct LabelWidget {
     /// Widget text label. Pango markup and embedded scripts are supported.
     ///
     /// This is a [Dynamic String](dynamic-values#dynamic-string).
-    ///
-    /// **Required**
     label: String,
 
-    /// See [layout options](module-level-options#layout)
+    // -- Common --
+
     #[serde(default, flatten)]
     layout: LayoutConfig,
 
-    /// See [truncate options](module-level-options#truncate-mode).
+    /// The truncation options to use for the label text.
     truncate: Option<TruncateMode>,
 }
 

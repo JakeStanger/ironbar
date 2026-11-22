@@ -20,7 +20,7 @@ use tracing::trace;
 /// see [here](script).
 /// For information on styling, please see the [styling guide](/guides/styling-guide).
 #[derive(Debug, Default, Deserialize, Clone, PartialEq)]
-#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "extras", derive(serde::Serialize, schemars::JsonSchema))]
 pub struct CommonConfig {
     /// Sets the unique widget name,
     /// allowing you to target it in CSS using `#name`.
@@ -46,12 +46,20 @@ pub struct CommonConfig {
     ///
     /// This allows for modules to be dynamically shown or hidden
     /// based on custom events.
+    ///
+    /// # Example
+    ///
+    /// ```corn
+    /// {
+    ///     type = "battery"
+    ///     show_if = "ls /sys/class/power_supply/ | grep --quiet '^BAT'"
+    /// }
+    /// ```
     pub show_if: Option<DynamicBool>,
 
     /// The transition animation to use when showing/hiding the widget.
     ///
     /// Note this has no effect if `show_if` is not configured.
-    ///
     #[cfg_attr(feature = "extras", schemars(extend("default" = "slide_start")))]
     pub transition_type: Option<TransitionType>,
 
@@ -59,13 +67,10 @@ pub struct CommonConfig {
     /// of the transition animation to use when showing/hiding the widget.
     ///
     /// Note this has no effect if `show_if` is not configured.
-    ///
     #[cfg_attr(feature = "extras", schemars(extend("default" = 250)))]
     pub transition_duration: Option<u32>,
 
-    /// A [script](scripts) to run when the module is left-clicked.
-    ///
-    /// **Supported script types**: `oneshot`.
+    /// A oneshot [script](scripts) to run when the module is left-clicked.
     ///
     /// # Example
     ///
@@ -74,19 +79,17 @@ pub struct CommonConfig {
     /// ```
     pub on_click_left: Option<OneshotScriptInput>,
 
-    /// A [script](scripts) to run when the module is right-clicked.
+    /// A oneshot [script](scripts) to run when the module is right-clicked.
     ///
-    /// **Supported script types**: `oneshot`.
-    /// /// # Example
+    /// # Example
     ///
     /// ```corn
     /// { on_click_right = "echo 'event' >> log.txt" }
     /// ```
     pub on_click_right: Option<OneshotScriptInput>,
 
-    /// A [script](scripts) to run when the module is middle-clicked.
+    /// A oneshot [script](scripts) to run when the module is middle-clicked.
     ///
-    /// **Supported script types**: `oneshot`.
     /// # Example
     ///
     /// ```corn
@@ -94,9 +97,7 @@ pub struct CommonConfig {
     /// ```
     pub on_click_middle: Option<OneshotScriptInput>,
 
-    /// A [script](scripts) to run when the module is double-left-clicked.
-    ///
-    /// **Supported script types**: `oneshot`.
+    /// A oneshot [script](scripts) to run when the module is double-left-clicked.
     ///
     /// # Example
     ///
@@ -105,9 +106,7 @@ pub struct CommonConfig {
     /// ```
     pub on_click_left_double: Option<OneshotScriptInput>,
 
-    /// A [script](scripts) to run when the module is double-right-clicked.
-    ///
-    /// **Supported script types**: `oneshot`.
+    /// A oneshot [script](scripts) to run when the module is double-right-clicked.
     ///
     /// # Example
     ///
@@ -116,9 +115,7 @@ pub struct CommonConfig {
     /// ```
     pub on_click_right_double: Option<OneshotScriptInput>,
 
-    /// A [script](scripts) to run when the module is double-middle-clicked.
-    ///
-    /// **Supported script types**: `oneshot`.
+    /// A oneshot [script](scripts) to run when the module is double-middle-clicked.
     ///
     /// # Example
     ///
@@ -127,9 +124,8 @@ pub struct CommonConfig {
     /// ```
     pub on_click_middle_double: Option<OneshotScriptInput>,
 
-    /// A [script](scripts) to run when the module is scrolled up on.
+    /// A oneshot [script](scripts) to run when the module is scrolled up on.
     ///
-    /// **Supported script types**: `oneshot`.
     /// # Example
     ///
     /// ```corn
@@ -137,9 +133,8 @@ pub struct CommonConfig {
     /// ```
     pub on_scroll_up: Option<OneshotScriptInput>,
 
-    /// A [script](scripts) to run when the module is scrolled down on.
+    /// A oneshot [script](scripts) to run when the module is scrolled down on.
     ///
-    /// **Supported script types**: `oneshot`.
     /// # Example
     ///
     /// ```corn
@@ -149,13 +144,11 @@ pub struct CommonConfig {
 
     /// A multiplier from `0.0` - `10.0` to control the speed
     /// of smooth scrolling on trackpad.
-    ///
     #[serde(default = "default_smooth_scroll_speed")]
     pub smooth_scroll_speed: f64,
 
-    /// A [script](scripts) to run when the cursor begins hovering over the module.
+    /// A oneshot [script](scripts) to run when the cursor begins hovering over the module.
     ///
-    /// **Supported script types**: `oneshot`.
     /// # Example
     ///
     /// ```corn
@@ -163,9 +156,8 @@ pub struct CommonConfig {
     /// ```
     pub on_mouse_enter: Option<OneshotScriptInput>,
 
-    /// A [script](scripts) to run when the cursor stops hovering over the module.
+    /// A oneshot [script](scripts) to run when the cursor stops hovering over the module.
     ///
-    /// **Supported script types**: `oneshot`.
     /// # Example
     ///
     /// ```corn
@@ -184,7 +176,7 @@ fn default_smooth_scroll_speed() -> f64 {
 
 #[derive(Debug, Deserialize, Clone, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
-#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "extras", derive(serde::Serialize, schemars::JsonSchema))]
 pub enum TransitionType {
     None,
     Crossfade,
@@ -194,7 +186,7 @@ pub enum TransitionType {
 
 #[derive(Debug, Default, Deserialize, Clone, Copy, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
-#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "extras", derive(serde::Serialize, schemars::JsonSchema))]
 pub enum ModuleOrientation {
     #[default]
     #[serde(alias = "h")]
@@ -223,7 +215,7 @@ impl From<ModuleOrientation> for Orientation {
 
 #[derive(Debug, Default, Deserialize, Clone, Copy, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
-#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "extras", derive(serde::Serialize, schemars::JsonSchema))]
 pub enum ModuleJustification {
     #[default]
     Left,

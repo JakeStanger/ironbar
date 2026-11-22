@@ -88,7 +88,7 @@ impl State for f64 {}
 ///
 /// `S` = State, `T` = Configuration data.
 #[derive(Debug, Clone, Deserialize, PartialEq)]
-#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "extras", derive(serde::Serialize, schemars::JsonSchema))]
 #[serde(default)]
 pub struct Profiles<S, T>
 where
@@ -133,13 +133,15 @@ where
 /// which will incorrectly resolve all objects as `Simple`
 /// due to `Default` constraint.
 #[derive(Debug, Clone, Deserialize, PartialEq)]
-#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "extras", derive(serde::Serialize, schemars::JsonSchema))]
 #[serde(untagged)]
 pub enum ProfileEntry<S, T>
 where
     S: State,
     T: Default + Clone,
 {
+    /// # Full
+    ///
     /// A full profile object with configuration attached.
     ///
     /// # Example
@@ -148,6 +150,8 @@ where
     /// { profiles.example.format = "hello" }
     /// ```
     Full(Profile<S, T>),
+    /// # Simple
+    ///
     /// A state-matcher only to add styling classes
     /// without any configuration attached.
     ///
@@ -186,7 +190,7 @@ where
 /// This represents the threshold at which it should be activated,
 /// and the configuration associated with it.
 #[derive(Debug, Default, Clone, Deserialize, PartialEq)]
-#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "extras", derive(serde::Serialize, schemars::JsonSchema))]
 pub struct Profile<S, T>
 where
     S: State,

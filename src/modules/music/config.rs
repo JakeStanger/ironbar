@@ -5,7 +5,7 @@ use std::path::PathBuf;
 
 #[derive(Debug, Deserialize, Clone, Copy, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
-#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "extras", derive(serde::Serialize, schemars::JsonSchema))]
 pub enum PlayerType {
     #[cfg(feature = "music+mpd")]
     Mpd,
@@ -31,12 +31,11 @@ impl Default for PlayerType {
 }
 
 #[derive(Debug, Deserialize, Clone, PartialEq)]
-#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "extras", derive(serde::Serialize, schemars::JsonSchema))]
 #[serde(default)]
 pub struct MusicModule {
     /// Type of player to connect to.
     #[serde(default)]
-    #[cfg_attr(feature = "extras", schemars(extend("default" = "'mpris'")))]
     pub(crate) player_type: PlayerType,
 
     /// Format of current song info to display on the bar.
@@ -56,8 +55,6 @@ pub struct MusicModule {
     pub(crate) format: String,
 
     /// Player state icons.
-    ///
-    /// See [icons](#icons).
     pub(crate) icons: Icons,
 
     /// Whether to show the play/pause status icon
@@ -70,8 +67,6 @@ pub struct MusicModule {
     pub(crate) reverse_status_icon: bool,
 
     /// Size to render the icons at, in pixels (image icons only).
-    ///
-    /// **Default** `32`
     pub(crate) icon_size: i32,
 
     /// Size to render the album art image at inside the popup, in pixels.
@@ -95,39 +90,37 @@ pub struct MusicModule {
     pub(crate) music_dir: PathBuf,
 
     // -- Common --
-    /// See [truncate options](module-level-options#truncate-mode).
+    /// Controls the truncation options for text displayed on the bar..
     pub(crate) truncate: Option<TruncateMode>,
 
-    /// See [marquee options](module-level-options#marquee-mode).
+    /// Controls the marquee mode for text displayed on the bar.
     #[serde(default)]
     pub(crate) marquee: MarqueeMode,
 
-    /// See [truncate options](module-level-options#truncate-mode).
+    /// Controls the truncation options for the artist name displayed in popup windows.
     pub(crate) truncate_popup_artist: Option<TruncateMode>,
 
-    /// See [marquee options](module-level-options#marquee-mode).
+    /// Controls the marquee mode for the artist name displayed in popup windows.
     #[serde(default)]
     pub(crate) marquee_popup_artist: MarqueeMode,
 
-    /// See [truncate options](module-level-options#truncate-mode).
+    /// Controls the truncation options for the album name displayed in popup windows.
     pub(crate) truncate_popup_album: Option<TruncateMode>,
 
-    /// See [marquee options](module-level-options#marquee-mode).
+    /// Controls the marquee mode for the album name displayed in popup windows.
     #[serde(default)]
     pub(crate) marquee_popup_album: MarqueeMode,
 
-    /// See [truncate options](module-level-options#truncate-mode).
+    /// Controls the truncation options for the song title displayed in popup windows.
     pub(crate) truncate_popup_title: Option<TruncateMode>,
 
-    /// See [marquee options](module-level-options#marquee-mode).
+    /// Controls the marquee mode for the song title displayed in popup windows.
     #[serde(default)]
     pub(crate) marquee_popup_title: MarqueeMode,
 
-    /// See [layout options](module-level-options#layout)
     #[serde(flatten)]
     pub(crate) layout: LayoutConfig,
 
-    /// See [common options](module-level-options#common-options).
     #[serde(flatten)]
     pub common: Option<CommonConfig>,
 }
@@ -159,7 +152,7 @@ impl Default for MusicModule {
 }
 
 #[derive(Debug, Deserialize, Clone, PartialEq, Eq)]
-#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "extras", derive(serde::Serialize, schemars::JsonSchema))]
 #[serde(default)]
 pub struct Icons {
     /// Icon to display when playing.

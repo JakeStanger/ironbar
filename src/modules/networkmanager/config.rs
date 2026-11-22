@@ -5,7 +5,7 @@ use crate::profiles;
 use serde::Deserialize;
 
 #[derive(Debug, Deserialize, Clone, PartialEq)]
-#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "extras", derive(serde::Serialize, schemars::JsonSchema))]
 #[serde(default)]
 pub struct NetworkManagerModule {
     /// The size of the icon for each network device, in pixels.
@@ -16,16 +16,18 @@ pub struct NetworkManagerModule {
     pub(super) profiles: Profiles<ProfileState, NetworkManagerProfile>,
 
     /// Any device with a type in this list will not be shown. The type is a string matching
-    /// [`DeviceType`] variants (e.g. `"Wifi"`, `"Ethernet", etc.).
+    /// [`DeviceType`] variants (e.g. `"wifi"`, `"ethernet", etc.).
     ///
     /// You can find the type of the devices on your system by running `nmcli device status`.
+    /// (note ironbar uses `snake_case` for all types).
     #[serde(default)]
     pub(super) types_blacklist: Vec<DeviceType>,
 
     /// If not empty, only devices with a type in this list will be shown. The type is a string
-    /// matching [`DeviceType`] variants (e.g. `"Wifi"`, `"Ethernet", etc.).
+    /// matching [`DeviceType`] variants (e.g. `"wifi"`, `"ethernet", etc.).
     ///
     /// You can find the type of the devices on your system by running `nmcli device status`.
+    /// (note ironbar uses `snake_case` for all types).
     #[serde(default)]
     pub(super) types_whitelist: Vec<DeviceType>,
 
@@ -56,12 +58,16 @@ impl Default for NetworkManagerModule {
 }
 
 #[derive(Default, Debug, Deserialize, Clone, Copy, PartialOrd, PartialEq, Eq)]
-#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "extras", derive(serde::Serialize, schemars::JsonSchema))]
 #[serde(tag = "state", rename_all = "snake_case")]
 pub enum ConnectionState {
+    /// The device is not connected to any network.
     #[default]
     Disconnected,
+    /// The device is currently establishing a connection.
     Acquiring,
+    /// The device is connected to a network.
+    /// This does not necessarily guarantee internet connectivity.
     Connected,
 }
 
@@ -86,14 +92,18 @@ impl From<DeviceState> for ConnectionState {
 }
 
 #[derive(Default, Debug, Deserialize, Clone, Copy, PartialOrd, PartialEq, Eq)]
-#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "extras", derive(serde::Serialize, schemars::JsonSchema))]
 #[serde(tag = "state", rename_all = "snake_case")]
 pub enum WifiConnectionState {
+    /// The device is not connected to any network.
     #[default]
     Disconnected,
+    /// The device is currently establishing a connection.
     Acquiring,
+    /// The device is connected to a network.
+    /// This does not necessarily guarantee internet connectivity.
     Connected {
-        /// The signal strength of the wifi connection, from 0 to 100.
+        /// The signal strength of the WiFi connection, from 0 to 100.
         #[serde(default = "default_signal_strength")]
         signal_strength: u8,
     },
@@ -105,14 +115,20 @@ fn default_signal_strength() -> u8 {
 }
 
 #[derive(Default, Debug, Deserialize, Clone, Copy, PartialOrd, PartialEq, Eq)]
-#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "extras", derive(serde::Serialize, schemars::JsonSchema))]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum ProfileState {
+    /// Unknown connection types.
     #[default]
     Unknown,
+    /// A wired connection.
     Wired(ConnectionState),
+    /// A connection to a WiFi network.
     Wifi(WifiConnectionState),
+    /// A connection to a cellular network.
     Cellular(ConnectionState),
+    /// A connection to a VPN.
+    /// This overrules any other connection type.
     Vpn(ConnectionState),
 }
 
@@ -140,7 +156,7 @@ impl State for ProfileState {
 }
 
 #[derive(Clone, Default, Deserialize, Debug, PartialEq, Eq)]
-#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "extras", derive(serde::Serialize, schemars::JsonSchema))]
 #[serde(default)]
 pub struct NetworkManagerProfile {
     /// The configuration for the icons used to represent network devices.

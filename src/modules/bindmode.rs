@@ -12,13 +12,12 @@ use tokio::sync::mpsc;
 use tracing::{info, trace};
 
 #[derive(Debug, Deserialize, Clone, PartialEq)]
-#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "extras", derive(serde::Serialize, schemars::JsonSchema))]
 pub struct BindmodeModule {
     // -- Common --
-    /// See [truncate options](module-level-options#truncate-mode).
+    /// The truncation options to use for the label text.
     pub truncate: Option<TruncateMode>,
 
-    /// See [layout options](module-level-options#layout)
     #[serde(default, flatten)]
     layout: LayoutConfig,
 
