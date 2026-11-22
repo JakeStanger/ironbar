@@ -14,12 +14,26 @@ use tokio::sync::oneshot::{Receiver, channel};
 use tokio::time::sleep;
 use tracing::{debug, error, trace, warn};
 
+/// A script that runs exactly once per user-event,
+/// running a single command until completion then exiting.
+///
+/// Internally this is treated as a polling script that polls exactly once.
+#[derive(Debug, Deserialize, Clone, PartialEq)]
+#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
+pub struct OneshotScriptInput(String);
+
 #[derive(Debug, Deserialize, Clone, PartialEq)]
 #[serde(untagged)]
 #[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
 pub enum ScriptInput {
     String(String),
     Struct(Script),
+}
+
+impl From<OneshotScriptInput> for ScriptInput {
+    fn from(input: OneshotScriptInput) -> Self {
+        Self::String(input.0)
+    }
 }
 
 #[derive(Debug, Default, Deserialize, Clone, Copy, Eq, PartialEq)]
@@ -182,6 +196,10 @@ impl From<&str> for Script {
 }
 
 impl Script {
+    pub fn new_oneshot(input: OneshotScriptInput) -> Self {
+        Self::new_polling(input.into())
+    }
+
     pub fn new_polling(input: ScriptInput) -> Self {
         let mut script = Self::from(input);
         script.mode = ScriptMode::Poll;

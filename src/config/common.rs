@@ -1,6 +1,6 @@
 use crate::dynamic_value::{DynamicBool, dynamic_string};
 use crate::gtk_helpers::{IronbarGtkExt, MouseButton};
-use crate::script::{Script, ScriptInput};
+use crate::script::{OneshotScriptInput, Script};
 use glib::Propagation;
 use gtk::prelude::*;
 use gtk::{
@@ -84,7 +84,7 @@ pub struct CommonConfig {
     /// ```corn
     /// { on_click_left = "echo 'event' >> log.txt" }
     /// ```
-    pub on_click_left: Option<ScriptInput>,
+    pub on_click_left: Option<OneshotScriptInput>,
 
     /// A [script](scripts) to run when the module is right-clicked.
     ///
@@ -96,7 +96,7 @@ pub struct CommonConfig {
     /// ```corn
     /// { on_click_right = "echo 'event' >> log.txt" }
     /// ```
-    pub on_click_right: Option<ScriptInput>,
+    pub on_click_right: Option<OneshotScriptInput>,
 
     /// A [script](scripts) to run when the module is middle-clicked.
     ///
@@ -108,7 +108,7 @@ pub struct CommonConfig {
     /// ```corn
     /// { on_click_middle = "echo 'event' >> log.txt" }
     /// ```
-    pub on_click_middle: Option<ScriptInput>,
+    pub on_click_middle: Option<OneshotScriptInput>,
 
     /// A [script](scripts) to run when the module is double-left-clicked.
     ///
@@ -121,7 +121,7 @@ pub struct CommonConfig {
     /// ```corn
     /// { on_click_left_double = "echo 'double click' >> log.txt" }
     /// ```
-    pub on_click_left_double: Option<ScriptInput>,
+    pub on_click_left_double: Option<OneshotScriptInput>,
 
     /// A [script](scripts) to run when the module is double-right-clicked.
     ///
@@ -134,7 +134,7 @@ pub struct CommonConfig {
     /// ```corn
     /// { on_click_right_double = "echo 'double click' >> log.txt" }
     /// ```
-    pub on_click_right_double: Option<ScriptInput>,
+    pub on_click_right_double: Option<OneshotScriptInput>,
 
     /// A [script](scripts) to run when the module is double-middle-clicked.
     ///
@@ -147,7 +147,7 @@ pub struct CommonConfig {
     /// ```corn
     /// { on_click_middle_double = "echo 'double click' >> log.txt" }
     /// ```
-    pub on_click_middle_double: Option<ScriptInput>,
+    pub on_click_middle_double: Option<OneshotScriptInput>,
 
     /// A [script](scripts) to run when the module is scrolled up on.
     ///
@@ -159,7 +159,7 @@ pub struct CommonConfig {
     /// ```corn
     /// { on_scroll_up = "echo 'event' >> log.txt" }
     /// ```
-    pub on_scroll_up: Option<ScriptInput>,
+    pub on_scroll_up: Option<OneshotScriptInput>,
 
     /// A [script](scripts) to run when the module is scrolled down on.
     ///
@@ -171,7 +171,7 @@ pub struct CommonConfig {
     /// ```corn
     /// { on_scroll_down = "echo 'event' >> log.txt" }
     /// ```
-    pub on_scroll_down: Option<ScriptInput>,
+    pub on_scroll_down: Option<OneshotScriptInput>,
 
     /// A multiplier from `0.0` - `10.0` to control the speed
     /// of smooth scrolling on trackpad.
@@ -189,7 +189,7 @@ pub struct CommonConfig {
     /// ```corn
     /// { on_mouse_enter = "echo 'event' >> log.txt" }
     /// ```
-    pub on_mouse_enter: Option<ScriptInput>,
+    pub on_mouse_enter: Option<OneshotScriptInput>,
 
     /// A [script](scripts) to run when the cursor stops hovering over the module.
     ///
@@ -201,7 +201,7 @@ pub struct CommonConfig {
     /// ```corn
     /// { on_mouse_exit = "echo 'event' >> log.txt" }
     /// ```
-    pub on_mouse_exit: Option<ScriptInput>,
+    pub on_mouse_exit: Option<OneshotScriptInput>,
 
     /// Prevents the popup from opening on-click for this widget.
     #[serde(default)]
@@ -298,11 +298,11 @@ impl CommonConfig {
         // Helper to install click handlers with optional double-click support
         let install_click_handler =
             |button: MouseButton,
-             single: Option<ScriptInput>,
-             double: Option<ScriptInput>,
+             single: Option<OneshotScriptInput>,
+             double: Option<OneshotScriptInput>,
              button_name: &'static str| {
-                let single = single.map(Script::new_polling);
-                let double = double.map(Script::new_polling);
+                let single = single.map(Script::new_oneshot);
+                let double = double.map(Script::new_oneshot);
 
                 if single.is_some() || double.is_some() {
                     container.connect_pressed_with_double_click(
@@ -344,8 +344,8 @@ impl CommonConfig {
 
         let event_controller = EventControllerScroll::new(EventControllerScrollFlags::VERTICAL);
 
-        let scroll_up_script = self.on_scroll_up.map(Script::new_polling);
-        let scroll_down_script = self.on_scroll_down.map(Script::new_polling);
+        let scroll_up_script = self.on_scroll_up.map(Script::new_oneshot);
+        let scroll_down_script = self.on_scroll_down.map(Script::new_oneshot);
 
         let scroll_speed = self.smooth_scroll_speed.unwrap_or(1.0);
         let curr_scroll = Cell::new(0.0);
@@ -394,13 +394,13 @@ impl CommonConfig {
 
         let event_controller = EventControllerMotion::new();
 
-        if let Some(script) = self.on_mouse_enter.map(Script::new_polling) {
+        if let Some(script) = self.on_mouse_enter.map(Script::new_oneshot) {
             event_controller.connect_enter(move |_, _, _| {
                 script.run_as_oneshot(None);
             });
         }
 
-        if let Some(script) = self.on_mouse_exit.map(Script::new_polling) {
+        if let Some(script) = self.on_mouse_exit.map(Script::new_oneshot) {
             event_controller.connect_leave(move |_| {
                 script.run_as_oneshot(None);
             });
