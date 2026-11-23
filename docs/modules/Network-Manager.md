@@ -28,7 +28,7 @@ disconnected).
 > Type: `network_manager`
 
 > [!NOTE]
-> This module does not support module-level [layout options](/guides/configuration-guide/#32-module-level-options).
+> This module does not support module-level [layout options](/guides/configuration-guide/#33-module-level-options).
 
 
 %properties%

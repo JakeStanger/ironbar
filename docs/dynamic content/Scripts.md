@@ -60,6 +60,9 @@ Scripts can be embedded in these cases using `{{double braces}}` and the shortha
 
 ### Longhand (object)
 
+> [!IMPORTANT]
+> Oneshot scripts do not support longhand format.
+
 An object consisting of the `cmd` key and optionally the `mode` and/or `interval` keys.
 
 ```corn

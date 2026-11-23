@@ -93,7 +93,7 @@ Ensure you have [cargo-binstall](https://github.com/cargo-bins/cargo-binstall) a
 cargo binstall ironbar --locked
 ```
 
-#### Cargo (from source)
+#### From source
 
 Ensure you have the [build dependencies](https://github.com/JakeStanger/ironbar/wiki/compiling#Build-requirements) installed.
 
