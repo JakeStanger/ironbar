@@ -67,7 +67,7 @@ pub struct CommonConfig {
     #[cfg_attr(feature = "extras", schemars(extend("default" = 250)))]
     pub transition_duration: Option<u32>,
 
-    /// A oneshot [script](scripts) to run when the module is left-clicked.
+    /// A oneshot [script](/dynamic content/scripts) to run when the module is left-clicked.
     ///
     /// # Example
     ///
@@ -76,7 +76,7 @@ pub struct CommonConfig {
     /// ```
     pub on_click_left: Option<OneshotScriptInput>,
 
-    /// A oneshot [script](scripts) to run when the module is right-clicked.
+    /// A oneshot [script](/dynamic content/scripts) to run when the module is right-clicked.
     ///
     /// # Example
     ///
@@ -85,7 +85,7 @@ pub struct CommonConfig {
     /// ```
     pub on_click_right: Option<OneshotScriptInput>,
 
-    /// A oneshot [script](scripts) to run when the module is middle-clicked.
+    /// A oneshot [script](/dynamic content/scripts) to run when the module is middle-clicked.
     ///
     /// # Example
     ///
@@ -94,7 +94,7 @@ pub struct CommonConfig {
     /// ```
     pub on_click_middle: Option<OneshotScriptInput>,
 
-    /// A oneshot [script](scripts) to run when the module is double-left-clicked.
+    /// A oneshot [script](/dynamic content/scripts) to run when the module is double-left-clicked.
     ///
     /// # Example
     ///
@@ -103,7 +103,7 @@ pub struct CommonConfig {
     /// ```
     pub on_click_left_double: Option<OneshotScriptInput>,
 
-    /// A oneshot [script](scripts) to run when the module is double-right-clicked.
+    /// A oneshot [script](/dynamic content/scripts) to run when the module is double-right-clicked.
     ///
     /// # Example
     ///
@@ -112,7 +112,7 @@ pub struct CommonConfig {
     /// ```
     pub on_click_right_double: Option<OneshotScriptInput>,
 
-    /// A oneshot [script](scripts) to run when the module is double-middle-clicked.
+    /// A oneshot [script](/dynamic content/scripts) to run when the module is double-middle-clicked.
     ///
     /// # Example
     ///
@@ -121,7 +121,7 @@ pub struct CommonConfig {
     /// ```
     pub on_click_middle_double: Option<OneshotScriptInput>,
 
-    /// A oneshot [script](scripts) to run when the module is scrolled up on.
+    /// A oneshot [script](/dynamic content/scripts) to run when the module is scrolled up on.
     ///
     /// # Example
     ///
@@ -130,7 +130,7 @@ pub struct CommonConfig {
     /// ```
     pub on_scroll_up: Option<OneshotScriptInput>,
 
-    /// A oneshot [script](scripts) to run when the module is scrolled down on.
+    /// A oneshot [script](/dynamic content/scripts) to run when the module is scrolled down on.
     ///
     /// # Example
     ///
@@ -144,7 +144,7 @@ pub struct CommonConfig {
     #[serde(default = "default_smooth_scroll_speed")]
     pub smooth_scroll_speed: f64,
 
-    /// A oneshot [script](scripts) to run when the cursor begins hovering over the module.
+    /// A oneshot [script](/dynamic content/scripts) to run when the cursor begins hovering over the module.
     ///
     /// # Example
     ///
@@ -153,7 +153,7 @@ pub struct CommonConfig {
     /// ```
     pub on_mouse_enter: Option<OneshotScriptInput>,
 
-    /// A oneshot [script](scripts) to run when the cursor stops hovering over the module.
+    /// A oneshot [script](/dynamic content/scripts) to run when the cursor stops hovering over the module.
     ///
     /// # Example
     ///

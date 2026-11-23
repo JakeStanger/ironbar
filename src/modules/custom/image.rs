@@ -18,7 +18,7 @@ pub struct ImageWidget {
 
     /// Image source.
     ///
-    /// This is an [image](image).
+    /// This is an [image](/guides/images).
     src: DynamicString,
 
     /// The width/height of the image.
