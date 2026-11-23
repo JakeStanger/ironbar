@@ -1,4 +1,4 @@
-use crate::dynamic_value::{DynamicBool, dynamic_string};
+use crate::dynamic_value::{DynamicBool, DynamicString};
 use crate::gtk_helpers::{IronbarGtkExt, MouseButton};
 use crate::script::{OneshotScriptInput, Script};
 use glib::Propagation;
@@ -37,10 +37,7 @@ pub struct CommonConfig {
     pub class: Option<String>,
 
     /// Shows this text on hover.
-    /// Supports embedding scripts between `{{double braces}}`.
-    ///
-    /// Note that full dynamic string support is not currently supported.
-    pub tooltip: Option<String>,
+    pub tooltip: Option<DynamicString>,
 
     /// Shows the module only if the dynamic boolean evaluates to true.
     ///
@@ -373,7 +370,7 @@ impl CommonConfig {
         }
 
         if let Some(tooltip) = self.tooltip {
-            dynamic_string(&tooltip, container, move |container, string| {
+            tooltip.subscribe(container, move |container, string| {
                 container.set_tooltip_text(Some(&string));
             });
         }

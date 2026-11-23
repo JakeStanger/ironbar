@@ -5,7 +5,7 @@ use serde::Deserialize;
 use super::{CustomWidget, CustomWidgetContext};
 use crate::build;
 use crate::config::{LayoutConfig, TruncateMode};
-use crate::dynamic_value::dynamic_string;
+use crate::dynamic_value::DynamicString;
 use crate::gtk_helpers::IronbarLabelExt;
 
 #[derive(Debug, Deserialize, Clone, PartialEq)]
@@ -17,10 +17,9 @@ pub struct LabelWidget {
     /// Widget class name.
     class: Option<String>,
 
-    /// Widget text label. Pango markup and embedded scripts are supported.
-    ///
-    /// This is a [Dynamic String](dynamic-values#dynamic-string).
-    label: String,
+    /// Widget text label.
+    /// Pango markup and embedded scripts are supported.
+    label: DynamicString,
 
     // -- Common --
 
@@ -44,7 +43,7 @@ impl CustomWidget for LabelWidget {
             label.truncate(truncate);
         }
 
-        dynamic_string(&self.label, &label, move |label, string| {
+        self.label.subscribe(&label, move |label, string| {
             label.set_label_escaped(&string);
         });
 

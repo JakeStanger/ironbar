@@ -7,7 +7,7 @@ use tracing::error;
 use super::{CustomWidget, CustomWidgetContext};
 use crate::channels::{AsyncSenderExt, MpscReceiverExt};
 use crate::config::ModuleOrientation;
-use crate::dynamic_value::dynamic_string;
+use crate::dynamic_value::DynamicString;
 use crate::modules::custom::set_length;
 use crate::script::{OutputStream, Script, ScriptInput};
 use crate::{build, spawn};
@@ -28,10 +28,8 @@ pub struct ProgressWidget {
     #[serde(default)]
     orientation: ModuleOrientation,
 
-    /// Text label to show for the progress bar.
-    ///
-    /// This is a [Dynamic String](dynamic-values#dynamic-string).
-    label: Option<String>,
+    /// Text label to show for the progress bar
+    label: Option<DynamicString>,
 
     /// Script to run to get the progress bar value.
     /// Output must be a valid percentage.
@@ -97,7 +95,7 @@ impl CustomWidget for ProgressWidget {
         if let Some(text) = self.label {
             progress.set_show_text(true);
 
-            dynamic_string(&text, &progress, move |progress, string| {
+            text.subscribe(&progress, move |progress, string| {
                 progress.set_text(Some(&string));
             });
         }

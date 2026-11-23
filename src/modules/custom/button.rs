@@ -6,7 +6,7 @@ use super::{CustomWidget, CustomWidgetContext, ExecEvent, WidgetConfig};
 use crate::build;
 use crate::channels::AsyncSenderExt;
 use crate::config::LayoutConfig;
-use crate::dynamic_value::dynamic_string;
+use crate::dynamic_value::DynamicString;
 use crate::gtk_helpers::IronbarLabelExt;
 use crate::modules::PopupButton;
 
@@ -23,9 +23,7 @@ pub struct ButtonWidget {
     ///
     /// This is a shorthand for adding a label widget to the button.
     /// Ignored if `widgets` is set.
-    ///
-    /// This is a [Dynamic String](dynamic-values#dynamic-string).
-    label: Option<String>,
+    label: Option<DynamicString>,
 
     /// Command to execute. More on this [below](#commands).
     on_click: Option<String>,
@@ -59,7 +57,7 @@ impl CustomWidget for ButtonWidget {
 
             button.set_child(Some(&label));
 
-            dynamic_string(&text, (), move |(), string| {
+            text.subscribe((), move |(), string| {
                 label.set_label_escaped(&string);
             });
         }

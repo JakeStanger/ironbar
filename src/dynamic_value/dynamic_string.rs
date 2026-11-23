@@ -1,6 +1,7 @@
 use crate::channels::{AsyncSenderExt, Dependency, MpscReceiverExt};
 use crate::script::{OutputStream, Script};
 use crate::{arc_mut, lock, spawn};
+use serde::Deserialize;
 use tokio::sync::mpsc;
 
 /// A segment of a dynamic string,
@@ -14,87 +15,99 @@ enum DynamicStringSegment {
     Variable(Box<str>),
 }
 
-/// Creates a new dynamic string, based off the input template.
-/// Runs `f` with the compiled string each time one of the scripts or variables updates.
+/// A string which can contain any mixture of
+/// static text, embedded scripts and ironvars.
 ///
-/// # Example
-///
-/// ```rs
-/// dynamic_string(&text, &label, move |label, string| {
-///     label.set_label_escaped(&string);
-/// });
-/// ```
-pub fn dynamic_string<D, F>(input: &str, deps: D, f: F)
-where
-    D: Dependency,
-    D::Target: Clone + 'static,
-    F: FnMut(&D::Target, String) + 'static,
-{
-    let (tokens, is_static) = parse_input(input);
+/// Scripts should be placed inside `{{double braces}}`,
+/// and ironvars should be referenced as `#var_name`.
+/// See [here](/dynamic-content/dynamic-values#dynamic-string) for more information.
+#[derive(Debug, Default, Deserialize, Clone, PartialEq)]
+#[cfg_attr(feature = "extras", derive(serde::Serialize, schemars::JsonSchema))]
+pub struct DynamicString(String);
 
-    let label_parts = arc_mut!(vec![]);
-    let (tx, rx) = mpsc::channel(32);
+impl DynamicString {
+    /// Parses the string template and subscribes to its scripts and variables.
+    /// Runs `f` with the compiled string each time one of the scripts or variables updates.
+    ///
+    /// # Example
+    ///
+    /// ```rs
+    /// text.subscribe(&label, move |label, string| {
+    ///     label.set_label_escaped(&string);
+    /// });
+    /// ```
+    pub fn subscribe<D, F>(&self, deps: D, f: F)
+    where
+        D: Dependency,
+        D::Target: Clone + 'static,
+        F: FnMut(&D::Target, String) + 'static,
+    {
+        let (tokens, is_static) = parse_input(&self.0);
 
-    for (i, segment) in tokens.into_iter().enumerate() {
-        match segment {
-            DynamicStringSegment::Static(str) => {
-                lock!(label_parts).push(str);
-            }
-            DynamicStringSegment::Script(script) => {
-                let tx = tx.clone();
-                let label_parts = label_parts.clone();
+        let label_parts = arc_mut!(vec![]);
+        let (tx, rx) = mpsc::channel(32);
 
-                // insert blank value to preserve segment order
-                lock!(label_parts).push(String::new());
+        for (i, segment) in tokens.into_iter().enumerate() {
+            match segment {
+                DynamicStringSegment::Static(str) => {
+                    lock!(label_parts).push(str);
+                }
+                DynamicStringSegment::Script(script) => {
+                    let tx = tx.clone();
+                    let label_parts = label_parts.clone();
 
-                spawn(async move {
-                    script
-                        .run(None, |out, _| {
-                            if let OutputStream::Stdout(out) = out {
+                    // insert blank value to preserve segment order
+                    lock!(label_parts).push(String::new());
+
+                    spawn(async move {
+                        script
+                            .run(None, |out, _| {
+                                if let OutputStream::Stdout(out) = out {
+                                    let mut label_parts = lock!(label_parts);
+
+                                    let _: String = std::mem::replace(&mut label_parts[i], out);
+
+                                    let string = label_parts.join("");
+                                    tx.send_spawn(string);
+                                }
+                            })
+                            .await;
+                    });
+                }
+                #[cfg(any(feature = "ipc", feature = "lua"))]
+                DynamicStringSegment::Variable(name) => {
+                    let tx = tx.clone();
+                    let label_parts = label_parts.clone();
+
+                    // insert blank value to preserve segment order
+                    lock!(label_parts).push(String::new());
+
+                    spawn(async move {
+                        let variable_manager = crate::Ironbar::variable_manager();
+                        let mut rx = variable_manager.subscribe(name);
+
+                        while let Ok(value) = rx.recv().await {
+                            if let Some(value) = value {
                                 let mut label_parts = lock!(label_parts);
 
-                                let _: String = std::mem::replace(&mut label_parts[i], out);
+                                let _: String = std::mem::replace(&mut label_parts[i], value);
 
                                 let string = label_parts.join("");
                                 tx.send_spawn(string);
                             }
-                        })
-                        .await;
-                });
-            }
-            #[cfg(any(feature = "ipc", feature = "lua"))]
-            DynamicStringSegment::Variable(name) => {
-                let tx = tx.clone();
-                let label_parts = label_parts.clone();
-
-                // insert blank value to preserve segment order
-                lock!(label_parts).push(String::new());
-
-                spawn(async move {
-                    let variable_manager = crate::Ironbar::variable_manager();
-                    let mut rx = variable_manager.subscribe(name);
-
-                    while let Ok(value) = rx.recv().await {
-                        if let Some(value) = value {
-                            let mut label_parts = lock!(label_parts);
-
-                            let _: String = std::mem::replace(&mut label_parts[i], value);
-
-                            let string = label_parts.join("");
-                            tx.send_spawn(string);
                         }
-                    }
-                });
+                    });
+                }
             }
         }
-    }
 
-    rx.recv_glib(deps, f);
+        rx.recv_glib(deps, f);
 
-    // initialize
-    if is_static {
-        let label_parts = lock!(label_parts).join("");
-        tx.send_spawn(label_parts);
+        // initialize
+        if is_static {
+            let label_parts = lock!(label_parts).join("");
+            tx.send_spawn(label_parts);
+        }
     }
 }
 
