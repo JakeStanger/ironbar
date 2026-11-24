@@ -7,7 +7,7 @@ use crate::clients::brightness::{self, Key, Scale};
 use crate::config::{ProfileUpdateEvent, default};
 use crate::image::IconLabel;
 use crate::modules::brightness::config::{BrightnessProfile, default_profiles};
-use crate::modules::brightness::utils::{
+use crate::modules::brightness::scale::{
     MAX_SETTABLE_PERCENTAGE, MIN_PERCENTAGE, brightness_from, percent_from,
 };
 use crate::modules::{Module, ModuleInfo, ModuleParts, WidgetContext};
@@ -19,7 +19,7 @@ use tokio::sync::mpsc;
 use tracing::{debug, error, trace};
 
 mod config;
-mod utils;
+mod scale;
 
 #[derive(Clone, Debug, Default)]
 pub struct BrightnessProperties {
