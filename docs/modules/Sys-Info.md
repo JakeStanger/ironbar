@@ -154,11 +154,11 @@ More information about each of these and the additional options can be found fur
 | `{swap_total}`           | N/A              | GB           | `0<4.1`            | 
 | `{swap_percent}`         | N/A              | GB           | `0<4.1`            | 
 | **GPU**                  |                  |              |                    | 
-| `{gpu_percent}`          | N/A              | %            | `0<2`                   | 
-| `{gpu_memory_free}`      | N/A              | GB           | `0<4.1`                  | 
-| `{gpu_memory_total}`     | N/A              | GB           | `0<4.1`                  | 
-| `{gpu_memory_used}`      | N/A              | GB           | `0<4.1`                   | 
-| `{gpu_memory_percent}`   | N/A              | %            | `0<2`                   | 
+| `{gpu_percent}`          | `sum`              | %            | `0<2`                   | 
+| `{gpu_memory_free}`      | `sum`              | GB           | `0<4.1`                  | 
+| `{gpu_memory_total}`     | `sum`              | GB           | `0<4.1`                  | 
+| `{gpu_memory_used}`      | `sum`              | GB           | `0<4.1`                   | 
+| `{gpu_memory_percent}`   | `sum`              | %            | `0<2`                   | 
 | **Temperature**          |                  |              |                    | 
 | `{temp_c[@sensor]}`      | `max`            | °C           |                    | 
 | `{temp_f[@sensor]}`      | `max`            | °F           |                    | 
@@ -183,6 +183,7 @@ More information about each of these and the additional options can be found fur
 Many of the tokens operate on a value set, as opposed to an individual value:
 
 - CPU tokens operate on each physical thread.
+- GPU tokens operate on each physical GPU.
 - Temperature tokens operate on each sensor.
 - Disk tokens operate on each mount.
 - Network tokens operate on each adapter.
