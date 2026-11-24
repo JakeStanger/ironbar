@@ -23,7 +23,9 @@ use tokio::{
 };
 use tracing::{error, warn};
 
-pub use fs_reader::{brightness, default_resource_name, max_brightness};
+pub use fs_reader::{
+    brightness, default_kbd_ressource_name, default_resource_name, max_brightness,
+};
 
 #[derive(Debug)]
 pub(crate) enum BrightnessError {

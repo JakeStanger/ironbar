@@ -1,7 +1,7 @@
 use serde::Deserialize;
 
 use crate::{
-    clients::brightness::{Key, default_resource_name},
+    clients::brightness::{Key, default_kbd_ressource_name, default_resource_name},
     config::{CommonConfig, LayoutConfig, Profiles, TruncateMode},
     profiles,
 };
@@ -54,12 +54,11 @@ impl BrightnessDataSource {
                     return Ok(());
                 }
 
-                *path = Some(if let Some(device) = default_resource_name("leds") {
-                    let s = device.to_string() + "/org/freedesktop/UPower/KbdBacklight/";
-                    Box::from(s.as_str())
-                } else {
+                *path = default_kbd_ressource_name();
+
+                if path.is_none() {
                     return Err(());
-                });
+                };
             }
             BrightnessDataSource::Systemd { subsystem, name } => {
                 if name.is_some() {

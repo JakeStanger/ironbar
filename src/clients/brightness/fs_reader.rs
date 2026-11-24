@@ -146,3 +146,18 @@ pub fn default_resource_name(subsystem: &str) -> Option<Box<str>> {
         _ => None,
     }
 }
+
+/// Search for the device under the `leds` subsystem.
+///
+/// Performs a [default_resource_name] where `subsystem` is set to `leds`.
+/// If a device is found then the D-Bus path for the device is returned.
+///
+/// It will return the first device found.
+/// See [default_resource_name] for more information about device search.
+///
+/// If no device could be found [None] is returned.
+pub fn default_kbd_ressource_name() -> Option<Box<str>> {
+    let device = default_resource_name("leds")?;
+    let s = "/org/freedesktop/UPower/KbdBacklight/".to_string() + &device;
+    Some(Box::from(s.as_str()))
+}
