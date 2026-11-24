@@ -8,7 +8,7 @@ const GAMMA_HIGH_COEF: f32 = 1.055;
 const GAMMA_OFFSET: f32 = 0.055;
 /// Cutoff for the transfer function
 ///
-/// Bellow this values are scaled linearly with [GAMMA_LOW_COEF].
+/// Below this values are scaled linearly with [GAMMA_LOW_COEF].
 const GAMMA_LOW_CUTOFF: f32 = 0.0031308;
 /// Same as [GAMMA_LOW_CUTOFF] but used when reverting values.
 const REVERT_GAMMA_LOW_CUTOFF: f32 = 0.04045;
