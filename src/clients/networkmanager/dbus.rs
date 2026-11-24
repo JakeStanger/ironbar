@@ -128,7 +128,7 @@ pub trait Ip4ConfigDbus {
 #[derive(Clone, Copy, Debug, PartialEq, Deserialize)]
 #[repr(u32)]
 #[serde(rename_all = "snake_case")]
-#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "extras", derive(serde::Serialize, schemars::JsonSchema))]
 pub enum DeviceType {
     /// unknown device
     Unknown = 0,

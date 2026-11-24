@@ -12,7 +12,7 @@ The build dependencies have changed:
 - Ironbar now requires `gtk4` and `gtk4-layer-shell` in place of their gtk3 counterparts.
 - `libdbusmenu-gtk3` is no longer required. There is no GTK4 equivalent.
 
-See [Compiling from source](compiling) for more info.
+See [Compiling from source](/guides/compiling) for more info.
 
 ## Popups
 

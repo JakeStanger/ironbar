@@ -16,28 +16,22 @@ use serde::Deserialize;
 use tokio::sync::mpsc;
 
 #[derive(Debug, Deserialize, Clone, PartialEq)]
-#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "extras", derive(serde::Serialize, schemars::JsonSchema))]
 #[serde(default)]
 pub struct SysInfoModule {
     /// List of strings including formatting tokens.
-    /// For available tokens, see [below](#formatting-tokens).
     ///
-    /// **Required**
+    /// See [formatting tokens](#formatting-tokens) for detailed information
+    /// on how the formatting system works.
     format: Vec<String>,
 
     /// Number of seconds between refresh.
     ///
     /// This can be set as a global interval,
     /// or passed as an object to customize the interval per-system.
-    ///
-    /// **Default**: `5`
     interval: Interval,
 
     /// The orientation by which the labels are laid out.
-    ///
-    /// **Valid options**: `horizontal`, `vertical`, `h`, `v`
-    /// <br>
-    /// **Default** : `horizontal`
     direction: Option<ModuleOrientation>,
 
     // -- common --
@@ -63,42 +57,28 @@ impl Default for SysInfoModule {
 }
 
 #[derive(Debug, Deserialize, Copy, Clone, PartialEq, Eq)]
-#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "extras", derive(serde::Serialize, schemars::JsonSchema))]
 #[serde(default)]
 pub struct Intervals {
     /// The number of seconds between refreshing memory data.
-    ///
-    /// **Default**: `5`
     memory: u64,
 
     /// The number of seconds between refreshing CPU data.
-    ///
-    /// **Default**: `5`
     cpu: u64,
 
     /// The number of seconds between refreshing GPU data.
-    ///
-    /// **Default**: `5`
     gpu: u64,
 
     /// The number of seconds between refreshing temperature data.
-    ///
-    /// **Default**: `5`
     temps: u64,
 
     /// The number of seconds between refreshing disk data.
-    ///
-    /// **Default**: `5`
     disks: u64,
 
     /// The number of seconds between refreshing network data.
-    ///
-    /// **Default**: `5`
     networks: u64,
 
     /// The number of seconds between refreshing system data.
-    ///
-    /// **Default**: `5`
     system: u64,
 }
 
@@ -118,9 +98,15 @@ impl Default for Intervals {
 
 #[derive(Debug, Deserialize, Copy, Clone, PartialEq, Eq)]
 #[serde(untagged)]
-#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "extras", derive(serde::Serialize, schemars::JsonSchema))]
 pub enum Interval {
+    /// # All
+    ///
+    /// Shared between all systems.
     All(u64),
+    /// # Individual
+    ///
+    /// Per-system overrides.
     Individual(Intervals),
 }
 

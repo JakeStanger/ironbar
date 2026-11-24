@@ -19,48 +19,34 @@ use tokio::sync::mpsc;
 use tracing::{debug, error};
 
 #[derive(Debug, Deserialize, Clone, PartialEq)]
-#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "extras", derive(serde::Serialize, schemars::JsonSchema))]
 #[serde(default)]
 pub struct ClipboardModule {
     /// The icon to show on the bar widget button.
     /// Supports [image](images) icons.
-    ///
-    /// **Default**: `󰨸`
     icon: String,
 
     /// The size to render the icon at.
     /// Note this only applies to image-type icons.
-    ///
-    /// **Default**: `32`
     icon_size: i32,
 
     /// The maximum number of items to keep in the history,
     /// and to show in the popup.
-    ///
-    /// **Default**: `10`
     max_items: usize,
 
     /// The maximum width to render copied images at.
-    ///
-    /// **Default**: `256.0`
     image_max_width: f64,
 
     /// The maximum height to render copied images at.
-    ///
-    /// **Default**: `64.0`
     image_max_height: f64,
 
     // -- Common --
-    /// See [truncate options](module-level-options#truncate-mode).
-    ///
-    /// **Default**: `null`
+    /// The truncation options to apply to each entry in the clipboard history.
     truncate: Option<TruncateMode>,
 
-    /// See [layout options](module-level-options#layout)
     #[serde(default, flatten)]
     layout: LayoutConfig,
 
-    /// See [common options](module-level-options#common-options).
     #[serde(flatten)]
     pub common: Option<CommonConfig>,
 
@@ -72,14 +58,10 @@ pub struct ClipboardModule {
 
     /// The icon to show on the clipboard clear button.
     /// Supports [image](images) icons.
-    ///
-    /// **Default**: `🗑`
     clear_button_icon: String,
 
     /// The size to render the icon at.
     /// Note this only applies to image-type icons.
-    ///
-    /// **Default**: `32`
     clear_button_icon_size: i32,
 }
 

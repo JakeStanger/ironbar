@@ -5,75 +5,7 @@ Clicking the module cycles between available profiles.
 > [!NOTE]
 > This module requires that `upower` is installed and its service is running.
 
-## Configuration
-
-> Type: `power_profiles`
-
-| Name                   | Type                    | Default                | Profile? | Description                                                      |
-|------------------------|-------------------------|------------------------|----------|------------------------------------------------------------------|
-| `format`               | `string`                | `null`                 | No       |Format string to use for the widget button label.                 |
-| `tooltip_format`       | `string`                | `Power profile: {name}`| No       |Format string to use for the widget tooltip. Leave empty for no tooltip.                 |
-| `icon`                 | `string`                | `null`                 | Yes      | Icon to show alongside the label. Supports [image](images) icons.|
-| `use_default_profiles` | `boolean`               | `true`                 | No       | Whether default profiles should be used.                         |
-
-Information on the profiles system can be found [here](profiles).
-
-<details>
-<summary>JSON</summary>
-
-```json
-{
-  "end": [
-    {
-      "type": "power_profiles",
-      "format": "{name}",
-      "profiles": {
-        "power-saving": {
-          "when": "power-saver",
-          "icon": ""
-        },
-      }
-    }
-  ]
-}
-```
-
-</details>
-
-<details>
-<summary>TOML</summary>
-
-```toml
-[[end]]
-type = "power_profiles"
-format = "{name}"
-
-[end.profiles.power_saving]
-when = "power-saver"
-icon = ""
-
-```
-
-</details>
-
-<details>
-<summary>YAML</summary>
-
-```yaml
-end:
-  - type: power_profiles
-    format: "{name}"
-
-    profiles:
-      power_saving:
-        when: "power-saver"
-        icon: ""
-```
-
-</details>
-
-<details>
-<summary>Corn</summary>
+## Example
 
 ```corn
 {
@@ -89,7 +21,11 @@ end:
 }
 ```
 
-</details>
+## Configuration
+
+> Type: `power_profiles`
+
+%properties%
 
 ### Icons
 
@@ -122,14 +58,6 @@ Power Profiles ships with default profiles that set icons for common profiles:
 ```
 
 </details>
-
-### Formatting Tokens
-
-The following tokens can be used in the `format` config option:
-
-| Token          | Description                            |
-|----------------|----------------------------------------|
-| `{name}`       | Name of the active profile.            |
 
 ## Styling
 

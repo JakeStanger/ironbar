@@ -1,76 +1,64 @@
 use crate::config::{CommonConfig, LayoutConfig};
 use chrono::Timelike;
+#[cfg(feature = "extras")]
+use schemars::{JsonSchema, Schema, SchemaGenerator, json_schema};
 use serde::de::Error;
 use serde::{Deserialize, Deserializer};
+#[cfg(feature = "extras")]
+use std::borrow::Cow;
 use std::time::Duration;
 
 /// Command to control inhibit state.
-///
-/// **Valid options**: `toggle`, `cycle`
 #[derive(Debug, Clone, Copy, Deserialize, PartialEq, Eq)]
-#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "extras", derive(serde::Serialize, schemars::JsonSchema))]
 #[serde(rename_all = "lowercase")]
 pub enum InhibitCommand {
-    /// Toggle inhibit on/off
+    /// Toggle inhibit on/off.
     Toggle,
-    /// Cycle to next duration
+    /// Cycle to next duration.
     Cycle,
 }
 
 #[derive(Debug, Deserialize, Clone, PartialEq)]
-#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "extras", derive(serde::Serialize, schemars::JsonSchema))]
 #[serde(default)]
 pub struct InhibitModule {
-    /// Duration configuration: list of durations to cycle through and default.
-    /// Use `0` for infinite inhibit. Format: `HH:MM:SS` (e.g., `01:30:00`)
-    ///
-    /// If `default_duration` is not specified, the first item in `durations` is used.
-    ///
-    /// **Default**: `durations = ["00:30:00", "01:00:00", "01:30:00", "02:00:00", "0"]`
-    /// **Default**: `default_duration = "00:30:00"`
+    /// See [common options](module-level-options#common-options).
     #[serde(flatten)]
+    pub common: Option<CommonConfig>,
+
+    /// See [DurationSpec]
+    #[serde(flatten, skip_serializing)]
     pub(super) duration_spec: DurationSpec,
 
     /// Command to execute on left click.
-    ///
-    /// **Valid options**: `toggle`, `cycle`
-    /// <br>
-    /// **Default**: `toggle`
     pub(super) on_click_left: Option<InhibitCommand>,
 
     /// Command to execute on right click.
-    ///
-    /// **Valid options**: `toggle`, `cycle`
-    /// <br>
-    /// **Default**: `cycle`
     pub(super) on_click_right: Option<InhibitCommand>,
 
     /// Command to execute on middle click.
-    ///
-    /// **Valid options**: `toggle`, `cycle`
-    /// <br>
-    /// **Default**: `null`
     pub(super) on_click_middle: Option<InhibitCommand>,
 
     /// Format string when inhibit is active.
     /// `{duration}` token shows remaining/selected time.
     ///
-    /// **Default**: `"☕ {duration}"`
+    /// Available tokens:
+    ///
+    /// | Token        | Description       |
+    /// |--------------|-------------------|
+    /// | `{duration}` | Current duration. |
     pub(super) format_on: String,
 
     /// Format string when inhibit is inactive.
     /// `{duration}` token shows selected duration.
     ///
-    /// **Default**: `"💤 {duration}"`
+    /// See [format_on](#format_on) for available tokens.
     pub(super) format_off: String,
 
     /// See [layout options](module-level-options#layout).
     #[serde(flatten)]
     pub(super) layout: LayoutConfig,
-
-    /// See [common options](module-level-options#common-options).
-    #[serde(flatten)]
-    pub common: Option<CommonConfig>,
 }
 
 impl Default for InhibitModule {
@@ -98,11 +86,14 @@ fn parse_duration(s: &str) -> Result<Duration, String> {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
 pub(super) struct DurationSpec {
-    #[cfg_attr(feature = "extras", schemars(with = "Vec<String>"))]
+    /// List of durations to cycle through.
+    /// Use `0` for infinite inhibit. Format: `HH:MM:SS` (e.g., `01:30:00`).
+    ///
+    /// If `default_duration` is not specified, the first item in `durations` is used.
     pub(super) durations: Vec<Duration>,
-    #[cfg_attr(feature = "extras", schemars(with = "String"))]
+
+    /// Starting duration. See [durations](#durations) above for information.
     pub(super) default_duration: Duration,
 }
 
@@ -155,6 +146,40 @@ impl<'de> Deserialize<'de> for DurationSpec {
         Ok(Self {
             durations,
             default_duration,
+        })
+    }
+}
+
+#[cfg(feature = "extras")]
+impl JsonSchema for DurationSpec {
+    fn schema_name() -> Cow<'static, str> {
+        "DurationSpec".into()
+    }
+
+    fn json_schema(_generator: &mut SchemaGenerator) -> Schema {
+        /// Matches the formats accepted by [`parse_duration`].
+        const PATTERN: &str = r"^(0|inf|([01]?\d|2[0-3]):[0-5]?\d:[0-5]?\d)$";
+
+        json_schema!({
+            "type": "object",
+            "properties": {
+                "durations": {
+                    "description": "List of durations to cycle through.\nUse `0` for infinite inhibit. Format: `HH:MM:SS` (e.g., `01:30:00`).\n\nIf `default_duration` is not specified, the first item in `durations` is used.",
+                    "type": "array",
+                    "items": {
+                        "type": "string",
+                        "pattern": PATTERN
+                    },
+                    "minItems": 1,
+                    "default": ["00:30:00", "01:00:00", "01:30:00", "02:00:00", "inf"]
+                },
+                "default_duration": {
+                    "description": "Starting duration. Must be present in `durations`. See [durations](#durations) above for information.",
+                    "type": "string",
+                    "pattern": PATTERN,
+                    "default": "00:30:00"
+                }
+            }
         })
     }
 }

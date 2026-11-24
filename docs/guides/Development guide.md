@@ -336,7 +336,7 @@ Child namespaces can be used to logically group keys.
 For example, the `sysinfo` client registers a child namespace called `cpu_frequency` to hold CPU frequency information.
 This namespace then contains child values for each CPU core, and aggregate values.
 
-The implementation can be as static or dynamic as necesary, depending on the use-case.
+The implementation can be as static or dynamic as necessary, depending on the use-case.
 Performing I/O to fetch values is generally considered okay, since values are generally queried on an ad-hoc basis.
 
 ## Creating a new module
@@ -349,13 +349,13 @@ The module consists of a struct that represents its configuration.
 This config is "digested" when the bar loads to form the specific module instance.
 
 At a minimum, each module struct must derive all of `Debug`, `serde::Deserialize`, and `Clone`. 
-When the `extras` feature is enabled, it must also derive `schemars::JsonSchema`.
+When the `extras` feature is enabled, it must also derive `serde::Serialize` and `schemars::JsonSchema`.
 
 An extract of the Clock module is shown below as an example:
 
 ```rust
 #[derive(Debug, Deserialize, Clone, PartialEq)]
-#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "extras", derive(serde::Serialize, schemars::JsonSchema))]
 #[serde(default)]
 pub struct ClockModule {
     /// The format string to use for the date/time shown on the bar.
@@ -364,8 +364,7 @@ pub struct ClockModule {
     /// Detail on available tokens can be found here:
     /// <https://docs.rs/chrono/latest/chrono/format/strftime/index.html>
     ///
-    /// **Default**: `%d/%m/%Y %H:%M`
-    format: String,
+        format: String,
     
     // ...
   
@@ -430,7 +429,7 @@ and a set of appropriate default profiles where appropriate.
 
 ```rs
 #[derive(Debug, Default, Clone, Deserialize)]
-#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "extras", derive(serde::Serialize, schemars::JsonSchema))]
 #[serde(default)]
 pub struct VolumeProfile {
     pub(super) icons: Icons,
@@ -761,3 +760,30 @@ pub fn handle_command(command: IronvarCommand) -> Response {
     }
 }
 ```
+
+## Documentation
+
+The documentation for Ironbar is stored in the `docs` folder of the main repo.
+When changes to this repo are pushed, this automatically triggers a CI job on the documentation site repo, 
+rebuilding and redeploying the site.
+
+Each file acts as a template containing the vital information. 
+For module documentation this is structured as follows:
+
+- A note alert regarding compatibility or external dependencies where relevant.
+- A summary of the module.
+- One or more screenshots demonstrating the module.
+- An `## Example` header, containing an example in the [corn](https://cornlang.dev) format. 
+  Other formats are generated from this.
+- A `## Configuration` header, which contains:
+  - A `> Type: [ModuleType]` with the value used for the module's `type` property.
+  - A `%properties%` template block. This is replaced with documentation generated from the module configuration code.
+- A `## Styling` section containing a table of CSS selectors and their descriptions.
+
+The `%properties%` template block will attempt to infer the type name from the documentation file name. 
+It can also optionally include a type name after a `:`, eg `%properties:BarConfig%`.
+
+Type information is generated from the JSON schema, which resides in a public blob container (https://f.ironb.ar/schema.json).
+
+The repository for the project can be found here:
+https://github.com/JakeStanger/ironbar-docs/

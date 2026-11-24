@@ -3,7 +3,7 @@ use serde::Deserialize;
 
 #[derive(Debug, Deserialize, Clone, Copy, Default, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
-#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "extras", derive(serde::Serialize, schemars::JsonSchema))]
 pub enum EllipsizeMode {
     None,
     Start,
@@ -28,13 +28,12 @@ impl From<EllipsizeMode> for GtkEllipsizeMode {
 /// which is defined below.
 ///
 /// The option can be configured in one of two modes.
-///
-/// **Default**: `Auto (end)`
-///
 #[derive(Debug, Deserialize, Clone, Copy, PartialEq, Eq)]
 #[serde(untagged)]
-#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "extras", derive(serde::Serialize, schemars::JsonSchema))]
 pub enum TruncateMode {
+    /// # Off
+    ///
     /// Do not truncate content.
     ///
     /// Setting this option may cause excessively long content to overflow other widgets,
@@ -43,9 +42,12 @@ pub enum TruncateMode {
     /// # Example
     ///
     /// ```corn
-    /// { truncate = "off" }
+    /// { truncate = null }
+    /// ```
     Off,
 
+    /// # Auto
+    ///
     /// Auto mode lets GTK decide when to ellipsize.
     ///
     /// To use this mode, set the truncate option to a string
@@ -56,12 +58,10 @@ pub enum TruncateMode {
     /// ```corn
     /// { truncate = "start" }
     /// ```
-    ///
-    /// **Valid options**: `start`, `middle`, `end`
-    /// <br>
-    /// **Default**: `end`
     Auto(EllipsizeMode),
 
+    /// # Length
+    ///
     /// Length mode defines a fixed point at which to ellipsize.
     ///
     /// Generally you will want to set only one of `length` or `max_length`,
@@ -78,9 +78,6 @@ pub enum TruncateMode {
     /// ```
     Length {
         /// The location to truncate text from and place the ellipsis.
-        /// **Valid options**: `start`, `middle`, `end`
-        /// <br>
-        /// **Default**: `null`
         mode: EllipsizeMode,
 
         /// The fixed width (in characters) of the widget.
@@ -89,16 +86,12 @@ pub enum TruncateMode {
         /// if it would have otherwise been smaller.
         ///
         /// Leave unset to let GTK automatically handle.
-        ///
-        /// **Default**: `null`
         length: Option<i32>,
 
         /// The maximum number of characters to show
         /// before truncating.
         ///
         /// Leave unset to let GTK automatically handle.
-        ///
-        /// **Default**: `null`
         max_length: Option<i32>,
     },
 }

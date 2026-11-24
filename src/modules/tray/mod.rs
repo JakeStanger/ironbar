@@ -31,40 +31,45 @@ struct IconConfig {
 
 /// Reserved tray click actions
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
-#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "extras", derive(serde::Serialize, schemars::JsonSchema))]
 #[serde(rename_all = "snake_case")]
 pub enum ReservedTrayAction {
-    /// Open the tray icon's popup menu
+    /// Open the tray icon's popup menu.
     Menu,
-    /// Trigger the tray icon's default (primary) action
+    /// Trigger the tray icon's default (primary) action.
     Default,
-    /// Trigger the tray icon's secondary action
+    /// Trigger the tray icon's secondary action.
     Secondary,
-    /// Do nothing
+    /// Do nothing.
     None,
 }
 
 /// Action to perform when clicking on a tray icon
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
-#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "extras", derive(serde::Serialize, schemars::JsonSchema))]
 #[serde(untagged)]
 pub enum TrayClickAction {
-    /// Reserved action
+    /// A built-in action.
+    ///
+    /// # Example
+    ///
+    /// ```corn
+    /// { on_click_left = "menu" }
+    /// ```
     Reserved(ReservedTrayAction),
-    /// Run a custom shell command
+
+    /// Any custom shell command.
+    /// This is passed to `sh -c`.
     Custom(String),
 }
 
 /// Click action handlers for tray icons
 #[derive(Debug, Clone, Deserialize, PartialEq)]
-#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "extras", derive(serde::Serialize, schemars::JsonSchema))]
 #[serde(default)]
 pub struct TrayClickHandlers {
     /// Action to perform on left-click.
     ///
-    /// **Valid options**: `menu`, `default`, `secondary`, `none`, or any custom shell command
-    /// <br>
-    /// **Default**: `default` (current behavior, for backwards compatibility)
     ///
     /// Custom commands support the following placeholders:
     /// - `{name}` - The tray item's identifier/name
@@ -82,38 +87,18 @@ pub struct TrayClickHandlers {
     on_click_left: TrayClickAction,
 
     /// Action to perform on right-click.
-    ///
-    /// **Valid options**: `menu`, `default`, `secondary`, `none`, or any custom shell command
-    /// <br>
-    /// **Default**: `menu`
     on_click_right: TrayClickAction,
 
     /// Action to perform on middle-click.
-    ///
-    /// **Valid options**: `menu`, `default`, `secondary`, `none`, or any custom shell command
-    /// <br>
-    /// **Default**: `none`
     on_click_middle: TrayClickAction,
 
     /// Action to perform on double-left-click.
-    ///
-    /// **Valid options**: `menu`, `default`, `secondary`, `none`, or any custom shell command
-    /// <br>
-    /// **Default**: `none`
     on_click_left_double: TrayClickAction,
 
     /// Action to perform on double-right-click.
-    ///
-    /// **Valid options**: `menu`, `default`, `secondary`, `none`, or any custom shell command
-    /// <br>
-    /// **Default**: `none`
     on_click_right_double: TrayClickAction,
 
     /// Action to perform on double-middle-click.
-    ///
-    /// **Valid options**: `menu`, `default`, `secondary`, `none`, or any custom shell command
-    /// <br>
-    /// **Default**: `none`
     on_click_middle_double: TrayClickAction,
 }
 
@@ -144,40 +129,84 @@ impl Default for TrayClickAction {
 }
 
 #[derive(Debug, Deserialize, Clone, PartialEq)]
-#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "extras", derive(serde::Serialize, schemars::JsonSchema))]
 #[serde(default)]
 pub struct TrayModule {
     /// Requests that icons from the theme be used over the item-provided item.
     /// Most items only provide one or the other so this will have no effect in most circumstances.
-    ///
-    /// **Default**: `true`
     prefer_theme_icons: bool,
 
     /// Size in pixels to display the tray icons as.
-    ///
-    /// **Default**: `16`
     icon_size: u32,
 
     /// The direction in which to pack tray icons.
-    ///
-    /// **Valid options**: `horizontal`, `vertical`
-    /// <br>
-    /// **Default**: `horizontal` for horizontal bars, `vertical` for vertical bars
+    #[cfg_attr(feature = "extras", schemars(extend("default" = "[matches bar orientation]")))]
     direction: Option<ModuleOrientation>,
 
     /// Order in which icons are displayed from left to right or top to bottom.
-    /// The names are case insensitive and must be included in the id of tray entry.
+    /// This takes a list of icon IDs, as determined the host program;
+    /// these are case-insensitive.
     ///
-    /// **Default**: icons are pre append when received by the bar.
+    /// Assuming Ironbar is running with at least one tray module,
+    /// icon names can be queried using `ironbar var list tray`.
+    ///
+    /// Some common application IDs:
+    ///
+    ///   - Element: `Element_status_icon_1`
+    ///   - OBS: `obs`
+    ///   - Proton Mail: `Proton Mail Bridge`
+    ///   - Proton VPN: `proton.vpn.app.gtk`
+    ///   - Discord: `discord_status_icon_1`
+    ///   - Vesktop: `vesktop_status_icon_1`
+    ///   - Nextcloud: `Nextcloud`
+    ///   - KeePassXC: `KeePassXC`
+    ///   - Steam: `steam`
+    ///   - Tidal: `tidal-hifi_status_icon_1`
     icon_order: Vec<String>,
-
-    /// Click action handlers for tray icons
-    #[serde(flatten)]
-    click_handlers: TrayClickHandlers,
 
     /// See [common options](module-level-options#common-options).
     #[serde(flatten)]
     pub common: Option<CommonConfig>,
+
+    // -- Common Overrides --
+    /// Click action handlers for tray icons.
+    ///
+    /// Click actions can be one of the following built-in actions, or any custom shell command:
+    ///
+    /// **Built-in actions:**
+    /// - `menu` - Opens the tray icon's popup menu
+    /// - `default` - Triggers the tray icon's default (primary) action
+    /// - `secondary` - Triggers the tray icon's secondary action
+    /// - `none` - Do nothing
+    ///
+    /// **Custom commands:**
+    ///
+    /// Any other string is treated as a custom shell command. Custom commands support the following placeholders:
+    /// - `{name}` - The tray item's identifier/name
+    /// - `{title}` - The tray item's title (if available)
+    /// - `{icon}` - The tray item's icon name (if available)
+    /// - `{address}` - The tray item's internal address
+    ///
+    /// **Examples:**
+    ///
+    /// ```corn
+    /// {
+    ///   type = "tray"
+    ///   on_click_left = "menu"
+    ///   on_click_left_double = "default"
+    /// }
+    /// ```
+    ///
+    /// To run custom commands based on which tray item was clicked:
+    /// ```corn
+    /// {
+    ///   type = "tray"
+    ///   on_click_left = "notify-send 'Clicked {name}'"
+    ///   on_click_middle = "if [ '{name}' = 'copyq' ]; then copyq toggle; fi"
+    /// }
+    /// ```
+    #[serde(flatten)]
+    click_handlers: TrayClickHandlers,
 }
 
 impl Default for TrayModule {

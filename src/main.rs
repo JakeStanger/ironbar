@@ -89,6 +89,16 @@ fn run_with_args() {
         return;
     }
 
+    #[cfg(feature = "extras")]
+    if args.print_ipc_schema {
+        let schema = schemars::schema_for!(ironbar_ipc_types::Command);
+        println!(
+            "{}",
+            serde_json::to_string_pretty(&schema).expect("to be serializable")
+        );
+        return;
+    }
+
     match args.command {
         #[cfg(feature = "config")]
         None if args.validate_config > 0 => {

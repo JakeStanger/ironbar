@@ -16,7 +16,7 @@ use tokio::time::sleep;
 use tracing::{debug, trace};
 
 #[derive(Debug, Clone, Deserialize, PartialEq, Eq)]
-#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "extras", derive(serde::Serialize, schemars::JsonSchema))]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum BrightnessDataSource {
     /// using the keyboard dbus. Note: this only works for keyboards, not for screen brightness.
@@ -24,31 +24,28 @@ pub enum BrightnessDataSource {
     /// using the login1 dbus and fs for reading. This works for keyboard and screen brightness, but needs the filesystem for reading the data and dbus for adjusting.
     Systemd {
         /// The subsystem to read the data from, e.g. `backlight` or `leds`. Subsystem refers to the directory within `/sys/class/`.
-        ///
-        /// **Default**: `backlight`
         subsystem: String,
 
         /// The name of the resource, see `/sys/class/<subsystem>` for available resources. If empty, ironbar will try to resolve it via a hardcoded list of common resources
-        ///
-        /// **Default**: `None`
         name: Option<String>,
     },
 }
 
 #[derive(Debug, Clone, Deserialize, PartialEq, Eq)]
-#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "extras", derive(serde::Serialize, schemars::JsonSchema))]
 #[serde(default)]
 pub struct BrightnessProfile {
     /// The format string to use for the widget button label.
-    /// For available tokens, see [below](#formatting-tokens).
     ///
-    /// **Default**: `{percentage}%`
+    /// The following tokens can be used:
+    ///
+    /// | Token          | Description                            |
+    /// |----------------|----------------------------------------|
+    /// | `{percentage}` | The active brightness percentage.      |
     format: String,
 
     /// The icon to show on the bar widget button.
     /// Supports [image](images) icons.
-    ///
-    /// **Default**: null
     icon_label: Option<String>,
 }
 
@@ -87,7 +84,7 @@ fn default_profiles() -> Profiles<f64, BrightnessProfile> {
 }
 
 #[derive(Debug, Clone, Deserialize, PartialEq)]
-#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "extras", derive(serde::Serialize, schemars::JsonSchema))]
 #[serde(default)]
 pub struct BrightnessModule {
     /// See [profiles](profiles).
@@ -96,28 +93,23 @@ pub struct BrightnessModule {
 
     /// Where to get the brightness data from
     ///
-    /// See [BrightnessDataSource].
+    /// See [`BrightnessDataSource`].
     mode: BrightnessDataSource,
 
-    /// A multiplier from to control the speed of smooth scrolling on trackpad.
-    /// Choose a negative number to swap scrolling direction.
-    ///
-    /// **Default**: `1.0`
-    smooth_scroll_speed: f64,
-
     // -- Common --
-    /// See [truncate options](module-level-options#truncate-mode).
-    ///
-    /// **Default**: `null`
+    /// The truncation options to use for the label text.
     pub(crate) truncate: Option<TruncateMode>,
 
-    /// See [layout options](module-level-options#layout)
     #[serde(default, flatten)]
     layout: LayoutConfig,
 
-    /// See [common options](module-level-options#common-options).
     #[serde(flatten)]
     pub common: Option<CommonConfig>,
+
+    // -- Common Overrides --
+    /// A multiplier from to control the speed of smooth scrolling on trackpad.
+    /// Choose a negative number to swap scrolling direction.
+    smooth_scroll_speed: f64,
 }
 
 impl Default for BrightnessModule {

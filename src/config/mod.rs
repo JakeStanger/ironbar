@@ -12,7 +12,7 @@ mod truncate;
 #[cfg(feature = "battery")]
 use crate::modules::battery::BatteryModule;
 #[cfg(feature = "bindmode")]
-use crate::modules::bindmode::Bindmode;
+use crate::modules::bindmode::BindmodeModule;
 #[cfg(feature = "bluetooth")]
 use crate::modules::bluetooth::BluetoothModule;
 #[cfg(feature = "brightness")]
@@ -69,8 +69,6 @@ use color_eyre::Result;
 use gtk::PositionType;
 use gtk::prelude::ObjectExt;
 use ironbar_macros::HotReload;
-#[cfg(feature = "extras")]
-use schemars::JsonSchema;
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::sync::OnceLock;
@@ -114,12 +112,12 @@ pub fn get_double_click_time_ms() -> u64 {
 
 #[derive(Debug, Deserialize, Clone, PartialEq)]
 #[serde(tag = "type", rename_all = "snake_case")]
-#[cfg_attr(feature = "extras", derive(JsonSchema))]
+#[cfg_attr(feature = "extras", derive(serde::Serialize, schemars::JsonSchema))]
 pub enum ModuleConfig {
     #[cfg(feature = "battery")]
     Battery(Box<BatteryModule>),
     #[cfg(feature = "bindmode")]
-    Bindmode(Box<Bindmode>),
+    Bindmode(Box<BindmodeModule>),
     #[cfg(feature = "bluetooth")]
     Bluetooth(Box<BluetoothModule>),
     #[cfg(feature = "brightness")]
@@ -280,15 +278,48 @@ impl ModuleConfig {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-#[cfg_attr(feature = "extras", derive(JsonSchema))]
+#[cfg_attr(feature = "extras", derive(serde::Serialize, schemars::JsonSchema))]
 pub enum MonitorConfig {
+    /// A single bar config for this monitor.
+    /// This is configured using a `BarConfig` object directly.
+    /// # Example
+    ///
+    /// ```corn
+    /// let {
+    ///     $clock = { type = "clock" }
+    ///
+    /// } in {
+    ///     monitors = {
+    ///         DP-1 = { name = "DP-1" center = [ $clock ] }
+    ///         DP-2 = { name = "DP-2" center = [ $clock ] }
+    ///     }
+    /// }
+    /// ```
     Single(BarConfig),
+    /// Multiple bars configured on this monitor.
+    /// This takes an array, where each object is its own full `BarConfig`.
+    ///
+    /// # Example
+    ///
+    /// ```corn
+    /// let {
+    ///     $clock = { type = "clock" }
+    ///
+    /// } in {
+    ///     monitors = {
+    ///         DP-1 = [
+    ///             { name = "DP-1_A" center = [ $clock ] position = "top" }
+    ///             { name = "DP-1_B" center = [ $clock ] position = "bottom" }
+    ///         ]
+    ///     }
+    /// }
+    /// ```
     Multiple(Vec<BarConfig>),
 }
 
 #[derive(Debug, Default, Deserialize, Copy, Clone, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
-#[cfg_attr(feature = "extras", derive(JsonSchema))]
+#[cfg_attr(feature = "extras", derive(serde::Serialize, schemars::JsonSchema))]
 pub enum BarPosition {
     Top,
     #[default]
@@ -310,7 +341,7 @@ impl From<BarPosition> for PositionType {
 
 #[derive(Debug, Default, Deserialize, Copy, Clone, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
-#[cfg_attr(feature = "extras", derive(JsonSchema))]
+#[cfg_attr(feature = "extras", derive(serde::Serialize, schemars::JsonSchema))]
 pub enum AutohideListener {
     #[default]
     Hover,
@@ -319,12 +350,16 @@ pub enum AutohideListener {
 }
 
 #[derive(Debug, Default, Deserialize, Copy, Clone, PartialEq, Eq)]
-#[cfg_attr(feature = "extras", derive(JsonSchema))]
+#[cfg_attr(feature = "extras", derive(serde::Serialize, schemars::JsonSchema))]
 #[serde(default)]
 pub struct MarginConfig {
+    /// The gap between the bar and the bottom screen edge.
     pub bottom: i32,
+    /// The gap between the bar and the left screen edge.
     pub left: i32,
+    /// The gap between the bar and the right screen edge.
     pub right: i32,
+    /// The gap between the bar and the top screen edge.
     pub top: i32,
 }
 
@@ -333,30 +368,21 @@ pub struct MarginConfig {
 /// These options can either be written at the very top object of your config,
 /// or within an object in the [monitors](#monitors) config,
 /// depending on your [use-case](#2-pick-your-use-case).
-///
 #[derive(Debug, Deserialize, Clone, PartialEq, HotReload)]
-#[cfg_attr(feature = "extras", derive(JsonSchema))]
+#[cfg_attr(feature = "extras", derive(serde::Serialize, schemars::JsonSchema))]
 #[serde(default)]
 pub struct BarConfig {
     /// A unique identifier for the bar, used for controlling it over IPC.
     /// If not set, uses a generated integer suffix.
-    ///
-    /// **Default**: `bar-n`
     #[hot_reload(recreate)]
     pub name: Option<String>,
 
     /// The bar's position on screen.
-    ///
-    /// **Valid options**: `top`, `bottom`, `left`, `right`
-    /// <br>
-    /// **Default**: `bottom`
     #[hot_reload(normal)]
     pub position: BarPosition,
 
     /// Whether to anchor the bar to the edges of the screen.
     /// Setting to false centers the bar.
-    ///
-    /// **Default**: `true`
     #[hot_reload(normal)]
     pub anchor_to_edges: bool,
 
@@ -365,15 +391,12 @@ pub struct BarConfig {
     /// Note that GTK treats this as a target minimum,
     /// and if content inside the bar is over this,
     /// it will automatically expand to fit.
-    ///
-    /// **Default**: `42`
     #[hot_reload(normal)]
     pub height: i32,
 
     /// The margin to use on each side of the bar, in pixels.
     /// Object which takes `top`, `bottom`, `left` and `right` keys.
     ///
-    /// **Default**: `0` on all sides.
     ///
     /// # Example
     ///
@@ -400,12 +423,9 @@ pub struct BarConfig {
     /// > Traditional shell surfaces will typically be rendered between the bottom and top layers.
     /// > Fullscreen shell surfaces are typically rendered at the top layer.
     /// > Multiple surfaces can share a single layer, and ordering within a single layer is undefined.
-    ///
-    /// **Valid options**: `background`, `bottom`, `top`, `overlay`
-    /// <br>
-    /// **Default**: `top`
-    #[serde(deserialize_with = "r#impl::deserialize_layer")]
+    #[serde(deserialize_with = "r#impl::deserialize_layer", skip_serializing)]
     #[cfg_attr(feature = "extras", schemars(schema_with = "r#impl::schema_layer"))]
+    #[cfg_attr(feature = "extras", schemars(extend("default" = "top")))]
     #[hot_reload(normal)]
     pub layer: gtk_layer_shell::Layer,
 
@@ -413,15 +433,12 @@ pub struct BarConfig {
     ///
     /// When true, this prevents windows from rendering in the same space
     /// as the bar, causing them to shift.
-    ///
-    /// **Default**: `true` unless `start_hidden` is set.
+    #[cfg_attr(feature = "extras", schemars(extend("default" = "`true` unless `start_hidden` is set.")))]
     #[hot_reload(recreate)]
     pub exclusive_zone: Option<bool>,
 
     /// The size of the gap in pixels
     /// between the bar and the popup window.
-    ///
-    /// **Default**: `5`
     #[hot_reload(normal)]
     pub popup_gap: i32,
 
@@ -429,54 +446,70 @@ pub struct BarConfig {
     ///
     /// When enabled, clicking outside the popup will close it.
     /// On some compositors, this may also aggressively steal mouse/keyboard focus.
-    ///
-    /// **Default**: `false`
     #[hot_reload(recreate)]
     pub popup_autohide: bool,
 
     /// Whether the bar should be hidden when Ironbar starts.
-    ///
-    /// **Default**: `false`, unless `autohide` is set.
     #[hot_reload(ignore)]
     pub start_hidden: Option<bool>,
 
     /// The duration in milliseconds before the bar is hidden after the cursor leaves.
     /// Leave unset to disable auto-hide behaviour.
-    ///
-    /// **Default**: `null`
     #[hot_reload(recreate)]
     pub autohide: Option<u64>,
 
     /// The height in pixels of the hotspot that reveals the bar
-    ///
-    /// **Default**: `5`
     #[hot_reload(recreate)]
     pub autohide_hotspot_height: i32,
 
-    /// Listener used for revealing the bar
-    /// Options: Hover, Scroll, Click
-    ///
-    /// **Default**: `motion`
+    /// The type of event that reveals the bar.
     #[hot_reload(recreate)]
     pub autohide_listener: AutohideListener,
 
     /// An array of modules to append to the start of the bar.
-    /// Depending on the orientation, this is either the top of the left edge.
+    /// Depending on the orientation, this is either the top or the left edge.
     ///
-    /// **Default**: `[]`
+    /// This takes any module type.
+    /// Refer to the modules section of the documentation for more information.
+    ///
+    /// # Example
+    ///
+    /// ```corn
+    /// {
+    ///     start = [ { type = "workspaces" } ]
+    /// }
+    /// ```
     #[hot_reload(modules)]
     pub start: Option<Vec<ModuleConfig>>,
 
     /// An array of modules to append to the center of the bar.
     ///
-    /// **Default**: `[]`
+    /// This takes any module type.
+    /// Refer to the modules section of the documentation for more information.
+    ///
+    /// # Example
+    ///
+    /// ```corn
+    /// {
+    ///     center = [ { type = "focused" } ]
+    /// }
+    /// ```
     #[hot_reload(modules)]
     pub center: Option<Vec<ModuleConfig>>,
 
     /// An array of modules to append to the end of the bar.
     /// Depending on the orientation, this is either the bottom or right edge.
     ///
-    /// **Default**: `[]`
+    /// This takes any module type.
+    /// Refer to the modules section of the documentation for more information.
+    ///
+    /// # Example
+    ///
+    /// ```corn
+    /// {
+    ///     end = [ { type = "clock" } ]
+    /// }
+    /// ```
     #[hot_reload(modules)]
     pub end: Option<Vec<ModuleConfig>>,
 }
@@ -505,13 +538,12 @@ impl Default for BarConfig {
 }
 
 #[derive(Debug, Deserialize, Clone, Default)]
-#[cfg_attr(feature = "extras", derive(JsonSchema))]
+#[cfg_attr(feature = "extras", derive(serde::Serialize, schemars::JsonSchema))]
 #[serde(default)]
 pub struct Config {
-    /// A map of [ironvar](ironvar) keys and values
+    /// A map of [ironvar](/dynamic-content/ironvars) keys and values
     /// to initialize Ironbar with on startup.
     ///
-    /// **Default**: `{}`
     ///
     /// # Example
     ///
@@ -547,25 +579,30 @@ pub struct Config {
     /// - a single object, which denotes a single bar for that monitor,
     /// - an array of multiple objects, which denotes multiple for that monitor.
     ///
-    /// Providing this option overrides the single, global `bar` option.
+    /// > [!TIP]
+    /// > This is is only required if you are following **2b** or **2c** (ie not the same bar across all monitors).
+    /// > Providing this option overrides the single, global `bar` option.
     pub monitors: Option<HashMap<String, MonitorConfig>>,
 
     /// The name of the GTK icon theme to use.
     /// Leave unset to use the default system theme.
-    ///
-    /// **Default**: `null`
     pub icon_theme: Option<String>,
 
     /// Map of app IDs (or classes) to icon names,
     /// overriding the app's default icon.
     ///
-    /// **Default**: `{}`
+    /// # Example
+    ///
+    /// ```corn
+    /// {
+    ///     icon_overrides.Mailspring = "icon:mail-generic"
+    ///     icon_overrides.zen = "icon:firefox"
+    /// }
+    /// ```
     pub icon_overrides: HashMap<String, String>,
 
     /// The time in milliseconds to wait for a double-click.
     /// Can be set to a number (e.g., `250`) or `"gtk"` to use GTK's setting.
-    ///
-    /// **Default**: `250`
     #[serde(default)]
     pub double_click_time: DoubleClickTime,
 
@@ -573,13 +610,23 @@ pub struct Config {
     ///
     /// Requires restart.
     pub hot_reload: HotReload,
+
+    // force type to be included in schema
+    #[cfg(feature = "extras")]
+    __common: CommonConfig,
 }
 
 #[derive(Debug, Clone, Copy, Deserialize)]
-#[cfg_attr(feature = "extras", derive(JsonSchema))]
+#[cfg_attr(feature = "extras", derive(serde::Serialize, schemars::JsonSchema))]
 #[serde(untagged)]
 pub enum HotReload {
+    /// # All
+    ///
+    /// Enable hot-reloading for configuration and stylesheets.
     All(bool),
+    /// # Individual
+    ///
+    /// Control hot-reloading per-system.
     Systems(SystemsHotReload),
 }
 
@@ -606,10 +653,13 @@ impl HotReload {
 }
 
 #[derive(Debug, Clone, Copy, Deserialize)]
-#[cfg_attr(feature = "extras", derive(JsonSchema))]
+#[cfg_attr(feature = "extras", derive(serde::Serialize, schemars::JsonSchema))]
 #[serde(default)]
 pub struct SystemsHotReload {
+    /// Enable hot-reloading on the main bar configuration.
     config: bool,
+    /// Enable hot-reloading on stylesheets.
+    /// This also affects sheets loaded via IPC.
     style: bool,
 }
 
@@ -624,7 +674,7 @@ impl Default for SystemsHotReload {
 
 /// Double-click time configuration
 #[derive(Debug, Clone, Deserialize)]
-#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "extras", derive(serde::Serialize, schemars::JsonSchema))]
 #[serde(rename_all = "snake_case")]
 pub enum DoubleClickTime {
     /// Use GTK's gtk-double-click-time setting

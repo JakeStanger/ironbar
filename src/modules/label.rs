@@ -1,6 +1,6 @@
 use crate::channels::{AsyncSenderExt, BroadcastReceiverExt};
 use crate::config::{CommonConfig, LayoutConfig, TruncateMode};
-use crate::dynamic_value::dynamic_string;
+use crate::dynamic_value::DynamicString;
 use crate::gtk_helpers::IronbarLabelExt;
 use crate::module_impl;
 use crate::modules::{Module, ModuleInfo, ModuleParts, WidgetContext};
@@ -10,25 +10,19 @@ use serde::Deserialize;
 use tokio::sync::mpsc;
 
 #[derive(Debug, Deserialize, Clone, PartialEq)]
-#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "extras", derive(serde::Serialize, schemars::JsonSchema))]
 pub struct LabelModule {
     /// The text to show on the label.
-    /// This is a [Dynamic String](dynamic-values#dynamic-string).
-    ///
-    /// **Required**
-    label: String,
+    label: DynamicString,
 
     // -- Common --
-    /// See [truncate options](module-level-options#truncate-mode).
-    ///
-    /// **Default**: `null`
+
+    /// The truncation options to use for the label text.
     truncate: Option<TruncateMode>,
 
-    /// See [layout options](module-level-options#layout)
     #[serde(default, flatten)]
     layout: LayoutConfig,
 
-    /// See [common options](module-level-options#common-options).
     #[serde(flatten)]
     pub common: Option<CommonConfig>,
 }
@@ -45,7 +39,7 @@ impl Module<Label> for LabelModule {
         context: &WidgetContext<Self::SendMessage, Self::ReceiveMessage>,
         _rx: mpsc::Receiver<Self::ReceiveMessage>,
     ) -> Result<()> {
-        dynamic_string(&self.label, &context.tx, move |tx, string| {
+        self.label.subscribe(&context.tx, move |tx, string| {
             tx.send_update_spawn(string);
         });
 

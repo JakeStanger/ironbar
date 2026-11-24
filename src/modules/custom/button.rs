@@ -6,36 +6,26 @@ use super::{CustomWidget, CustomWidgetContext, ExecEvent, WidgetConfig};
 use crate::build;
 use crate::channels::AsyncSenderExt;
 use crate::config::LayoutConfig;
-use crate::dynamic_value::dynamic_string;
+use crate::dynamic_value::DynamicString;
 use crate::gtk_helpers::IronbarLabelExt;
 use crate::modules::PopupButton;
 
 #[derive(Debug, Deserialize, Clone, PartialEq)]
-#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "extras", derive(serde::Serialize, schemars::JsonSchema))]
 pub struct ButtonWidget {
     /// Widget name.
-    ///
-    /// **Default**: `null`
     name: Option<String>,
 
     /// Widget class name.
-    ///
-    /// **Default**: `null`
     class: Option<String>,
 
     /// Widget text label. Pango markup and embedded scripts are supported.
     ///
     /// This is a shorthand for adding a label widget to the button.
     /// Ignored if `widgets` is set.
-    ///
-    /// This is a [Dynamic String](dynamic-values#dynamic-string).
-    ///
-    /// **Default**: `null`
-    label: Option<String>,
+    label: Option<DynamicString>,
 
     /// Command to execute. More on this [below](#commands).
-    ///
-    /// **Default**: `null`
     on_click: Option<String>,
 
     /// See [layout options](module-level-options#layout)
@@ -43,8 +33,6 @@ pub struct ButtonWidget {
     layout: LayoutConfig,
 
     /// Modules and widgets to add to this box.
-    ///
-    /// **Default**: `null`
     widgets: Option<Vec<WidgetConfig>>,
 }
 
@@ -69,7 +57,7 @@ impl CustomWidget for ButtonWidget {
 
             button.set_child(Some(&label));
 
-            dynamic_string(&text, (), move |(), string| {
+            text.subscribe((), move |(), string| {
                 label.set_label_escaped(&string);
             });
         }

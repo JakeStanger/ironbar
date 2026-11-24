@@ -24,6 +24,12 @@ pub struct Args {
     #[arg(long("print-schema"))]
     pub print_schema: bool,
 
+    /// Print the IPC JSON schema to `stdout`
+    /// and exit.
+    #[cfg(feature = "schema")]
+    #[arg(long("print-ipc-schema"))]
+    pub print_ipc_schema: bool,
+
     /// Print shell completions to `stdout`
     /// and exit.
     #[cfg(feature = "completions")]

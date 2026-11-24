@@ -5,9 +5,9 @@ use crate::modules::custom::WidgetConfig;
 use gtk::prelude::*;
 use serde::Deserialize;
 
-#[derive(Debug, Deserialize, Clone, PartialEq, Eq)]
-#[serde(rename_all = "lowercase")]
-#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
+#[derive(Debug, Deserialize, Default, Clone, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+#[cfg_attr(feature = "extras", derive(serde::Serialize, schemars::JsonSchema))]
 pub enum ModuleAlignment {
     /// Align widget to the start (left for horizontal, top for vertical).
     Start,
@@ -16,6 +16,7 @@ pub enum ModuleAlignment {
     /// Align widget to the end (right for horizontal, bottom for vertical).
     End,
     /// Stretch widget to fill available space.
+    #[default]
     Fill,
 }
 
@@ -30,40 +31,26 @@ impl From<ModuleAlignment> for gtk::Align {
     }
 }
 
-#[derive(Debug, Deserialize, Clone, PartialEq)]
-#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
+#[derive(Debug, Deserialize, Default, Clone, PartialEq)]
+#[cfg_attr(feature = "extras", derive(serde::Serialize, schemars::JsonSchema))]
+#[serde(default)]
 pub struct BoxWidget {
     /// Widget name.
-    ///
-    /// **Default**: `null`
     name: Option<String>,
 
     /// Widget class name.
-    ///
-    /// **Default**: `null`
     class: Option<String>,
 
     /// Whether child widgets should be horizontally or vertically added.
-    ///
-    /// **Valid options**: `horizontal`, `vertical`, `h`, `v`
-    /// **Default**: `horizontal`
     orientation: Option<ModuleOrientation>,
 
     /// Horizontal alignment of the box relative to its parent.
-    ///
-    /// **Valid options**: `start`, `center`, `end`, `fill`
-    /// **Default**: `fill`
-    halign: Option<ModuleAlignment>,
+    halign: ModuleAlignment,
 
     /// Vertical alignment of the box relative to its parent.
-    ///
-    /// **Valid options**: `start`, `center`, `end`, `fill`
-    /// **Default**: `fill`
-    valign: Option<ModuleAlignment>,
+    valign: ModuleAlignment,
 
     /// Modules and widgets to add to this box.
-    ///
-    /// **Default**: `null`
     widgets: Option<Vec<WidgetConfig>>,
 }
 
@@ -83,11 +70,8 @@ impl CustomWidget for BoxWidget {
             }
         }
 
-        let horizontal_alignment = self.halign.unwrap_or(ModuleAlignment::Fill);
-        let vertical_alignment = self.valign.unwrap_or(ModuleAlignment::Fill);
-
-        container.set_halign(horizontal_alignment.into());
-        container.set_valign(vertical_alignment.into());
+        container.set_halign(self.halign.into());
+        container.set_valign(self.valign.into());
 
         container
     }

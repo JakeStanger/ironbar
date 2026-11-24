@@ -1,4 +1,4 @@
-use crate::dynamic_value::{DynamicBool, dynamic_string};
+use crate::dynamic_value::{DynamicBool, DynamicString};
 use crate::gtk_helpers::{IronbarGtkExt, MouseButton};
 use crate::script::{OneshotScriptInput, Script};
 use glib::Propagation;
@@ -18,9 +18,9 @@ use tracing::trace;
 ///
 /// For information on the Script type, and embedding scripts in strings,
 /// see [here](script).
-/// For information on styling, please see the [styling guide](styling-guide).
+/// For information on styling, please see the [styling guide](/guides/styling-guide).
 #[derive(Debug, Default, Deserialize, Clone, PartialEq)]
-#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "extras", derive(serde::Serialize, schemars::JsonSchema))]
 pub struct CommonConfig {
     /// Sets the unique widget name,
     /// allowing you to target it in CSS using `#name`.
@@ -28,56 +28,46 @@ pub struct CommonConfig {
     /// It is best practise (although not required) to ensure that the value is
     /// globally unique throughout the Ironbar instance
     /// to avoid clashes.
-    ///
-    /// **Default**: `null`
     pub name: Option<String>,
 
     /// Sets one or more CSS classes,
     /// allowing you to target it in CSS using `.class`.
     ///
     /// Unlike [name](#name), the `class` property is not expected to be unique.
-    ///
-    /// **Default**: `null`
     pub class: Option<String>,
 
     /// Shows this text on hover.
-    /// Supports embedding scripts between `{{double braces}}`.
-    ///
-    /// Note that full dynamic string support is not currently supported.
-    ///
-    /// **Default**: `null`
-    pub tooltip: Option<String>,
+    pub tooltip: Option<DynamicString>,
 
     /// Shows the module only if the dynamic boolean evaluates to true.
     ///
     /// This allows for modules to be dynamically shown or hidden
     /// based on custom events.
     ///
-    /// **Default**: `null`
+    /// # Example
+    ///
+    /// ```corn
+    /// {
+    ///     type = "battery"
+    ///     show_if = "ls /sys/class/power_supply/ | grep --quiet '^BAT'"
+    /// }
+    /// ```
     pub show_if: Option<DynamicBool>,
 
     /// The transition animation to use when showing/hiding the widget.
     ///
     /// Note this has no effect if `show_if` is not configured.
-    ///
-    /// **Valid options**: `slide_start`, `slide_end`, `crossfade`, `none`
-    /// <br>
-    /// **Default**: `slide_start`
+    #[cfg_attr(feature = "extras", schemars(extend("default" = "slide_start")))]
     pub transition_type: Option<TransitionType>,
 
     /// The length in milliseconds
     /// of the transition animation to use when showing/hiding the widget.
     ///
     /// Note this has no effect if `show_if` is not configured.
-    ///
-    /// **Default**: `250`
+    #[cfg_attr(feature = "extras", schemars(extend("default" = 250)))]
     pub transition_duration: Option<u32>,
 
-    /// A [script](scripts) to run when the module is left-clicked.
-    ///
-    /// **Supported script types**: `oneshot`.
-    /// <br>
-    /// **Default**: `null`
+    /// A oneshot [script](/dynamic content/scripts) to run when the module is left-clicked.
     ///
     /// # Example
     ///
@@ -86,23 +76,17 @@ pub struct CommonConfig {
     /// ```
     pub on_click_left: Option<OneshotScriptInput>,
 
-    /// A [script](scripts) to run when the module is right-clicked.
+    /// A oneshot [script](/dynamic content/scripts) to run when the module is right-clicked.
     ///
-    /// **Supported script types**: `oneshot`.
-    /// <br>
-    /// **Default**: `null`
-    /// /// # Example
+    /// # Example
     ///
     /// ```corn
     /// { on_click_right = "echo 'event' >> log.txt" }
     /// ```
     pub on_click_right: Option<OneshotScriptInput>,
 
-    /// A [script](scripts) to run when the module is middle-clicked.
+    /// A oneshot [script](/dynamic content/scripts) to run when the module is middle-clicked.
     ///
-    /// **Supported script types**: `oneshot`.
-    /// <br>
-    /// **Default**: `null`
     /// # Example
     ///
     /// ```corn
@@ -110,11 +94,7 @@ pub struct CommonConfig {
     /// ```
     pub on_click_middle: Option<OneshotScriptInput>,
 
-    /// A [script](scripts) to run when the module is double-left-clicked.
-    ///
-    /// **Supported script types**: `oneshot`.
-    /// <br>
-    /// **Default**: `null`
+    /// A oneshot [script](/dynamic content/scripts) to run when the module is double-left-clicked.
     ///
     /// # Example
     ///
@@ -123,11 +103,7 @@ pub struct CommonConfig {
     /// ```
     pub on_click_left_double: Option<OneshotScriptInput>,
 
-    /// A [script](scripts) to run when the module is double-right-clicked.
-    ///
-    /// **Supported script types**: `oneshot`.
-    /// <br>
-    /// **Default**: `null`
+    /// A oneshot [script](/dynamic content/scripts) to run when the module is double-right-clicked.
     ///
     /// # Example
     ///
@@ -136,11 +112,7 @@ pub struct CommonConfig {
     /// ```
     pub on_click_right_double: Option<OneshotScriptInput>,
 
-    /// A [script](scripts) to run when the module is double-middle-clicked.
-    ///
-    /// **Supported script types**: `oneshot`.
-    /// <br>
-    /// **Default**: `null`
+    /// A oneshot [script](/dynamic content/scripts) to run when the module is double-middle-clicked.
     ///
     /// # Example
     ///
@@ -149,11 +121,8 @@ pub struct CommonConfig {
     /// ```
     pub on_click_middle_double: Option<OneshotScriptInput>,
 
-    /// A [script](scripts) to run when the module is scrolled up on.
+    /// A oneshot [script](/dynamic content/scripts) to run when the module is scrolled up on.
     ///
-    /// **Supported script types**: `oneshot`.
-    /// <br>
-    /// **Default**: `null`
     /// # Example
     ///
     /// ```corn
@@ -161,11 +130,8 @@ pub struct CommonConfig {
     /// ```
     pub on_scroll_up: Option<OneshotScriptInput>,
 
-    /// A [script](scripts) to run when the module is scrolled down on.
+    /// A oneshot [script](/dynamic content/scripts) to run when the module is scrolled down on.
     ///
-    /// **Supported script types**: `oneshot`.
-    /// <br>
-    /// **Default**: `null`
     /// # Example
     ///
     /// ```corn
@@ -175,15 +141,11 @@ pub struct CommonConfig {
 
     /// A multiplier from `0.0` - `10.0` to control the speed
     /// of smooth scrolling on trackpad.
-    ///
-    /// **Default**: `1.0`
-    pub smooth_scroll_speed: Option<f64>,
+    #[serde(default = "default_smooth_scroll_speed")]
+    pub smooth_scroll_speed: f64,
 
-    /// A [script](scripts) to run when the cursor begins hovering over the module.
+    /// A oneshot [script](/dynamic content/scripts) to run when the cursor begins hovering over the module.
     ///
-    /// **Supported script types**: `oneshot`.
-    /// <br>
-    /// **Default**: `null`
     /// # Example
     ///
     /// ```corn
@@ -191,11 +153,8 @@ pub struct CommonConfig {
     /// ```
     pub on_mouse_enter: Option<OneshotScriptInput>,
 
-    /// A [script](scripts) to run when the cursor stops hovering over the module.
+    /// A oneshot [script](/dynamic content/scripts) to run when the cursor stops hovering over the module.
     ///
-    /// **Supported script types**: `oneshot`.
-    /// <br>
-    /// **Default**: `null`
     /// # Example
     ///
     /// ```corn
@@ -208,9 +167,13 @@ pub struct CommonConfig {
     pub disable_popup: bool,
 }
 
+fn default_smooth_scroll_speed() -> f64 {
+    1.0
+}
+
 #[derive(Debug, Deserialize, Clone, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
-#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "extras", derive(serde::Serialize, schemars::JsonSchema))]
 pub enum TransitionType {
     None,
     Crossfade,
@@ -220,7 +183,7 @@ pub enum TransitionType {
 
 #[derive(Debug, Default, Deserialize, Clone, Copy, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
-#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "extras", derive(serde::Serialize, schemars::JsonSchema))]
 pub enum ModuleOrientation {
     #[default]
     #[serde(alias = "h")]
@@ -249,7 +212,7 @@ impl From<ModuleOrientation> for Orientation {
 
 #[derive(Debug, Default, Deserialize, Clone, Copy, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
-#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "extras", derive(serde::Serialize, schemars::JsonSchema))]
 pub enum ModuleJustification {
     #[default]
     Left,
@@ -347,7 +310,7 @@ impl CommonConfig {
         let scroll_up_script = self.on_scroll_up.map(Script::new_oneshot);
         let scroll_down_script = self.on_scroll_down.map(Script::new_oneshot);
 
-        let scroll_speed = self.smooth_scroll_speed.unwrap_or(1.0);
+        let scroll_speed = self.smooth_scroll_speed;
         let curr_scroll = Cell::new(0.0);
 
         event_controller.connect_scroll(move |_, _dx, dy| {
@@ -407,7 +370,7 @@ impl CommonConfig {
         }
 
         if let Some(tooltip) = self.tooltip {
-            dynamic_string(&tooltip, container, move |container, string| {
+            tooltip.subscribe(container, move |container, string| {
                 container.set_tooltip_text(Some(&string));
             });
         }

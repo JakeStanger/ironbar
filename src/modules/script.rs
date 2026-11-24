@@ -12,28 +12,25 @@ use tokio::sync::oneshot::channel;
 use tracing::error;
 
 #[derive(Debug, Deserialize, Clone, PartialEq)]
-#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "extras", derive(serde::Serialize, schemars::JsonSchema))]
+#[cfg_attr(feature = "extras", schemars(extend("required" = ["cmd"])))]
 #[serde(default)]
 pub struct ScriptModule {
     /// Path to script to execute.
     ///
     /// This can be an absolute path,
     /// or relative to the working directory.
-    ///
-    /// **Required**
+    #[cfg_attr(feature = "extras", schemars(extend("default" = null)))]
     cmd: String,
 
     /// Script execution mode.
-    /// See [modes](#modes) for more info.
     ///
-    /// **Valid options**: `poll`, `watch`
-    /// <br />
-    /// **Default**: `poll`
+    /// - Use `poll` to run the script wait for it to exit. On exit, the label is updated to show everything the script wrote to `stdout`.
+    /// - Use `watch` to start a long-running script. Every time the script writes to `stdout`, the label is updated to show the latest line.
+    ///   Note this does not work for all programs as they may use block-buffering instead of line-buffering when they detect output being piped.
     mode: ScriptMode,
 
     /// Time in milliseconds between executions.
-    ///
-    /// **Default**: `5000`
     interval: u64,
 
     // -- Common --

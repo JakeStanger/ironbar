@@ -1,36 +1,28 @@
 use super::{CustomWidget, CustomWidgetContext};
 use crate::build;
 use crate::config::default;
-use crate::dynamic_value::dynamic_string;
+use crate::dynamic_value::DynamicString;
 use gtk::prelude::*;
 use gtk::{ContentFit, Picture};
 use serde::Deserialize;
 
 #[derive(Debug, Deserialize, Clone, PartialEq)]
-#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "extras", derive(serde::Serialize, schemars::JsonSchema))]
 #[serde(default)]
 pub struct ImageWidget {
     /// Widget name.
-    ///
-    /// **Default**: `null`
     name: Option<String>,
 
     /// Widget class name.
-    ///
-    /// **Default**: `null`
     class: Option<String>,
 
     /// Image source.
     ///
-    /// This is an [image](image) via [Dynamic String](dynamic-values#dynamic-string).
-    ///
-    /// **Required**
-    src: String,
+    /// This is an [image](/guides/images).
+    src: DynamicString,
 
     /// The width/height of the image.
     /// Aspect ratio is preserved.
-    ///
-    /// **Default**: `32`
     size: i32,
 }
 
@@ -39,7 +31,7 @@ impl Default for ImageWidget {
         Self {
             name: None,
             class: None,
-            src: String::new(),
+            src: DynamicString::default(),
             size: default::IconSize::Normal as i32,
         }
     }
@@ -52,7 +44,7 @@ impl CustomWidget for ImageWidget {
         let gtk_image = build!(self, Self::Widget);
         gtk_image.set_content_fit(ContentFit::ScaleDown);
 
-        dynamic_string(&self.src, &gtk_image, move |gtk_image, src| {
+        self.src.subscribe(&gtk_image, move |gtk_image, src| {
             let gtk_image = gtk_image.clone();
             let image_provider = context.image_provider.clone();
             glib::spawn_future_local(async move {

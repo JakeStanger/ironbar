@@ -27,41 +27,29 @@ use tokio::sync::mpsc;
 use tracing::{debug, error, trace, warn};
 
 #[derive(Debug, Deserialize, Clone, PartialEq)]
-#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "extras", derive(serde::Serialize, schemars::JsonSchema))]
 #[serde(default)]
 pub struct LauncherModule {
     /// List of app IDs (or classes) to always show regardless of open state,
     /// in the order specified.
-    ///
-    /// **Default**: `null`
     favorites: Option<Vec<String>>,
 
     /// Whether to show application names on the bar.
-    ///
-    /// **Default**: `false`
     show_names: bool,
 
     /// Whether to show application icons on the bar.
-    ///
-    /// **Default**: `true`
     show_icons: bool,
 
     /// Size in pixels to render icon at (image icons only).
-    ///
-    /// **Default**: `32`
     icon_size: i32,
 
     /// Whether items should be added from right-to-left
     /// instead of left-to-right.
     ///
     /// This includes favourites.
-    ///
-    /// **Default**: `false`
     reversed: bool,
 
     /// Whether to minimize a window if it is focused when clicked.
-    ///
-    /// **Default**: `true`
     minimize_focused: bool,
 
     /// The number of items to show on a page.
@@ -72,8 +60,6 @@ pub struct LauncherModule {
     ///
     /// If there are too many to fit, the overflow will be truncated
     /// by the next widget.
-    ///
-    /// **Default**: `1000`.
     page_size: usize,
 
     /// Module UI icons (separate from app icons shown for items).
@@ -83,31 +69,21 @@ pub struct LauncherModule {
     icons: Icons,
 
     /// Size in pixels to render pagination icons at (image icons only).
-    ///
-    /// **Default**: `16`
     pagination_icon_size: i32,
 
+    /// Command used to launch applications.
+    launch_command: String,
+
     // -- common --
-    /// Truncate application names on the bar if they get too long.
-    /// See [truncate options](module-level-options#truncate-mode).
-    ///
-    /// **Default**: `Auto (end)`
+
+    /// The truncation options to use for application names displayed on the bar.
     truncate: TruncateMode,
 
-    /// Truncate application names in popups if they get too long.
-    /// See [truncate options](module-level-options#truncate-mode).
-    ///
-    /// **Default**: `{ mode = "middle" max_length = 25 }`
+    /// The truncation options to use for application names displayed in popups.
     truncate_popup: TruncateMode,
 
-    /// See [layout options](module-level-options#layout)
     #[serde(default, flatten)]
     layout: LayoutConfig,
-
-    /// Command used to launch applications.
-    ///
-    /// **Default**: `gtk-launch`
-    launch_command: String,
 
     /// See [common options](module-level-options#common-options).
     #[serde(flatten)]
@@ -140,17 +116,13 @@ impl Default for LauncherModule {
 }
 
 #[derive(Debug, Deserialize, Clone, PartialEq, Eq)]
-#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "extras", derive(serde::Serialize, schemars::JsonSchema))]
 #[serde(default)]
 struct Icons {
     /// Icon to show for page back button.
-    ///
-    /// **Default**: `󰅁`
     page_back: String,
 
-    /// Icon to show for page back button.
-    ///
-    /// **Default**: `>`
+    /// Icon to show for page forward button.
     page_forward: String,
 }
 

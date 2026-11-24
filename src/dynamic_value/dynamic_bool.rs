@@ -6,11 +6,27 @@ use tokio::sync::mpsc;
 
 #[derive(Debug, Deserialize, Clone, PartialEq)]
 #[serde(untagged)]
-#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "extras", derive(serde::Serialize, schemars::JsonSchema))]
 pub enum DynamicBool {
     /// Either a script or variable, to be determined.
+    ///
+    #[cfg_attr(feature = "extras", schemars(skip))]
     Unknown(String),
+
+    /// # Script
+    ///
+    /// A polling or watching script.
+    ///
+    /// This can be provided in shorthand syntax,
+    /// or as a full object as described below.
+    /// See [here](/dynamic-content/scripts) for more information.
+    ///
     Script(Script),
+
+    /// # Ironvar
+    ///
+    /// An ironvar reference.
+    /// This should start with a `#`, e.g.  `#var_name`.
     #[cfg(any(feature = "ipc", feature = "lua"))]
     Variable(Box<str>),
 }

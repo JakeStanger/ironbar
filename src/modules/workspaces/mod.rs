@@ -22,9 +22,9 @@ use tracing::{debug, trace, warn};
 
 #[derive(Debug, Deserialize, Default, Clone, Copy, Eq, PartialEq)]
 #[serde(rename_all = "snake_case")]
-#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "extras", derive(serde::Serialize, schemars::JsonSchema))]
 pub enum SortOrder {
-    /// Shows workspaces in the order they're added
+    /// Shows workspaces in the order they're added.
     Added,
 
     /// Shows workspaces in the order of their displayed labels,
@@ -50,9 +50,11 @@ pub enum SortOrder {
 
 #[derive(Debug, Deserialize, Clone, PartialEq)]
 #[serde(untagged)]
-#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "extras", derive(serde::Serialize, schemars::JsonSchema))]
 pub enum Favorites {
+    /// A map of monitor names, where each value is a list of favourites.
     ByMonitor(HashMap<String, Vec<String>>),
+    /// A list of favourites shared across all monitors.
     Global(Vec<String>),
 }
 
@@ -64,12 +66,17 @@ impl Default for Favorites {
 
 #[derive(Debug, Deserialize, Clone, PartialEq, Eq)]
 #[serde(untagged)]
-#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "extras", derive(serde::Serialize, schemars::JsonSchema))]
 pub enum Format {
+    /// Format shared by both named and unnamed workspaces.
     String(String),
+    /// Allows setting named and unnamed workspace formats individually.
     Pair {
+        /// Named workspaces.
         #[serde(default = "default_format")]
         named: String,
+        /// Unnamed workspaces.
+        /// These are usually numerical.
         #[serde(default = "default_format")]
         unnamed: String,
     },
@@ -91,7 +98,7 @@ impl Format {
 }
 
 #[derive(Debug, Deserialize, Clone, PartialEq)]
-#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "extras", derive(serde::Serialize, schemars::JsonSchema))]
 #[serde(default)]
 pub struct WorkspacesModule {
     /// Map of actual workspace names to custom names.
@@ -107,22 +114,24 @@ pub struct WorkspacesModule {
     /// This can either be an array of workspace names,
     /// or a map of monitor names to arrays of workspace names.
     ///
-    /// **Default**: `{}`
     ///
     /// # Example
     ///
     /// ```corn
-    /// // array format
-    /// {
-    ///   type = "workspaces"
-    ///   favorites = ["1", "2", "3"]
-    /// }
+    /// let {
+    ///   $array_format = {
+    ///     type = "workspaces"
+    ///     favorites = [ "1" "2" "3" ]
+    ///   }
     ///
-    /// // map format
-    /// {
-    ///   type = "workspaces"
-    ///   favorites.DP-1 = ["1", "2", "3"]
-    ///   favorites.DP-2 = ["4", "5", "6"]
+    ///   $map_format = {
+    ///     type = "workspaces"
+    ///     favorites.'DP-1' = ["1" "2" "3"]
+    ///     favorites.'DP-2' = ["4" "5" "6"]
+    ///   }
+    /// } in {
+    ///   array_format = $array_format
+    ///   map_format = $map_format
     /// }
     /// ```
     #[serde(default)]
@@ -131,15 +140,11 @@ pub struct WorkspacesModule {
     /// A list of workspace names to never show.
     ///
     /// This may be useful for scratchpad/special workspaces, for example.
-    ///
-    /// **Default**: `[]`
     #[serde(default)]
     hidden: Vec<String>,
 
     /// Whether to display workspaces from all monitors.
     /// When false, only shows workspaces on the current monitor.
-    ///
-    /// **Default**: `false`
     all_monitors: bool,
 
     /// The method used for sorting workspaces.
@@ -147,26 +152,24 @@ pub struct WorkspacesModule {
     /// - `added` always appends to the end.
     /// - `label` sorts by displayed value.
     /// - `name` sorts by workspace name.
-    ///
-    /// **Valid options**: `added`, `label`, `name`.
-    /// <br>
-    /// **Default**: `label`
     #[serde(default)]
     sort: SortOrder,
 
     /// The size to render icons at (image icons only).
-    ///
-    /// **Default**: `32`
     icon_size: i32,
 
-    /// The format string for named workspaces.
+    /// The format string for displaying workspaces.
     ///
-    /// The following placeholders are supported:
-    /// - `{label}`: The display label (from `name_map` or the workspace name).
-    /// - `{name}`: The actual workspace name.
-    /// - `{index}`: The workspace index.
+    /// Two syntaxes are supported,
+    /// allowing you to control which workspace types the format is applied to if desired.
     ///
-    /// **Default**: `"{label}"`
+    /// The following tokens are supported:
+    ///
+    /// | Token | Description                                      |
+    /// |-------------|--------------------------------------------------|
+    /// | `{label}`   | The display label (from `name_map` or the name). |
+    /// | `{name}`    | The actual workspace name.                       |
+    /// | `{index}`   | The workspace index.                             |
     #[serde(default)]
     format: Format,
 

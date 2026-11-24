@@ -12,34 +12,24 @@ use tokio::sync::mpsc;
 use tracing::{debug, trace};
 
 #[derive(Debug, Deserialize, Clone, PartialEq)]
-#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "extras", derive(serde::Serialize, schemars::JsonSchema))]
 #[serde(default)]
 pub struct FocusedModule {
     /// Whether to show icon on the bar.
-    ///
-    /// **Default**: `true`
     show_icon: bool,
     /// Whether to show app name on the bar.
-    ///
-    /// **Default**: `true`
     show_title: bool,
 
     /// Icon size in pixels.
-    ///
-    /// **Default**: `32`
     icon_size: i32,
 
     // -- common --
-    /// See [truncate options](module-level-options#truncate-mode).
-    ///
-    /// **Default**: `null`
+    /// The truncation options to use for the application name.
     truncate: Option<TruncateMode>,
 
-    /// See [layout options](module-level-options#layout)
     #[serde(flatten)]
     layout: LayoutConfig,
 
-    /// See [common options](module-level-options#common-options).
     #[serde(flatten)]
     pub common: Option<CommonConfig>,
 }

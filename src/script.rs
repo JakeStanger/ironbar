@@ -19,14 +19,32 @@ use tracing::{debug, error, trace, warn};
 ///
 /// Internally this is treated as a polling script that polls exactly once.
 #[derive(Debug, Deserialize, Clone, PartialEq)]
-#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "extras", derive(serde::Serialize, schemars::JsonSchema))]
 pub struct OneshotScriptInput(String);
 
 #[derive(Debug, Deserialize, Clone, PartialEq)]
 #[serde(untagged)]
-#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "extras", derive(serde::Serialize, schemars::JsonSchema))]
 pub enum ScriptInput {
+    /// # Shorthand
+    ///
+    /// A shorthand script input represented as a string.
+    ///
+    /// Shorthand scripts should be written in the format:
+    ///
+    /// ```
+    /// mode:interval:script
+    /// ```
+    ///
+    /// For example:
+    ///
+    /// ```
+    /// poll:5000:uptime -p | cut -d ' ' -f2-
+    /// ```
     String(String),
+    /// # Longform
+    ///
+    /// A longform script input represented as its own object.
     Struct(Script),
 }
 
@@ -38,7 +56,7 @@ impl From<OneshotScriptInput> for ScriptInput {
 
 #[derive(Debug, Default, Deserialize, Clone, Copy, Eq, PartialEq)]
 #[serde(rename_all = "snake_case")]
-#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "extras", derive(serde::Serialize, schemars::JsonSchema))]
 pub enum ScriptMode {
     #[default]
     Poll,
@@ -88,12 +106,15 @@ impl ScriptMode {
 }
 
 #[derive(Debug, Deserialize, Clone, PartialEq)]
-#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "extras", derive(serde::Serialize, schemars::JsonSchema))]
 #[serde(default)]
 pub struct Script {
-    pub(crate) mode: ScriptMode,
+    /// The method used to execute the script.
+    pub mode: ScriptMode,
+    /// The command to run. This is passed to `sh -c`.
     pub cmd: String,
-    pub(crate) interval: u64,
+    /// The interval in milliseconds between script runs.
+    pub interval: u64,
 }
 
 impl Default for Script {
@@ -362,7 +383,6 @@ impl Script {
     ///
     /// This has some overhead,
     /// as the script has to be cloned to the thread.
-    ///
     pub fn run_as_oneshot(&self, args: Option<&[String]>) {
         let script = self.clone();
         let args = args.map(<[String]>::to_vec);

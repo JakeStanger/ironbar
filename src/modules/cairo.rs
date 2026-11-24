@@ -18,33 +18,28 @@ use tokio::time::sleep;
 use tracing::{debug, error};
 
 #[derive(Debug, Clone, Deserialize, PartialEq)]
-#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "extras", derive(serde::Serialize, schemars::JsonSchema))]
+#[cfg_attr(feature = "extras", schemars(extend("required" = ["path"])))]
 #[serde(default)]
 pub struct CairoModule {
     /// The path to the Lua script to load.
     /// This can be absolute, or relative to the working directory.
     ///
     /// The script must contain the entry `draw` function.
-    ///
-    /// **Required**
+    #[cfg_attr(feature = "extras", schemars(extend("default" = null)))]
     path: PathBuf,
 
     /// The number of milliseconds between each draw call.
-    ///
-    /// **Default**: `200`
     frequency: u64,
 
     /// The canvas width in pixels.
-    ///
-    /// **Default**: `42`
     width: u32,
 
     /// The canvas height in pixels.
-    ///
-    /// **Default**: `42`
     height: u32,
 
     /// See [common options](module-level-options#common-options).
+    #[serde(flatten)]
     pub common: Option<CommonConfig>,
 }
 

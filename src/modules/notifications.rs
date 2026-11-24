@@ -11,12 +11,10 @@ use tokio::sync::mpsc::Receiver;
 use tracing::error;
 
 #[derive(Debug, Deserialize, Clone, PartialEq)]
-#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "extras", derive(serde::Serialize, schemars::JsonSchema))]
 #[serde(default)]
 pub struct NotificationsModule {
     /// Whether to show the current notification count.
-    ///
-    /// **Default**: `true`
     show_count: bool,
 
     /// SwayNC state icons.
@@ -40,39 +38,27 @@ impl Default for NotificationsModule {
 }
 
 #[derive(Debug, Deserialize, Clone, PartialEq, Eq)]
-#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "extras", derive(serde::Serialize, schemars::JsonSchema))]
 #[serde(default)]
 struct Icons {
     /// Icon to show when the panel is closed, with no notifications.
-    ///
-    /// **Default**: `󰍥`
     closed_none: String,
 
     /// Icon to show when the panel is closed, with notifications.
-    ///
-    /// **Default**: `󱥂`
     closed_some: String,
 
     /// Icon to show when the panel is closed, with DnD enabled.
     /// Takes higher priority than count-based icons.
-    ///
-    /// **Default**: `󱅯`
     closed_dnd: String,
 
     /// Icon to show when the panel is open, with no notifications.
-    ///
-    /// **Default**: `󰍡`
     open_none: String,
 
     /// Icon to show when the panel is open, with notifications.
-    ///
-    /// **Default**: `󱥁`
     open_some: String,
 
     /// Icon to show when the panel is open, with DnD enabled.
     /// Takes higher priority than count-based icons.
-    ///
-    /// **Default**: `󱅮`
     open_dnd: String,
 }
 

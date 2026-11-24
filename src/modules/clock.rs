@@ -17,7 +17,7 @@ use crate::modules::{
 use crate::{module_impl, spawn};
 
 #[derive(Debug, Deserialize, Clone, PartialEq)]
-#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "extras", derive(serde::Serialize, schemars::JsonSchema))]
 #[serde(default)]
 pub struct ClockModule {
     /// The format string to use for the date/time shown on the bar.
@@ -25,8 +25,6 @@ pub struct ClockModule {
     ///
     /// Detail on available tokens can be found here:
     /// <https://docs.rs/chrono/latest/chrono/format/strftime/index.html>
-    ///
-    /// **Default**: `%d/%m/%Y %H:%M`
     format: String,
 
     /// The format string to use for the date/time shown in the popup header.
@@ -34,23 +32,15 @@ pub struct ClockModule {
     ///
     /// Detail on available tokens can be found here:
     /// <https://docs.rs/chrono/latest/chrono/format/strftime/index.html>
-    ///
-    /// **Default**: `%H:%M:%S`
     format_popup: String,
 
     /// The locale to use when formatting dates.
     ///
     /// Note this will not control the calendar -
     /// for that you must set `LC_TIME`.
-    ///
-    /// **Valid options**: See [here](https://docs.rs/pure-rust-locales/0.8.1/pure_rust_locales/enum.Locale.html#variants)
-    /// <br>
-    /// **Default**: `$LC_TIME` or `$LANG` or `'POSIX'`
     locale: String,
 
     /// Whether to show the week numbers in the popup calendar
-    ///
-    /// **Default**: `false`
     show_week_numbers: bool,
 
     /// See [layout options](module-level-options#layout)

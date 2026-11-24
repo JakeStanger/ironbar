@@ -23,7 +23,7 @@ const MINUTE: i64 = 60;
 
 /// The battery module uses a compound state object.
 #[derive(Debug, Deserialize, Clone, PartialEq)]
-#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "extras", derive(serde::Serialize, schemars::JsonSchema))]
 #[serde(default)]
 struct ProfileState {
     /// Battery charged percentage.
@@ -69,23 +69,29 @@ impl State for ProfileState {
 }
 
 #[derive(Debug, Deserialize, Clone, PartialEq)]
-#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "extras", derive(serde::Serialize, schemars::JsonSchema))]
 #[serde(default)]
 struct BatteryProfile {
     /// The format string to use for the widget button label.
-    /// For available tokens, see [below](#formatting-tokens).
     ///
-    /// **Default**: `{percentage}%`
+    /// The following tokens can be used
+    /// and will be replaced with values from the battery state:
+    ///
+    /// | Token               | Description                                                 |
+    /// |---------------------|-------------------------------------------------------------|
+    /// | `{percentage}`      | The battery charge percentage.                              |
+    /// | `{state}`           | The current battery (dis)charging state.                    |
+    /// | `{time_remaining}`  | The ETA to battery empty or full.                           |
+    /// | `{level}`           | The battery charge level name (e.g. "Low", "High", "Full"). |
+    /// | `{type}`            | The battery type (e.g. "Battery", "Keyboard", "Mouse").     |
     format: String,
 }
 
 #[derive(Debug, Deserialize, Clone, PartialEq)]
-#[cfg_attr(feature = "extras", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "extras", derive(serde::Serialize, schemars::JsonSchema))]
 #[serde(default)]
 pub struct BatteryModule {
     /// The size to render the icon at, in pixels.
-    ///
-    /// **Default**: `24`
     icon_size: i32,
 
     // -- Common --
@@ -94,13 +100,9 @@ pub struct BatteryModule {
     layout: LayoutConfig,
 
     /// Whether to show the icon.
-    ///
-    /// **Default**: `true`
     show_icon: bool,
 
     /// Whether to show the label.
-    ///
-    /// **Default**: `true`
     show_label: bool,
 
     /// See [profiles](profiles).
