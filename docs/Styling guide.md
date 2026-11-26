@@ -26,7 +26,7 @@ Information on styling individual modules can be found on their pages in the sid
 | `.container`        | All of the above.                          |
 | `.widget-container` | The `EventBox` wrapping any widget.        |
 | `.widget`           | Any widget.                                |
-| `.opened`           | Any widget with a visible popup.           |
+| `.widget.opened`           | Any widget with a visible popup.           |
 | `.popup`            | Any popup box.                             |
 
 Every Ironbar widget can be selected using a `kebab-case` class name matching its name. 
