@@ -106,7 +106,7 @@ function get_module_children(widget)
     local children = {}
 
     local child = widget:get_first_child()
-    while child != nil do
+    while child ~= nil do
         table.insert(children, child)
         child = child:get_next_sibling()
     end
