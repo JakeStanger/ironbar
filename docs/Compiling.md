@@ -96,7 +96,7 @@ Runtime:
 ```shell
 dnf install gtk4 gtk4-layer-shell
 # for lua/cairo support
-dnf install luajit lua-lgi
+dnf install luajit lua-lgi-compat
 ```
 
 ## Features
