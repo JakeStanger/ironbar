@@ -154,6 +154,7 @@ impl Popup {
             };
 
             content.add_css_class("popup");
+            button.add_css_class("opened");
             self.popover.set_child(Some(content));
             self.popover.unparent();
             self.popover.set_parent(&button);
@@ -183,6 +184,7 @@ impl Popup {
             *self.current_widget.borrow_mut() = Some(CurrentWidgetInfo { widget_id });
 
             content.add_css_class("popup");
+            button.add_css_class("opened");
             self.popover.set_child(Some(content));
             self.popover.unparent();
             self.popover.set_parent(button);
@@ -199,13 +201,22 @@ impl Popup {
         }
     }
 
+    /// Removes the css class from its parent
+    fn remove_css_from_parent(&self) {
+        if let Some(parent) = self.popover.parent() {
+            parent.remove_css_class("opened");
+        }
+    }
+
     fn clear_window(&self) {
+        self.remove_css_from_parent();
         self.popover.set_child(None::<&gtk::Box>);
         self.popover.set_autohide(self.autohide);
     }
 
     /// Hides the popup
     pub fn hide(&self) {
+        self.remove_css_from_parent();
         *self.current_widget.borrow_mut() = None;
         self.popover.popdown();
         self.popover.unparent();
