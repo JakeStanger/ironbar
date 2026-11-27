@@ -88,7 +88,9 @@ default = [
     "tray",
     "volume",
     "workspaces+all",
-    "extras"
+    "extras",
+    "udisks",
+    "notify"
 ]
 
 # -- core features --
@@ -179,6 +181,9 @@ niri = ["dep:serde_json"]
 
 extras = ["dep:schemars", "ironbar-args?/schema"]
 
+notify = ["zbus"]
+
+udisks = ["zbus", "notify"]
 # -- test features --
 "battery.test" = ["battery"]
 
