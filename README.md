@@ -212,13 +212,15 @@ Ensure you have the [build dependencies](https://github.com/JakeStanger/ironbar/
 ```sh
 git clone https://github.com/jakestanger/ironbar.git
 cd ironbar
-cargo build --release
+cargo build --workspace --release
 # change path to wherever you want to install
 install target/release/ironbar ~/.local/bin/ironbar
+install target/release/ironbard ~/.local/bin/ironbard
 ```
 
 By default, all features are enabled. 
-See [here](https://github.com/JakeStanger/ironbar/wiki/compiling#features) for controlling which features are included.
+The [compiling guide](https://github.com/JakeStanger/ironbar/wiki/compiling) explains how to select features
+and what each binary does.
 
 ## Running
 
